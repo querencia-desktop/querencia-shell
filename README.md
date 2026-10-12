@@ -4,8 +4,10 @@ Classic2 ist eine Neuimplementierung des GNOME-2-Bedienmodells mit Rust,
 GTK4 und Wayland. Die Shell läuft als eigener Prozess auf dem Compositor
 labwc und nutzt `wlr-layer-shell` für Panels.
 
-Stand: Meilenstein M1.0, ein statisches oberes Panel als technischer
-Prototyp. Noch keine Menüs, keine Fensterliste, kein Autostart.
+Stand: Meilenstein M1.1a. Ein Prozess zeigt zwei Panels im
+GNOME-2-Layout: oben `Anwendungen`, `Orte`, `System` und eine Uhr mit
+Datum, unten Platzhalter für Fensterliste und Arbeitsflächen. Noch keine
+Menüs, keine echte Fensterliste, kein Autostart.
 
 ## Voraussetzungen
 
@@ -18,7 +20,7 @@ Getestet auf Ubuntu 26.04.1 LTS (VM `entwicklungs-vm`):
 | gtk4-layer-shell (System) | 1.3.0 |
 | labwc | 0.9.3 |
 
-Pakete: `rustc cargo rustfmt libgtk-4-dev libgtk4-layer-shell-dev labwc`.
+Pakete: `rustc cargo rustfmt rust-clippy libgtk-4-dev libgtk4-layer-shell-dev labwc`.
 Das Panel verlangt einen Compositor mit `zwlr_layer_shell_v1`. Fehlt das
 Protokoll, bricht es mit einer Fehlermeldung ab, statt als normales
 Fenster zu starten.
@@ -30,6 +32,7 @@ cd ~/projects/classic2
 cargo fmt --all --check
 cargo build
 cargo test
+cargo clippy --all-targets -- -D warnings
 ```
 
 ## Starten
@@ -50,19 +53,20 @@ export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
 setsid ./target/debug/classic2-panel > ~/classic2-logs/panel.log 2>&1 < /dev/null &
 ```
 
-Ein zweiter Start erzeugt kein zweites Panel, er aktiviert nur die
+Ein zweiter Start erzeugt keine weiteren Panels, er aktiviert nur die
 laufende Instanz.
 
 ## Beenden
 
-Sauber mit Exit-Code 0 über die GApplication-Aktion:
+Beide Panels gemeinsam und sauber mit Exit-Code 0 über die
+GApplication-Aktion:
 
 ```bash
 gapplication action org.example.Classic2.Panel quit
 ```
 
-`kill` oder Strg+C funktionieren ebenfalls; der Compositor gibt den
-reservierten Bereich auch dann frei, der Exit-Code ist aber 143 bzw. 130.
+`kill` oder Strg+C funktionieren ebenfalls; der Compositor gibt die
+reservierten Bereiche auch dann frei, der Exit-Code ist aber 143 bzw. 130.
 
 ## Projektstruktur
 
@@ -74,10 +78,16 @@ classic2/
 ├── crates/
 │   └── classic2-panel/
 │       ├── Cargo.toml            gtk4 0.11, gtk4-layer-shell 0.8.1
-│       └── src/main.rs           Panel-Prototyp
+│       └── src/
+│           ├── main.rs           Start und beide Panels
+│           └── clock.rs          Uhr mit Minutentakt und Tests
 └── docs/
+    ├── implementierungsplan-gnome2-gtk4-wayland.md
     ├── m1-panel-test.md          Testprotokoll M1.0
-    └── assets/m1/                Screenshots und Logs der Abnahme
+    ├── m1-1a-panel-test.md       Testprotokoll M1.1a
+    └── assets/
+        ├── m1/                   Screenshots und Logs M1.0
+        └── m1-1a/                Screenshots und Logs M1.1a
 ```
 
 ## Lizenz
