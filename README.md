@@ -88,10 +88,12 @@ classic2/
 ├── README.md
 ├── crates/
 │   └── classic2-panel/
-│       ├── Cargo.toml            gtk4 0.11, gtk4-layer-shell 0.8.1
-│       └── src/
-│           ├── main.rs           Start, beide Panels, Testmenü
-│           └── clock.rs          Uhr mit Minutentakt und Tests
+│       ├── Cargo.toml            gtk4 0.11, gtk4-layer-shell 0.8.1, gio-unix 0.22
+│       ├── src/
+│       │   ├── main.rs           Start, beide Panels, Testmenü
+│       │   ├── clock.rs          Uhr mit Minutentakt und Tests
+│       │   └── apps.rs           Anwendungskatalog über GIO und Tests
+│       └── tests/fixtures/app-catalog/  .desktop-Fixtures
 └── docs/
     ├── implementierungsplan-gnome2-gtk4-wayland.md
     ├── m1-panel-test.md          Testprotokoll M1.0
@@ -100,12 +102,16 @@ classic2/
     ├── m1-1b0-focus-investigation.md  Untersuchung labwc 0.9.3/0.9.4+
     ├── m1-1b0-labwc-ab-test.md        A/B-Test labwc 0.9.3/0.9.8
     ├── m1-1b0-first-click-investigation.md  Erstklick-Untersuchung
+    ├── m1-1b1-anwendungsmenue-vorschlag.md  Vorschlag M1.1b-1
+    ├── m1-1b1a-anwendungskatalog-test.md    Testprotokoll M1.1b-1a
     └── assets/
         ├── m1/                   Screenshots und Logs M1.0
         ├── m1-1a/                Screenshots und Logs M1.1a
         ├── m1-1b0/               Screenshots und Logs M1.1b-0
         ├── m1-1b0-ab/            Daten und Werkzeug A/B-Test
-        └── m1-1b0-first-click/   Daten und Werkzeug Erstklick-Untersuchung
+        ├── m1-1b0-first-click/   Daten und Werkzeug Erstklick-Untersuchung
+        ├── m1-1b1-vorschlag/     Wegwerf-Probe zum Vorschlag M1.1b-1
+        └── m1-1b1a/              Belege M1.1b-1a
 ```
 
 ## Lizenz
