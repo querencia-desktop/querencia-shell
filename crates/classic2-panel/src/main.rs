@@ -1,6 +1,7 @@
 mod app_menu;
 mod apps;
 mod clock;
+mod places_menu;
 
 use gtk4::prelude::*;
 use gtk4::{
@@ -59,9 +60,8 @@ fn build_panels(app: &Application) {
 fn top_panel(app: &Application) -> ApplicationWindow {
     let menus = GtkBox::new(Orientation::Horizontal, 16);
     menus.append(&app_menu::button());
-    for name in ["Orte", "System"] {
-        menus.append(&Label::new(Some(name)));
-    }
+    menus.append(&places_menu::button());
+    menus.append(&Label::new(Some("System")));
 
     let clock = Label::new(None);
     clock::attach(&clock);
