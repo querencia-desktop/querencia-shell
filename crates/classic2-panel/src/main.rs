@@ -66,38 +66,12 @@ fn top_panel(app: &Application) -> ApplicationWindow {
     let clock = Label::new(None);
     clock::attach(&clock);
 
-    let window = panel_window(app, Edge::Top, &menus, &clock);
-
-    // labwc focuses an OnDemand layer surface when it maps and when it is
-    // pressed, then keeps it focused. The menu's popup grab freezes keyboard
-    // focus where it is, so the press must already find OnDemand. Hence: map
-    // with None (no focus stealing at startup), switch to OnDemand once the
-    // pointer is over the panel, and commit None when the menu closes, which
-    // makes labwc return focus to the topmost window.
-    let hover = gtk4::EventControllerMotion::new();
-    hover.connect_enter(glib::clone!(
-        #[weak]
-        window,
-        move |_, _, _| window.set_keyboard_mode(KeyboardMode::OnDemand)
-    ));
-    window.add_controller(hover);
-
-    menu.popover()
-        .expect("a menu model always creates a popover")
-        .connect_closed(glib::clone!(
-            #[weak]
-            window,
-            move |_| {
-                // Both requests usually reach labwc in one commit. labwc 0.9.3
-                // releases a focused layer surface for a committed None and for
-                // a re-committed OnDemand alike (src/layers.c), and OnDemand
-                // is needed again for the next press.
-                window.set_keyboard_mode(KeyboardMode::None);
-                window.set_keyboard_mode(KeyboardMode::OnDemand);
-            }
-        ));
-
-    window
+    // Keyboard focus stays with the compositor: both panels keep
+    // KeyboardMode::None (see panel_window). From labwc 0.9.4 on, labwc gives
+    // the menu's grabbing popup the keyboard and returns it to the previously
+    // focused window when the popup closes. labwc 0.9.3 never focuses layer
+    // popups, so it is not supported. Evidence: docs/m1-1b0-labwc-ab-test.md.
+    panel_window(app, Edge::Top, &menus, &clock)
 }
 
 fn applications_menu() -> MenuButton {
