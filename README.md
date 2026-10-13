@@ -4,13 +4,13 @@ Classic2 ist eine Neuimplementierung des GNOME-2-Bedienmodells mit Rust,
 GTK4 und Wayland. Die Shell läuft als eigener Prozess auf dem Compositor
 labwc und nutzt `wlr-layer-shell` für Panels.
 
-Stand: Meilenstein M1.1b-0.2. Ein Prozess zeigt zwei Panels im
-GNOME-2-Layout: oben ein Menüknopf `Anwendungen` mit drei Testeinträgen,
-die Labels `Orte` und `System` und eine Uhr mit Datum, unten Platzhalter
-für Fensterliste und Arbeitsflächen. Das Menü ist per Maus und Tastatur
-bedienbar und gibt den Tastaturfokus danach an das vorige Fenster
-zurück. Noch kein echtes Anwendungsmenü, keine Fensterliste, kein
-Autostart.
+Stand: Meilenstein M1.1b-1b. Ein Prozess zeigt zwei Panels im
+GNOME-2-Layout: oben der Menüknopf `Anwendungen`, die Labels `Orte` und
+`System` und eine Uhr mit Datum, unten Platzhalter für Fensterliste und
+Arbeitsflächen. Das Anwendungsmenü zeigt die installierten Anwendungen
+nach GNOME-2-Kategorien und startet sie über GIO, per Maus oder Tastatur.
+Noch keine Icons im Menü, keine Fensterliste, kein System- und Orte-Menü,
+kein Autostart.
 
 Beide Panels nehmen nie selbst den Tastaturfokus
 (`KeyboardMode::None`). Das geöffnete Menü bekommt die Tastatur vom
@@ -67,6 +67,16 @@ setsid ./target/debug/classic2-panel > ~/classic2-logs/panel.log 2>&1 < /dev/nul
 Ein zweiter Start erzeugt keine weiteren Panels, er aktiviert nur die
 laufende Instanz.
 
+Das Anwendungsmenü liest die Anwendungen beim Start einmal ein.
+`OnlyShowIn`/`NotShowIn` werten gegen `XDG_CURRENT_DESKTOP` aus; die
+Classic2-Sitzung verwendet `X-Classic2`. Ohne die Variable sind
+`OnlyShowIn`-Einträge verborgen. Namen und Sortierung folgen `LANG` und
+`LANGUAGE`, zum Beispiel:
+
+```bash
+XDG_CURRENT_DESKTOP=X-Classic2 LANG=en_US.UTF-8 LANGUAGE=de ./target/debug/classic2-panel
+```
+
 ## Beenden
 
 Beide Panels gemeinsam und sauber mit Exit-Code 0 über die
@@ -90,9 +100,11 @@ classic2/
 │   └── classic2-panel/
 │       ├── Cargo.toml            gtk4 0.11, gtk4-layer-shell 0.8.1, gio-unix 0.22
 │       ├── src/
-│       │   ├── main.rs           Start, beide Panels, Testmenü
+│       │   ├── main.rs           Start, beide Panels
+│       │   ├── app_menu.rs       Anwendungsmenü, Start über GIO
 │       │   ├── clock.rs          Uhr mit Minutentakt und Tests
-│       │   └── apps.rs           Anwendungskatalog über GIO und Tests
+│       │   ├── apps.rs           Anwendungskatalog über GIO
+│       │   └── apps/tests.rs     Tests des Katalogs
 │       └── tests/fixtures/app-catalog/  .desktop-Fixtures
 └── docs/
     ├── implementierungsplan-gnome2-gtk4-wayland.md
@@ -104,6 +116,7 @@ classic2/
     ├── m1-1b0-first-click-investigation.md  Erstklick-Untersuchung
     ├── m1-1b1-anwendungsmenue-vorschlag.md  Vorschlag M1.1b-1
     ├── m1-1b1a-anwendungskatalog-test.md    Testprotokoll M1.1b-1a
+    ├── m1-1b1b-anwendungsmenue-test.md      Testprotokoll M1.1b-1b
     └── assets/
         ├── m1/                   Screenshots und Logs M1.0
         ├── m1-1a/                Screenshots und Logs M1.1a
@@ -111,7 +124,8 @@ classic2/
         ├── m1-1b0-ab/            Daten und Werkzeug A/B-Test
         ├── m1-1b0-first-click/   Daten und Werkzeug Erstklick-Untersuchung
         ├── m1-1b1-vorschlag/     Wegwerf-Probe zum Vorschlag M1.1b-1
-        └── m1-1b1a/              Belege M1.1b-1a
+        ├── m1-1b1a/              Belege M1.1b-1a
+        └── m1-1b1b/              Belege und Testwerkzeug M1.1b-1b
 ```
 
 ## Lizenz
