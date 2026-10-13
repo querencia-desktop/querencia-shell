@@ -1,1 +1,3 @@
 /target
+# Rohlog-Archive bleiben lokal (zu groß, enthalten ungefilterte Wayland-Mitschnitte)
+docs/assets/*/roh/

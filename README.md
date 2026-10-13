@@ -4,7 +4,7 @@ Classic2 ist eine Neuimplementierung des GNOME-2-Bedienmodells mit Rust,
 GTK4 und Wayland. Die Shell läuft als eigener Prozess auf dem Compositor
 labwc und nutzt `wlr-layer-shell` für Panels.
 
-Stand: Meilenstein M1.1b-0. Ein Prozess zeigt zwei Panels im
+Stand: Meilenstein M1.1b-0.2. Ein Prozess zeigt zwei Panels im
 GNOME-2-Layout: oben ein Menüknopf `Anwendungen` mit drei Testeinträgen,
 die Labels `Orte` und `System` und eine Uhr mit Datum, unten Platzhalter
 für Fensterliste und Arbeitsflächen. Das Menü ist per Maus und Tastatur
@@ -12,8 +12,10 @@ bedienbar und gibt den Tastaturfokus danach an das vorige Fenster
 zurück. Noch kein echtes Anwendungsmenü, keine Fensterliste, kein
 Autostart.
 
-Der Tastaturfokus hängt vom Verhalten des Compositors ab. Details und
-Einschränkungen: `docs/m1-1b0-menu-focus-test.md`.
+Beide Panels nehmen nie selbst den Tastaturfokus
+(`KeyboardMode::None`). Das geöffnete Menü bekommt die Tastatur vom
+Compositor und gibt sie beim Schließen zurück. Das setzt labwc 0.9.4 oder
+neuer voraus. Belege: `docs/m1-1b0-labwc-ab-test.md`.
 
 ## Voraussetzungen
 
@@ -24,9 +26,12 @@ Getestet auf Ubuntu 26.04.1 LTS (VM `entwicklungs-vm`):
 | Rust / Cargo | 1.93.1 |
 | GTK4 | 4.22.4 |
 | gtk4-layer-shell (System) | 1.3.0 |
-| labwc | 0.9.3 |
+| labwc | ≥ 0.9.4, getestet 0.9.8 (Eigenbau unter `~/opt/labwc-0.9.8`) |
 
 Pakete: `rustc cargo rustfmt rust-clippy libgtk-4-dev libgtk4-layer-shell-dev labwc`.
+Ubuntu 26.04 liefert nur labwc 0.9.3. Damit öffnet das Menü zwar, bekommt
+aber keine Tastatur. Die Testsitzung läuft deshalb mit dem Eigenbau 0.9.8;
+das System-labwc bleibt unverändert.
 Das Panel verlangt einen Compositor mit `zwlr_layer_shell_v1`. Fehlt das
 Protokoll, bricht es mit einer Fehlermeldung ab, statt als normales
 Fenster zu starten.
@@ -92,10 +97,15 @@ classic2/
     ├── m1-panel-test.md          Testprotokoll M1.0
     ├── m1-1a-panel-test.md       Testprotokoll M1.1a
     ├── m1-1b0-menu-focus-test.md Testprotokoll M1.1b-0, Fokusanalyse
+    ├── m1-1b0-focus-investigation.md  Untersuchung labwc 0.9.3/0.9.4+
+    ├── m1-1b0-labwc-ab-test.md        A/B-Test labwc 0.9.3/0.9.8
+    ├── m1-1b0-first-click-investigation.md  Erstklick-Untersuchung
     └── assets/
         ├── m1/                   Screenshots und Logs M1.0
         ├── m1-1a/                Screenshots und Logs M1.1a
-        └── m1-1b0/               Screenshots und Logs M1.1b-0
+        ├── m1-1b0/               Screenshots und Logs M1.1b-0
+        ├── m1-1b0-ab/            Daten und Werkzeug A/B-Test
+        └── m1-1b0-first-click/   Daten und Werkzeug Erstklick-Untersuchung
 ```
 
 ## Lizenz
