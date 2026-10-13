@@ -4,10 +4,16 @@ Classic2 ist eine Neuimplementierung des GNOME-2-Bedienmodells mit Rust,
 GTK4 und Wayland. Die Shell läuft als eigener Prozess auf dem Compositor
 labwc und nutzt `wlr-layer-shell` für Panels.
 
-Stand: Meilenstein M1.1a. Ein Prozess zeigt zwei Panels im
-GNOME-2-Layout: oben `Anwendungen`, `Orte`, `System` und eine Uhr mit
-Datum, unten Platzhalter für Fensterliste und Arbeitsflächen. Noch keine
-Menüs, keine echte Fensterliste, kein Autostart.
+Stand: Meilenstein M1.1b-0. Ein Prozess zeigt zwei Panels im
+GNOME-2-Layout: oben ein Menüknopf `Anwendungen` mit drei Testeinträgen,
+die Labels `Orte` und `System` und eine Uhr mit Datum, unten Platzhalter
+für Fensterliste und Arbeitsflächen. Das Menü ist per Maus und Tastatur
+bedienbar und gibt den Tastaturfokus danach an das vorige Fenster
+zurück. Noch kein echtes Anwendungsmenü, keine Fensterliste, kein
+Autostart.
+
+Der Tastaturfokus hängt vom Verhalten des Compositors ab. Details und
+Einschränkungen: `docs/m1-1b0-menu-focus-test.md`.
 
 ## Voraussetzungen
 
@@ -79,15 +85,17 @@ classic2/
 │   └── classic2-panel/
 │       ├── Cargo.toml            gtk4 0.11, gtk4-layer-shell 0.8.1
 │       └── src/
-│           ├── main.rs           Start und beide Panels
+│           ├── main.rs           Start, beide Panels, Testmenü
 │           └── clock.rs          Uhr mit Minutentakt und Tests
 └── docs/
     ├── implementierungsplan-gnome2-gtk4-wayland.md
     ├── m1-panel-test.md          Testprotokoll M1.0
     ├── m1-1a-panel-test.md       Testprotokoll M1.1a
+    ├── m1-1b0-menu-focus-test.md Testprotokoll M1.1b-0, Fokusanalyse
     └── assets/
         ├── m1/                   Screenshots und Logs M1.0
-        └── m1-1a/                Screenshots und Logs M1.1a
+        ├── m1-1a/                Screenshots und Logs M1.1a
+        └── m1-1b0/               Screenshots und Logs M1.1b-0
 ```
 
 ## Lizenz
