@@ -1,9 +1,13 @@
-//! Tests of the application catalog; see `docs/m1-1b1a-anwendungskatalog-test.md`.
+//! Tests of the application catalog; see `docs/m1-1b1a-anwendungskatalog-test.md`
+//! and, for the monitor tests, `docs/m1-1b1c-appinfo-monitor-test.md`.
 
+use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::ffi::{c_char, c_int};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::rc::Rc;
+use std::time::{Duration, Instant, SystemTime};
 
 use gtk4::glib;
 
@@ -540,4 +544,253 @@ fn installed_applications_report() {
             println!("  {}", f.join("  "));
         }
     }
+}
+
+// ---- AppInfoMonitor in an isolated child process --------------------
+//
+// The child gets its own XDG_DATA_HOME and XDG_DATA_DIRS, changes desktop
+// files step by step like a package manager would (write elsewhere, then
+// rename into place) and reports, per step, how many `changed` signals GIO
+// sent and what `Catalog::load` reads afterwards.
+
+const MONITOR_MARKER: &str = "CLASSIC2_MONITOR_CHILD";
+const MONITOR_TEST: &str = "apps::tests::monitor_child_process";
+/// Upper bound for the first signal; it usually arrives within a second.
+const SIGNAL_TIMEOUT: Duration = Duration::from_secs(10);
+/// Time to count further signals before the catalog is read again.
+const SETTLE: Duration = Duration::from_millis(1500);
+
+/// Runs in the child process only; in a normal test run it does nothing.
+#[test]
+fn monitor_child_process() {
+    if std::env::var_os(MONITOR_MARKER).is_none() {
+        return;
+    }
+    println!();
+    let apps = PathBuf::from(std::env::var_os("XDG_DATA_HOME").expect("XDG_DATA_HOME"))
+        .join("applications");
+    let signals = Rc::new(Cell::new(0u32));
+    let monitor = gio::AppInfoMonitor::get();
+    monitor.connect_changed(glib::clone!(
+        #[strong]
+        signals,
+        move |_| signals.set(signals.get() + 1)
+    ));
+
+    // Reading the catalog is what makes GIO watch the directories.
+    report_step("start", 0, None, &Catalog::load());
+    let utility = ["Name=Neu", "Categories=Utility;"];
+    let renamed = ["Name=Aaa neu", "Categories=Utility;"];
+    let steps: [(&str, &dyn Fn()); 10] = [
+        ("hinzu", &|| write_entry(&apps, "c2-mon-neu", &utility)),
+        ("umbenannt", &|| write_entry(&apps, "c2-mon-neu", &renamed)),
+        ("kategorie", &|| {
+            write_entry(
+                &apps,
+                "c2-mon-neu",
+                &["Name=Aaa neu", "Categories=Development;"],
+            )
+        }),
+        ("nodisplay", &|| {
+            write_entry(&apps, "c2-mon-neu", &["Name=Aaa neu", "NoDisplay=true"])
+        }),
+        ("onlyshowin-fremd", &|| {
+            write_entry(&apps, "c2-mon-neu", &["Name=Aaa neu", "OnlyShowIn=GNOME;"])
+        }),
+        ("onlyshowin-classic2", &|| {
+            write_entry(
+                &apps,
+                "c2-mon-neu",
+                &[
+                    "Name=Aaa neu",
+                    "Categories=Utility;",
+                    "OnlyShowIn=X-Classic2;",
+                ],
+            )
+        }),
+        ("zwei", &|| {
+            write_entry(&apps, "c2-mon-eins", &utility);
+            std::thread::sleep(Duration::from_millis(300));
+            write_entry(&apps, "c2-mon-zwei", &utility);
+        }),
+        ("unterordner", &|| {
+            std::fs::create_dir_all(apps.join("c2sub")).expect("subdirectory");
+            write_entry(&apps.join("c2sub"), "eintrag", &utility);
+        }),
+        ("entfernt", &|| remove_entry(&apps, "c2-mon-neu")),
+        ("leer", &|| {
+            std::fs::remove_dir_all(apps.join("c2sub")).expect("remove subdirectory");
+            for name in ["c2-mon-basis", "c2-mon-eins", "c2-mon-zwei"] {
+                remove_entry(&apps, name);
+            }
+        }),
+    ];
+    for (name, change) in steps {
+        signals.set(0);
+        let started = Instant::now();
+        change();
+        let first = wait_for(&signals, SIGNAL_TIMEOUT).then(|| started.elapsed());
+        keep_running(SETTLE);
+        report_step(name, signals.get(), first, &Catalog::load());
+    }
+
+    // Without reading in between: does GIO signal a second change?
+    signals.set(0);
+    write_entry(&apps, "c2-mon-ungelesen-1", &utility);
+    let first = wait_for(&signals, SIGNAL_TIMEOUT);
+    keep_running(SETTLE);
+    let after_first = signals.get();
+    write_entry(&apps, "c2-mon-ungelesen-2", &utility);
+    keep_running(SETTLE * 2);
+    println!(
+        "C2\tungelesen\t{first}\t{after_first}\t{}",
+        signals.get() - after_first
+    );
+    report_step("ungelesen-gelesen", signals.get(), None, &Catalog::load());
+}
+
+/// Iterates the default main context until a signal arrived or time is up.
+fn wait_for(signals: &Cell<u32>, timeout: Duration) -> bool {
+    let context = glib::MainContext::default();
+    let deadline = Instant::now() + timeout;
+    while signals.get() == 0 && Instant::now() < deadline {
+        if !context.iteration(false) {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+    signals.get() > 0
+}
+
+/// Keeps the main context running for `time`, so late signals get counted.
+fn keep_running(time: Duration) {
+    wait_for(&Cell::new(0), time);
+}
+
+fn report_step(name: &str, signals: u32, first: Option<Duration>, catalog: &Catalog) {
+    let first = first.map_or("-".to_string(), |d| d.as_millis().to_string());
+    let entries: Vec<String> = catalog
+        .entries
+        .iter()
+        .map(|e| format!("{}={}@{}", e.id, e.name, e.group.label()))
+        .collect();
+    let excluded: Vec<String> = catalog
+        .excluded
+        .iter()
+        .map(|(id, reason)| format!("{id}={reason:?}"))
+        .collect();
+    println!(
+        "C2\tstep\t{name}\t{signals}\t{first}\t{}\t{}",
+        entries.join(","),
+        excluded.join(",")
+    );
+}
+
+/// Writes next to the directory and renames into place, as package
+/// managers do, so GIO never reads a half-written file.
+fn write_entry(dir: &Path, name: &str, lines: &[&str]) {
+    let staging = dir.parent().expect("parent").join(format!(".{name}.tmp"));
+    let mut text = String::from("[Desktop Entry]\nType=Application\nExec=true\n");
+    for line in lines {
+        text.push_str(line);
+        text.push('\n');
+    }
+    std::fs::write(&staging, text).expect("write desktop entry");
+    std::fs::rename(&staging, dir.join(format!("{name}.desktop"))).expect("rename into place");
+}
+
+fn remove_entry(dir: &Path, name: &str) {
+    std::fs::remove_file(dir.join(format!("{name}.desktop"))).expect("remove desktop entry");
+}
+
+/// A fresh, empty directory below the system temp directory.
+fn scratch_dir(label: &str) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("clock after 1970")
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("classic2-{label}-{}-{nanos}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("scratch directory");
+    dir
+}
+
+#[test]
+fn monitor_reports_installed_removed_and_changed_applications() {
+    let base = scratch_dir("monitor");
+    let home = base.join("home");
+    let system = base.join("system");
+    std::fs::create_dir_all(home.join("applications")).expect("applications");
+    std::fs::create_dir_all(&system).expect("system data dir");
+    write_entry(
+        &home.join("applications"),
+        "c2-mon-basis",
+        &["Name=Basis", "Categories=Utility;"],
+    );
+
+    let output = Command::new(std::env::current_exe().expect("test binary path"))
+        .args(["--exact", MONITOR_TEST, "--nocapture", "--test-threads=1"])
+        .env_clear()
+        .env(MONITOR_MARKER, "1")
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", base.join("kein-home"))
+        .env("XDG_DATA_HOME", &home)
+        .env("XDG_DATA_DIRS", &system)
+        .env("XDG_CURRENT_DESKTOP", "X-Classic2")
+        .env("LANG", "en_US.UTF-8")
+        .output()
+        .expect("child test process starts");
+    std::fs::remove_dir_all(&base).expect("remove scratch directory");
+    let run = ChildRun {
+        stdout: String::from_utf8(output.stdout).expect("UTF-8 output"),
+    };
+    assert!(
+        output.status.success(),
+        "Kindprozess fehlgeschlagen:\n{}\n{}",
+        run.stdout,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    println!("{}", run.stdout);
+
+    // Fields after the step name: signals, ms to the first, entries, excluded.
+    let steps = run.by_id("step");
+    let entries = |step: &str| steps[step][2];
+    let excluded = |step: &str| steps[step][3];
+    for (step, fields) in &steps {
+        if !["start", "ungelesen-gelesen"].contains(step) {
+            assert_ne!(fields[0], "0", "kein changed-Signal nach Schritt {step}");
+        }
+    }
+    let basis = "c2-mon-basis.desktop=Basis@Zubehör";
+    let neu = "c2-mon-neu.desktop=Aaa neu@Zubehör";
+    assert_eq!(entries("start"), basis);
+    assert_eq!(
+        entries("hinzu"),
+        format!("{basis},c2-mon-neu.desktop=Neu@Zubehör")
+    );
+    // The new name sorts it before Basis.
+    assert_eq!(entries("umbenannt"), format!("{neu},{basis}"));
+    assert_eq!(
+        entries("kategorie"),
+        format!("{basis},c2-mon-neu.desktop=Aaa neu@Programmierung")
+    );
+    assert_eq!(entries("nodisplay"), basis);
+    assert_eq!(excluded("nodisplay"), "c2-mon-neu.desktop=NoDisplay");
+    assert_eq!(entries("onlyshowin-fremd"), basis);
+    assert_eq!(
+        excluded("onlyshowin-fremd"),
+        "c2-mon-neu.desktop=NotShownInDesktop"
+    );
+    assert_eq!(entries("onlyshowin-classic2"), format!("{neu},{basis}"));
+    assert_eq!(
+        entries("zwei"),
+        format!("{neu},{basis},c2-mon-eins.desktop=Neu@Zubehör,c2-mon-zwei.desktop=Neu@Zubehör")
+    );
+    assert!(entries("unterordner").contains("c2sub-eintrag.desktop=Neu@Zubehör"));
+    assert!(!entries("entfernt").contains("c2-mon-neu"));
+    assert_eq!(entries("leer"), "");
+    assert_eq!(excluded("leer"), "");
+    // Both unread changes are in the catalog once it is read again.
+    assert_eq!(
+        entries("ungelesen-gelesen"),
+        "c2-mon-ungelesen-1.desktop=Neu@Zubehör,c2-mon-ungelesen-2.desktop=Neu@Zubehör"
+    );
 }
