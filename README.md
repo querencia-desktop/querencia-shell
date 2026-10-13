@@ -4,21 +4,24 @@ Classic2 ist eine Neuimplementierung des GNOME-2-Bedienmodells mit Rust,
 GTK4 und Wayland. Die Shell läuft als eigener Prozess auf dem Compositor
 labwc und nutzt `wlr-layer-shell` für Panels.
 
-Stand: Meilenstein M1.4b. Ein Prozess zeigt zwei Panels im
-GNOME-2-Layout: oben die Menüknöpfe `Anwendungen` und `Orte`, das Label
-`System` und eine Uhr mit Datum, unten die Fensterliste und der
+Stand: Meilenstein M1.5b. Ein Prozess zeigt zwei Panels im
+GNOME-2-Layout: oben die Menüknöpfe `Anwendungen`, `Orte` und `System`
+und eine Uhr mit Datum, unten die Fensterliste und der
 Arbeitsflächenumschalter. Das Anwendungsmenü zeigt die installierten
 Anwendungen nach GNOME-2-Kategorien und startet sie über GIO, per Maus
 oder Tastatur.
 Es folgt installierten, entfernten und geänderten Anwendungen ohne
 Neustart des Panels. Das Orte-Menü öffnet den persönlichen Ordner und die
 vorhandenen XDG-Benutzerordner mit der Standardanwendung für Verzeichnisse.
+Das System-Menü zeigt die Einstellungsanwendungen (Kategorie `Settings`)
+in „Einstellungen“ und, mit zusätzlich `System`, in „Systemverwaltung“;
+es startet und aktualisiert sich wie das Anwendungsmenü.
 Die Fensterliste zeigt pro Fenster einen Button mit dem Titel, hebt das
 aktive Fenster hervor, klammert minimierte ein und bittet labwc per Klick,
 das Fenster zu aktivieren. Der Arbeitsflächenumschalter zeigt pro
 Arbeitsfläche einen nummerierten Button, hebt die aktive hervor und bittet
 labwc per Klick um den Wechsel.
-Noch keine Icons, kein System-Menü, kein Autostart.
+Noch keine Icons, kein Sperren, Abmelden oder Ausschalten, kein Autostart.
 
 Beide Panels nehmen nie selbst den Tastaturfokus
 (`KeyboardMode::None`). Das geöffnete Menü bekommt die Tastatur vom
@@ -75,9 +78,10 @@ setsid ./target/debug/classic2-panel > ~/classic2-logs/panel.log 2>&1 < /dev/nul
 Ein zweiter Start erzeugt keine weiteren Panels, er aktiviert nur die
 laufende Instanz.
 
-Das Anwendungsmenü liest die Anwendungen beim Start ein und danach
-erneut, sobald GIO (`AppInfoMonitor`) eine Änderung meldet. Ist das Menü
-gerade offen, wird es erst nach dem Schließen neu aufgebaut.
+Anwendungs- und System-Menü lesen die Anwendungen beim Start ein und
+danach erneut, sobald GIO (`AppInfoMonitor`) eine Änderung meldet. Ist ein
+Menü gerade offen, wird es erst nach dem Schließen neu aufgebaut; das
+andere Menü ist davon unabhängig.
 `OnlyShowIn`/`NotShowIn` werten gegen `XDG_CURRENT_DESKTOP` aus; die
 Classic2-Sitzung verwendet `X-Classic2`. Ohne die Variable sind
 `OnlyShowIn`-Einträge verborgen. Namen und Sortierung folgen `LANG` und
@@ -132,8 +136,9 @@ classic2/
 │       │                         wayland-protocols-wlr 0.3
 │       ├── src/
 │       │   ├── main.rs           Start, beide Panels
-│       │   ├── app_menu.rs       Anwendungsmenü, Aktualisierung, Start über GIO
+│       │   ├── app_menu.rs       Anwendungsmenü; Aktualisierung und Start über GIO auch fürs System-Menü
 │       │   ├── places_menu.rs    Orte-Menü, Öffnen über GIO, Tests
+│       │   ├── system_menu.rs    System-Menü (Einstellungen, Systemverwaltung), Tests
 │       │   ├── window_list.rs    Fensterliste über Wayland, Tests
 │       │   ├── workspace_switcher.rs  Arbeitsflächenumschalter über Wayland, Tests
 │       │   ├── clock.rs          Uhr mit Minutentakt und Tests
@@ -157,6 +162,7 @@ classic2/
     ├── m1-2a-orte-menue-test.md             Testprotokoll M1.2a
     ├── m1-3b-fensterliste-test.md           Testprotokoll M1.3b
     ├── m1-4b-arbeitsflaechen-test.md        Testprotokoll M1.4b
+    ├── m1-5b-system-menue-test.md           Testprotokoll M1.5b
     └── assets/
         ├── m1/                   Screenshots und Logs M1.0
         ├── m1-1a/                Screenshots und Logs M1.1a
@@ -170,7 +176,8 @@ classic2/
         ├── m1-1b1e/              Screenshots der Symbol-Probe M1.1b-1e
         ├── m1-2a/                Belege und Testwerkzeug M1.2a
         ├── m1-3b/                Belege und Testwerkzeug M1.3b
-        └── m1-4b/                Belege und Testwerkzeug M1.4b
+        ├── m1-4b/                Belege und Testwerkzeug M1.4b
+        └── m1-5b/                Belege und Testwerkzeug M1.5b
 ```
 
 ## Lizenz

@@ -1,9 +1,10 @@
-//! Application catalog for the applications menu.
+//! Application catalog for the applications and the system menu.
 //!
 //! Reads the installed applications through GIO, keeps the ones GIO says
 //! should be shown, gives each one exactly one menu group and sorts them by
-//! name for the current locale. No widgets here; `app_menu.rs` builds the
-//! GTK menu on top of this. Details and test results:
+//! name for the current locale; settings also get a section of the system
+//! menu. No widgets here; `app_menu.rs` and `system_menu.rs` build the GTK
+//! menus on top of this. Details and test results:
 //! `docs/m1-1b1a-anwendungskatalog-test.md`.
 
 use std::collections::HashSet;
@@ -43,11 +44,28 @@ impl MenuGroup {
     }
 }
 
+/// Submenus of "System"; declaration order is menu order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SystemSection {
+    Preferences,
+    Administration,
+}
+
+impl SystemSection {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Preferences => "Einstellungen",
+            Self::Administration => "Systemverwaltung",
+        }
+    }
+}
+
 /// Classification rules, highest priority first. The first rule naming one
 /// of the entry's freedesktop categories wins, whatever their order in the
 /// desktop file. Specific groups come before the broad `System` and
 /// `Utility`. `Settings` is no rule: settings keep their group here and are
-/// recognisable through [`AppEntry::is_settings`] for the later "System" menu.
+/// recognisable through [`AppEntry::is_settings`]; the "System" menu shows
+/// them instead of the applications menu.
 const RULES: [(MenuGroup, &[&str]); 8] = [
     (MenuGroup::Games, &["Game"]),
     (MenuGroup::Programming, &["Development"]),
@@ -88,6 +106,20 @@ pub struct AppEntry {
 impl AppEntry {
     pub fn is_settings(&self) -> bool {
         self.categories.iter().any(|c| c == "Settings")
+    }
+
+    /// Where the "System" menu shows the entry, by the GNOME 2 rule: a
+    /// setting that is also `System` belongs to the administration, any
+    /// other setting to the preferences. Applications without `Settings`
+    /// are not in the "System" menu.
+    pub fn system_section(&self) -> Option<SystemSection> {
+        if !self.is_settings() {
+            None
+        } else if self.categories.iter().any(|c| c == "System") {
+            Some(SystemSection::Administration)
+        } else {
+            Some(SystemSection::Preferences)
+        }
     }
 }
 
@@ -184,6 +216,28 @@ impl Catalog {
         self.entries
             .chunk_by(|a, b| a.group == b.group)
             .map(|chunk| (chunk[0].group, chunk))
+    }
+
+    /// Non-empty sections of the "System" menu in menu order, each with its
+    /// entries sorted by name for the current locale, then by ID. The
+    /// catalog order cannot be reused here: it sorts by menu group first.
+    pub fn system_sections(&self) -> Vec<(SystemSection, Vec<&AppEntry>)> {
+        let mut entries: Vec<_> = self
+            .entries
+            .iter()
+            .filter_map(|e| e.system_section().map(|section| (section, e)))
+            .collect();
+        entries.sort_by_cached_key(|(section, e)| {
+            (*section, CollationKey::from(&e.name), e.id.clone())
+        });
+        let mut sections: Vec<(SystemSection, Vec<&AppEntry>)> = Vec::new();
+        for (section, entry) in entries {
+            match sections.last_mut() {
+                Some((last, list)) if *last == section => list.push(entry),
+                _ => sections.push((section, vec![entry])),
+            }
+        }
+        sections
     }
 }
 

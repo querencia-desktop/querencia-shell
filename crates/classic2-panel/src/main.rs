@@ -2,6 +2,7 @@ mod app_menu;
 mod apps;
 mod clock;
 mod places_menu;
+mod system_menu;
 mod window_list;
 mod workspace_switcher;
 
@@ -69,7 +70,7 @@ fn top_panel(app: &Application) -> ApplicationWindow {
     let menus = GtkBox::new(Orientation::Horizontal, 16);
     menus.append(&app_menu::button());
     menus.append(&places_menu::button());
-    menus.append(&Label::new(Some("System")));
+    menus.append(&system_menu::button());
 
     let clock = Label::new(None);
     clock::attach(&clock);

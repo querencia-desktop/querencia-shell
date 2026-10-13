@@ -1,8 +1,9 @@
 //! The "Anwendungen" menu: one submenu per catalog group, each entry
 //! launching its application through GIO by desktop ID. The menu follows
 //! installed, removed and changed applications without a panel restart.
-//! Details and test results: `docs/m1-1b1b-anwendungsmenue-test.md`,
-//! `docs/m1-1b1c-appinfo-monitor-test.md`.
+//! Launching and following changes are shared with the "System" menu
+//! (`system_menu.rs`). Details and test results:
+//! `docs/m1-1b1b-anwendungsmenue-test.md`, `docs/m1-1b1c-appinfo-monitor-test.md`.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -11,23 +12,45 @@ use gio_unix::DesktopAppInfo;
 use gtk4::prelude::*;
 use gtk4::{MenuButton, Popover, gdk, gio, glib};
 
-use crate::apps::Catalog;
+use crate::apps::{AppEntry, Catalog};
 
 const ACTION_GROUP: &str = "menu";
 const LAUNCH: &str = "launch";
+const NAME: &str = "Anwendungsmenü";
 const NO_APPLICATIONS: &str = "Keine Anwendungen";
 
 /// Menu button with the installed applications, kept up to date.
 pub fn button() -> MenuButton {
     let menu = gio::Menu::new();
-    fill(&menu, &load());
+    rebuild(&menu);
 
     let button = MenuButton::builder()
         .label("Anwendungen")
         .menu_model(&menu)
         .has_frame(false)
         .build();
+    add_launch_action(&button, ACTION_GROUP);
+    follow_changes(&button, &menu, NAME, rebuild);
+    button
+}
 
+/// Reads the catalog again and refills `menu` from it.
+fn rebuild(menu: &gio::Menu) {
+    let catalog = Catalog::load();
+    let settings = catalog.entries.iter().filter(|e| e.is_settings()).count();
+    eprintln!(
+        "classic2-panel: {NAME} mit {} Anwendungen, {settings} Einstellungen \
+         im Systemmenü, {} ausgeschlossen",
+        catalog.entries.len() - settings,
+        catalog.excluded.len()
+    );
+    fill(menu, &catalog);
+}
+
+/// Gives `button` its own action group `group` with the action `launch`,
+/// which launches the desktop ID it gets as target through [`launch_app`].
+/// Each menu has its own group, so its items name it unambiguously.
+pub(crate) fn add_launch_action(button: &MenuButton, group: &str) {
     let launch = gio::SimpleAction::new(LAUNCH, Some(glib::VariantTy::STRING));
     launch.connect_activate(|_, target| {
         if let Some(id) = target.and_then(|t| t.str()) {
@@ -36,34 +59,41 @@ pub fn button() -> MenuButton {
     });
     let actions = gio::SimpleActionGroup::new();
     actions.add_action(&launch);
-    button.insert_action_group(ACTION_GROUP, Some(&actions));
-
-    follow_changes(&button, &menu);
-    button
+    button.insert_action_group(group, Some(&actions));
 }
 
-fn load() -> Catalog {
-    let catalog = Catalog::load();
-    let held_back = catalog.entries.iter().filter(|e| e.is_settings()).count();
-    eprintln!(
-        "classic2-panel: Anwendungsmenü mit {} Anwendungen, {held_back} Einstellungen \
-         zurückgehalten, {} ausgeschlossen",
-        catalog.entries.len() - held_back,
-        catalog.excluded.len()
+/// Menu item named after `entry` that launches it through the `launch`
+/// action of `group` (see [`add_launch_action`]).
+pub(crate) fn launch_item(entry: &AppEntry, group: &str) -> gio::MenuItem {
+    let item = gio::MenuItem::new(Some(&entry.name), None);
+    item.set_action_and_target_value(
+        Some(&format!("{group}.{LAUNCH}")),
+        Some(&entry.id.to_variant()),
     );
-    catalog
+    item
 }
 
-/// Rebuilds the menu when GIO reports changed applications. An open menu is
-/// never rebuilt under the user's hands: the change is noted and applied
-/// once the popover has closed. GIO fires `changed` only once until the
-/// applications are read again, so any number of changes while the menu is
-/// open ends in one rebuild, and the rebuild itself re-arms the monitor.
+/// Calls `rebuild` for the menu when GIO reports changed applications. An
+/// open menu is never rebuilt under the user's hands: the change is noted
+/// and applied once the popover has closed. GIO fires `changed` only once
+/// until the applications are read again, so any number of changes while
+/// the menu is open ends in one rebuild, and the rebuild itself re-arms the
+/// monitor.
+///
+/// Every menu that follows changes has its own handler and its own note, so
+/// one menu is rebuilt while another one is open and waits; whichever reads
+/// the catalog first re-arms the monitor for all of them. `name` is the
+/// menu's name in the log.
 ///
 /// The handlers hold the popover and the menu weakly, so the monitor, which
 /// lives for the whole process, keeps no widget alive; the button drops its
 /// monitor handler when it is destroyed.
-fn follow_changes(button: &MenuButton, menu: &gio::Menu) {
+pub(crate) fn follow_changes(
+    button: &MenuButton,
+    menu: &gio::Menu,
+    name: &'static str,
+    rebuild: fn(&gio::Menu),
+) {
     // The button created its popover when it got the menu model; the model is
     // only ever changed in place, so this popover stays for the button's life.
     let popover = button.popover().expect("menu button with a menu model");
@@ -77,7 +107,7 @@ fn follow_changes(button: &MenuButton, menu: &gio::Menu) {
         menu,
         #[strong]
         pending,
-        move |_| update(&popover, &menu, &pending)
+        move |_| update(&popover, &menu, &pending, name, rebuild)
     ));
     let changed = Cell::new(Some(changed));
     button.connect_destroy(move |_| {
@@ -102,7 +132,7 @@ fn follow_changes(button: &MenuButton, menu: &gio::Menu) {
                     pending,
                     move || {
                         if pending.get() {
-                            update(&popover, &menu, &pending);
+                            update(&popover, &menu, &pending, name, rebuild);
                         }
                     }
                 ));
@@ -111,37 +141,38 @@ fn follow_changes(button: &MenuButton, menu: &gio::Menu) {
     ));
 }
 
-fn update(popover: &Popover, menu: &gio::Menu, pending: &Cell<bool>) {
+fn update(
+    popover: &Popover,
+    menu: &gio::Menu,
+    pending: &Cell<bool>,
+    name: &str,
+    rebuild: fn(&gio::Menu),
+) {
     if popover.is_visible() {
         if !pending.replace(true) {
             eprintln!(
-                "classic2-panel: Anwendungen geändert, Menü ist offen, Aktualisierung vorgemerkt"
+                "classic2-panel: Anwendungen geändert, {name} ist offen, Aktualisierung vorgemerkt"
             );
         }
         return;
     }
     pending.set(false);
-    eprintln!("classic2-panel: Anwendungen geändert, Menü wird neu aufgebaut");
-    fill(menu, &load());
+    eprintln!("classic2-panel: Anwendungen geändert, {name} wird neu aufgebaut");
+    rebuild(menu);
 }
 
 /// Replaces the contents of `menu` in place: one submenu per non-empty
-/// group, in menu order. Settings stay in the catalog but are held back for
-/// the later "System" menu. Without any application the menu holds one
-/// item without action instead of an empty popover; activating it does
-/// nothing. The menu object itself, and with it the button's popover and
-/// actions, stays the same.
+/// group, in menu order. Settings stay in the catalog but are left to the
+/// "System" menu. Without any application the menu holds one item without
+/// action instead of an empty popover; activating it does nothing. The menu
+/// object itself, and with it the button's popover and actions, stays the
+/// same.
 fn fill(menu: &gio::Menu, catalog: &Catalog) {
     menu.remove_all();
     for (group, entries) in catalog.groups() {
         let submenu = gio::Menu::new();
         for entry in entries.iter().filter(|e| !e.is_settings()) {
-            let item = gio::MenuItem::new(Some(&entry.name), None);
-            item.set_action_and_target_value(
-                Some(&format!("{ACTION_GROUP}.{LAUNCH}")),
-                Some(&entry.id.to_variant()),
-            );
-            submenu.append_item(&item);
+            submenu.append_item(&launch_item(entry, ACTION_GROUP));
         }
         if submenu.n_items() > 0 {
             menu.append_submenu(Some(group.label()), &submenu);
@@ -158,7 +189,7 @@ fn fill(menu: &gio::Menu, catalog: &Catalog) {
 /// successful call only means GIO started a process or sent the activation;
 /// whether the application then runs is not known here. Failures are
 /// logged and never end the panel.
-fn launch_app(id: &str) {
+pub(crate) fn launch_app(id: &str) {
     let Some(app) = DesktopAppInfo::new(id) else {
         eprintln!("classic2-panel: {id} ist nicht mehr vorhanden oder nicht startbar");
         return;
@@ -186,11 +217,11 @@ fn launch_app(id: &str) {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
-    use crate::apps::{AppEntry, menu_group};
+    use crate::apps::menu_group;
 
-    fn entry(id: &str, name: &str, categories: &[&str]) -> AppEntry {
+    pub(crate) fn entry(id: &str, name: &str, categories: &[&str]) -> AppEntry {
         AppEntry {
             id: id.into(),
             name: name.into(),
@@ -206,14 +237,14 @@ mod tests {
         menu
     }
 
-    fn label(menu: &gio::MenuModel, index: i32) -> String {
+    pub(crate) fn label(menu: &gio::MenuModel, index: i32) -> String {
         menu.item_attribute_value(index, "label", Some(glib::VariantTy::STRING))
             .and_then(|v| v.get())
             .expect("label")
     }
 
-    /// Each group label with its entries as "label -> action(desktop ID)".
-    fn structure(menu: &gio::Menu) -> Vec<(String, Vec<String>)> {
+    /// Each submenu label with its entries as "label -> action(desktop ID)".
+    pub(crate) fn structure(menu: &gio::Menu) -> Vec<(String, Vec<String>)> {
         (0..menu.n_items())
             .map(|g| {
                 let submenu = menu.item_link(g, "submenu").expect("submenu link");
@@ -238,7 +269,7 @@ mod tests {
             .collect()
     }
 
-    fn group(label: &str, items: &[&str]) -> (String, Vec<String>) {
+    pub(crate) fn group(label: &str, items: &[&str]) -> (String, Vec<String>) {
         (
             label.to_string(),
             items.iter().map(|i| i.to_string()).collect(),
@@ -246,7 +277,7 @@ mod tests {
     }
 
     #[test]
-    fn groups_become_submenus_and_settings_are_held_back() {
+    fn groups_become_submenus_and_settings_are_left_out() {
         // Entries as Catalog::load sorts them: by group, then by name.
         let catalog = Catalog {
             entries: vec![

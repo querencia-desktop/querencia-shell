@@ -179,6 +179,11 @@ fn catalog_child_process() {
     for (id, reason) in &catalog.excluded {
         println!("C2\texcluded\t{id}\t{reason:?}");
     }
+    for (section, entries) in catalog.system_sections() {
+        for e in entries {
+            println!("C2\tsystem\t{}\t{}\t{}", section.label(), e.id, e.name);
+        }
+    }
     report_files_gio_dropped(&catalog);
 
     // `AppInfo::all` never repeats an ID; feed every one twice to check
@@ -343,6 +348,8 @@ fn fixtures_in_classic2_session() {
         [
             "c2-basis.desktop",
             "c2-doppelt.desktop",
+            "c2-einstellung-oel.desktop",
+            "c2-einstellung-papier.desktop",
             "c2-einstellung.desktop",
             "c2-icon-fehlt.desktop",
             "c2-mehrfach-buero-grafik.desktop",
@@ -455,6 +462,31 @@ fn entries_are_grouped_and_sorted_for_the_locale() {
             "TryExec vorhanden",
             "Unterordner",
             "Zebra",
+        ]
+    );
+}
+
+#[test]
+fn settings_are_split_for_the_system_menu() {
+    // Fields: section, ID, name; in menu order. The settings sit in the
+    // groups Sonstiges and Systemwerkzeuge of the catalog; the system menu
+    // sorts them by name across groups, "Ö" next to "O" as in en_US.
+    let run = fixture_run(Some("X-Classic2"));
+    assert_eq!(
+        run.records("system"),
+        [
+            ["Einstellungen", "c2-einstellung.desktop", "Einstellung"],
+            ["Einstellungen", "c2-einstellung-oel.desktop", "Ölfarben"],
+            [
+                "Einstellungen",
+                "c2-einstellung-papier.desktop",
+                "Papierformat"
+            ],
+            [
+                "Systemverwaltung",
+                "c2-systemeinstellung.desktop",
+                "Systemeinstellung"
+            ],
         ]
     );
 }
@@ -581,7 +613,7 @@ fn monitor_child_process() {
     report_step("start", 0, None, &Catalog::load());
     let utility = ["Name=Neu", "Categories=Utility;"];
     let renamed = ["Name=Aaa neu", "Categories=Utility;"];
-    let steps: [(&str, &dyn Fn()); 10] = [
+    let steps: [(&str, &dyn Fn()); 11] = [
         ("hinzu", &|| write_entry(&apps, "c2-mon-neu", &utility)),
         ("umbenannt", &|| write_entry(&apps, "c2-mon-neu", &renamed)),
         ("kategorie", &|| {
@@ -617,10 +649,17 @@ fn monitor_child_process() {
             std::fs::create_dir_all(apps.join("c2sub")).expect("subdirectory");
             write_entry(&apps.join("c2sub"), "eintrag", &utility);
         }),
+        ("einstellung", &|| {
+            write_entry(
+                &apps,
+                "c2-mon-einst",
+                &["Name=Drucker", "Categories=Settings;System;"],
+            )
+        }),
         ("entfernt", &|| remove_entry(&apps, "c2-mon-neu")),
         ("leer", &|| {
             std::fs::remove_dir_all(apps.join("c2sub")).expect("remove subdirectory");
-            for name in ["c2-mon-basis", "c2-mon-eins", "c2-mon-zwei"] {
+            for name in ["c2-mon-basis", "c2-mon-eins", "c2-mon-zwei", "c2-mon-einst"] {
                 remove_entry(&apps, name);
             }
         }),
@@ -671,7 +710,12 @@ fn report_step(name: &str, signals: u32, first: Option<Duration>, catalog: &Cata
     let entries: Vec<String> = catalog
         .entries
         .iter()
-        .map(|e| format!("{}={}@{}", e.id, e.name, e.group.label()))
+        .map(|e| {
+            let section = e
+                .system_section()
+                .map_or(String::new(), |s| format!("/{}", s.label()));
+            format!("{}={}@{}{section}", e.id, e.name, e.group.label())
+        })
         .collect();
     let excluded: Vec<String> = catalog
         .excluded
@@ -785,6 +829,11 @@ fn monitor_reports_installed_removed_and_changed_applications() {
         format!("{neu},{basis},c2-mon-eins.desktop=Neu@Zubehör,c2-mon-zwei.desktop=Neu@Zubehör")
     );
     assert!(entries("unterordner").contains("c2sub-eintrag.desktop=Neu@Zubehör"));
+    // A new setting reaches the catalog with its section of the system menu.
+    assert!(
+        entries("einstellung")
+            .contains("c2-mon-einst.desktop=Drucker@Systemwerkzeuge/Systemverwaltung")
+    );
     assert!(!entries("entfernt").contains("c2-mon-neu"));
     assert_eq!(entries("leer"), "");
     assert_eq!(excluded("leer"), "");
