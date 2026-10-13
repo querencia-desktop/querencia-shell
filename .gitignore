@@ -1,3 +1,15 @@
 /target
 # Rohlog-Archive bleiben lokal (zu groß, enthalten ungefilterte Wayland-Mitschnitte)
 docs/assets/*/roh/
+
+# Schutz gegen versehentliches Einchecken von Zugangsdaten und Rohdaten
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.qcow2
+# Ungefilterte Wayland-Mitschnitte (WAYLAND_DEBUG) enthalten Aktivierungstoken;
+# gefilterte Fassungen heißen *-auszug.log
+*-wl.log
