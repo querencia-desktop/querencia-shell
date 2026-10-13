@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Nicht anzeigen
+Exec=true
+NoDisplay=true
+Categories=Utility;

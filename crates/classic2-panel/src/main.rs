@@ -1,3 +1,8 @@
+#[allow(
+    dead_code,
+    reason = "the GTK applications menu uses it from M1.1b-1b on"
+)]
+mod apps;
 mod clock;
 
 use gtk4::prelude::*;

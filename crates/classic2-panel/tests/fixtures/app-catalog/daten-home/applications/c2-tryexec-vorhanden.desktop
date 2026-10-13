@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=TryExec vorhanden
+Exec=true
+TryExec=true
+Categories=Utility;

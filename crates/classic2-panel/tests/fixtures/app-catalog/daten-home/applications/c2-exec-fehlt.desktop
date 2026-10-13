@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Exec fehlt
+Exec=/nonexistent/classic2-fixture
+Categories=Utility;

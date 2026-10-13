@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Nur in GNOME
+Exec=true
+OnlyShowIn=GNOME;
+Categories=Utility;

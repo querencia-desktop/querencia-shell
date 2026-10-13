@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Nicht in Classic2
+Exec=true
+NotShowIn=X-Classic2;
+Categories=Utility;

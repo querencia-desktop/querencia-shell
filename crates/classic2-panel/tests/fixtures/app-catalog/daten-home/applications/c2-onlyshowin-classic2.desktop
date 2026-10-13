@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Nur in Classic2
+Exec=true
+OnlyShowIn=X-Classic2;
+Categories=Utility;
