@@ -1,14 +1,10 @@
-#[allow(
-    dead_code,
-    reason = "the GTK applications menu uses it from M1.1b-1b on"
-)]
+mod app_menu;
 mod apps;
 mod clock;
 
 use gtk4::prelude::*;
 use gtk4::{
-    Application, ApplicationWindow, Box as GtkBox, CenterBox, Label, MenuButton, Orientation,
-    Widget, gio, glib,
+    Application, ApplicationWindow, Box as GtkBox, CenterBox, Label, Orientation, Widget, gio, glib,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
@@ -62,8 +58,7 @@ fn build_panels(app: &Application) {
 
 fn top_panel(app: &Application) -> ApplicationWindow {
     let menus = GtkBox::new(Orientation::Horizontal, 16);
-    let menu = applications_menu();
-    menus.append(&menu);
+    menus.append(&app_menu::button());
     for name in ["Orte", "System"] {
         menus.append(&Label::new(Some(name)));
     }
@@ -77,43 +72,6 @@ fn top_panel(app: &Application) -> ApplicationWindow {
     // focused window when the popup closes. labwc 0.9.3 never focuses layer
     // popups, so it is not supported. Evidence: docs/m1-1b0-labwc-ab-test.md.
     panel_window(app, Edge::Top, &menus, &clock)
-}
-
-fn applications_menu() -> MenuButton {
-    let model = gio::Menu::new();
-    model.append(Some("Testaktion A"), Some("menu.test-a"));
-    model.append(Some("Testaktion B"), Some("menu.test-b"));
-    model.append(Some("Menü schließen"), Some("menu.close"));
-
-    let button = MenuButton::builder()
-        .label("Anwendungen")
-        .menu_model(&model)
-        .has_frame(false)
-        .build();
-
-    let actions = gio::SimpleActionGroup::new();
-    actions.add_action_entries([
-        gio::ActionEntry::builder("test-a")
-            .activate(|_: &gio::SimpleActionGroup, _, _| {
-                eprintln!("classic2-panel: Testaktion A ausgelöst")
-            })
-            .build(),
-        gio::ActionEntry::builder("test-b")
-            .activate(|_: &gio::SimpleActionGroup, _, _| {
-                eprintln!("classic2-panel: Testaktion B ausgelöst")
-            })
-            .build(),
-    ]);
-    let close = gio::SimpleAction::new("close", None);
-    close.connect_activate(glib::clone!(
-        #[weak]
-        button,
-        move |_, _| button.popdown()
-    ));
-    actions.add_action(&close);
-    button.insert_action_group("menu", Some(&actions));
-
-    button
 }
 
 fn bottom_panel(app: &Application) -> ApplicationWindow {
