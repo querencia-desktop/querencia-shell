@@ -2,6 +2,7 @@ mod app_menu;
 mod apps;
 mod clock;
 mod places_menu;
+mod window_list;
 
 use gtk4::prelude::*;
 use gtk4::{
@@ -14,9 +15,13 @@ const NAMESPACE: &str = "classic2-panel";
 const PANEL_HEIGHT: i32 = 32;
 
 // GTK's default button min-height plus padding is 34 px and would push the
-// panel past PANEL_HEIGHT; panel buttons fill the bar height instead.
-const PANEL_CSS: &str =
-    ".classic2-panel menubutton > button { min-height: 0; padding-top: 0; padding-bottom: 0; }";
+// panel past PANEL_HEIGHT; panel buttons fill the bar height instead. A
+// window button is highlighted while labwc reports its window active.
+const PANEL_CSS: &str = "
+.classic2-panel menubutton > button,
+.classic2-panel button.window-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
+.classic2-panel button.window-button.active { background-color: alpha(currentColor, 0.15); font-weight: bold; }
+";
 
 fn main() -> glib::ExitCode {
     if let Err(err) = gtk4::init() {
@@ -78,7 +83,7 @@ fn bottom_panel(app: &Application) -> ApplicationWindow {
     panel_window(
         app,
         Edge::Bottom,
-        &placeholder("Fensterliste"),
+        &window_list::widget(),
         &placeholder("Arbeitsflächen"),
     )
 }
