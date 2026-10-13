@@ -3,6 +3,7 @@ mod apps;
 mod clock;
 mod places_menu;
 mod window_list;
+mod workspace_switcher;
 
 use gtk4::prelude::*;
 use gtk4::{
@@ -16,11 +17,13 @@ const PANEL_HEIGHT: i32 = 32;
 
 // GTK's default button min-height plus padding is 34 px and would push the
 // panel past PANEL_HEIGHT; panel buttons fill the bar height instead. A
-// window button is highlighted while labwc reports its window active.
+// window or workspace button is highlighted while labwc reports it active.
 const PANEL_CSS: &str = "
 .classic2-panel menubutton > button,
-.classic2-panel button.window-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
-.classic2-panel button.window-button.active { background-color: alpha(currentColor, 0.15); font-weight: bold; }
+.classic2-panel button.window-button,
+.classic2-panel button.workspace-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
+.classic2-panel button.window-button.active,
+.classic2-panel button.workspace-button.active { background-color: alpha(currentColor, 0.15); font-weight: bold; }
 ";
 
 fn main() -> glib::ExitCode {
@@ -84,14 +87,8 @@ fn bottom_panel(app: &Application) -> ApplicationWindow {
         app,
         Edge::Bottom,
         &window_list::widget(),
-        &placeholder("Arbeitsflächen"),
+        &workspace_switcher::widget(),
     )
-}
-
-fn placeholder(text: &str) -> Label {
-    let label = Label::new(Some(text));
-    label.add_css_class("dim-label");
-    label
 }
 
 fn panel_window(

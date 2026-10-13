@@ -4,10 +4,10 @@ Classic2 ist eine Neuimplementierung des GNOME-2-Bedienmodells mit Rust,
 GTK4 und Wayland. Die Shell läuft als eigener Prozess auf dem Compositor
 labwc und nutzt `wlr-layer-shell` für Panels.
 
-Stand: Meilenstein M1.3b. Ein Prozess zeigt zwei Panels im
+Stand: Meilenstein M1.4b. Ein Prozess zeigt zwei Panels im
 GNOME-2-Layout: oben die Menüknöpfe `Anwendungen` und `Orte`, das Label
-`System` und eine Uhr mit Datum, unten die Fensterliste und ein
-Platzhalter für Arbeitsflächen. Das Anwendungsmenü zeigt die installierten
+`System` und eine Uhr mit Datum, unten die Fensterliste und der
+Arbeitsflächenumschalter. Das Anwendungsmenü zeigt die installierten
 Anwendungen nach GNOME-2-Kategorien und startet sie über GIO, per Maus
 oder Tastatur.
 Es folgt installierten, entfernten und geänderten Anwendungen ohne
@@ -15,8 +15,10 @@ Neustart des Panels. Das Orte-Menü öffnet den persönlichen Ordner und die
 vorhandenen XDG-Benutzerordner mit der Standardanwendung für Verzeichnisse.
 Die Fensterliste zeigt pro Fenster einen Button mit dem Titel, hebt das
 aktive Fenster hervor, klammert minimierte ein und bittet labwc per Klick,
-das Fenster zu aktivieren.
-Noch keine Icons, keine Arbeitsflächen, kein System-Menü, kein Autostart.
+das Fenster zu aktivieren. Der Arbeitsflächenumschalter zeigt pro
+Arbeitsfläche einen nummerierten Button, hebt die aktive hervor und bittet
+labwc per Klick um den Wechsel.
+Noch keine Icons, kein System-Menü, kein Autostart.
 
 Beide Panels nehmen nie selbst den Tastaturfokus
 (`KeyboardMode::None`). Das geöffnete Menü bekommt die Tastatur vom
@@ -97,6 +99,13 @@ Wayland-Verbindung, deren Ereignisse im GTK-Hauptkontext verarbeitet werden.
 Bietet der Compositor das Protokoll nicht an, bleibt der Bereich leer. Die
 Hervorhebung zeigt nur, was labwc meldet; ein Klick ist eine Anfrage.
 
+Der Arbeitsflächenumschalter nutzt `ext_workspace_manager_v1` ebenfalls über
+eine eigene Verbindung und zeigt die Arbeitsflächen der ersten Gruppe.
+labwc hat ohne Konfiguration eine Arbeitsfläche; mehr gibt es mit
+`<desktops number="N" />` in der `rc.xml` der Sitzung. Die Fensterliste
+zeigt weiter die Fenster aller Arbeitsflächen (Protokollgrenze unter
+labwc 0.9.8).
+
 ## Beenden
 
 Beide Panels gemeinsam und sauber mit Exit-Code 0 über die
@@ -119,12 +128,14 @@ classic2/
 ├── crates/
 │   └── classic2-panel/
 │       ├── Cargo.toml            gtk4 0.11, gtk4-layer-shell 0.8.1, gio-unix 0.22,
-│       │                         glib-unix 0.22, wayland-client 0.31, wayland-protocols-wlr 0.3
+│       │                         glib-unix 0.22, wayland-client 0.31, wayland-protocols 0.32,
+│       │                         wayland-protocols-wlr 0.3
 │       ├── src/
 │       │   ├── main.rs           Start, beide Panels
 │       │   ├── app_menu.rs       Anwendungsmenü, Aktualisierung, Start über GIO
 │       │   ├── places_menu.rs    Orte-Menü, Öffnen über GIO, Tests
 │       │   ├── window_list.rs    Fensterliste über Wayland, Tests
+│       │   ├── workspace_switcher.rs  Arbeitsflächenumschalter über Wayland, Tests
 │       │   ├── clock.rs          Uhr mit Minutentakt und Tests
 │       │   ├── apps.rs           Anwendungskatalog über GIO
 │       │   └── apps/tests.rs     Tests des Katalogs
@@ -145,6 +156,7 @@ classic2/
     ├── m1-1b1e-icons-entscheidung.md        Entscheidung M1.1b-1e
     ├── m1-2a-orte-menue-test.md             Testprotokoll M1.2a
     ├── m1-3b-fensterliste-test.md           Testprotokoll M1.3b
+    ├── m1-4b-arbeitsflaechen-test.md        Testprotokoll M1.4b
     └── assets/
         ├── m1/                   Screenshots und Logs M1.0
         ├── m1-1a/                Screenshots und Logs M1.1a
@@ -157,7 +169,8 @@ classic2/
         ├── m1-1b1c/              Belege und Testwerkzeug M1.1b-1c
         ├── m1-1b1e/              Screenshots der Symbol-Probe M1.1b-1e
         ├── m1-2a/                Belege und Testwerkzeug M1.2a
-        └── m1-3b/                Belege und Testwerkzeug M1.3b
+        ├── m1-3b/                Belege und Testwerkzeug M1.3b
+        └── m1-4b/                Belege und Testwerkzeug M1.4b
 ```
 
 ## Lizenz
