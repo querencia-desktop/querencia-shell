@@ -13,28 +13,28 @@ use gtk4::{
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 const APP_ID: &str = "org.example.Classic2.Panel";
-const NAMESPACE: &str = "classic2-panel";
+const NAMESPACE: &str = "querencia-panel";
 const PANEL_HEIGHT: i32 = 32;
 
 // GTK's default button min-height plus padding is 34 px and would push the
 // panel past PANEL_HEIGHT; panel buttons fill the bar height instead. A
 // window or workspace button is highlighted while labwc reports it active.
 const PANEL_CSS: &str = "
-.classic2-panel menubutton > button,
-.classic2-panel button.window-button,
-.classic2-panel button.workspace-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
-.classic2-panel button.window-button.active,
-.classic2-panel button.workspace-button.active { background-color: alpha(currentColor, 0.15); font-weight: bold; }
+.querencia-panel menubutton > button,
+.querencia-panel button.window-button,
+.querencia-panel button.workspace-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
+.querencia-panel button.window-button.active,
+.querencia-panel button.workspace-button.active { background-color: alpha(currentColor, 0.15); font-weight: bold; }
 ";
 
 fn main() -> glib::ExitCode {
     if let Err(err) = gtk4::init() {
-        eprintln!("classic2-panel: GTK konnte nicht initialisiert werden: {err}");
+        eprintln!("querencia-panel: GTK konnte nicht initialisiert werden: {err}");
         return glib::ExitCode::FAILURE;
     }
     if !gtk4_layer_shell::is_supported() {
         eprintln!(
-            "classic2-panel: Der Compositor bietet kein wlr-layer-shell an. \
+            "querencia-panel: Der Compositor bietet kein wlr-layer-shell an. \
              Ein normales Fenster wäre kein Panel, deshalb wird abgebrochen."
         );
         return glib::ExitCode::FAILURE;
@@ -99,7 +99,7 @@ fn panel_window(
     end: &impl IsA<Widget>,
 ) -> ApplicationWindow {
     let bar = CenterBox::builder()
-        .css_classes(["classic2-panel"])
+        .css_classes(["querencia-panel"])
         .height_request(PANEL_HEIGHT)
         .margin_start(10)
         .margin_end(10)
@@ -109,7 +109,7 @@ fn panel_window(
 
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("Classic2 Panel")
+        .title("Querencia Panel")
         .default_height(PANEL_HEIGHT)
         .child(&bar)
         .build();

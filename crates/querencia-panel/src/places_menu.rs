@@ -24,7 +24,7 @@ const SPECIAL: [(&str, glib::UserDirectory); 6] = [
 pub fn button() -> MenuButton {
     let places = places(&glib::home_dir(), glib::user_special_dir);
     let labels: Vec<_> = places.iter().map(|(label, _)| *label).collect();
-    eprintln!("classic2-panel: Ortemenü: {}", labels.join(", "));
+    eprintln!("querencia-panel: Ortemenü: {}", labels.join(", "));
     let menu = gio::Menu::new();
     fill(&menu, &places);
 
@@ -63,7 +63,7 @@ fn places(
         }
         if !path.is_dir() {
             eprintln!(
-                "classic2-panel: {label} ausgelassen, {} existiert nicht",
+                "querencia-panel: {label} ausgelassen, {} existiert nicht",
                 path.display()
             );
             continue;
@@ -92,8 +92,8 @@ fn open_uri(uri: &str) {
     // The display's context passes the Wayland activation token on.
     let context = gdk::Display::default().map(|display| display.app_launch_context());
     match gio::AppInfo::launch_default_for_uri(uri, context.as_ref()) {
-        Ok(()) => eprintln!("classic2-panel: {uri} an GIO übergeben"),
-        Err(err) => eprintln!("classic2-panel: Öffnen von {uri} fehlgeschlagen: {err}"),
+        Ok(()) => eprintln!("querencia-panel: {uri} an GIO übergeben"),
+        Err(err) => eprintln!("querencia-panel: Öffnen von {uri} fehlgeschlagen: {err}"),
     }
 }
 
@@ -103,7 +103,7 @@ mod tests {
 
     fn scratch(label: &str) -> PathBuf {
         let dir =
-            std::env::temp_dir().join(format!("classic2-orte-{label}-{}", std::process::id()));
+            std::env::temp_dir().join(format!("querencia-orte-{label}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("scratch directory");
         dir

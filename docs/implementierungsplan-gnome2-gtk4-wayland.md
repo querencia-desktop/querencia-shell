@@ -6,6 +6,8 @@
 **Status:** Technischer Vorschlag, keine abgeschlossene Implementierung  
 **Ausgangsidee:** Das Bediengefühl von GNOME 2 mit moderner GTK4-Oberfläche, nativem Wayland, einer konservativen Produktphilosophie und sinnvoll eingesetzter KI neu aufbauen.
 
+**Projektname seit R1 (14.10.2026):** Querencia Desktop. Der Arbeitstitel „Classic2“ in diesem Dokument und in den Protokollen M1/M2 bezeichnet dasselbe Projekt; Bezeichner `querencia-*` stehen für die geplanten Artefakte, die installierte Sitzung trägt bis zur Migration R2 die alten Namen (`docs/querencia-umbenennung.md`).
+
 > **Kernaussage:** Das Vorhaben ist technisch realistisch, **wenn zunächst eine klassische Shell auf einem vorhandenen Wayland-Compositor entsteht**. Eine 1:1-Portierung der gesamten historischen GNOME-2-Codebasis oder die gleichzeitige Entwicklung eines eigenen Compositors wäre für einen kleinen Projektstart eine schlechte Wette. Ein erster überzeugender Prototyp ist deutlich kleiner als ein vollständig alltagstauglicher Desktop.
 
 ---
@@ -101,7 +103,7 @@ Das ist ein stärkeres Versprechen als bloß „leichtgewichtig“ oder „sieht
 
 Der folgende Stand wurde anhand öffentlich erreichbarer Projekt- und Standarddokumentation geprüft. Versions- und Supportdetails können sich später ändern; deshalb werden Anforderungen nicht blind an eine einzelne Release-Nummer gebunden.
 
-| Beobachtung | Konsequenz für Classic2 | Quelle |
+| Beobachtung | Konsequenz für Querencia Desktop | Quelle |
 |---|---|---|
 | GTK4 Layer Shell unterstützt Panels und andere Shell-Oberflächen via Wayland Layer Shell; Mutter/GNOME Shell bietet diese generische Layer-Shell-Schnittstelle nicht. | **labwc als Test- und Primärcompositor**, nicht „überall unter GNOME“. | [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell) |
 | Rust-Bindings `gtk4-layer-shell` existieren und passen zu gtk4-rs. | Rust ist eine konkrete, praktikable Implementierungsoption statt eines spekulativen Versprechens. | [docs.rs gtk4-layer-shell](https://docs.rs/crate/gtk4-layer-shell/latest) |
@@ -155,7 +157,7 @@ Das Projekt `gtk4-layer-shell` weist in seiner aktuellen Repository-Dokumentatio
 
 **Plus:** Sauberer Scope, testbare Architektur, klare Grenzen, moderne Schnittstellen, geringe Legacy-Last.  
 **Minus:** Klassische Feinheiten müssen neu spezifiziert werden; manche Wayland-Funktionen bleiben compositorabhängig.  
-**Urteil:** **Empfehlung für Classic2**.
+**Urteil:** **Empfehlung für Querencia Desktop**.
 
 ### Reuse-Policy
 
@@ -247,7 +249,7 @@ Das Layout soll **standardmäßig** GNOME-2-artig sein, aber nicht jede frühere
 
 ```mermaid
 flowchart TD
-    USER[Benutzer] --> PANEL[classic2-panel / GTK4]
+    USER[Benutzer] --> PANEL[querencia-panel / GTK4]
     PANEL --> MODEL[Shell-Modell: Fenster, Ausgänge, Workspaces]
     PANEL --> MENU[GIO App-/Menüindex]
     PANEL --> BUS[GIO / D-Bus]
@@ -257,7 +259,7 @@ flowchart TD
     BUS --> SERVICES[NetworkManager · UPower · PipeWire · logind]
     BUS --> TRAY[StatusNotifierHost / Watcher]
     LABWC --> APPS[GTK/Qt/XWayland-Anwendungen]
-    SESSION[classic2-session / Sitzung] --> LABWC
+    SESSION[querencia-session / Sitzung] --> LABWC
     SESSION --> PANEL
     SESSION --> PORTALS[xdg-desktop-portal + Backends]
     SESSION --> LOCK[swaylock / swayidle]
@@ -267,15 +269,15 @@ flowchart TD
 
 **In v0.1/v0.2:**
 
-- `classic2-panel`: ein Prozess mit top/bottom Panel, UI-Modellen und Adapterzugang; mehrere Wayland-Surfaces pro Ausgabe.
+- `querencia-panel`: ein Prozess mit top/bottom Panel, UI-Modellen und Adapterzugang; mehrere Wayland-Surfaces pro Ausgabe.
 - `labwc`: eigenständiger Compositor.
-- `classic2-session`: zunächst nur ein schlanker Sitzungsstarter und Konfigurationsdateien, nicht sofort ein permanenter neuer Dienst.
+- `querencia-session`: zunächst nur ein schlanker Sitzungsstarter und Konfigurationsdateien, nicht sofort ein permanenter neuer Dienst.
 - Übliche externe Dienste: Portalbackend, Audio, Netzwerk, Benachrichtigungen, Lock.
 
 **Ab v0.3/v0.5 optional aufteilen:**
 
-- `classic2-shell-service`: gemeinsamer zustandsbehafteter Dienst für Menüs, Outputs, Fenster/Workspaces; **nur wenn** mehrere Clientprozesse dies rechtfertigen.
-- `classic2-settings`: eigene grafische Einstellungen.
+- `querencia-shell-service`: gemeinsamer zustandsbehafteter Dienst für Menüs, Outputs, Fenster/Workspaces; **nur wenn** mehrere Clientprozesse dies rechtfertigen.
+- `querencia-settings`: eigene grafische Einstellungen.
 - Applets: eigene Prozesse mit versioniertem IPC.
 
 **Warum nicht sofort zehn Daemons?** Prozessgrenzen sind wertvoll, verursachen aber Startreihenfolge-, IPC-, Recovery- und Debugging-Aufwand. Modularität bedeutet nicht automatisch maximale Prozessanzahl.
@@ -363,7 +365,7 @@ Es gibt zwei plausible technische Implementierungen:
 ### 6.1 Beispielhafte Projekthierarchie
 
 ```text
-classic2/
+querencia/
 ├── README.md
 ├── LICENSES/
 ├── LICENSE
@@ -371,19 +373,19 @@ classic2/
 ├── Cargo.lock
 ├── rust-toolchain.toml
 ├── crates/
-│   ├── classic2-model/           # reine Domänenmodelle, ohne GTK
-│   ├── classic2-wayland/         # Protokolladapter und Capability-Registry
-│   ├── classic2-menu/            # Desktop-Entry-Katalog und Menühierarchie
-│   ├── classic2-config/          # GSettings-Schemas und Migration
-│   ├── classic2-indicators/      # D-Bus-Adapter, später StatusNotifierHost
-│   └── classic2-testkit/         # Fake-Compositor-Events und Testfixtures
+│   ├── querencia-model/           # reine Domänenmodelle, ohne GTK
+│   ├── querencia-wayland/         # Protokolladapter und Capability-Registry
+│   ├── querencia-menu/            # Desktop-Entry-Katalog und Menühierarchie
+│   ├── querencia-config/          # GSettings-Schemas und Migration
+│   ├── querencia-indicators/      # D-Bus-Adapter, später StatusNotifierHost
+│   └── querencia-testkit/         # Fake-Compositor-Events und Testfixtures
 ├── apps/
-│   ├── classic2-panel/          # GTK4 UI und Hauptprogramm
-│   ├── classic2-settings/       # später
-│   └── classic2-session/        # später ggf. Rust-Starter
+│   ├── querencia-panel/          # GTK4 UI und Hauptprogramm
+│   ├── querencia-settings/       # später
+│   └── querencia-session/        # später ggf. Rust-Starter
 ├── data/
-│   ├── classic2.desktop
-│   ├── org.example.Classic2.gschema.xml
+│   ├── querencia.desktop
+│   ├── org.example.Querencia.gschema.xml
 │   ├── labwc/
 │   │   ├── rc.xml
 │   │   └── autostart
@@ -411,7 +413,7 @@ classic2/
     └── capture-test-artifacts
 ```
 
-`org.example.Classic2` ist ein **Platzhalter**. Vor erster Paketveröffentlichung müssen Name, Reverse-DNS-ID, Repository und rechtliche Kennzeichen eindeutig festgelegt sein.
+`org.example.Querencia` ist ein **Platzhalter**. Vor erster Paketveröffentlichung müssen Name, Reverse-DNS-ID, Repository und rechtliche Kennzeichen eindeutig festgelegt sein.
 
 ---
 
@@ -517,7 +519,7 @@ classic2/
 
 **Mindestens erforderlich:**
 
-1. Display-Manager bietet „Classic2“ als getrennte Sitzung an.
+1. Display-Manager bietet „Querencia Desktop“ als getrennte Sitzung an.
 2. Sitzung startet labwc mit eigenen Konfigurationsdateien, ohne die vorhandene KDE-/GNOME-Sitzung zu beschädigen.
 3. Umgebung wird korrekt zu systemd-User und D-Bus importiert.
 4. Panel startet erst, wenn Wayland-Socket und Protokolle verfügbar sind.
@@ -742,13 +744,13 @@ use gtk4_layer_shell::{Edge, Layer, LayerShell};
 
 fn main() {
     let app = gtk::Application::builder()
-        .application_id("org.example.Classic2.Panel")
+        .application_id("org.example.Querencia.Panel")
         .build();
 
     app.connect_activate(|app| {
         let window = gtk::ApplicationWindow::builder()
             .application(app)
-            .title("Classic2")
+            .title("Querencia Desktop")
             .default_height(32)
             .build();
 
@@ -903,10 +905,10 @@ Ein altes GNOME-2-/MATE-Applet kann nicht automatisch in ein GTK4-Wayland-Panel 
 Beispiel für ein **konzeptionelles** Manifest:
 
 ```toml
-id = "org.example.Classic2Applet.Weather"
+id = "org.example.QuerenciaApplet.Weather"
 name = "Wetter"
 api_version = 1
-exec = "classic2-weather-applet"
+exec = "querencia-weather-applet"
 permissions = ["network"]
 ```
 
@@ -962,7 +964,7 @@ Jede KI-Aufgabe erhält:
 
 ```text
 KONTEXT:
-Classic2 = GTK4/Rust-Panel auf labwc/Wayland.
+Querencia Desktop (bis R1: Classic2) = GTK4/Rust-Desktop auf labwc/Wayland.
 Nur die angegebenen Protokolle und bestätigten APIs verwenden.
 
 AUFTRAG:
@@ -1042,7 +1044,7 @@ Eine konservative Distribution kann für **Anwender** sinnvoll sein, während de
 - Keine Übernahme fremder `~/.config/labwc`-Dateien ohne explizite Wahl.
 - Projektkonfiguration liegt in eigenen XDG-Pfaden; Migration ist versioniert.
 - Paket-Entfernung löscht standardmäßig **keine** persönlichen Nutzerprofileinstellungen.
-- Ein defektes Classic2-Panel darf nicht den Login-Manager blockieren.
+- Ein defektes Querencia-Panel darf nicht den Login-Manager blockieren.
 
 ### 15.4 Governance für ein kleines Projekt
 

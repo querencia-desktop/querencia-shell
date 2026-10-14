@@ -1,10 +1,13 @@
-# Classic2
+# Querencia Desktop
 
-Classic2 ist eine Neuimplementierung des GNOME-2-Bedienmodells mit Rust,
-GTK4 und Wayland. Die Shell läuft als eigener Prozess auf dem Compositor
-labwc und nutzt `wlr-layer-shell` für Panels.
+Querencia Desktop (bis R1 „Classic2“, siehe
+`docs/querencia-umbenennung.md`) ist eine Neuimplementierung des
+GNOME-2-Bedienmodells mit Rust, GTK4 und Wayland. Die Shell läuft als
+eigener Prozess auf dem Compositor labwc und nutzt `wlr-layer-shell` für
+Panels.
 
-Stand: Meilenstein M1.5b. Ein Prozess zeigt zwei Panels im
+Stand: Panel M1.5b, Sitzung M2.1 (Start über greetd/ReGreet, siehe
+unten). Ein Prozess (`querencia-panel`) zeigt zwei Panels im
 GNOME-2-Layout: oben die Menüknöpfe `Anwendungen`, `Orte` und `System`
 und eine Uhr mit Datum, unten die Fensterliste und der
 Arbeitsflächenumschalter. Das Anwendungsmenü zeigt die installierten
@@ -62,7 +65,7 @@ cargo clippy --all-targets -- -D warnings
 Innerhalb einer laufenden labwc-Sitzung, zum Beispiel aus foot:
 
 ```bash
-./target/debug/classic2-panel
+./target/debug/querencia-panel
 ```
 
 Von außen (etwa per SSH) braucht der Prozess die Umgebung der
@@ -72,7 +75,7 @@ Sitzung desselben Benutzers:
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 export WAYLAND_DISPLAY=wayland-0
 export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
-setsid ./target/debug/classic2-panel > ~/classic2-logs/panel.log 2>&1 < /dev/null &
+setsid ./target/debug/querencia-panel > ~/classic2-logs/panel.log 2>&1 < /dev/null &
 ```
 
 Ein zweiter Start erzeugt keine weiteren Panels, er aktiviert nur die
@@ -88,7 +91,7 @@ Classic2-Sitzung verwendet `X-Classic2`. Ohne die Variable sind
 `LANGUAGE`, zum Beispiel:
 
 ```bash
-XDG_CURRENT_DESKTOP=X-Classic2 LANG=en_US.UTF-8 LANGUAGE=de ./target/debug/classic2-panel
+XDG_CURRENT_DESKTOP=X-Classic2 LANG=en_US.UTF-8 LANGUAGE=de ./target/debug/querencia-panel
 ```
 
 Das Orte-Menü liest `HOME` und die XDG-Benutzerordner nur beim Start;
@@ -124,6 +127,11 @@ reservierten Bereiche auch dann frei, der Exit-Code ist aber 143 bzw. 130.
 
 ## Eigenständige Sitzung (TTY-Start)
 
+Hinweis R1: Die Sitzungsdateien unter `session/` tragen bis zur Migration
+R2 die alten Namen und starten das Binary `classic2-panel` des
+installierten Sitzungs-Repos; das umbenannte `querencia-panel` wird erst
+in R2 dort eingebunden (`docs/querencia-umbenennung.md`).
+
 Der Starter `session/classic2-session` startet labwc 0.9.8 über den
 absoluten Pfad `~/opt/labwc-0.9.8/bin/labwc` mit dem Konfigurationsordner
 `session/labwc` (`labwc -C`). labwc liest dort `environment` und startet
@@ -156,7 +164,9 @@ der Starter. Danach steht wieder die Konsolen-Shell bereit.
 
 ## Anmeldebildschirm (greetd + ReGreet)
 
-Seit M2.1 ist Classic2 am grafischen Anmeldebildschirm wählbar.
+Seit M2.1 ist der Desktop am grafischen Anmeldebildschirm wählbar; der
+Sitzungseintrag heißt bis zur Migration R2 weiterhin „Classic2“
+(`docs/querencia-umbenennung.md`).
 `session/classic2.desktop` ist die Sitzungsdefinition; eine Kopie liegt
 unter `/usr/share/wayland-sessions/classic2.desktop` und verweist auf
 denselben, unveränderten Starter. greetd (VT 7) startet als Greeter
@@ -172,12 +182,12 @@ schließen sich gegenseitig aus. Einzelheiten und Installationspfade in
 ## Projektstruktur
 
 ```text
-classic2/
+querencia-desktop/                 (Arbeitskopie: ~/projects/entwicklungs-vm)
 ├── Cargo.toml                    Workspace, Edition 2024, MSRV 1.92
 ├── Cargo.lock                    versioniert
 ├── README.md
 ├── crates/
-│   └── classic2-panel/
+│   └── querencia-panel/
 │       ├── Cargo.toml            gtk4 0.11, gtk4-layer-shell 0.8.1, gio-unix 0.22,
 │       │                         glib-unix 0.22, wayland-client 0.31, wayland-protocols 0.32,
 │       │                         wayland-protocols-wlr 0.3

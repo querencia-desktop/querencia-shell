@@ -289,7 +289,7 @@ pub fn widget() -> GtkBox {
                 }
             });
         }
-        Err(err) => eprintln!("classic2-panel: Fensterliste nicht verfügbar: {err}"),
+        Err(err) => eprintln!("querencia-panel: Fensterliste nicht verfügbar: {err}"),
     }
     container
 }
@@ -306,7 +306,7 @@ fn connect() -> Result<Session, String> {
         .map_err(|_| "kein wl_seat".to_owned())?;
     conn.flush().map_err(|e| e.to_string())?;
     eprintln!(
-        "classic2-panel: Fensterliste über zwlr_foreign_toplevel_manager_v1 v{}",
+        "querencia-panel: Fensterliste über zwlr_foreign_toplevel_manager_v1 v{}",
         manager.version()
     );
     let protocol = Protocol {
@@ -343,7 +343,7 @@ fn on_readable(list: &Shared, condition: glib::IOCondition) -> glib::ControlFlow
             glib::ControlFlow::Continue
         }
         Err(err) => {
-            eprintln!("classic2-panel: Fensterliste beendet: {err}");
+            eprintln!("querencia-panel: Fensterliste beendet: {err}");
             // Dropping the session releases the connection and all handles;
             // no stale window may stay in the panel. GLib removes the source
             // after `Break`, so its id is dropped here and never removed again.
@@ -467,10 +467,10 @@ fn activate(list: &WindowList, key: WindowKey) {
     handle.activate(&session.seat);
     match flush(&session.conn) {
         Ok(()) => eprintln!(
-            "classic2-panel: Aktivierung von Fenster {} angefragt",
+            "querencia-panel: Aktivierung von Fenster {} angefragt",
             key.0
         ),
-        Err(err) => eprintln!("classic2-panel: Aktivierung nicht gesendet: {err}"),
+        Err(err) => eprintln!("querencia-panel: Aktivierung nicht gesendet: {err}"),
     }
 }
 

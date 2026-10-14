@@ -44,7 +44,7 @@ fn rebuild(menu: &gio::Menu) {
     } else {
         summary.join(", ")
     };
-    eprintln!("classic2-panel: {NAME}: {summary}");
+    eprintln!("querencia-panel: {NAME}: {summary}");
     fill(menu, &sections);
 }
 

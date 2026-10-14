@@ -752,7 +752,8 @@ fn scratch_dir(label: &str) -> PathBuf {
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("clock after 1970")
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("classic2-{label}-{}-{nanos}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("querencia-{label}-{}-{nanos}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("scratch directory");
     dir
 }

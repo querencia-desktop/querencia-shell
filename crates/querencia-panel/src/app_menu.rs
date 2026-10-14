@@ -39,7 +39,7 @@ fn rebuild(menu: &gio::Menu) {
     let catalog = Catalog::load();
     let settings = catalog.entries.iter().filter(|e| e.is_settings()).count();
     eprintln!(
-        "classic2-panel: {NAME} mit {} Anwendungen, {settings} Einstellungen \
+        "querencia-panel: {NAME} mit {} Anwendungen, {settings} Einstellungen \
          im Systemmenü, {} ausgeschlossen",
         catalog.entries.len() - settings,
         catalog.excluded.len()
@@ -151,13 +151,13 @@ fn update(
     if popover.is_visible() {
         if !pending.replace(true) {
             eprintln!(
-                "classic2-panel: Anwendungen geändert, {name} ist offen, Aktualisierung vorgemerkt"
+                "querencia-panel: Anwendungen geändert, {name} ist offen, Aktualisierung vorgemerkt"
             );
         }
         return;
     }
     pending.set(false);
-    eprintln!("classic2-panel: Anwendungen geändert, {name} wird neu aufgebaut");
+    eprintln!("querencia-panel: Anwendungen geändert, {name} wird neu aufgebaut");
     rebuild(menu);
 }
 
@@ -191,7 +191,7 @@ fn fill(menu: &gio::Menu, catalog: &Catalog) {
 /// logged and never end the panel.
 pub(crate) fn launch_app(id: &str) {
     let Some(app) = DesktopAppInfo::new(id) else {
-        eprintln!("classic2-panel: {id} ist nicht mehr vorhanden oder nicht startbar");
+        eprintln!("querencia-panel: {id} ist nicht mehr vorhanden oder nicht startbar");
         return;
     };
 
@@ -209,10 +209,10 @@ pub(crate) fn launch_app(id: &str) {
 
     match app.launch(&[], context.as_ref()) {
         Ok(()) => match pid.get() {
-            Some(pid) => eprintln!("classic2-panel: {id} an GIO übergeben, PID {pid}"),
-            None => eprintln!("classic2-panel: {id} an GIO übergeben, ohne PID"),
+            Some(pid) => eprintln!("querencia-panel: {id} an GIO übergeben, PID {pid}"),
+            None => eprintln!("querencia-panel: {id} an GIO übergeben, ohne PID"),
         },
-        Err(err) => eprintln!("classic2-panel: Start von {id} fehlgeschlagen: {err}"),
+        Err(err) => eprintln!("querencia-panel: Start von {id} fehlgeschlagen: {err}"),
     }
 }
 

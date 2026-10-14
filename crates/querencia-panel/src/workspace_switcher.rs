@@ -162,7 +162,7 @@ impl<W: Clone + Eq + Hash, G: Clone + Eq> Workspaces<W, G> {
             self.logged_groups = self.groups.len();
             if self.groups.len() > 1 {
                 eprintln!(
-                    "classic2-panel: {} Arbeitsflächengruppen gemeldet; nicht unterstützt, \
+                    "querencia-panel: {} Arbeitsflächengruppen gemeldet; nicht unterstützt, \
                      nur die erste wird gezeigt",
                     self.groups.len()
                 );
@@ -374,7 +374,7 @@ pub fn widget() -> GtkBox {
                 }
             });
         }
-        Err(err) => eprintln!("classic2-panel: Arbeitsflächenumschalter nicht verfügbar: {err}"),
+        Err(err) => eprintln!("querencia-panel: Arbeitsflächenumschalter nicht verfügbar: {err}"),
     }
     container
 }
@@ -388,7 +388,7 @@ fn connect() -> Result<Session, String> {
         .map_err(|_| "kein ext_workspace_manager_v1".to_owned())?;
     conn.flush().map_err(|e| e.to_string())?;
     eprintln!(
-        "classic2-panel: Arbeitsflächen über ext_workspace_manager_v1 v{}",
+        "querencia-panel: Arbeitsflächen über ext_workspace_manager_v1 v{}",
         manager.version()
     );
     let protocol = Protocol {
@@ -420,7 +420,7 @@ fn on_readable(switcher: &Shared, condition: glib::IOCondition) -> glib::Control
             glib::ControlFlow::Continue
         }
         Err(err) => {
-            eprintln!("classic2-panel: Arbeitsflächenumschalter beendet: {err}");
+            eprintln!("querencia-panel: Arbeitsflächenumschalter beendet: {err}");
             // Dropping the session releases the connection and all handles;
             // no stale workspace may stay in the panel. GLib removes the
             // source after `Break`, so its id is dropped and never removed again.
@@ -544,10 +544,10 @@ fn activate(switcher: &Switcher, key: WorkspaceKey) {
     session.manager.commit();
     match flush(&session.conn) {
         Ok(()) => eprintln!(
-            "classic2-panel: Wechsel zu Arbeitsfläche {} angefragt",
+            "querencia-panel: Wechsel zu Arbeitsfläche {} angefragt",
             key.0
         ),
-        Err(err) => eprintln!("classic2-panel: Arbeitsflächenwechsel nicht gesendet: {err}"),
+        Err(err) => eprintln!("querencia-panel: Arbeitsflächenwechsel nicht gesendet: {err}"),
     }
 }
 
