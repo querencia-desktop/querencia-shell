@@ -1,3 +1,4 @@
+mod add_dialog;
 mod app_menu;
 mod applets;
 mod apps;
@@ -5,6 +6,7 @@ mod clock;
 mod layout;
 mod layout_store;
 mod panel;
+mod panel_menu;
 mod places_menu;
 mod system_menu;
 mod window_list;

@@ -1,14 +1,15 @@
 //! Turns a [`PanelSpec`] into a panel window: a layer-shell surface along one
 //! screen edge with a `CenterBox` whose start, center and end hold the
 //! applets of the matching regions, in order. The window setup is the one
-//! the two fixed panels had before (M1.0–M1.5b).
+//! the two fixed panels had before (M1.0–M1.5b). A right click on free panel
+//! space opens the panel's context menu (`panel_menu.rs`).
 
 use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, Box as GtkBox, CenterBox, Orientation};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-use crate::applets;
 use crate::layout::{self, PanelSpec, Region};
+use crate::{applets, panel_menu};
 
 const NAMESPACE: &str = "querencia-panel";
 /// Space between applets of one region (the former menu row).
@@ -47,6 +48,7 @@ pub fn build(app: &Application, spec: &PanelSpec) -> ApplicationWindow {
         window.set_anchor(anchor, true);
     }
     window.auto_exclusive_zone_enable();
+    panel_menu::attach(app, &window, &bar, spec);
     window
 }
 
@@ -70,6 +72,9 @@ fn region(spec: &PanelSpec, region: Region) -> Option<GtkBox> {
         // Names the widget after its instance, e.g. for the GTK inspector and
         // for finding it again when the layout changes.
         widget.set_widget_name(&instance.id);
+        // Marks the applet's area: a right click there is not one on free
+        // panel space. No style rule uses the class.
+        widget.add_css_class(panel_menu::APPLET_CLASS);
         row.append(&widget);
     }
     Some(row)

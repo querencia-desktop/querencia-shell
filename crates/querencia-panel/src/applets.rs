@@ -11,17 +11,10 @@ use gtk4::{Label, Widget};
 use crate::{app_menu, clock, places_menu, system_menu, window_list, workspace_switcher};
 
 /// One applet type.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "name, description and icon are first shown by the add-to-panel dialog (M2.2c)"
-    )
-)]
 pub struct AppletType {
     /// Stable ID used in layouts and the configuration file.
     pub id: &'static str,
-    /// Name shown to the user, e.g. in a later "Zum Panel hinzufügen" dialog.
+    /// Name shown to the user, e.g. in the "Zum Panel hinzufügen" dialog.
     pub name: &'static str,
     pub description: &'static str,
     /// Icon name from the freedesktop icon naming specification.
