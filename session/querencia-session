@@ -1,0 +1,210 @@
+#!/bin/sh
+# Querencia Desktop session starter: runs labwc 0.9.8 with the Querencia
+# configuration from the Querencia runtime copy. labwc starts the panel
+# through its autostart file once the Wayland socket exists.
+#
+#   querencia-session          start the session (from a console login or greetd)
+#   querencia-session --exit   end the running Querencia session (also from SSH)
+#
+# Derived from session/classic2-session (M2.0b). The Classic2 session keeps
+# its own runtime copy, configuration and state; both are never active for
+# the same user at the same time.
+
+set -u
+
+# Fixed on purpose: the session only ever uses the Querencia runtime copy,
+# never a development copy, and never the labwc found in PATH.
+QUERENCIA_REPO=~/projects/querencia-runtime
+LABWC=~/opt/labwc-0.9.8/bin/labwc
+LABWC_VERSION=0.9.8
+CONFIG_DIR=$QUERENCIA_REPO/session/querencia/labwc
+PANEL=$QUERENCIA_REPO/target/debug/querencia-panel
+STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/querencia
+
+die() {
+    echo "querencia-session: $*" >&2
+    exit 1
+}
+
+# The start time (field 22 of /proc/PID/stat, clock ticks since boot) tells
+# a reused PID apart; the same parsing is in querencia/labwc/autostart.
+starttime() {
+    stat=$(cat "/proc/$1/stat" 2>/dev/null) || return 1
+    set -- ${stat##*) }
+    [ -n "${20-}" ] && echo "${20}"
+}
+
+# The boot ID ties labwc records to this boot: the start time counts from
+# boot, so after a reboot an old record could otherwise fit a new process.
+boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)
+case $boot_id in
+'' | *[!0-9a-f-]*) boot_id= ;;
+esac
+
+# labwc is the same binary in the Classic2 and the Querencia session; only
+# the configuration directory tells them apart. This is the exact argument
+# list the starter gives labwc, one argument per line.
+labwc_argv=$(printf '%s\n' "$LABWC" -C "$CONFIG_DIR")
+
+# labwc record, one line: "q2 BOOTID PID STARTTIME".
+labwc_record_for() {
+    start=$(starttime "$1") || return 1
+    echo "q2 $boot_id $1 $start"
+}
+
+# Succeeds while labwc record $1 still describes the very labwc this starter
+# runs: same boot, same user, exactly the arguments "$LABWC -C $CONFIG_DIR"
+# (from the NUL-separated /proc/PID/cmdline, no further arguments, no
+# newline inside an argument) and the same start time. The start time is
+# compared last, so a PID reused during the other checks is caught as well.
+# Anything else, including malformed or old-format records, is rejected.
+labwc_matches() {
+    [ -n "$boot_id" ] || return 1
+    # Only the characters of a valid record; this also rules out glob
+    # characters before the record is split into words.
+    case $1 in '' | *[!0-9a-fq\ -]*) return 1 ;; esac
+    set -- $1
+    [ $# -eq 4 ] && [ "$1" = q2 ] && [ "$2" = "$boot_id" ] || return 1
+    pid=$3 start=$4
+    case $pid in '' | *[!0-9]*) return 1 ;; esac
+    case $start in '' | *[!0-9]*) return 1 ;; esac
+    [ "$(ps -o uid= -p "$pid" | tr -d ' ')" = "$(id -u)" ] || return 1
+    cmdline=/proc/$pid/cmdline
+    [ "$(tr -cd '\000' <"$cmdline" 2>/dev/null | wc -c)" -eq 3 ] || return 1
+    [ "$(tr -cd '\n' <"$cmdline" 2>/dev/null | wc -c)" -eq 0 ] || return 1
+    [ "$(tr '\000' '\n' <"$cmdline" 2>/dev/null)" = "$labwc_argv" ] || return 1
+    [ "$(starttime "$pid")" = "$start" ]
+}
+
+# Panel records hold "PID STARTTIME" (written by the autostart file).
+# Succeeds while record $1 still describes the very same process of this
+# user running program $2. The start time is compared last, so a PID reused
+# during the ps calls is caught as well.
+matches() {
+    pid=${1%% *} start=${1#* }
+    case $pid in '' | *[!0-9]*) return 1 ;; esac
+    case $start in '' | *[!0-9]*) return 1 ;; esac
+    [ "$(ps -o uid= -p "$pid" | tr -d ' ')" = "$(id -u)" ] || return 1
+    [ "$(ps -o args= -p "$pid" | cut -d' ' -f1)" = "$2" ] || return 1
+    [ "$(starttime "$pid")" = "$start" ]
+}
+
+# Removes PID file $1 only while it still holds record $2, never the file of
+# a newer session.
+remove_record() {
+    if [ "$(cat "$1" 2>/dev/null)" = "$2" ]; then
+        rm -f "$1"
+    fi
+}
+
+# Succeeds if a process of this user runs program $1, judged by the first
+# word of its command line (with or without a path). The kernel's process
+# name is cut to 15 characters; the command line is not, so the check stays
+# exact for longer names and is not fooled by programs that merely mention
+# the name as an argument.
+running() {
+    pgrep -u "$(id -u)" -f "^([^ ]*/)?$1( |\$)" >/dev/null
+}
+
+# labwc --exit needs LABWC_PID, which only exists inside the session; the
+# PID file works from any shell of this user. Only the Querencia state is
+# read, so a Classic2 session is never ended by mistake.
+if [ "${1-}" = --exit ]; then
+    record=$(cat "$STATE_DIR/labwc.pid" 2>/dev/null)
+    labwc_matches "$record" ||
+        die "keine laufende Querencia-Sitzung gefunden ($STATE_DIR/labwc.pid)"
+    # labwc_matches set pid to the checked labwc.
+    kill -TERM "$pid" || die "labwc ($pid) konnte nicht beendet werden"
+    echo "querencia-session: labwc ($pid) wird beendet"
+    exit 0
+fi
+[ $# -eq 0 ] || die "unbekannte Option: $1 (erlaubt: --exit)"
+
+[ "$(readlink -f "$0")" = "$QUERENCIA_REPO/session/querencia-session" ] ||
+    die "nur aus der Querencia-Laufzeitkopie starten: $QUERENCIA_REPO/session/querencia-session"
+
+# One graphical session per user: the systemd user manager, the D-Bus
+# activation environment and the D-Bus session bus are shared per user.
+# Both the Querencia and the Classic2 session run labwc, so a running labwc
+# of this user blocks either starter; the panel names are checked as well.
+[ -z "${WAYLAND_DISPLAY-}" ] ||
+    die "läuft bereits in einer Wayland-Sitzung (WAYLAND_DISPLAY=$WAYLAND_DISPLAY)"
+[ -n "${XDG_RUNTIME_DIR-}" ] || die "XDG_RUNTIME_DIR fehlt"
+[ -n "${XDG_SESSION_ID-}" ] || die "keine logind-Sitzung (XDG_SESSION_ID fehlt)"
+seat=$(loginctl show-session "$XDG_SESSION_ID" -p Seat --value 2>/dev/null)
+[ -n "$seat" ] ||
+    die "logind-Sitzung $XDG_SESSION_ID hat keinen Sitz; nur nach Anmeldung an der Konsole starten"
+for program in labwc querencia-panel classic2-panel; do
+    if running "$program"; then
+        die "es läuft bereits ein $program dieses Benutzers (Classic2- oder Querencia-Sitzung aktiv?)"
+    fi
+done
+
+[ -x "$LABWC" ] || die "labwc fehlt: $LABWC"
+version=$("$LABWC" --version 2>/dev/null | cut -d' ' -f2)
+[ "$version" = "$LABWC_VERSION" ] ||
+    die "falsche labwc-Version '$version' statt $LABWC_VERSION: $LABWC"
+for file in environment autostart; do
+    [ -r "$CONFIG_DIR/$file" ] || die "fehlt: $CONFIG_DIR/$file"
+done
+[ -x "$PANEL" ] || die "Panel fehlt: $PANEL (cargo build in der Querencia-Laufzeitkopie)"
+[ -n "$boot_id" ] || die "Boot-ID nicht lesbar: /proc/sys/kernel/random/boot_id"
+
+# labwc only updates the D-Bus/systemd activation environment when it knows
+# the session bus.
+if [ -z "${DBUS_SESSION_BUS_ADDRESS-}" ] && [ -S "$XDG_RUNTIME_DIR/bus" ]; then
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+fi
+
+mkdir -p "$STATE_DIR" || die "kann $STATE_DIR nicht anlegen"
+for log in labwc panel; do
+    if [ -f "$STATE_DIR/$log.log" ]; then
+        mv -f "$STATE_DIR/$log.log" "$STATE_DIR/$log.log.1"
+    fi
+done
+# No labwc or panel of this user runs (checked above), so older records
+# are stale. The panel record is named after this starter's PID, which stays
+# unique while this starter lives; a later session never shares it.
+rm -f "$STATE_DIR/labwc.pid" "$STATE_DIR"/panel.*.pid
+panel_file=$STATE_DIR/panel.$$.pid
+
+# Read by the autostart file.
+export QUERENCIA_PANEL="$PANEL" QUERENCIA_STATE_DIR="$STATE_DIR" \
+    QUERENCIA_PANEL_RECORD="$panel_file"
+
+cd "$HOME" || die "kann nicht nach $HOME wechseln"
+echo "querencia-session: starte labwc $LABWC_VERSION, Log $STATE_DIR/labwc.log"
+"$LABWC" -C "$CONFIG_DIR" </dev/null >>"$STATE_DIR/labwc.log" 2>&1 &
+labwc_pid=$!
+labwc_record=$(labwc_record_for "$labwc_pid")
+echo "$labwc_record" >"$STATE_DIR/labwc.pid"
+
+# Forward termination to labwc so that it runs its normal shutdown and
+# clears the activation environment. labwc is our child, so its PID cannot
+# be reused before wait has reaped it. wait returns early on a trapped
+# signal, so keep waiting until labwc itself has exited.
+trap 'kill -TERM "$labwc_pid" 2>/dev/null' HUP INT TERM
+while :; do
+    wait "$labwc_pid"
+    status=$?
+    kill -0 "$labwc_pid" 2>/dev/null || break
+done
+# labwc is reaped and its PID may be reused; let the short cleanup finish.
+trap ':' HUP INT TERM
+remove_record "$STATE_DIR/labwc.pid" "$labwc_record"
+
+# GTK ends the panel when the Wayland connection is lost. Give it a moment,
+# then end the panel of this session only if that very process is still
+# left over.
+panel_record=$(cat "$panel_file" 2>/dev/null)
+if matches "$panel_record" "$PANEL"; then
+    sleep 2
+    if matches "$panel_record" "$PANEL"; then
+        echo "querencia-session: Panel (${panel_record%% *}) läuft nach labwc weiter, sende SIGTERM" >&2
+        kill -TERM "${panel_record%% *}"
+    fi
+fi
+rm -f "$panel_file"
+
+echo "querencia-session: labwc beendet mit Status $status, Logs in $STATE_DIR"
+exit "$status"

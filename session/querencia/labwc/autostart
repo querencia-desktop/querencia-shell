@@ -1,0 +1,14 @@
+# Querencia autostart, run by labwc with sh after the Wayland socket exists.
+# QUERENCIA_* come from session/querencia-session.
+: "${QUERENCIA_PANEL:?nur über querencia-session starten}"
+: "${QUERENCIA_STATE_DIR:?nur über querencia-session starten}"
+: "${QUERENCIA_PANEL_RECORD:?nur über querencia-session starten}"
+
+"$QUERENCIA_PANEL" </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
+
+# Record "PID STARTTIME" for the starter's cleanup (see starttime() there).
+pid=$!
+if stat=$(cat "/proc/$pid/stat" 2>/dev/null); then
+    set -- ${stat##*) }
+    echo "$pid ${20}" >"$QUERENCIA_PANEL_RECORD"
+fi

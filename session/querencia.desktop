@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Querencia Desktop
+Comment=Querencia Desktop session (labwc 0.9.8)
+Exec=/home/user/projects/querencia-runtime/session/querencia-session
+Type=Application
+DesktopNames=X-Querencia

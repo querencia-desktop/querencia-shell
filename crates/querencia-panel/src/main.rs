@@ -12,7 +12,7 @@ use gtk4::{
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-const APP_ID: &str = "org.example.Classic2.Panel";
+const APP_ID: &str = "org.example.Querencia.Panel";
 const NAMESPACE: &str = "querencia-panel";
 const PANEL_HEIGHT: i32 = 32;
 

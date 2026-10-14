@@ -86,12 +86,13 @@ danach erneut, sobald GIO (`AppInfoMonitor`) eine Änderung meldet. Ist ein
 Menü gerade offen, wird es erst nach dem Schließen neu aufgebaut; das
 andere Menü ist davon unabhängig.
 `OnlyShowIn`/`NotShowIn` werten gegen `XDG_CURRENT_DESKTOP` aus; die
-Classic2-Sitzung verwendet `X-Classic2`. Ohne die Variable sind
+Querencia-Sitzung verwendet `X-Querencia`, die ältere Classic2-Sitzung
+`X-Classic2`. Ohne die Variable sind
 `OnlyShowIn`-Einträge verborgen. Namen und Sortierung folgen `LANG` und
 `LANGUAGE`, zum Beispiel:
 
 ```bash
-XDG_CURRENT_DESKTOP=X-Classic2 LANG=en_US.UTF-8 LANGUAGE=de ./target/debug/querencia-panel
+XDG_CURRENT_DESKTOP=X-Querencia LANG=en_US.UTF-8 LANGUAGE=de ./target/debug/querencia-panel
 ```
 
 Das Orte-Menü liest `HOME` und die XDG-Benutzerordner nur beim Start;
@@ -119,18 +120,28 @@ Beide Panels gemeinsam und sauber mit Exit-Code 0 über die
 GApplication-Aktion:
 
 ```bash
-gapplication action org.example.Classic2.Panel quit
+gapplication action org.example.Querencia.Panel quit
 ```
+
+Das ältere `classic2-panel` der Classic2-Laufzeitkopie heißt auf dem
+Sitzungsbus weiterhin `org.example.Classic2.Panel`.
 
 `kill` oder Strg+C funktionieren ebenfalls; der Compositor gibt die
 reservierten Bereiche auch dann frei, der Exit-Code ist aber 143 bzw. 130.
 
 ## Eigenständige Sitzung (TTY-Start)
 
-Hinweis R1: Die Sitzungsdateien unter `session/` tragen bis zur Migration
-R2 die alten Namen und starten das Binary `classic2-panel` des
-installierten Sitzungs-Repos; das umbenannte `querencia-panel` wird erst
-in R2 dort eingebunden (`docs/querencia-umbenennung.md`).
+Hinweis R2: `session/` enthält zwei getrennte Sätze. Classic2
+(`classic2-session`, `labwc/`, `classic2.desktop`) bleibt unverändert und
+läuft aus der Laufzeitkopie `~/projects/classic2` mit dem
+Binary `classic2-panel`. Querencia Desktop (`querencia-session`,
+`querencia/labwc/`, `querencia.desktop`) läuft aus der eigenen
+Laufzeitkopie `~/projects/querencia-runtime` mit
+`querencia-panel`, Zustand unter `~/.local/state/querencia/`. Beide
+Starter verweigern den Start, solange eine der beiden Sitzungen läuft.
+Die Querencia-Laufzeitkopie und ihre Installation folgen nach der
+R2-Freigabe (`docs/querencia-umbenennung.md`); die Beschreibung unten
+gilt für den Classic2-Starter, der Querencia-Starter verhält sich gleich.
 
 Der Starter `session/classic2-session` startet labwc 0.9.8 über den
 absoluten Pfad `~/opt/labwc-0.9.8/bin/labwc` mit dem Konfigurationsordner
@@ -203,11 +214,16 @@ querencia-desktop/                 (Arbeitskopie: ~/projects/entwicklungs-vm)
 │       │   └── apps/tests.rs     Tests des Katalogs
 │       └── tests/fixtures/app-catalog/  .desktop-Fixtures
 ├── session/
-│   ├── classic2-session          Sitzungsstarter (TTY und greetd), --exit zum Beenden
-│   ├── classic2.desktop          Sitzungsdefinition für Display-Manager (wayland-sessions)
-│   └── labwc/                    labwc-Konfiguration der Sitzung (labwc -C)
-│       ├── environment           Sitzungsvariablen
-│       └── autostart             Panelstart
+│   ├── classic2-session          Classic2-Sitzungsstarter (TTY und greetd), --exit zum Beenden
+│   ├── classic2.desktop          Classic2-Sitzungsdefinition (wayland-sessions)
+│   ├── labwc/                    labwc-Konfiguration der Classic2-Sitzung (labwc -C)
+│   │   ├── environment           Sitzungsvariablen
+│   │   └── autostart             Panelstart
+│   ├── querencia-session         Querencia-Sitzungsstarter, --exit zum Beenden
+│   ├── querencia.desktop         Querencia-Sitzungsdefinition (wayland-sessions)
+│   └── querencia/labwc/          labwc-Konfiguration der Querencia-Sitzung
+│       ├── environment           Sitzungsvariablen (X-Querencia)
+│       └── autostart             Panelstart (QUERENCIA_*)
 └── docs/
     ├── implementierungsplan-gnome2-gtk4-wayland.md
     ├── m1-panel-test.md          Testprotokoll M1.0
