@@ -122,6 +122,38 @@ gapplication action org.example.Classic2.Panel quit
 `kill` oder Strg+C funktionieren ebenfalls; der Compositor gibt die
 reservierten Bereiche auch dann frei, der Exit-Code ist aber 143 bzw. 130.
 
+## Eigenständige Sitzung (TTY-Start)
+
+Der Starter `session/classic2-session` startet labwc 0.9.8 über den
+absoluten Pfad `~/opt/labwc-0.9.8/bin/labwc` mit dem Konfigurationsordner
+`session/labwc` (`labwc -C`). labwc liest dort `environment` und startet
+über `autostart` das Panel, sobald der Wayland-Socket bereitsteht. Starter,
+Konfiguration und Panel kommen immer aus dem Sitzungs-Repo
+`~/projects/classic2`, nie aus einer Entwicklungskopie.
+
+Nach Anmeldung an einer Konsole (TTY):
+
+```bash
+~/projects/classic2/session/classic2-session
+```
+
+Der Starter bricht ab, wenn er nicht aus dem Sitzungs-Repo kommt, keine
+logind-Sitzung mit Sitz besteht (etwa per SSH), bereits ein labwc oder
+`classic2-panel` des Benutzers läuft, die labwc-Version nicht 0.9.8 ist
+oder Dateien fehlen. Logs und PID-Dateien liegen unter
+`~/.local/state/classic2/` (vorheriger Lauf als `*.log.1`).
+
+Beenden aus der Sitzung über das labwc-Wurzelmenü „Exit“ oder aus jeder
+Shell des Benutzers, auch per SSH:
+
+```bash
+~/projects/classic2/session/classic2-session --exit
+```
+
+labwc leert dann die D-Bus-/systemd-Aktivierungsumgebung, das Panel endet
+mit dem Verlust der Wayland-Verbindung; ein übrig gebliebenes Panel beendet
+der Starter. Danach steht wieder die Konsolen-Shell bereit.
+
 ## Projektstruktur
 
 ```text
@@ -145,6 +177,11 @@ classic2/
 │       │   ├── apps.rs           Anwendungskatalog über GIO
 │       │   └── apps/tests.rs     Tests des Katalogs
 │       └── tests/fixtures/app-catalog/  .desktop-Fixtures
+├── session/
+│   ├── classic2-session          Sitzungsstarter (TTY), --exit zum Beenden
+│   └── labwc/                    labwc-Konfiguration der Sitzung (labwc -C)
+│       ├── environment           Sitzungsvariablen
+│       └── autostart             Panelstart
 └── docs/
     ├── implementierungsplan-gnome2-gtk4-wayland.md
     ├── m1-panel-test.md          Testprotokoll M1.0

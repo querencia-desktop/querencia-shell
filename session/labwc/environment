@@ -1,0 +1,13 @@
+# Classic2 session environment, read by labwc before anything else
+# (labwc -C, see session/classic2-session). Values override the login
+# environment, e.g. XDG_SESSION_TYPE=tty from a console login.
+#
+# labwc also exports XDG_CURRENT_DESKTOP and XDG_SESSION_TYPE (with
+# WAYLAND_DISPLAY, DISPLAY and LABWC_PID) to the D-Bus and systemd
+# activation environment and clears them again on a normal exit. The other
+# values only reach labwc's own children: autostart, panel, launched apps.
+XDG_SESSION_TYPE=wayland
+XDG_CURRENT_DESKTOP=X-Classic2
+XDG_SESSION_DESKTOP=classic2
+LANG=en_US.UTF-8
+LANGUAGE=de

@@ -1,0 +1,14 @@
+# Classic2 autostart, run by labwc with sh after the Wayland socket exists.
+# CLASSIC2_* come from session/classic2-session.
+: "${CLASSIC2_PANEL:?nur über classic2-session starten}"
+: "${CLASSIC2_STATE_DIR:?nur über classic2-session starten}"
+: "${CLASSIC2_PANEL_RECORD:?nur über classic2-session starten}"
+
+"$CLASSIC2_PANEL" </dev/null >>"$CLASSIC2_STATE_DIR/panel.log" 2>&1 &
+
+# Record "PID STARTTIME" for the starter's cleanup (see starttime() there).
+pid=$!
+if stat=$(cat "/proc/$pid/stat" 2>/dev/null); then
+    set -- ${stat##*) }
+    echo "$pid ${20}" >"$CLASSIC2_PANEL_RECORD"
+fi
