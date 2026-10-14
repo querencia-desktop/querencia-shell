@@ -154,6 +154,21 @@ labwc leert dann die D-Bus-/systemd-Aktivierungsumgebung, das Panel endet
 mit dem Verlust der Wayland-Verbindung; ein übrig gebliebenes Panel beendet
 der Starter. Danach steht wieder die Konsolen-Shell bereit.
 
+## Anmeldebildschirm (greetd + ReGreet)
+
+Seit M2.1 ist Classic2 am grafischen Anmeldebildschirm wählbar.
+`session/classic2.desktop` ist die Sitzungsdefinition; eine Kopie liegt
+unter `/usr/share/wayland-sessions/classic2.desktop` und verweist auf
+denselben, unveränderten Starter. greetd (VT 7) startet als Greeter
+labwc 0.9.8 mit eigener Konfiguration unter `/etc/greetd/labwc/` und
+darin ReGreet (`labwc -C /etc/greetd/labwc -S regreet`); nach der
+Anmeldung läuft die Sitzung wie beim TTY-Start, nur mit
+`Service=greetd`. Das Beenden mit `--exit` führt zurück zum
+Anmeldebildschirm. Es gibt nur eine grafische Sitzung je Benutzer: eine
+von Hand gestartete tty2-Referenz und eine Anmeldung über den Greeter
+schließen sich gegenseitig aus. Einzelheiten und Installationspfade in
+`docs/m2-1-display-manager-test.md`.
+
 ## Projektstruktur
 
 ```text
@@ -178,7 +193,8 @@ classic2/
 │       │   └── apps/tests.rs     Tests des Katalogs
 │       └── tests/fixtures/app-catalog/  .desktop-Fixtures
 ├── session/
-│   ├── classic2-session          Sitzungsstarter (TTY), --exit zum Beenden
+│   ├── classic2-session          Sitzungsstarter (TTY und greetd), --exit zum Beenden
+│   ├── classic2.desktop          Sitzungsdefinition für Display-Manager (wayland-sessions)
 │   └── labwc/                    labwc-Konfiguration der Sitzung (labwc -C)
 │       ├── environment           Sitzungsvariablen
 │       └── autostart             Panelstart
@@ -202,6 +218,7 @@ classic2/
     ├── m1-5b-system-menue-test.md           Testprotokoll M1.5b
     ├── m2-0b-sitzungsstart-test.md          Testprotokoll M2.0b
     ├── m2-0c-sitzungsstart-test.md          Testprotokoll M2.0c
+    ├── m2-1-display-manager-test.md         Testprotokoll M2.1
     └── assets/
         ├── m1/                   Screenshots und Logs M1.0
         ├── m1-1a/                Screenshots und Logs M1.1a
