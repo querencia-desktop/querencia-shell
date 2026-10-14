@@ -200,6 +200,7 @@ classic2/
     ├── m1-3b-fensterliste-test.md           Testprotokoll M1.3b
     ├── m1-4b-arbeitsflaechen-test.md        Testprotokoll M1.4b
     ├── m1-5b-system-menue-test.md           Testprotokoll M1.5b
+    ├── m2-0b-sitzungsstart-test.md          Testprotokoll M2.0b
     └── assets/
         ├── m1/                   Screenshots und Logs M1.0
         ├── m1-1a/                Screenshots und Logs M1.1a
