@@ -290,6 +290,16 @@ impl ChildRun {
     fn entry_ids(&self) -> Vec<&str> {
         self.records("entry").iter().map(|f| f[0]).collect()
     }
+
+    /// Every catalog line the child printed, in order, without libtest's
+    /// own lines around them (`running 1 test`, `test result: … finished in
+    /// 0.00s`); the run time there differs between otherwise equal runs.
+    fn catalog(&self) -> Vec<&str> {
+        self.stdout
+            .lines()
+            .filter(|line| line.starts_with("C2\t"))
+            .collect()
+    }
 }
 
 fn run_child(env: &[(&str, String)]) -> ChildRun {
@@ -518,7 +528,7 @@ fn show_in_rules_follow_xdg_current_desktop() {
 fn catalog_is_deterministic() {
     let first = fixture_run(Some("X-Classic2"));
     let second = fixture_run(Some("X-Classic2"));
-    assert_eq!(first.stdout, second.stdout);
+    assert_eq!(first.catalog(), second.catalog());
     assert!(!first.records("entry").is_empty());
 }
 
@@ -538,7 +548,11 @@ fn installed_applications_report() {
         }
     }
     let run = run_child(&env);
-    assert_eq!(run.stdout, run_child(&env).stdout, "zwei Läufe weichen ab");
+    assert_eq!(
+        run.catalog(),
+        run_child(&env).catalog(),
+        "zwei Läufe weichen ab"
+    );
 
     let ids = run.entry_ids();
     let unique: HashSet<_> = ids.iter().collect();
