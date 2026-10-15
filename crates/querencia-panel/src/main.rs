@@ -4,6 +4,7 @@ mod applets;
 mod apps;
 mod clock;
 mod layout;
+mod layout_editor;
 mod layout_store;
 mod panel;
 mod panel_menu;
@@ -12,8 +13,13 @@ mod system_menu;
 mod window_list;
 mod workspace_switcher;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use gtk4::prelude::*;
 use gtk4::{Application, gio, glib};
+
+use crate::layout_editor::Editor;
 
 const APP_ID: &str = "org.example.Querencia.Panel";
 
@@ -64,19 +70,21 @@ fn build_panels(app: &Application) {
         gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 
-    // Read only: the panel never writes panel.ini on its own. Without the
-    // file, or if it is unusable, the panels show the standard layout.
+    // The panel never writes panel.ini on its own, only when the user
+    // changes the layout ("Zum Panel hinzufügen"). Without the file, or if
+    // it is unusable, the panels show the standard layout.
     let path = layout_store::config_path();
-    let (layout, problems, source) =
-        layout_store::load(&path, |id| applets::find(id).map(|applet| applet.multiple));
+    let (editor, problems, source) = Editor::load(path.clone(), layout_editor::registry);
     for problem in &problems {
         eprintln!("querencia-panel: {}: {problem}", path.display());
     }
+    let layout = editor.layout().clone();
     eprintln!(
         "querencia-panel: Layout {source}, {} Panel(s)",
         layout.panels.len()
     );
+    let editor = Rc::new(RefCell::new(editor));
     for spec in &layout.panels {
-        panel::build(app, spec).present();
+        panel::build(app, spec, &editor).present();
     }
 }

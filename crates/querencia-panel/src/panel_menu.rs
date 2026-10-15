@@ -7,6 +7,15 @@
 //! the keyboard the same way: the panel keeps `KeyboardMode::None`, labwc
 //! gives the popover's grab the keyboard while it is open (Escape closes it)
 //! and returns it to the previously focused window afterwards.
+//!
+//! "Zum Panel hinzufügen …" adds to the region of the free space that was
+//! right-clicked (left, middle or right third of the panel, see
+//! [`Region::at`]), next to that space, as GNOME 2 adds where the menu was
+//! opened. The change goes through the shared [`Editor`], which saves it,
+//! and then into the running panel ([`panel::insert_applet`]).
+
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 use gtk4::prelude::*;
 use gtk4::{
@@ -14,8 +23,9 @@ use gtk4::{
     PopoverMenu, PositionType, Window, gdk, gio, glib,
 };
 
-use crate::add_dialog;
-use crate::layout::{Edge, PanelSpec};
+use crate::layout::{Edge, PanelSpec, Region};
+use crate::layout_editor::Editor;
+use crate::{add_dialog, panel};
 
 /// CSS class of the top widget of every applet; marks where free panel
 /// space ends.
@@ -24,8 +34,9 @@ pub const APPLET_CLASS: &str = "querencia-applet";
 const ACTION_GROUP: &str = "panel";
 const ADD: &str = "add";
 
-/// The menu entries. More follow with the functions behind them (M2.2c and
-/// later); until then the menu shows nothing that would not work.
+/// The menu entries. More follow with the functions behind them (removing,
+/// moving, properties); until then the menu shows nothing that would not
+/// work.
 pub fn model() -> gio::Menu {
     let menu = gio::Menu::new();
     menu.append(
@@ -36,7 +47,35 @@ pub fn model() -> gio::Menu {
 }
 
 /// Gives the panel `window` with the bar `bar` its context menu.
-pub fn attach(app: &Application, window: &ApplicationWindow, bar: &CenterBox, spec: &PanelSpec) {
+pub fn attach(
+    app: &Application,
+    window: &ApplicationWindow,
+    bar: &CenterBox,
+    spec: &PanelSpec,
+    editor: &Rc<RefCell<Editor>>,
+) {
+    // Region of the free space last right-clicked: where the dialog adds.
+    let target = Rc::new(Cell::new(Region::Start));
+    let panel_id = spec.id.clone();
+    let hooks = Rc::new(add_dialog::Hooks {
+        available: Box::new(glib::clone!(
+            #[strong]
+            editor,
+            move |applet| editor.borrow().can_add(applet)
+        )),
+        add: Box::new(glib::clone!(
+            #[strong]
+            editor,
+            #[strong]
+            target,
+            #[weak]
+            bar,
+            #[upgrade_or_else]
+            || Err("Das Panel gibt es nicht mehr".to_string()),
+            move |applet| add_applet(&editor, &bar, &panel_id, applet, target.get())
+        )),
+    });
+
     // One "Zum Panel hinzufügen" dialog per panel, as in GNOME 2; opening it
     // again raises the open one.
     let dialog = glib::WeakRef::<Window>::new();
@@ -45,7 +84,7 @@ pub fn attach(app: &Application, window: &ApplicationWindow, bar: &CenterBox, sp
     add.connect_activate(glib::clone!(
         #[weak]
         app,
-        move |_, _| add_dialog::present(&app, &dialog, &panel_id)
+        move |_, _| add_dialog::present(&app, &dialog, &panel_id, &hooks)
     ));
     let actions = gio::SimpleActionGroup::new();
     actions.add_action(&add);
@@ -79,6 +118,8 @@ pub fn attach(app: &Application, window: &ApplicationWindow, bar: &CenterBox, sp
         bar,
         #[weak]
         popover,
+        #[strong]
+        target,
         move |gesture, presses, x, y| {
             // Pointer events inside a popover, e.g. an open applet menu,
             // bubble up to the panel too; only clicks on the panel surface
@@ -91,13 +132,57 @@ pub fn attach(app: &Application, window: &ApplicationWindow, bar: &CenterBox, sp
             let Some((x, y)) = window.translate_coordinates(&bar, x, y) else {
                 return;
             };
+            target.set(Region::at(x, f64::from(bar.width())));
             gesture.set_state(EventSequenceState::Claimed);
             popover.set_pointing_to(Some(&gdk::Rectangle::new(x as i32, y as i32, 1, 1)));
             popover.popup();
-            eprintln!("querencia-panel: Kontextmenü von Panel {panel_id} geöffnet");
+            eprintln!(
+                "querencia-panel: Kontextmenü von Panel {panel_id} geöffnet (Bereich {})",
+                target.get().label()
+            );
         }
     ));
     window.add_controller(click);
+}
+
+/// Adds an `applet` instance to `region` of the panel `panel_id` with the
+/// bar `bar`: first in the layout and `panel.ini` through `editor`, then,
+/// once saved, on screen.
+fn add_applet(
+    editor: &RefCell<Editor>,
+    bar: &CenterBox,
+    panel_id: &str,
+    applet: &str,
+    region: Region,
+) -> Result<(), String> {
+    let (change, path) = {
+        let mut editor = editor.borrow_mut();
+        let change = editor.add(panel_id, applet, region)?;
+        (change, editor.path().to_path_buf())
+    };
+    if let Some(backup) = &change.backup {
+        eprintln!(
+            "querencia-panel: bisherige {} gesichert als {}",
+            path.display(),
+            backup.display()
+        );
+    }
+    let added = &change.added;
+    if !panel::insert_applet(bar, added.region, added.index, &added.instance) {
+        return Err(format!(
+            "gespeichert, aber nicht angezeigt: Applet-Typ {} unbekannt",
+            added.instance.applet
+        ));
+    }
+    eprintln!(
+        "querencia-panel: {} ({}) zu Panel {panel_id} hinzugefügt, Bereich {}, Position {}; gespeichert in {}",
+        added.instance.id,
+        added.instance.applet,
+        added.region.label(),
+        added.index + 1,
+        path.display()
+    );
+    Ok(())
 }
 
 /// Whether the point (window coordinates) lies on an applet rather than on

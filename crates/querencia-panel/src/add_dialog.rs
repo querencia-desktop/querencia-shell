@@ -1,12 +1,17 @@
 //! The "Zum Panel hinzufügen" dialog of the GNOME 2 panel: a search field
 //! and the applet types from the registry with icon, name and description,
-//! sorted by name. A type can be selected; adding it to the panel follows
-//! with M2.2c, until then the "Hinzufügen" button stays insensitive and
-//! nothing is written.
+//! sorted by name. "Hinzufügen" (or a double click, or Enter on a row) adds
+//! the selected type to the panel the dialog belongs to, through
+//! [`Hooks::add`]; the dialog stays open for more, as in GNOME 2. Types that
+//! cannot be added once more (a single-instance type the layout already
+//! has) are shown greyed out. If adding fails, the reason is shown above
+//! the buttons and nothing changes.
 //!
 //! The dialog is an ordinary toplevel window, not a layer surface, so labwc
 //! gives it the keyboard like any other window. It has no transient parent:
 //! the panels are layer surfaces, not xdg toplevels.
+
+use std::rc::Rc;
 
 use gtk4::prelude::*;
 use gtk4::{
@@ -18,18 +23,31 @@ use gtk4::{
 use crate::applets::{self, AppletType};
 
 const TITLE: &str = "Zum Panel hinzufügen";
-/// Shown when the theme has neither the applet's icon nor its symbolic
-/// variant.
+/// Shown when the theme has none of the applet's icons.
 const FALLBACK_ICON: &str = "application-x-addon";
 const ICON_SIZE: i32 = 32;
+/// Tooltip of a type that cannot be added once more.
+const UNAVAILABLE: &str = "Dieses Objekt gibt es nur einmal, und es ist bereits in einem Panel";
+
+/// Adds an instance of an applet type; `Err` carries the reason shown.
+pub type AddFn = Box<dyn Fn(&str) -> Result<(), String>>;
+
+/// What the dialog needs from its panel.
+pub struct Hooks {
+    /// Whether one more instance of the applet type may be added.
+    pub available: Box<dyn Fn(&str) -> bool>,
+    /// Adds an instance of the applet type to the panel; the error text is
+    /// shown to the user.
+    pub add: AddFn,
+}
 
 /// Raises the dialog in `slot` or, if there is none, opens a new one there.
-pub fn present(app: &Application, slot: &glib::WeakRef<Window>, panel_id: &str) {
+pub fn present(app: &Application, slot: &glib::WeakRef<Window>, panel_id: &str, hooks: &Rc<Hooks>) {
     if let Some(window) = slot.upgrade() {
         window.present();
         return;
     }
-    let window = build(app, panel_id);
+    let window = build(app, panel_id, hooks);
     slot.set(Some(&window));
     window.present();
     eprintln!("querencia-panel: Dialog „{TITLE}“ für Panel {panel_id} geöffnet");
@@ -51,18 +69,28 @@ pub fn matches(applet: &AppletType, query: &str) -> bool {
         || applet.description.to_lowercase().contains(&query)
 }
 
-/// Icon names tried in order. GTK 4 does not fall back to the symbolic
-/// variant by itself, and Adwaita ships most of the registry's names only
-/// as symbolic icons.
-fn icon_names(icon: &str) -> [String; 3] {
-    [
-        icon.to_string(),
-        format!("{icon}-symbolic"),
-        FALLBACK_ICON.to_string(),
-    ]
+/// The type "Hinzufügen" adds: the selected one, if it may be added.
+fn add_target(selected: Option<&str>, available: impl Fn(&str) -> bool) -> Option<&str> {
+    selected.filter(|id| !id.is_empty() && available(id))
 }
 
-fn build(app: &Application, panel_id: &str) -> Window {
+/// Icon names tried in order: the GNOME 2 name, then the freedesktop name
+/// and its symbolic variant (GTK 4 does not fall back to it by itself, and
+/// Adwaita ships most names only as symbolic icons), then a generic one.
+fn icon_names(applet: &AppletType) -> Vec<String> {
+    applet
+        .classic_icon
+        .into_iter()
+        .map(str::to_string)
+        .chain([
+            applet.icon.to_string(),
+            format!("{}-symbolic", applet.icon),
+            FALLBACK_ICON.to_string(),
+        ])
+        .collect()
+}
+
+fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
     let window = Window::builder()
         .application(app)
         .title(TITLE)
@@ -78,8 +106,11 @@ fn build(app: &Application, panel_id: &str) -> Window {
         .xalign(0.0)
         .build();
 
+    // A single click only selects; a double click (or Enter) adds. GTK's
+    // default would add on every single click.
     let list = ListBox::builder()
         .selection_mode(SelectionMode::Single)
+        .activate_on_single_click(false)
         .build();
     let shown = choices();
     for applet in &shown {
@@ -97,15 +128,113 @@ fn build(app: &Application, panel_id: &str) -> Window {
                 .is_some_and(|applet| matches(applet, &search.text()))
         }
     ));
-    let panel_id = panel_id.to_string();
-    list.connect_row_selected(move |_, row| {
-        if let Some(row) = row {
-            eprintln!(
-                "querencia-panel: Dialog „{TITLE}“ (Panel {panel_id}): {} ausgewählt",
-                row.widget_name()
-            );
+
+    // Shown only after a failed attempt; the next change hides it again.
+    let status = Label::builder()
+        .xalign(0.0)
+        .wrap(true)
+        .visible(false)
+        .css_classes(["error"])
+        .build();
+
+    let close = stock_button("_Schließen", "window-close");
+    close.connect_clicked(glib::clone!(
+        #[weak]
+        window,
+        move |_| window.close()
+    ));
+    let add = stock_button("_Hinzufügen", "list-add");
+    add.set_sensitive(false);
+    add.set_tooltip_text(Some("Das ausgewählte Objekt zum Panel hinzufügen"));
+    let buttons = GtkBox::new(Orientation::Horizontal, 6);
+    buttons.set_halign(Align::End);
+    buttons.append(&close);
+    buttons.append(&add);
+
+    // Greys out what cannot be added and keeps "Hinzufügen" in step. Runs
+    // after every change and whenever the dialog becomes active, since the
+    // dialog of the other panel may have added a single-instance type.
+    let refresh = Rc::new(glib::clone!(
+        #[weak]
+        list,
+        #[weak]
+        add,
+        #[strong]
+        hooks,
+        move || {
+            let mut index = 0;
+            while let Some(row) = list.row_at_index(index) {
+                let available = (hooks.available)(&row.widget_name());
+                row.set_sensitive(available);
+                row.set_selectable(available);
+                row.set_activatable(available);
+                row.set_tooltip_text((!available).then_some(UNAVAILABLE));
+                index += 1;
+            }
+            if list.selected_row().is_some_and(|row| !row.is_selectable()) {
+                list.unselect_all();
+            }
+            add.set_sensitive(selected_target(&list, &hooks).is_some());
         }
-    });
+    ));
+    refresh();
+
+    let panel_id = panel_id.to_string();
+    let add_selected = Rc::new(glib::clone!(
+        #[weak]
+        list,
+        #[weak]
+        status,
+        #[strong]
+        hooks,
+        #[strong]
+        refresh,
+        move || {
+            let Some(applet) = selected_target(&list, &hooks) else {
+                return;
+            };
+            match (hooks.add)(&applet) {
+                Ok(()) => status.set_visible(false),
+                Err(err) => {
+                    eprintln!(
+                        "querencia-panel: Dialog „{TITLE}“ (Panel {panel_id}): {applet} nicht hinzugefügt: {err}"
+                    );
+                    status.set_label(&format!(
+                        "Das Objekt konnte nicht hinzugefügt werden: {err}"
+                    ));
+                    status.set_visible(true);
+                }
+            }
+            refresh();
+        }
+    ));
+    add.connect_clicked(glib::clone!(
+        #[strong]
+        add_selected,
+        move |_| add_selected()
+    ));
+    // Double click or Enter on a row, as in GNOME 2. Rows that cannot be
+    // added are not activatable.
+    list.connect_row_activated(glib::clone!(
+        #[strong]
+        add_selected,
+        move |list, row| {
+            list.select_row(Some(row));
+            add_selected();
+        }
+    ));
+    list.connect_row_selected(glib::clone!(
+        #[weak]
+        add,
+        #[weak]
+        status,
+        #[strong]
+        hooks,
+        move |list, _| {
+            status.set_visible(false);
+            add.set_sensitive(selected_target(list, &hooks).is_some());
+        }
+    ));
     search.connect_search_changed(glib::clone!(
         #[weak]
         list,
@@ -132,6 +261,15 @@ fn build(app: &Application, panel_id: &str) -> Window {
             }
         }
     ));
+    window.connect_is_active_notify(glib::clone!(
+        #[strong]
+        refresh,
+        move |window| {
+            if window.is_active() {
+                refresh();
+            }
+        }
+    ));
 
     let scrolled = ScrolledWindow::builder()
         .child(&list)
@@ -139,23 +277,6 @@ fn build(app: &Application, panel_id: &str) -> Window {
         .hscrollbar_policy(PolicyType::Never)
         .vexpand(true)
         .build();
-
-    let close = Button::with_mnemonic("_Schließen");
-    close.connect_clicked(glib::clone!(
-        #[weak]
-        window,
-        move |_| window.close()
-    ));
-    let add = Button::builder()
-        .label("_Hinzufügen")
-        .use_underline(true)
-        .sensitive(false)
-        .tooltip_text("Hinzufügen ist noch nicht verfügbar")
-        .build();
-    let buttons = GtkBox::new(Orientation::Horizontal, 6);
-    buttons.set_halign(Align::End);
-    buttons.append(&close);
-    buttons.append(&add);
 
     let content = GtkBox::builder()
         .orientation(Orientation::Vertical)
@@ -168,6 +289,7 @@ fn build(app: &Application, panel_id: &str) -> Window {
     content.append(&prompt);
     content.append(&search);
     content.append(&scrolled);
+    content.append(&status);
     content.append(&buttons);
     window.set_child(Some(&content));
 
@@ -185,9 +307,33 @@ fn build(app: &Application, panel_id: &str) -> Window {
     window
 }
 
+/// The type ID of the selected row, if it is visible and may be added.
+fn selected_target(list: &ListBox, hooks: &Hooks) -> Option<String> {
+    let row = list.selected_row().filter(|row| row.is_child_visible())?;
+    let id = row.widget_name();
+    add_target(Some(id.as_str()), |id| (hooks.available)(id)).map(str::to_string)
+}
+
+/// A button with a small icon before its label, like the GTK 2 stock
+/// buttons of GNOME 2 dialogs.
+fn stock_button(mnemonic: &str, icon: &str) -> Button {
+    let image = Image::from_gicon(&gio::ThemedIcon::from_names(&[
+        icon,
+        &format!("{icon}-symbolic"),
+    ]));
+    let label = Label::with_mnemonic(mnemonic);
+    let inner = GtkBox::new(Orientation::Horizontal, 4);
+    inner.set_halign(Align::Center);
+    inner.append(&image);
+    inner.append(&label);
+    let button = Button::builder().child(&inner).build();
+    label.set_mnemonic_widget(Some(&button));
+    button
+}
+
 /// One list row: icon, name in bold, description below.
 fn row(applet: &AppletType) -> ListBoxRow {
-    let names = icon_names(applet.icon);
+    let names = icon_names(applet);
     let names: Vec<&str> = names.iter().map(String::as_str).collect();
     let image = Image::from_gicon(&gio::ThemedIcon::from_names(&names));
     image.set_pixel_size(ICON_SIZE);
@@ -220,7 +366,7 @@ fn row(applet: &AppletType) -> ListBoxRow {
     line.append(&text);
 
     let row = ListBoxRow::builder().child(&line).build();
-    // The type ID, e.g. for M2.2c and the GTK inspector.
+    // The type ID: what "Hinzufügen" adds; also for the GTK inspector.
     row.set_widget_name(applet.id);
     row
 }
@@ -274,12 +420,41 @@ mod tests {
 
     #[test]
     fn icons_fall_back_to_symbolic_then_generic() {
+        let applications = applets::find("applications").unwrap();
         assert_eq!(
-            icon_names("start-here"),
+            icon_names(applications),
             ["start-here", "start-here-symbolic", "application-x-addon"]
         );
         for applet in applets::APPLETS {
-            assert_eq!(icon_names(applet.icon)[0], applet.icon);
+            assert!(icon_names(applet).contains(&applet.icon.to_string()));
         }
+    }
+
+    #[test]
+    fn classic_gnome2_icons_come_first() {
+        // GNOME Human has the GNOME 2 panel's own icons for these two, but
+        // none of the freedesktop names
+        assert_eq!(
+            icon_names(applets::find("clock").unwrap()),
+            [
+                "clock",
+                "preferences-system-time",
+                "preferences-system-time-symbolic",
+                "application-x-addon"
+            ]
+        );
+        assert_eq!(
+            icon_names(applets::find("workspace-switcher").unwrap())[0],
+            "workspace-switcher"
+        );
+    }
+
+    #[test]
+    fn add_target_needs_a_selected_available_type() {
+        let available = |id: &str| id != "window-list";
+        assert_eq!(add_target(Some("clock"), available), Some("clock"));
+        assert_eq!(add_target(Some("window-list"), available), None);
+        assert_eq!(add_target(None, available), None);
+        assert_eq!(add_target(Some(""), available), None);
     }
 }

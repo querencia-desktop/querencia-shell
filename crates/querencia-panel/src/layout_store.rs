@@ -21,6 +21,9 @@
 //! [`crate::layout::valid_id`]). Reading never fails: a missing file gives
 //! the standard layout, an unreadable file or an unknown format version
 //! falls back to it, and single bad entries are dropped with a message.
+//! The panel writes the file only when the user changes the layout (M2.2c,
+//! [`save_checked`]): never over a file that changed since it was read, and
+//! after a copy of a file it could read only in part.
 //! Writing replaces the target file atomically through
 //! `g_file_set_contents_full` with GLib's `CONSISTENT` and `DURABLE`
 //! guarantees: GLib writes a temporary file next to the target, syncs it,
@@ -68,28 +71,12 @@ pub fn config_path() -> PathBuf {
 
 /// The layout stored at `path`, validated with `applet` (see
 /// [`Layout::validated`]), with every problem found and where it came from.
-/// Only reads; a missing file or directory is never created.
+/// Only reads; a missing file or directory is never created. The panel uses
+/// [`load_stored`], which also remembers what it read.
+#[cfg(test)]
 pub fn load(path: &Path, applet: impl Fn(&str) -> Option<bool>) -> (Layout, Vec<String>, Source) {
-    if !path.exists() {
-        return (Layout::standard(), Vec::new(), Source::Standard);
-    }
-    let file = glib::KeyFile::new();
-    if let Err(err) = file.load_from_file(path, glib::KeyFileFlags::NONE) {
-        let problem = format!("{} nicht lesbar: {err}", path.display());
-        return (Layout::standard(), vec![problem], Source::Fallback);
-    }
-    let mut problems = Vec::new();
-    let Some(layout) = parse(&file, &mut problems) else {
-        return (Layout::standard(), problems, Source::Fallback);
-    };
-    let validated = layout.validated(applet);
-    problems.extend(validated.problems);
-    let source = if validated.fallback {
-        Source::Fallback
-    } else {
-        Source::File
-    };
-    (validated.layout, problems, source)
+    let loaded = load_stored(path, applet);
+    (loaded.layout, loaded.problems, loaded.source)
 }
 
 /// The layout described by `file`, or `None` if the file has no usable
@@ -198,15 +185,10 @@ fn to_key_file(layout: &Layout) -> glib::KeyFile {
 /// `g_key_file_save_to_file` is not enough: it uses `g_file_set_contents`,
 /// whose `ONLY_EXISTING` skips the sync for a file that does not exist yet,
 /// so a crash during the first save could leave an empty or zero-filled
-/// file. Blocks for the syncs; not for code that must not wait.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "first used when the panel can change its layout (M2.2c)"
-    )
-)]
-pub fn save(layout: &Layout, path: &Path) -> Result<(), String> {
+/// file. Blocks for the syncs; not for code that must not wait. Returns
+/// the bytes written. The panel saves through [`save_checked`], which never
+/// replaces a file changed since it was read.
+pub fn save(layout: &Layout, path: &Path) -> Result<Vec<u8>, String> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
@@ -219,7 +201,189 @@ pub fn save(layout: &Layout, path: &Path) -> Result<(), String> {
         // an existing file keeps its permissions.
         0o666,
     )
-    .map_err(|e| format!("{}: {e}", path.display()))
+    .map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(data.as_bytes().to_vec())
+}
+
+/// What `panel.ini` held when the panel last read or wrote it. Saving
+/// compares it with the file on disk, so a change made meanwhile by someone
+/// else is never overwritten.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Disk {
+    /// There was no file.
+    Missing,
+    /// The file's exact bytes.
+    Content(Vec<u8>),
+    /// The file could not be read (message); it is never replaced.
+    Unreadable(String),
+}
+
+/// Result of [`load_stored`].
+#[derive(Debug)]
+pub struct Loaded {
+    pub layout: Layout,
+    pub problems: Vec<String>,
+    pub source: Source,
+    pub disk: Disk,
+    /// The file is exactly what saving `layout` would write.
+    canonical: bool,
+}
+
+impl Loaded {
+    /// Whether saving `layout` would lose something the file held: entries
+    /// were dropped, the file was unusable, or it has comments, keys or a
+    /// form the format does not keep. Saving then keeps a copy of the
+    /// original file (see [`save_checked`]).
+    pub fn lossy(&self) -> bool {
+        self.source == Source::Fallback || !self.problems.is_empty() || !self.canonical
+    }
+}
+
+/// Like [`load`], and remembers the bytes read, for [`save_checked`]. Reads
+/// the file once, so layout and snapshot always belong together.
+pub fn load_stored(path: &Path, applet: impl Fn(&str) -> Option<bool>) -> Loaded {
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            return Loaded {
+                layout: Layout::standard(),
+                problems: Vec::new(),
+                source: Source::Standard,
+                disk: Disk::Missing,
+                canonical: true,
+            };
+        }
+        Err(err) => {
+            return Loaded {
+                layout: Layout::standard(),
+                problems: vec![format!("{} nicht lesbar: {err}", path.display())],
+                source: Source::Fallback,
+                disk: Disk::Unreadable(err.to_string()),
+                canonical: false,
+            };
+        }
+    };
+    let fallback = |problems| Loaded {
+        layout: Layout::standard(),
+        problems,
+        source: Source::Fallback,
+        disk: Disk::Content(bytes.clone()),
+        canonical: false,
+    };
+    let file = glib::KeyFile::new();
+    if let Err(err) = file.load_from_bytes(&glib::Bytes::from(&bytes), glib::KeyFileFlags::NONE) {
+        return fallback(vec![format!("{} nicht lesbar: {err}", path.display())]);
+    }
+    let mut problems = Vec::new();
+    let Some(layout) = parse(&file, &mut problems) else {
+        return fallback(problems);
+    };
+    let validated = layout.validated(applet);
+    problems.extend(validated.problems);
+    let source = if validated.fallback {
+        Source::Fallback
+    } else {
+        Source::File
+    };
+    let canonical = to_key_file(&validated.layout).to_data().as_bytes() == bytes.as_slice();
+    Loaded {
+        layout: validated.layout,
+        problems,
+        source,
+        disk: Disk::Content(bytes),
+        canonical,
+    }
+}
+
+/// Result of [`save_checked`].
+#[derive(Debug)]
+pub struct Saved {
+    /// What the file holds now; pass it to the next [`save_checked`].
+    pub disk: Disk,
+    /// Copy of the replaced file, if one was made.
+    pub backup: Option<PathBuf>,
+}
+
+/// Saves `layout` like [`save`], but only if `path` still holds what
+/// `expected` says, so a file changed or created by someone else since the
+/// panel read it stays as it is. A file that could not be read is never
+/// replaced. With `keep_original`, an existing file is first copied to
+/// `panel.ini.vorher-<date>-<time>` next to it (never overwriting a file):
+/// for a file the panel could only read in part, see [`Loaded::lossy`].
+pub fn save_checked(
+    layout: &Layout,
+    path: &Path,
+    expected: &Disk,
+    keep_original: bool,
+) -> Result<Saved, String> {
+    if let Disk::Unreadable(err) = expected {
+        return Err(format!(
+            "{} war beim Laden nicht lesbar ({err}), nichts gespeichert",
+            path.display()
+        ));
+    }
+    let current = read_disk(path);
+    if &current != expected {
+        return Err(format!(
+            "{} wurde seit dem Laden verändert, nichts gespeichert; \
+             das Panel neu starten, um die Datei neu zu lesen",
+            path.display()
+        ));
+    }
+    let backup = match &current {
+        Disk::Content(bytes) if keep_original => Some(write_backup(path, bytes)?),
+        _ => None,
+    };
+    let written = save(layout, path)?;
+    Ok(Saved {
+        disk: Disk::Content(written),
+        backup,
+    })
+}
+
+fn read_disk(path: &Path) -> Disk {
+    match std::fs::read(path) {
+        Ok(bytes) => Disk::Content(bytes),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Disk::Missing,
+        Err(err) => Disk::Unreadable(err.to_string()),
+    }
+}
+
+/// Writes `bytes` to a new file `<path>.vorher-<date>-<time>[-<n>]` next to
+/// `path`, readable by the owner only, and returns its path.
+fn write_backup(path: &Path, bytes: &[u8]) -> Result<PathBuf, String> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+
+    let stamp = glib::DateTime::now_local()
+        .and_then(|now| now.format("%Y%m%d-%H%M%S"))
+        .map(|s| s.to_string())
+        .unwrap_or_else(|_| "unbekannt".to_string());
+    let base = format!("{}.vorher-{stamp}", path.display());
+    for n in 1..=99 {
+        let candidate = PathBuf::from(if n == 1 {
+            base.clone()
+        } else {
+            format!("{base}-{n}")
+        });
+        let file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&candidate);
+        match file {
+            Ok(mut file) => {
+                return file
+                    .write_all(bytes)
+                    .and_then(|()| file.sync_all())
+                    .map(|()| candidate.clone())
+                    .map_err(|e| format!("Sicherung {}: {e}", candidate.display()));
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(err) => return Err(format!("Sicherung {}: {err}", candidate.display())),
+        }
+    }
+    Err(format!("{base}: kein freier Name für die Sicherung"))
 }
 
 fn split(list: &str) -> Vec<String> {
@@ -444,6 +608,187 @@ mod tests {
         assert_eq!(center, ["w-1"]);
         // height, missing type, panel edge, unknown type, second window list
         assert_eq!(problems.len(), 5, "{problems:#?}");
+    }
+
+    fn with_clock(region: Region) -> Layout {
+        let mut layout = Layout::standard();
+        layout
+            .add_applet("top", "clock", region, known)
+            .expect("clock may be added");
+        layout
+    }
+
+    #[test]
+    fn load_stored_remembers_what_was_on_disk() {
+        let scratch = Scratch::new("schnappschuss");
+        let missing = scratch.0.join("panel.ini");
+        let loaded = load_stored(&missing, known);
+        assert_eq!(loaded.disk, Disk::Missing);
+        assert_eq!(loaded.source, Source::Standard);
+        assert!(!loaded.lossy());
+
+        save(&Layout::standard(), &missing).unwrap();
+        let bytes = std::fs::read(&missing).unwrap();
+        let loaded = load_stored(&missing, known);
+        assert_eq!(loaded.disk, Disk::Content(bytes));
+        assert_eq!(loaded.source, Source::File);
+        assert!(!loaded.lossy());
+
+        // a directory in place of the file cannot be read
+        let dir = scratch.0.join("verzeichnis");
+        std::fs::create_dir(&dir).unwrap();
+        let loaded = load_stored(&dir, known);
+        assert!(
+            matches!(loaded.disk, Disk::Unreadable(_)),
+            "{:?}",
+            loaded.disk
+        );
+        assert_eq!(loaded.source, Source::Fallback);
+    }
+
+    #[test]
+    fn dropped_entries_or_fallback_make_a_load_lossy() {
+        let scratch = Scratch::new("verlust");
+        let partly = scratch.write(
+            "teilweise",
+            "[Layout]\nVersion=1\nPanels=top\n[Panel top]\nEdge=top\nStart=x-1\n\
+             [Applet x-1]\nType=wetter\n",
+        );
+        let loaded = load_stored(&partly, known);
+        assert_eq!(loaded.source, Source::File);
+        assert!(loaded.lossy());
+
+        let broken = scratch.write("kaputt", "kein [key file");
+        let loaded = load_stored(&broken, known);
+        assert_eq!(loaded.source, Source::Fallback);
+        assert_eq!(loaded.disk, Disk::Content(b"kein [key file".to_vec()));
+        assert!(loaded.lossy());
+    }
+
+    #[test]
+    fn save_checked_writes_the_first_file_and_reports_its_content() {
+        let scratch = Scratch::new("erstmals");
+        let path = scratch.0.join("querencia").join("panel.ini");
+        let layout = with_clock(Region::Center);
+        let saved = save_checked(&layout, &path, &Disk::Missing, false).expect("save");
+        assert_eq!(saved.backup, None);
+        assert_eq!(saved.disk, Disk::Content(std::fs::read(&path).unwrap()));
+        let (loaded, problems, source) = load(&path, known);
+        assert!(problems.is_empty(), "{problems:?}");
+        assert_eq!((loaded, source), (layout, Source::File));
+        assert_eq!(names(path.parent().unwrap()), ["panel.ini"]);
+    }
+
+    #[test]
+    fn save_checked_chains_with_its_own_result() {
+        let scratch = Scratch::new("kette");
+        let path = scratch.0.join("panel.ini");
+        let first = save_checked(&with_clock(Region::Start), &path, &Disk::Missing, false)
+            .expect("first save");
+        let mut second_layout = with_clock(Region::Start);
+        second_layout
+            .add_applet("bottom", "places", Region::End, known)
+            .unwrap();
+        save_checked(&second_layout, &path, &first.disk, false).expect("second save");
+        assert_eq!(load(&path, known).0, second_layout);
+    }
+
+    #[test]
+    fn save_checked_refuses_a_file_changed_since_loading() {
+        let scratch = Scratch::new("fremd");
+        let path = scratch.0.join("panel.ini");
+        save(&Layout::standard(), &path).unwrap();
+        let loaded = load_stored(&path, known);
+        // someone else edits the file after the panel has read it
+        std::fs::write(&path, "[Layout]\nVersion=1\nPanels=bottom\n").unwrap();
+        let error = save_checked(&with_clock(Region::End), &path, &loaded.disk, false).unwrap_err();
+        assert!(error.contains("seit dem Laden verändert"), "{error}");
+        assert_eq!(
+            std::fs::read_to_string(&path).unwrap(),
+            "[Layout]\nVersion=1\nPanels=bottom\n"
+        );
+
+        // a file that appeared after a load without one is not replaced either
+        let fresh = scratch.0.join("neu.ini");
+        std::fs::write(&fresh, "fremd").unwrap();
+        assert!(save_checked(&Layout::standard(), &fresh, &Disk::Missing, false).is_err());
+        assert_eq!(std::fs::read_to_string(&fresh).unwrap(), "fremd");
+        assert_eq!(names(&scratch.0), ["neu.ini", "panel.ini"]);
+    }
+
+    #[test]
+    fn save_checked_refuses_a_file_it_could_not_read() {
+        let scratch = Scratch::new("unlesbar");
+        let path = scratch.0.join("panel.ini");
+        let error = save_checked(
+            &Layout::standard(),
+            &path,
+            &Disk::Unreadable("Zugriff verweigert".into()),
+            false,
+        )
+        .unwrap_err();
+        assert!(error.contains("nicht lesbar"), "{error}");
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn save_checked_keeps_the_original_of_a_lossy_file() {
+        let scratch = Scratch::new("sicherung");
+        let original = "[Layout]\nVersion=1\nPanels=top\n[Panel top]\nEdge=top\n\
+                        Start=a-1;x-1\n[Applet a-1]\nType=applications\n\
+                        [Applet x-1]\nType=wetter\n";
+        let path = scratch.write("panel.ini", original);
+        let loaded = load_stored(&path, known);
+        assert!(loaded.lossy());
+
+        let mut layout = loaded.layout.clone();
+        layout
+            .add_applet("top", "clock", Region::End, known)
+            .unwrap();
+        let saved = save_checked(&layout, &path, &loaded.disk, loaded.lossy()).expect("save");
+        let backup = saved.backup.expect("a backup of the original");
+        assert_eq!(backup.parent(), path.parent());
+        let name = backup.file_name().unwrap().to_string_lossy().into_owned();
+        assert!(name.starts_with("panel.ini.vorher-"), "{name}");
+        assert_eq!(std::fs::read_to_string(&backup).unwrap(), original);
+        assert_eq!(load(&path, known).0, layout);
+
+        // a second backup in the same second gets its own name
+        let again = save_checked(&layout, &path, &saved.disk, true).expect("save again");
+        let second = again.backup.expect("second backup");
+        assert_ne!(second, backup);
+        assert_eq!(std::fs::read_to_string(&backup).unwrap(), original);
+        assert_eq!(names(&scratch.0).len(), 3, "{:?}", names(&scratch.0));
+    }
+
+    #[test]
+    fn a_hand_edited_file_counts_as_lossy() {
+        // comments and keys the format does not know would not survive a
+        // save, so the first save keeps a copy
+        let scratch = Scratch::new("handarbeit");
+        save(&Layout::standard(), &scratch.0.join("panel.ini")).unwrap();
+        let canonical = std::fs::read_to_string(scratch.0.join("panel.ini")).unwrap();
+        let commented = scratch.write("kommentar.ini", &format!("# meine Panels\n{canonical}"));
+        let extra = scratch.write(
+            "extra.ini",
+            &canonical.replace("[Applet clock-1]\n", "[Applet clock-1]\nFormat=%H:%M\n"),
+        );
+        for path in [&commented, &extra] {
+            let loaded = load_stored(path, known);
+            assert!(loaded.problems.is_empty(), "{:?}", loaded.problems);
+            assert_eq!(loaded.layout, Layout::standard());
+            assert!(loaded.lossy(), "{}", path.display());
+        }
+        assert!(!load_stored(&scratch.0.join("panel.ini"), known).lossy());
+    }
+
+    #[test]
+    fn save_checked_makes_no_backup_without_a_file() {
+        let scratch = Scratch::new("ohne-datei");
+        let path = scratch.0.join("panel.ini");
+        let saved = save_checked(&Layout::standard(), &path, &Disk::Missing, true).unwrap();
+        assert_eq!(saved.backup, None);
+        assert_eq!(names(&scratch.0), ["panel.ini"]);
     }
 
     #[test]

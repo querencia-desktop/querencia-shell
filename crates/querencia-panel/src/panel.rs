@@ -2,22 +2,32 @@
 //! screen edge with a `CenterBox` whose start, center and end hold the
 //! applets of the matching regions, in order. The window setup is the one
 //! the two fixed panels had before (M1.0–M1.5b). A right click on free panel
-//! space opens the panel's context menu (`panel_menu.rs`).
+//! space opens the panel's context menu (`panel_menu.rs`). An applet added
+//! later is put into the running panel by [`insert_applet`]; the applets
+//! already shown stay as they are.
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use gtk4::prelude::*;
-use gtk4::{Application, ApplicationWindow, Box as GtkBox, CenterBox, Orientation};
+use gtk4::{Application, ApplicationWindow, Box as GtkBox, CenterBox, Orientation, Widget};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-use crate::layout::{self, PanelSpec, Region};
+use crate::layout::{self, Instance, PanelSpec, Region};
+use crate::layout_editor::Editor;
 use crate::{applets, panel_menu};
 
 const NAMESPACE: &str = "querencia-panel";
 /// Space between applets of one region (the former menu row).
 const SPACING: i32 = 16;
 
-/// Builds the window for `spec`. The layout has been validated, so every
-/// applet type is known.
-pub fn build(app: &Application, spec: &PanelSpec) -> ApplicationWindow {
+/// Builds the window for `spec`, one of the panels of `editor`'s layout.
+/// The layout has been validated, so every applet type is known.
+pub fn build(
+    app: &Application,
+    spec: &PanelSpec,
+    editor: &Rc<RefCell<Editor>>,
+) -> ApplicationWindow {
     let bar = CenterBox::builder()
         .css_classes(["querencia-panel"])
         .height_request(spec.height)
@@ -48,7 +58,7 @@ pub fn build(app: &Application, spec: &PanelSpec) -> ApplicationWindow {
         window.set_anchor(anchor, true);
     }
     window.auto_exclusive_zone_enable();
-    panel_menu::attach(app, &window, &bar, spec);
+    panel_menu::attach(app, &window, &bar, spec, editor);
     window
 }
 
@@ -59,25 +69,75 @@ fn region(spec: &PanelSpec, region: Region) -> Option<GtkBox> {
     if spec.region(region).is_empty() {
         return None;
     }
-    let row = GtkBox::new(Orientation::Horizontal, SPACING);
+    let row = new_row();
     for instance in spec.region(region) {
-        let Some(applet) = applets::find(&instance.applet) else {
-            eprintln!(
-                "querencia-panel: Applet-Typ {} unbekannt, {} ausgelassen",
-                instance.applet, instance.id
-            );
-            continue;
-        };
-        let widget = applet.create();
-        // Names the widget after its instance, e.g. for the GTK inspector and
-        // for finding it again when the layout changes.
-        widget.set_widget_name(&instance.id);
-        // Marks the applet's area: a right click there is not one on free
-        // panel space. No style rule uses the class.
-        widget.add_css_class(panel_menu::APPLET_CLASS);
-        row.append(&widget);
+        if let Some(widget) = applet_widget(instance) {
+            row.append(&widget);
+        }
     }
     Some(row)
+}
+
+/// Puts a new widget for `instance` at `index` of `region` in the panel bar
+/// `bar`, as [`crate::layout::Layout::add_applet`] placed it in the layout.
+/// A region that had no applets gets its row now. Returns whether the
+/// applet type was known.
+pub fn insert_applet(bar: &CenterBox, region: Region, index: usize, instance: &Instance) -> bool {
+    let Some(widget) = applet_widget(instance) else {
+        return false;
+    };
+    let row = region_row(bar, region).unwrap_or_else(|| {
+        let row = new_row();
+        match region {
+            Region::Start => bar.set_start_widget(Some(&row)),
+            Region::Center => bar.set_center_widget(Some(&row)),
+            Region::End => bar.set_end_widget(Some(&row)),
+        }
+        row
+    });
+    // The row holds one widget per instance of the region, in layout order.
+    let mut previous: Option<Widget> = None;
+    let mut next = row.first_child();
+    for _ in 0..index {
+        let Some(child) = next else { break };
+        next = child.next_sibling();
+        previous = Some(child);
+    }
+    row.insert_child_after(&widget, previous.as_ref());
+    true
+}
+
+fn region_row(bar: &CenterBox, region: Region) -> Option<GtkBox> {
+    match region {
+        Region::Start => bar.start_widget(),
+        Region::Center => bar.center_widget(),
+        Region::End => bar.end_widget(),
+    }
+    .and_then(|widget| widget.downcast::<GtkBox>().ok())
+}
+
+fn new_row() -> GtkBox {
+    GtkBox::new(Orientation::Horizontal, SPACING)
+}
+
+/// A new widget for `instance`, or `None` (with a log line) for an unknown
+/// applet type.
+fn applet_widget(instance: &Instance) -> Option<Widget> {
+    let Some(applet) = applets::find(&instance.applet) else {
+        eprintln!(
+            "querencia-panel: Applet-Typ {} unbekannt, {} ausgelassen",
+            instance.applet, instance.id
+        );
+        return None;
+    };
+    let widget = applet.create();
+    // Names the widget after its instance, e.g. for the GTK inspector and
+    // for finding it again when the layout changes.
+    widget.set_widget_name(&instance.id);
+    // Marks the applet's area: a right click there is not one on free
+    // panel space. No style rule uses the class.
+    widget.add_css_class(panel_menu::APPLET_CLASS);
+    Some(widget)
 }
 
 fn shell_edge(edge: layout::Edge) -> Edge {
