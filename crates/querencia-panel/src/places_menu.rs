@@ -35,6 +35,23 @@ const SPECIAL: [(&str, glib::UserDirectory); 6] = [
     ("Downloads", glib::UserDirectory::Downloads),
 ];
 
+/// GNOME 2 icon of a place, by its label (all in GNOME Human).
+fn place_icon(label: &str) -> &'static str {
+    match label {
+        "Persönlicher Ordner" => "user-home",
+        "Arbeitsfläche" => "user-desktop",
+        "Dokumente" => "folder-documents",
+        "Musik" => "folder-music",
+        "Bilder" => "folder-pictures",
+        "Videos" => "folder-videos",
+        "Downloads" => "folder-download",
+        "Computer" => "computer",
+        "Netzwerk" => "network-workgroup",
+        "Papierkorb" => "user-trash",
+        _ => "folder",
+    }
+}
+
 /// Locations of the second section: label, GVfs URI scheme, URI.
 const LOCATIONS: [(&str, &str, &str); 3] = [
     ("Computer", "computer", "computer:///"),
@@ -156,6 +173,7 @@ fn open_item(label: &str, uri: &str) -> gio::MenuItem {
         Some(&format!("{ACTION_GROUP}.{OPEN}")),
         Some(&uri.to_variant()),
     );
+    item.set_icon(&gio::ThemedIcon::new(place_icon(label)));
     item
 }
 
@@ -317,6 +335,61 @@ mod tests {
             ]
         );
         assert!(home_uri.starts_with("file:///"));
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn places_carry_their_gnome2_icons() {
+        let home = scratch("symbole");
+        let names = [
+            "Desktop",
+            "Documents",
+            "Music",
+            "Pictures",
+            "Videos",
+            "Downloads",
+        ];
+        for name in names {
+            std::fs::create_dir(home.join(name)).unwrap();
+        }
+        let lookup = |dir| {
+            let name = match dir {
+                glib::UserDirectory::Desktop => "Desktop",
+                glib::UserDirectory::Documents => "Documents",
+                glib::UserDirectory::Music => "Music",
+                glib::UserDirectory::Pictures => "Pictures",
+                glib::UserDirectory::Videos => "Videos",
+                glib::UserDirectory::Downloads => "Downloads",
+                _ => return None,
+            };
+            Some(home.join(name))
+        };
+        let menu = gio::Menu::new();
+        let schemes = ["computer", "network", "trash"].map(String::from);
+        fill(&menu, &places(&home, lookup), &locations(&schemes), true);
+        let icons: Vec<Vec<String>> = (0..menu.n_items())
+            .map(|s| {
+                let section = menu.item_link(s, "section").unwrap();
+                (0..section.n_items())
+                    .map(|i| crate::app_menu::tests::icon(&section, i).unwrap_or_default())
+                    .collect()
+            })
+            .collect();
+        assert_eq!(
+            icons,
+            [
+                vec![
+                    "user-home",
+                    "user-desktop",
+                    "folder-documents",
+                    "folder-music",
+                    "folder-pictures",
+                    "folder-videos",
+                    "folder-download"
+                ],
+                vec!["computer", "network-workgroup", "user-trash"],
+            ]
+        );
         let _ = std::fs::remove_dir_all(&home);
     }
 

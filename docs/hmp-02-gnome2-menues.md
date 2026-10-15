@@ -10,6 +10,10 @@ Die Menüs bleiben `MenuButton` + `PopoverMenu` („sliding“) mit `gio::Menu`,
 Aktionen und `AppInfoMonitor` wie seit M1.1b-1c. Kein eigener
 Menümechanismus (Entscheidungen M1.1b-1d und M1.1b-1e gelten weiter).
 
+**Seit HMP-03 überholt:** Die Anzeige ist ein eigenes Menü-Widget
+(`classic_menu.rs`, `docs/hmp-03-klassische-menues.md`); Modelle, Aktionen
+und `AppInfoMonitor` sind unverändert.
+
 ## Anwendungen
 
 Gruppen wie im GNOME-2-Menü von Ubuntu 10.04 (`gnome-menus`,

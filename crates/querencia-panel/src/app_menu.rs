@@ -13,9 +13,10 @@ use std::rc::Rc;
 
 use gio_unix::DesktopAppInfo;
 use gtk4::prelude::*;
-use gtk4::{Align, Box as GtkBox, Image, Label, MenuButton, Orientation, Popover, gdk, gio, glib};
+use gtk4::{Box as GtkBox, Image, Label, MenuButton, Orientation, Popover, gdk, gio, glib};
 
 use crate::apps::{AppEntry, Catalog};
+use crate::classic_menu;
 
 const ACTION_GROUP: &str = "menu";
 const LAUNCH: &str = "launch";
@@ -40,13 +41,14 @@ pub(crate) const APPLICATIONS_ICON: [&str; 3] =
     ["start-here", "distributor-logo", "start-here-symbolic"];
 /// Size of that icon on a panel of the standard height.
 const PANEL_ICON_SIZE: i32 = 22;
-/// CSS class of the popovers of the three main menus (style in `main.rs`).
-pub(crate) const MENU_CLASS: &str = "querencia-menu";
+/// CSS class of the three main menu buttons (style in `main.rs`).
+pub(crate) const MAIN_MENU_CLASS: &str = "querencia-main-menu";
 
 /// A panel menu button for `menu` in the GNOME 2 manner: the label, with
 /// `icon` (names tried in order) before it if given, and no dropdown arrow;
-/// the menu opens flush below or above the button, left-aligned, without
-/// the popover's pointer, styled by [`MENU_CLASS`].
+/// the menu is a classic menu (`classic_menu.rs`) with icons and submenus
+/// beside it, opening left-aligned below the button (above it if there is no
+/// room).
 pub(crate) fn menu_button(label: &str, icon: Option<&[&str]>, menu: &gio::Menu) -> MenuButton {
     let content = GtkBox::new(Orientation::Horizontal, 4);
     if let Some(names) = icon {
@@ -56,15 +58,12 @@ pub(crate) fn menu_button(label: &str, icon: Option<&[&str]>, menu: &gio::Menu) 
     }
     content.append(&Label::new(Some(label)));
     let button = MenuButton::builder()
-        .menu_model(menu)
         .has_frame(false)
+        .css_classes([MAIN_MENU_CLASS])
         .build();
     // A custom child shows no dropdown arrow (always-show-arrow stays off).
     button.set_child(Some(&content));
-    let popover = button.popover().expect("menu button with a menu model");
-    popover.set_has_arrow(false);
-    popover.set_halign(Align::Start);
-    popover.add_css_class(MENU_CLASS);
+    classic_menu::attach(&button, menu.upcast_ref());
     button
 }
 
@@ -96,14 +95,30 @@ pub(crate) fn add_launch_action(button: &MenuButton, group: &str) {
     button.insert_action_group(group, Some(&actions));
 }
 
-/// Menu item named after `entry` that launches it through the `launch`
-/// action of `group` (see [`add_launch_action`]).
+/// Icon of an application without a usable `Icon=`.
+const GENERIC_APPLICATION_ICON: &str = "application-x-executable";
+
+/// Menu item named after `entry`, with its icon, that launches it through
+/// the `launch` action of `group` (see [`add_launch_action`]).
 pub(crate) fn launch_item(entry: &AppEntry, group: &str) -> gio::MenuItem {
     let item = gio::MenuItem::new(Some(&entry.name), None);
     item.set_action_and_target_value(
         Some(&format!("{group}.{LAUNCH}")),
         Some(&entry.id.to_variant()),
     );
+    let icon = entry
+        .icon
+        .as_deref()
+        .and_then(|icon| gio::Icon::for_string(icon).ok())
+        .unwrap_or_else(|| gio::ThemedIcon::new(GENERIC_APPLICATION_ICON).upcast());
+    item.set_icon(&icon);
+    item
+}
+
+/// A submenu item `label` with the themed icon `icon` for `submenu`.
+pub(crate) fn submenu_item(label: &str, icon: &str, submenu: &gio::Menu) -> gio::MenuItem {
+    let item = gio::MenuItem::new_submenu(Some(label), submenu);
+    item.set_icon(&gio::ThemedIcon::new(icon));
     item
 }
 
@@ -128,9 +143,9 @@ pub(crate) fn follow_changes(
     name: &'static str,
     rebuild: fn(&gio::Menu),
 ) {
-    // The button created its popover when it got the menu model; the model is
-    // only ever changed in place, so this popover stays for the button's life.
-    let popover = button.popover().expect("menu button with a menu model");
+    // menu_button gave the button its popover, which stays for the
+    // button's life; the model is only ever changed in place.
+    let popover = button.popover().expect("menu button with a popover");
     let pending = Rc::new(Cell::new(false));
 
     let monitor = gio::AppInfoMonitor::get();
@@ -209,7 +224,7 @@ fn fill(menu: &gio::Menu, catalog: &Catalog) {
             submenu.append_item(&launch_item(entry, ACTION_GROUP));
         }
         if submenu.n_items() > 0 {
-            menu.append_submenu(Some(group.label()), &submenu);
+            menu.append_item(&submenu_item(group.label(), group.icon(), &submenu));
         }
     }
     if menu.n_items() == 0 {
@@ -308,6 +323,59 @@ pub(crate) mod tests {
             label.to_string(),
             items.iter().map(|i| i.to_string()).collect(),
         )
+    }
+
+    /// First name of the themed icon of item `index`, if any.
+    pub(crate) fn icon(menu: &gio::MenuModel, index: i32) -> Option<String> {
+        let icon = menu
+            .item_attribute_value(index, "icon", None)
+            .and_then(|v| gio::Icon::deserialize(&v))?;
+        match icon.downcast_ref::<gio::ThemedIcon>() {
+            Some(themed) => themed.names().first().map(|n| n.to_string()),
+            None => IconExt::to_string(&icon).map(|s| s.to_string()),
+        }
+    }
+
+    #[test]
+    fn categories_and_applications_carry_their_icons() {
+        let mut vim = entry("vim.desktop", "Vim", &["Utility"]);
+        vim.icon = Some("gvim".into());
+        let mut firefox = entry("firefox.desktop", "Firefox", &["Network"]);
+        firefox.icon = Some("/snap/firefox/current/default256.png".into());
+        let bare = entry("bare.desktop", "Ohne Symbol", &["Utility"]);
+        let catalog = Catalog {
+            entries: vec![bare, vim, firefox],
+            excluded: Vec::new(),
+        };
+        let menu = model(&catalog);
+        let groups: Vec<_> = (0..menu.n_items())
+            .map(|g| (label(menu.upcast_ref(), g), icon(menu.upcast_ref(), g)))
+            .collect();
+        assert_eq!(
+            groups,
+            [
+                (
+                    "Zubehör".to_string(),
+                    Some("applications-accessories".to_string())
+                ),
+                (
+                    "Internet".to_string(),
+                    Some("applications-internet".to_string())
+                ),
+            ]
+        );
+        let accessories = menu.item_link(0, "submenu").unwrap();
+        // without Icon= the generic application icon keeps the column even
+        assert_eq!(
+            icon(&accessories, 0).as_deref(),
+            Some("application-x-executable")
+        );
+        assert_eq!(icon(&accessories, 1).as_deref(), Some("gvim"));
+        let internet = menu.item_link(1, "submenu").unwrap();
+        assert_eq!(
+            icon(&internet, 0).as_deref(),
+            Some("/snap/firefox/current/default256.png")
+        );
     }
 
     #[test]

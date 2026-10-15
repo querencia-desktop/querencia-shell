@@ -36,6 +36,24 @@ pub enum MenuGroup {
 }
 
 impl MenuGroup {
+    /// GNOME 2 icon of the submenu (`gnome-menus` `.directory` files;
+    /// Bildung uses `applications-science`, which GNOME Human has).
+    pub fn icon(self) -> &'static str {
+        match self {
+            Self::Accessories => "applications-accessories",
+            Self::Education => "applications-science",
+            Self::Games => "applications-games",
+            Self::Graphics => "applications-graphics",
+            Self::Internet => "applications-internet",
+            Self::Office => "applications-office",
+            Self::Programming => "applications-development",
+            Self::Multimedia => "applications-multimedia",
+            Self::SystemTools => "applications-system",
+            Self::Accessibility => "preferences-desktop-accessibility",
+            Self::Other => "applications-other",
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Self::Accessories => "Zubehör",
@@ -111,7 +129,6 @@ pub struct AppEntry {
     pub categories: Vec<String>,
     /// Serialised `GIcon` (theme name or file path), not resolved against an
     /// icon theme; `gio::Icon::for_string` turns it back into an icon.
-    #[allow(dead_code, reason = "menu icons follow in a later step")]
     pub icon: Option<String>,
     pub group: MenuGroup,
 }

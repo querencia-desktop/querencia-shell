@@ -3,6 +3,7 @@ mod add_dialog;
 mod app_menu;
 mod applets;
 mod apps;
+mod classic_menu;
 mod clock;
 mod layout;
 mod layout_editor;
@@ -30,23 +31,29 @@ const APP_ID: &str = "org.example.Querencia.Panel";
 // bar height instead. A window or workspace button is highlighted while
 // labwc reports it active.
 //
-// The three main menus (popover class `querencia-menu`, app_menu.rs) look
-// like GNOME 2 menus instead of GTK 4's: square corners, compact rows
-// (22 px instead of 30 px, no rounding), little padding, narrow separators,
-// and the active row, by pointer or keyboard (`:selected`), in the theme's
-// selection colours like a GTK 2 menu item. Only sizes and colours change;
-// the PopoverMenu itself, its keyboard handling and submenus stay GTK's.
+// The classic menus of Anwendungen, Orte and System (classic_menu.rs) look
+// like the GNOME 2 menus of Ubuntu 10.04: a square menu with a thin frame
+// and no shadow, 22 px rows with a 16 px icon column, a thin line between
+// sections, and the highlighted row, by pointer or keyboard, in the orange
+// of Ubuntu 10.04's default theme Ambiance (selected_bg_color #f07746,
+// white text). The button of the open menu is highlighted the same way, as
+// a GNOME 2 menu bar item. MENU_TOP_INSET in classic_menu.rs must match
+// the padding plus border of `contents`.
 const PANEL_CSS: &str = "
 .querencia-panel menubutton > button,
 .querencia-panel button.window-button,
 .querencia-panel button.workspace-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
 .querencia-panel button.window-button.active,
 .querencia-panel button.workspace-button.active { background-color: alpha(currentColor, 0.15); font-weight: bold; }
-popover.menu.querencia-menu > contents { padding: 3px 0; border-radius: 0; }
-popover.menu.querencia-menu modelbutton { min-height: 22px; padding: 0 10px; border-radius: 0; }
-popover.menu.querencia-menu modelbutton:selected { background-color: @theme_selected_bg_color; color: @theme_selected_fg_color; }
-popover.menu.querencia-menu separator { margin: 3px 0; }
-popover.menu.querencia-menu label.title { padding: 2px 24px; }
+.querencia-panel menubutton.querencia-main-menu > button { border-radius: 0; padding-left: 6px; padding-right: 6px; }
+.querencia-panel menubutton.querencia-main-menu > button:checked { background-color: #f07746; background-image: none; color: #ffffff; box-shadow: none; }
+popover.querencia-menu { padding: 0; }
+popover.querencia-menu > contents { padding: 2px 0; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 0; box-shadow: none; background-color: @theme_bg_color; }
+popover.querencia-menu .qmenu { min-width: 150px; }
+popover.querencia-menu .qmenu-item { min-height: 22px; padding: 1px 10px 1px 4px; outline: none; }
+popover.querencia-menu .qmenu-item.qmenu-active { background-color: #f07746; color: #ffffff; }
+popover.querencia-menu .qmenu-item:disabled { color: alpha(currentColor, 0.45); }
+popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-color: rgba(0, 0, 0, 0.15); }
 ";
 
 fn main() -> glib::ExitCode {
@@ -187,12 +194,25 @@ mod tests {
     }
 
     #[test]
-    fn menu_style_is_scoped_to_the_panel_menus() {
-        // the classic menu look must not leak into the dialogs or other popovers
-        for line in PANEL_CSS.lines().filter(|l| l.contains("modelbutton")) {
-            assert!(line.contains("popover.menu.querencia-menu"), "{line}");
+    fn menu_style_is_scoped_to_the_panel_and_its_menus() {
+        // every rule belongs to the panel or to the classic menus; nothing
+        // leaks into dialogs or other popovers
+        for rule in PANEL_CSS.lines().filter(|l| l.contains('{')) {
+            assert!(
+                rule.starts_with(".querencia-panel") || rule.starts_with("popover.querencia-menu"),
+                "{rule}"
+            );
         }
-        assert!(PANEL_CSS.contains("modelbutton:selected"));
-        assert!(PANEL_CSS.contains("@theme_selected_bg_color"));
+        // Ubuntu 10.04 (Ambiance) highlight, square menus, compact rows
+        let active = PANEL_CSS
+            .lines()
+            .find(|l| l.contains(".qmenu-item.qmenu-active"))
+            .expect("highlight rule");
+        // Ambiance selected_bg_color
+        assert!(active.contains("#f07746"), "{active}");
+        assert!(PANEL_CSS.contains("border-radius: 0"));
+        assert!(PANEL_CSS.contains("min-height: 22px"));
+        // the open main menu's button is highlighted like a menu bar item
+        assert!(PANEL_CSS.contains("menubutton.querencia-main-menu > button:checked"));
     }
 }

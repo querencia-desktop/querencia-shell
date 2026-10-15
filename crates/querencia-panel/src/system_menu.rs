@@ -85,24 +85,34 @@ fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], logout: 
             for entry in entries {
                 submenu.append_item(&app_menu::launch_item(entry, ACTION_GROUP));
             }
-            settings.append_submenu(Some(section.label()), &submenu);
+            let icon = match section {
+                SystemSection::Preferences => "preferences-desktop",
+                SystemSection::Administration => "preferences-system",
+            };
+            settings.append_item(&app_menu::submenu_item(section.label(), icon, &submenu));
         }
         menu.append_section(None, &settings);
     }
     let information = gio::Menu::new();
-    information.append(
-        Some("Informationen über Querencia"),
-        Some(&format!("{SESSION_GROUP}.{ABOUT}")),
-    );
+    information.append_item(&action_item(
+        "Informationen über Querencia",
+        ABOUT,
+        "help-about",
+    ));
     menu.append_section(None, &information);
     if logout {
         let session = gio::Menu::new();
-        session.append(
-            Some("Abmelden …"),
-            Some(&format!("{SESSION_GROUP}.{LOGOUT}")),
-        );
+        session.append_item(&action_item("Abmelden …", LOGOUT, "system-log-out"));
         menu.append_section(None, &session);
     }
+}
+
+/// An item `label` for the action `action` of the session group, with the
+/// themed icon `icon`.
+fn action_item(label: &str, action: &str, icon: &str) -> gio::MenuItem {
+    let item = gio::MenuItem::new(Some(label), Some(&format!("{SESSION_GROUP}.{action}")));
+    item.set_icon(&gio::ThemedIcon::new(icon));
+    item
 }
 
 #[cfg(test)]
@@ -250,6 +260,36 @@ mod tests {
         assert_eq!(
             actions(&section(&menu, 2)),
             ["Abmelden … -> session.logout"]
+        );
+    }
+
+    #[test]
+    fn system_entries_carry_their_gnome2_icons() {
+        use crate::app_menu::tests::icon;
+        let catalog = catalog(vec![
+            entry("w.desktop", "Wlan", &["Settings"]),
+            entry("p.desktop", "Partitionen", &["Settings", "System"]),
+        ]);
+        let menu = gio::Menu::new();
+        fill(&menu, &catalog.system_sections(), true);
+        let settings = section(&menu, 0);
+        assert_eq!(
+            (
+                icon(settings.upcast_ref(), 0),
+                icon(settings.upcast_ref(), 1)
+            ),
+            (
+                Some("preferences-desktop".to_string()),
+                Some("preferences-system".to_string())
+            )
+        );
+        assert_eq!(
+            icon(section(&menu, 1).upcast_ref(), 0).as_deref(),
+            Some("help-about")
+        );
+        assert_eq!(
+            icon(section(&menu, 2).upcast_ref(), 0).as_deref(),
+            Some("system-log-out")
         );
     }
 

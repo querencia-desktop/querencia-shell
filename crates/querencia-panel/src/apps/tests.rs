@@ -97,6 +97,27 @@ fn gnome2_groups_for_education_and_accessibility() {
     );
 }
 #[test]
+fn every_group_has_its_gnome2_icon() {
+    let icons: Vec<_> = ALL_GROUPS.iter().map(|g| g.icon()).collect();
+    assert_eq!(
+        icons,
+        [
+            "applications-accessories",
+            "applications-science",
+            "applications-games",
+            "applications-graphics",
+            "applications-internet",
+            "applications-office",
+            "applications-development",
+            "applications-multimedia",
+            "applications-system",
+            "preferences-desktop-accessibility",
+            "applications-other",
+        ]
+    );
+}
+
+#[test]
 fn groups_are_listed_in_menu_order() {
     let labels: Vec<_> = ALL_GROUPS.iter().map(|g| g.label()).collect();
     assert_eq!(
