@@ -66,7 +66,7 @@ Regeln sind auf `.querencia-panel` und `popover.querencia-menu` begrenzt
 
 - Kein Tastenkürzel zum Öffnen des Anwendungsmenüs (GNOME 2: Alt+F1); das
   bräuchte eine labwc-Tastenbindung in der Runtime-Konfiguration.
-- Kein Wechsel zwischen den drei Hauptmenüs mit Pfeil links/rechts oder durch
-  Überfahren bei offenem Menü wie in der GNOME-2-Menüleiste.
+- ~~Kein Wechsel zwischen den drei Hauptmenüs …~~ – seit HMP-04 umgesetzt
+  (`docs/hmp-04-menues-und-querencia-programme.md`).
 - Keine Tastenkürzel-Buchstaben (Mnemonics) in den Einträgen.
 - Kontextmenü und „Zum Panel hinzufügen“ sind unverändert.

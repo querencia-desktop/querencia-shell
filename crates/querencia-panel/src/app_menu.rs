@@ -57,10 +57,9 @@ pub(crate) fn menu_button(label: &str, icon: Option<&[&str]>, menu: &gio::Menu) 
         content.append(&image);
     }
     content.append(&Label::new(Some(label)));
-    let button = MenuButton::builder()
-        .has_frame(false)
-        .css_classes([MAIN_MENU_CLASS])
-        .build();
+    let button = MenuButton::builder().has_frame(false).build();
+    // Added, not set: `css_classes` would drop GTK's own class `popup`.
+    button.add_css_class(MAIN_MENU_CLASS);
     // A custom child shows no dropdown arrow (always-show-arrow stays off).
     button.set_child(Some(&content));
     classic_menu::attach(&button, menu.upcast_ref());

@@ -11,7 +11,7 @@ gio-unix = "0.22"
 glib-unix = "0.22"
 # v4_6: MenuButton::set_child for the classic "Anwendungen" button with logo
 # (GTK 4.22 is installed; no new crate, Cargo.lock unchanged).
-gtk4 = { version = "0.11", features = ["v4_6"] }
+gtk4 = { version = "0.11", features = ["v4_10"] }
 gtk4-layer-shell = "0.8.1"
 wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "staging"] }

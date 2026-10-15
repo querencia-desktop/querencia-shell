@@ -39,6 +39,12 @@ const APP_ID: &str = "org.example.Querencia.Panel";
 // white text). The button of the open menu is highlighted the same way, as
 // a GNOME 2 menu bar item. MENU_TOP_INSET in classic_menu.rs must match
 // the padding plus border of `contents`.
+//
+// Text colours are set, never inherited (HMP-04): normal rows in the
+// theme's text colour on the menu background, the highlighted row white on
+// orange, rows that cannot be chosen in the theme's insensitive grey. A
+// submenu's popover sits below the highlighted row in the CSS tree; an
+// inherited colour made its text white on white.
 const PANEL_CSS: &str = "
 .querencia-panel menubutton > button,
 .querencia-panel button.window-button,
@@ -48,11 +54,11 @@ const PANEL_CSS: &str = "
 .querencia-panel menubutton.querencia-main-menu > button { border-radius: 0; padding-left: 6px; padding-right: 6px; }
 .querencia-panel menubutton.querencia-main-menu > button:checked { background-color: #f07746; background-image: none; color: #ffffff; box-shadow: none; }
 popover.querencia-menu { padding: 0; }
-popover.querencia-menu > contents { padding: 2px 0; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 0; box-shadow: none; background-color: @theme_bg_color; }
+popover.querencia-menu > contents { padding: 2px 0; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 0; box-shadow: none; background-color: @theme_bg_color; color: @theme_fg_color; }
 popover.querencia-menu .qmenu { min-width: 150px; }
 popover.querencia-menu .qmenu-item { min-height: 22px; padding: 1px 10px 1px 4px; outline: none; }
 popover.querencia-menu .qmenu-item.qmenu-active { background-color: #f07746; color: #ffffff; }
-popover.querencia-menu .qmenu-item:disabled { color: alpha(currentColor, 0.45); }
+popover.querencia-menu .qmenu-item:disabled { color: @insensitive_fg_color; }
 popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-color: rgba(0, 0, 0, 0.15); }
 ";
 
@@ -117,12 +123,9 @@ fn use_classic_icon_theme() {
     }
 }
 
-fn build_panels(app: &Application) {
-    // A second launch only re-activates the running instance; never stack panels.
-    if !app.windows().is_empty() {
-        return;
-    }
-
+/// The panel's icon theme and style sheet for the whole display; also used
+/// by the isolated GUI test (`classic_menu/gui_test.rs`).
+fn install_panel_style() {
     use_classic_icon_theme();
     let css = gtk4::CssProvider::new();
     css.load_from_data(PANEL_CSS);
@@ -131,6 +134,15 @@ fn build_panels(app: &Application) {
         &css,
         gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
+}
+
+fn build_panels(app: &Application) {
+    // A second launch only re-activates the running instance; never stack panels.
+    if !app.windows().is_empty() {
+        return;
+    }
+
+    install_panel_style();
 
     // The panel never writes panel.ini on its own, only when the user
     // changes the layout ("Zum Panel hinzufügen"). Without the file, or if
@@ -191,6 +203,45 @@ mod tests {
         ));
         assert!(!theme_installed("humanity", &[with]));
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// HMP-04: submenu text was white on white because the menu text colour
+    /// was inherited from the highlighted parent row. Every menu rule that
+    /// sets a background must also set the text colour.
+    #[test]
+    fn menu_text_colours_are_set_not_inherited() {
+        let rule = |needle: &str| {
+            PANEL_CSS
+                .lines()
+                .find(|l| l.starts_with(needle))
+                .unwrap_or_else(|| panic!("Regel {needle} fehlt"))
+        };
+        let contents = rule("popover.querencia-menu > contents ");
+        assert!(contents.contains(" color: @theme_fg_color;"), "{contents}");
+        let disabled = rule("popover.querencia-menu .qmenu-item:disabled ");
+        assert!(
+            disabled.contains("color: @insensitive_fg_color;"),
+            "{disabled}"
+        );
+        let active = rule("popover.querencia-menu .qmenu-item.qmenu-active ");
+        assert!(active.contains("color: #ffffff;"), "{active}");
+        for line in PANEL_CSS
+            .lines()
+            .filter(|l| l.starts_with("popover.querencia-menu"))
+        {
+            if line.contains("background-color") && !line.contains("separator") {
+                assert!(
+                    line.contains(" color: "),
+                    "Hintergrund ohne Schriftfarbe: {line}"
+                );
+            }
+            if line.contains("#ffffff") {
+                assert!(
+                    line.contains(".qmenu-active"),
+                    "weiße Schrift außerhalb der Hervorhebung: {line}"
+                );
+            }
+        }
     }
 
     #[test]

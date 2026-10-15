@@ -96,6 +96,102 @@ fn gnome2_groups_for_education_and_accessibility() {
         MenuGroup::Programming
     );
 }
+/// HMP-04: the desktop entries of the three Querencia applications
+/// (`session/querencia/applications`). Read as key files, so the test does
+/// not depend on the binaries being installed; GIO and the real binaries
+/// are checked in the isolated GUI test (`docs/hmp-04-…`).
+#[test]
+fn querencia_desktop_entries_land_in_accessories() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../session/querencia/applications");
+    let mut ids: Vec<String> = std::fs::read_dir(&dir)
+        .expect("session/querencia/applications")
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|n| n.ends_with(".desktop"))
+        .collect();
+    ids.sort();
+    assert_eq!(
+        ids,
+        [
+            "io.github.lgse.Strata.desktop",
+            "org.example.Querencia.Terminal.desktop",
+            "org.querencia.Screenshot.desktop",
+        ]
+    );
+    let expected = [
+        (
+            "io.github.lgse.Strata.desktop",
+            "Querencia Files",
+            "folder",
+            "/target/debug/strata",
+        ),
+        (
+            "org.example.Querencia.Terminal.desktop",
+            "Querencia Terminal",
+            "utilities-terminal",
+            "/target/debug/querencia-terminal",
+        ),
+        (
+            "org.querencia.Screenshot.desktop",
+            "Bildschirmfoto aufnehmen",
+            "applets-screenshooter",
+            "/target/debug/querencia-screenshot",
+        ),
+    ];
+    const GROUP: &str = "Desktop Entry";
+    for (id, name, icon, binary) in expected {
+        let file = glib::KeyFile::new();
+        file.load_from_file(dir.join(id), glib::KeyFileFlags::NONE)
+            .unwrap_or_else(|e| panic!("{id}: {e}"));
+        let get = |key: &str| file.string(GROUP, key).map(|v| v.to_string()).ok();
+        assert_eq!(get("Type").as_deref(), Some("Application"), "{id}");
+        assert_eq!(get("Name").as_deref(), Some(name), "{id}");
+        assert_eq!(get("Icon").as_deref(), Some(icon), "{id}");
+        assert_eq!(get("NoDisplay"), None, "{id}");
+        // the window's app ID is the desktop ID, so labwc and the window
+        // list find the entry
+        assert_eq!(
+            get("StartupWMClass").as_deref(),
+            id.strip_suffix(".desktop"),
+            "{id}"
+        );
+        let categories: Vec<String> = get("Categories")
+            .unwrap_or_default()
+            .split(';')
+            .filter(|c| !c.is_empty())
+            .map(String::from)
+            .collect();
+        assert_eq!(menu_group(&categories), MenuGroup::Accessories, "{id}");
+        // Exec starts the binary TryExec names, by absolute path
+        let try_exec = get("TryExec").expect("TryExec");
+        assert!(
+            try_exec.starts_with('/') && try_exec.ends_with(binary),
+            "{id}: {try_exec}"
+        );
+        let exec = get("Exec").expect("Exec");
+        assert_eq!(exec.split(' ').next(), Some(try_exec.as_str()), "{id}");
+        assert!(!exec.contains("grim"), "{id}: kein grim als Menüanwendung");
+    }
+    // only the file manager opens directories
+    let files = glib::KeyFile::new();
+    files
+        .load_from_file(
+            dir.join("io.github.lgse.Strata.desktop"),
+            glib::KeyFileFlags::NONE,
+        )
+        .unwrap();
+    assert_eq!(
+        files.string("Desktop Entry", "MimeType").unwrap(),
+        "inode/directory;"
+    );
+    assert!(
+        files
+            .string("Desktop Entry", "Exec")
+            .unwrap()
+            .ends_with(" %U"),
+        "URIs (trash:///, computer:///) are passed on"
+    );
+}
+
 #[test]
 fn every_group_has_its_gnome2_icon() {
     let icons: Vec<_> = ALL_GROUPS.iter().map(|g| g.icon()).collect();

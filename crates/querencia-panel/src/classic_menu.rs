@@ -17,7 +17,19 @@
 //!   Down, Home, End, Tab; Right, Enter or Space open a submenu; Left or
 //!   Escape close it; Enter or Space activate an entry;
 //! - activating an entry closes all menus and activates the item's action
-//!   with its target on the panel button, as `PopoverMenu` would.
+//!   with its target on the panel button, as `PopoverMenu` would;
+//! - the main menus of a panel act as one menu bar (HMP-04): while one is
+//!   open, moving the pointer onto another main menu button opens that one
+//!   instead, and Right on an entry without submenu or Left in the top
+//!   level switch to the next or previous main menu, wrapping around.
+//!
+//! Text colour (HMP-04): GTK gives every popover the CSS class
+//! `background`, through which the theme sets the text colour again
+//! (`.background { color: … }`). Without it a popover inherits the colour
+//! of its CSS parent, and a submenu's parent is the highlighted row with
+//! white text: white on white. The popovers therefore keep their GTK
+//! classes ([`menu_popover`]; never `css_classes`, which replaces them),
+//! and the menu style also sets the text colour itself (`main.rs`).
 //!
 //! The pure parts (rows, keyboard steps, hit test, aiming) are tested
 //! without a display; the widgets are thin on top of them.
@@ -154,6 +166,20 @@ pub fn row_at(rows: &[(f64, f64)], y: f64) -> Option<usize> {
         .position(|&(top, height)| y >= top && y < top + height)
 }
 
+/// Position of the main menu next to the one at `index` among `count`
+/// main menus of a panel, to the right (`forward`) or left, wrapping around
+/// like the GNOME 2 menu bar. `None` without another menu.
+pub fn neighbour(count: usize, index: usize, forward: bool) -> Option<usize> {
+    if count < 2 || index >= count {
+        return None;
+    }
+    Some(if forward {
+        (index + 1) % count
+    } else {
+        (index + count - 1) % count
+    })
+}
+
 /// A rectangle in surface coordinates.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rect {
@@ -215,14 +241,11 @@ const MENU_TOP_INSET: i32 = 3;
 /// they always show the model as it is then; the model is only changed
 /// while the menu is closed (`app_menu::follow_changes`).
 pub fn attach(button: &MenuButton, model: &gio::MenuModel) {
-    let popover = Popover::builder()
-        .has_arrow(false)
-        .halign(Align::Start)
-        .css_classes([MENU_CLASS])
-        .build();
+    let popover = menu_popover();
+    popover.set_halign(Align::Start);
     button.set_popover(Some(&popover));
 
-    let current: Rc<RefCell<Option<Rc<Level>>>> = Rc::default();
+    let current: Current = Rc::default();
     popover.connect_show(glib::clone!(
         #[strong]
         current,
@@ -232,11 +255,148 @@ pub fn attach(button: &MenuButton, model: &gio::MenuModel) {
             current.replace(Some(Level::new(popover, &model, None)));
         }
     ));
-    popover.connect_closed(move |_| {
-        if let Some(level) = current.take() {
-            level.close_child();
+    popover.connect_closed(glib::clone!(
+        #[strong]
+        current,
+        move |_| {
+            if let Some(level) = current.take() {
+                level.close_child();
+            }
         }
+    ));
+
+    // Menu bar behaviour: entering this button while another main menu of
+    // the same panel is open switches over, as in GNOME 2.
+    let motion = EventControllerMotion::new();
+    motion.connect_enter(glib::clone!(
+        #[weak]
+        button,
+        move |_, _, _| switch_on_hover(&button)
+    ));
+    button.add_controller(motion);
+
+    MAIN_MENUS.with(|menus| {
+        let mut menus = menus.borrow_mut();
+        menus.retain(|(button, _)| button.upgrade().is_some());
+        menus.push((button.downgrade(), Rc::downgrade(&current)));
     });
+}
+
+/// The open top level of a main menu, if any.
+type Current = Rc<RefCell<Option<Rc<Level>>>>;
+/// A main menu button and its open top level, both held weakly.
+type MainMenu = (glib::WeakRef<MenuButton>, Weak<RefCell<Option<Rc<Level>>>>);
+
+thread_local! {
+    /// Every main menu button with its open top level; GTK runs on one
+    /// thread, so this is the panel's whole set of main menus.
+    static MAIN_MENUS: RefCell<Vec<MainMenu>> = const { RefCell::new(Vec::new()) };
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Set by the isolated GUI test: its compositor has no input device, so
+    /// there is no input serial a popup grab could use, and a grabbing
+    /// popover would be dismissed at once.
+    static NO_GRAB: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Whether submenus grab the pointer (close on a click elsewhere), as
+/// every menu does; only the isolated GUI test turns it off.
+fn grabs() -> bool {
+    #[cfg(test)]
+    {
+        !NO_GRAB.with(Cell::get)
+    }
+    #[cfg(not(test))]
+    {
+        true
+    }
+}
+
+/// A popover for a classic menu: GTK's own CSS classes (`background`, which
+/// resets the text colour) plus [`MENU_CLASS`], no arrow.
+fn menu_popover() -> Popover {
+    let popover = Popover::builder().has_arrow(false).build();
+    popover.add_css_class(MENU_CLASS);
+    popover
+}
+
+/// The main menu buttons in the same panel window as `button`, left to
+/// right (widget order), with their open top levels.
+fn main_menus_beside(button: &MenuButton) -> Vec<(MenuButton, Current)> {
+    let Some(root) = button.root() else {
+        return Vec::new();
+    };
+    let root: Widget = root.upcast();
+    let mut known: Vec<(MenuButton, Current)> = MAIN_MENUS.with(|menus| {
+        menus
+            .borrow()
+            .iter()
+            .filter_map(|(button, current)| Some((button.upgrade()?, current.upgrade()?)))
+            .filter(|(other, _)| other.root().is_some_and(|r| r.upcast::<Widget>() == root))
+            .collect()
+    });
+    let order = descendants(&root);
+    known.sort_by_key(|(other, _)| {
+        order
+            .iter()
+            .position(|w| w == other.upcast_ref::<Widget>())
+            .unwrap_or(usize::MAX)
+    });
+    known
+}
+
+/// `widget` and everything below it, depth first (left to right in a
+/// horizontal panel).
+fn descendants(widget: &Widget) -> Vec<Widget> {
+    let mut all = vec![widget.clone()];
+    let mut child = widget.first_child();
+    while let Some(current) = child {
+        all.extend(descendants(&current));
+        child = current.next_sibling();
+    }
+    all
+}
+
+/// Whether the main menu of `button` is open.
+fn is_open(button: &MenuButton) -> bool {
+    button.popover().is_some_and(|p| p.is_visible())
+}
+
+/// Pointer entered `button`: if another main menu of its panel is open,
+/// close that and open this one.
+fn switch_on_hover(button: &MenuButton) {
+    if is_open(button) {
+        return;
+    }
+    let menus = main_menus_beside(button);
+    let Some((open, _)) = menus
+        .iter()
+        .find(|(other, _)| other != button && is_open(other))
+    else {
+        return;
+    };
+    open.popdown();
+    button.popup();
+}
+
+/// Switches from the open main menu of `button` to its neighbour (see
+/// [`neighbour`]); by keyboard the neighbour's first entry is highlighted.
+fn switch_main_menu(button: &MenuButton, forward: bool) {
+    let menus = main_menus_beside(button);
+    let Some(index) = menus.iter().position(|(other, _)| other == button) else {
+        return;
+    };
+    let Some(next) = neighbour(menus.len(), index, forward) else {
+        return;
+    };
+    let (target, current) = &menus[next];
+    button.popdown();
+    target.popup();
+    if let Some(level) = current.borrow().as_ref() {
+        level.select(step(&level.selectable(), None, Move::First), true);
+    }
 }
 
 /// One open menu: the root menu of a panel button or a submenu.
@@ -522,14 +682,11 @@ impl Level {
         let Some(Row::Submenu { model, .. }) = self.rows.get(index) else {
             return;
         };
-        let popover = Popover::builder()
-            .has_arrow(false)
-            .position(PositionType::Right)
-            .valign(Align::Start)
-            .autohide(true)
-            .cascade_popdown(false)
-            .css_classes([MENU_CLASS])
-            .build();
+        let popover = menu_popover();
+        popover.set_position(PositionType::Right);
+        popover.set_valign(Align::Start);
+        popover.set_autohide(grabs());
+        popover.set_cascade_popdown(false);
         popover.set_offset(0, -MENU_TOP_INSET);
         popover.set_parent(&self.widgets[index]);
         let level = Level::new(&popover, model, Some(Rc::downgrade(self)));
@@ -631,10 +788,13 @@ impl Level {
         }
         match key {
             gdk::Key::Right | gdk::Key::KP_Right => {
-                if let Some(index) = self.active.get()
-                    && matches!(self.rows[index], Row::Submenu { .. })
-                {
-                    self.open_child(index, true);
+                match self.active.get() {
+                    Some(index) if matches!(self.rows[index], Row::Submenu { .. }) => {
+                        self.open_child(index, true);
+                    }
+                    // GNOME 2: Right on anything else goes to the next
+                    // menu of the menu bar.
+                    _ => self.root().switch_main_menu(true),
                 }
                 glib::Propagation::Stop
             }
@@ -644,6 +804,10 @@ impl Level {
                 }
                 glib::Propagation::Stop
             }
+            gdk::Key::Left | gdk::Key::KP_Left => {
+                self.switch_main_menu(false);
+                glib::Propagation::Stop
+            }
             gdk::Key::Return | gdk::Key::KP_Enter | gdk::Key::ISO_Enter | gdk::Key::space => {
                 if let Some(index) = self.active.get() {
                     self.activate(index, true);
@@ -651,6 +815,18 @@ impl Level {
                 glib::Propagation::Stop
             }
             _ => glib::Propagation::Proceed,
+        }
+    }
+
+    /// Switches from this top level's main menu to the neighbouring one.
+    fn switch_main_menu(&self, forward: bool) {
+        let button = self
+            .popover
+            .upgrade()
+            .and_then(|popover| popover.parent())
+            .and_then(|parent| parent.downcast::<MenuButton>().ok());
+        if let Some(button) = button {
+            switch_main_menu(&button, forward);
         }
     }
 
@@ -729,6 +905,9 @@ fn usable_icon(icon: &gio::Icon) -> gio::Icon {
     }
     icon.clone()
 }
+
+#[cfg(test)]
+mod gui_test;
 
 #[cfg(test)]
 mod tests {
@@ -948,6 +1127,20 @@ mod tests {
             height: 200.0,
         };
         assert!(!aiming((160.0, 30.0), (170.0, 40.0), submenu));
+    }
+
+    #[test]
+    fn neighbouring_main_menu_wraps_like_the_gnome2_menu_bar() {
+        // Anwendungen | Orte | System
+        assert_eq!(neighbour(3, 0, true), Some(1));
+        assert_eq!(neighbour(3, 1, true), Some(2));
+        assert_eq!(neighbour(3, 2, true), Some(0), "wraps to the first");
+        assert_eq!(neighbour(3, 0, false), Some(2), "wraps to the last");
+        assert_eq!(neighbour(3, 2, false), Some(1));
+        // a single main menu has no neighbour; nothing to switch to
+        assert_eq!(neighbour(1, 0, true), None);
+        assert_eq!(neighbour(0, 0, true), None);
+        assert_eq!(neighbour(3, 3, true), None, "unknown position");
     }
 
     #[test]

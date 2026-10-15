@@ -6,7 +6,9 @@
 //! its GVfs backend (`computer:`, `network:`, `trash:`), asked once per
 //! build from GIO without touching the backend. Without any application for
 //! `inode/directory` nothing could be opened, so the menu shows only a hint
-//! instead. The menu is rebuilt when applications change (a file manager is
+//! instead. Which application opens directories is GIO's choice; only if
+//! GIO has none, an installed entry declaring `inode/directory` is used,
+//! Querencia Files first ([`directory_handler`], HMP-04). The menu is rebuilt when applications change (a file manager is
 //! installed or removed), like the applications menu; `user-dirs.dirs` is
 //! not watched.
 
@@ -52,6 +54,58 @@ fn place_icon(label: &str) -> &'static str {
     }
 }
 
+/// Name and desktop ID of the Querencia file manager (desktop entry in
+/// `session/querencia/applications`; the ID is its GApplication ID).
+const QUERENCIA_FILES: &str = "Querencia Files";
+const QUERENCIA_FILES_ID: &str = "io.github.lgse.Strata.desktop";
+const DIRECTORY: &str = "inode/directory";
+
+/// The application that opens directories, and whether GIO chose it.
+struct DirectoryHandler {
+    app: gio::AppInfo,
+    from_gio: bool,
+}
+
+/// Who opens directories. GIO's choice comes first and is never replaced:
+/// a default the user set in `mimeapps.list`, or else an application GIO
+/// associates with `inode/directory` (through `mimeinfo.cache`). Only if GIO
+/// has none, an installed application whose desktop entry itself declares
+/// `inode/directory` (`MimeType`) is taken, Querencia Files first: the entry
+/// may be installed without its `mimeinfo.cache` having been updated.
+fn directory_handler(
+    gio_choice: Option<gio::AppInfo>,
+    installed: Vec<gio::AppInfo>,
+) -> Option<DirectoryHandler> {
+    if let Some(app) = gio_choice {
+        return Some(DirectoryHandler {
+            app,
+            from_gio: true,
+        });
+    }
+    let declares = |app: &gio::AppInfo| app.supported_types().iter().any(|t| t == DIRECTORY);
+    let is_files = |app: &gio::AppInfo| {
+        app.id().is_some_and(|id| id == QUERENCIA_FILES_ID) || app.name() == QUERENCIA_FILES
+    };
+    let candidates: Vec<gio::AppInfo> = installed.into_iter().filter(declares).collect();
+    let app = candidates
+        .iter()
+        .find(|app| is_files(app))
+        .or_else(|| candidates.first())
+        .cloned()?;
+    Some(DirectoryHandler {
+        app,
+        from_gio: false,
+    })
+}
+
+/// [`directory_handler`] for the installed applications.
+fn installed_directory_handler() -> Option<DirectoryHandler> {
+    directory_handler(
+        gio::AppInfo::default_for_type(DIRECTORY, false),
+        gio::AppInfo::all(),
+    )
+}
+
 /// Locations of the second section: label, GVfs URI scheme, URI.
 const LOCATIONS: [(&str, &str, &str); 3] = [
     ("Computer", "computer", "computer:///"),
@@ -88,14 +142,25 @@ fn rebuild(menu: &gio::Menu) {
         .map(|s| s.to_string())
         .collect();
     let locations = locations(&schemes);
-    let can_open = gio::AppInfo::default_for_type("inode/directory", false).is_some();
+    let handler = installed_directory_handler();
+    let can_open = handler.is_some();
     let labels: Vec<_> = personal
         .iter()
         .map(|(label, _)| *label)
         .chain(locations.iter().map(|(label, _)| *label))
         .collect();
-    if can_open {
-        eprintln!("querencia-panel: {NAME}: {}", labels.join(", "));
+    if let Some(handler) = &handler {
+        eprintln!(
+            "querencia-panel: {NAME}: {} (Ordner öffnet {} [{}], {})",
+            labels.join(", "),
+            handler.app.name(),
+            handler.app.id().unwrap_or_default(),
+            if handler.from_gio {
+                "Wahl von GIO"
+            } else {
+                "Ersatz ohne GIO-Zuordnung"
+            }
+        );
     } else {
         eprintln!(
             "querencia-panel: {NAME}: keine Anwendung für Ordner (inode/directory), \
@@ -177,16 +242,26 @@ fn open_item(label: &str, uri: &str) -> gio::MenuItem {
     item
 }
 
-/// Hands the URI to GIO, which picks the default application: for `file:`
-/// directories the one for `inode/directory`, for `computer:`, `network:` and
-/// `trash:` a handler of the scheme or else again the one for directories.
-/// Like `app_menu::launch_app`, a successful call only means the launch was
-/// started; failures are logged and never end the panel.
+/// Opens the URI. With GIO's choice for directories ([`directory_handler`])
+/// GIO picks the application itself: for `file:` directories the one for
+/// `inode/directory`, for `computer:`, `network:` and `trash:` a handler of
+/// the scheme or else again the one for directories. Without it the
+/// fallback application gets the URI directly. Like `app_menu::launch_app`,
+/// a successful call only means the launch was started; failures are logged
+/// and never end the panel.
 fn open_uri(uri: &str) {
     // The display's context passes the Wayland activation token on.
     let context = gdk::Display::default().map(|display| display.app_launch_context());
-    match gio::AppInfo::launch_default_for_uri(uri, context.as_ref()) {
-        Ok(()) => eprintln!("querencia-panel: {uri} an GIO übergeben"),
+    let result = match installed_directory_handler() {
+        Some(handler) if !handler.from_gio => handler
+            .app
+            .launch_uris(&[uri], context.as_ref())
+            .map(|()| format!("an {} übergeben", handler.app.name())),
+        _ => gio::AppInfo::launch_default_for_uri(uri, context.as_ref())
+            .map(|()| "an GIO übergeben".to_string()),
+    };
+    match result {
+        Ok(done) => eprintln!("querencia-panel: {uri} {done}"),
         Err(err) => eprintln!("querencia-panel: Öffnen von {uri} fehlgeschlagen: {err}"),
     }
 }
@@ -391,6 +466,62 @@ mod tests {
             ]
         );
         let _ = std::fs::remove_dir_all(&home);
+    }
+
+    /// An application from a desktop entry, without installing it.
+    fn app(id: &str, mime: Option<&str>) -> gio::AppInfo {
+        let key_file = glib::KeyFile::new();
+        let mut data = format!("[Desktop Entry]\nType=Application\nName={id}\nExec=/bin/true %U\n");
+        if let Some(mime) = mime {
+            data.push_str(&format!("MimeType={mime};\n"));
+        }
+        key_file
+            .load_from_data(&data, glib::KeyFileFlags::NONE)
+            .unwrap();
+        gio_unix::DesktopAppInfo::from_keyfile(&key_file)
+            .expect("desktop entry")
+            .upcast()
+    }
+
+    fn chosen(handler: Option<DirectoryHandler>) -> Option<(String, bool)> {
+        handler.map(|h| (h.app.name().to_string(), h.from_gio))
+    }
+
+    #[test]
+    fn gio_choice_for_directories_always_wins() {
+        // a default set by the user (or GIO's own pick) is never replaced,
+        // not even by Querencia Files
+        let user = app("Nautilus", Some("inode/directory"));
+        let files = app(QUERENCIA_FILES, Some("inode/directory"));
+        assert_eq!(
+            chosen(directory_handler(Some(user), vec![files])),
+            Some(("Nautilus".to_string(), true))
+        );
+    }
+
+    #[test]
+    fn without_gio_choice_querencia_files_is_the_fallback() {
+        // e.g. desktop entry present but mimeinfo.cache not updated
+        let other = app("Anderer", Some("inode/directory"));
+        let files = app(QUERENCIA_FILES, Some("text/plain;inode/directory"));
+        let editor = app("Editor", Some("text/plain"));
+        assert_eq!(
+            chosen(directory_handler(
+                None,
+                vec![editor.clone(), other.clone(), files]
+            )),
+            Some((QUERENCIA_FILES.to_string(), false))
+        );
+        // without Querencia Files: another application declaring directories
+        assert_eq!(
+            chosen(directory_handler(None, vec![editor.clone(), other])),
+            Some(("Anderer".to_string(), false))
+        );
+        // nothing declares directories: no handler, only the hint
+        assert_eq!(
+            chosen(directory_handler(None, vec![editor, app("Ohne", None)])),
+            None
+        );
     }
 
     #[test]
