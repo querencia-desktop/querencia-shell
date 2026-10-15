@@ -14,15 +14,17 @@ use gtk4::glib;
 use super::*;
 
 /// Every group in menu order.
-const ALL_GROUPS: [MenuGroup; 9] = [
+const ALL_GROUPS: [MenuGroup; 11] = [
     MenuGroup::Accessories,
+    MenuGroup::Education,
+    MenuGroup::Games,
     MenuGroup::Graphics,
     MenuGroup::Internet,
     MenuGroup::Office,
     MenuGroup::Programming,
-    MenuGroup::Games,
     MenuGroup::Multimedia,
     MenuGroup::SystemTools,
+    MenuGroup::Accessibility,
     MenuGroup::Other,
 ];
 
@@ -40,7 +42,7 @@ fn every_rule_maps_its_categories() {
 #[test]
 fn missing_or_unmapped_categories_go_to_other() {
     assert_eq!(menu_group::<&str>(&[]), MenuGroup::Other);
-    assert_eq!(menu_group(&["Education", "Science"]), MenuGroup::Other);
+    assert_eq!(menu_group(&["Documentation", "Viewer"]), MenuGroup::Other);
     assert_eq!(
         menu_group(&["Settings", "DesktopSettings"]),
         MenuGroup::Other
@@ -71,21 +73,48 @@ fn rule_priority_not_file_order_decides() {
     );
 }
 
+/// GNOME 2 (`gnome-menus` `applications.menu`): "Zubehör" holds `Utility`
+/// without `Accessibility` and without `System`; "Barrierefreiheit" holds
+/// `Accessibility`; "Bildung" holds `Education` (Ubuntu also `Science`).
+#[test]
+fn gnome2_groups_for_education_and_accessibility() {
+    assert_eq!(menu_group(&["Education", "Science"]), MenuGroup::Education);
+    assert_eq!(menu_group(&["Science", "Math"]), MenuGroup::Education);
+    assert_eq!(
+        menu_group(&["Utility", "Accessibility"]),
+        MenuGroup::Accessibility
+    );
+    assert_eq!(menu_group(&["Accessibility"]), MenuGroup::Accessibility);
+    assert_eq!(
+        menu_group(&["Utility", "TextEditor"]),
+        MenuGroup::Accessories
+    );
+    // a learning game is a game, a programming course development
+    assert_eq!(menu_group(&["Education", "Game"]), MenuGroup::Games);
+    assert_eq!(
+        menu_group(&["Education", "Development"]),
+        MenuGroup::Programming
+    );
+}
 #[test]
 fn groups_are_listed_in_menu_order() {
     let labels: Vec<_> = ALL_GROUPS.iter().map(|g| g.label()).collect();
     assert_eq!(
         labels,
+        // Ubuntu 10.04 order (English names alphabetical), German labels
+        // as in gnome-menus; "Sonstige" last
         [
             "Zubehör",
+            "Bildung",
+            "Spiele",
             "Grafik",
             "Internet",
             "Büro",
-            "Programmierung",
-            "Spiele",
-            "Multimedia",
+            "Entwicklung",
+            "Unterhaltungsmedien",
             "Systemwerkzeuge",
-            "Sonstiges"
+            "Barrierefreiheit",
+            "Sonstige"
         ]
     );
     assert!(ALL_GROUPS.is_sorted());
@@ -388,19 +417,24 @@ fn fixtures_in_classic2_session() {
             "false"
         ]
     );
-    assert_eq!(field("c2-ohne-kategorie.desktop", 0), "Sonstiges");
+    assert_eq!(field("c2-ohne-kategorie.desktop", 0), "Sonstige");
     assert_eq!(field("c2-ohne-kategorie.desktop", 2), "-");
     assert_eq!(field("c2-ohne-kategorie.desktop", 3), "");
     assert_eq!(field("c2-mehrfach-buero-grafik.desktop", 0), "Grafik");
-    assert_eq!(field("c2-mehrfach-netz-medien.desktop", 0), "Multimedia");
-    assert_eq!(field("c2-basis.desktop", 0), "Programmierung");
+    assert_eq!(
+        field("c2-mehrfach-netz-medien.desktop", 0),
+        "Unterhaltungsmedien"
+    );
+    assert_eq!(field("c2-basis.desktop", 0), "Entwicklung");
+    // Utility;Accessibility: Barrierefreiheit, as in GNOME 2
+    assert_eq!(field("c2-doppelt.desktop", 0), "Barrierefreiheit");
     assert_eq!(field("c2-umlaut.desktop", 1), "Ölwechsel");
     assert_eq!(field("c2-doppelt.desktop", 1), "Doppelt aus daten-home");
     assert_eq!(
         field("c2-icon-fehlt.desktop", 2),
         "classic2-nicht-vorhandenes-icon"
     );
-    assert_eq!(field("c2-einstellung.desktop", 0), "Sonstiges");
+    assert_eq!(field("c2-einstellung.desktop", 0), "Sonstige");
     assert_eq!(field("c2-einstellung.desktop", 4), "true");
     assert_eq!(field("c2-systemeinstellung.desktop", 0), "Systemwerkzeuge");
     assert_eq!(field("c2-systemeinstellung.desktop", 4), "true");
@@ -464,7 +498,6 @@ fn entries_are_grouped_and_sorted_for_the_locale() {
     assert_eq!(
         accessories,
         [
-            "Doppelt aus daten-home",
             "Icon fehlt",
             "Normal",
             "Nur in Classic2",
@@ -479,7 +512,7 @@ fn entries_are_grouped_and_sorted_for_the_locale() {
 #[test]
 fn settings_are_split_for_the_system_menu() {
     // Fields: section, ID, name; in menu order. The settings sit in the
-    // groups Sonstiges and Systemwerkzeuge of the catalog; the system menu
+    // groups Sonstige and Systemwerkzeuge of the catalog; the system menu
     // sorts them by name across groups, "Ö" next to "O" as in en_US.
     let run = fixture_run(Some("X-Classic2"));
     assert_eq!(
@@ -829,7 +862,7 @@ fn monitor_reports_installed_removed_and_changed_applications() {
     assert_eq!(entries("umbenannt"), format!("{neu},{basis}"));
     assert_eq!(
         entries("kategorie"),
-        format!("{basis},c2-mon-neu.desktop=Aaa neu@Programmierung")
+        format!("{basis},c2-mon-neu.desktop=Aaa neu@Entwicklung")
     );
     assert_eq!(entries("nodisplay"), basis);
     assert_eq!(excluded("nodisplay"), "c2-mon-neu.desktop=NoDisplay");

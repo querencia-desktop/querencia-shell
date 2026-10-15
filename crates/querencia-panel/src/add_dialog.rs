@@ -316,7 +316,7 @@ fn selected_target(list: &ListBox, hooks: &Hooks) -> Option<String> {
 
 /// A button with a small icon before its label, like the GTK 2 stock
 /// buttons of GNOME 2 dialogs.
-fn stock_button(mnemonic: &str, icon: &str) -> Button {
+pub(crate) fn stock_button(mnemonic: &str, icon: &str) -> Button {
     let image = Image::from_gicon(&gio::ThemedIcon::from_names(&[
         icon,
         &format!("{icon}-symbolic"),

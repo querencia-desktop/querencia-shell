@@ -1,6 +1,9 @@
-//! The "Anwendungen" menu: one submenu per catalog group, each entry
-//! launching its application through GIO by desktop ID. The menu follows
-//! installed, removed and changed applications without a panel restart.
+//! The "Anwendungen" menu: one submenu per catalog group (GNOME 2 groups,
+//! see `apps.rs`), each entry launching its application through GIO by
+//! desktop ID. The menu follows installed, removed and changed applications
+//! without a panel restart. [`menu_button`] gives all three main menus their
+//! GNOME 2 button: label (and for "Anwendungen" the logo), no dropdown
+//! arrow, menu left-aligned below the button.
 //! Launching and following changes are shared with the "System" menu
 //! (`system_menu.rs`). Details and test results:
 //! `docs/m1-1b1b-anwendungsmenue-test.md`, `docs/m1-1b1c-appinfo-monitor-test.md`.
@@ -10,7 +13,7 @@ use std::rc::Rc;
 
 use gio_unix::DesktopAppInfo;
 use gtk4::prelude::*;
-use gtk4::{MenuButton, Popover, gdk, gio, glib};
+use gtk4::{Align, Box as GtkBox, Image, Label, MenuButton, Orientation, Popover, gdk, gio, glib};
 
 use crate::apps::{AppEntry, Catalog};
 
@@ -24,13 +27,44 @@ pub fn button() -> MenuButton {
     let menu = gio::Menu::new();
     rebuild(&menu);
 
-    let button = MenuButton::builder()
-        .label("Anwendungen")
-        .menu_model(&menu)
-        .has_frame(false)
-        .build();
+    let button = menu_button("Anwendungen", Some(&APPLICATIONS_ICON), &menu);
     add_launch_action(&button, ACTION_GROUP);
     follow_changes(&button, &menu, NAME, rebuild);
+    button
+}
+
+/// Icon of the "Anwendungen" button, as the GNOME 2 panel showed it before
+/// the label: the distribution or GNOME logo (`start-here`; GNOME Human
+/// inherits it from `gnome`), else the generic names.
+pub(crate) const APPLICATIONS_ICON: [&str; 3] =
+    ["start-here", "distributor-logo", "start-here-symbolic"];
+/// Size of that icon on a panel of the standard height.
+const PANEL_ICON_SIZE: i32 = 22;
+/// CSS class of the popovers of the three main menus (style in `main.rs`).
+pub(crate) const MENU_CLASS: &str = "querencia-menu";
+
+/// A panel menu button for `menu` in the GNOME 2 manner: the label, with
+/// `icon` (names tried in order) before it if given, and no dropdown arrow;
+/// the menu opens flush below or above the button, left-aligned, without
+/// the popover's pointer, styled by [`MENU_CLASS`].
+pub(crate) fn menu_button(label: &str, icon: Option<&[&str]>, menu: &gio::Menu) -> MenuButton {
+    let content = GtkBox::new(Orientation::Horizontal, 4);
+    if let Some(names) = icon {
+        let image = Image::from_gicon(&gio::ThemedIcon::from_names(names));
+        image.set_pixel_size(PANEL_ICON_SIZE);
+        content.append(&image);
+    }
+    content.append(&Label::new(Some(label)));
+    let button = MenuButton::builder()
+        .menu_model(menu)
+        .has_frame(false)
+        .build();
+    // A custom child shows no dropdown arrow (always-show-arrow stays off).
+    button.set_child(Some(&content));
+    let popover = button.popover().expect("menu button with a menu model");
+    popover.set_has_arrow(false);
+    popover.set_halign(Align::Start);
+    popover.add_css_class(MENU_CLASS);
     button
 }
 
@@ -277,6 +311,14 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn applications_button_shows_the_classic_logo_first() {
+        assert_eq!(
+            APPLICATIONS_ICON,
+            ["start-here", "distributor-logo", "start-here-symbolic"]
+        );
+    }
+
+    #[test]
     fn groups_become_submenus_and_settings_are_left_out() {
         // Entries as Catalog::load sorts them: by group, then by name.
         let catalog = Catalog {
@@ -306,7 +348,7 @@ pub(crate) mod tests {
                     "Systemwerkzeuge",
                     &["Systemmonitor -> menu.launch(s.desktop)"]
                 ),
-                group("Sonstiges", &["Zeug -> menu.launch(z.desktop)"]),
+                group("Sonstige", &["Zeug -> menu.launch(z.desktop)"]),
             ]
         );
     }
@@ -339,7 +381,7 @@ pub(crate) mod tests {
             excluded: Vec::new(),
         };
         // Weg removed, Rechner renamed to Addierer, Text moved from Büro to
-        // Programmierung, Neu added; sorted as Catalog::load sorts.
+        // Entwicklung, Neu added; sorted as Catalog::load sorts.
         let after = Catalog {
             entries: vec![
                 entry("a.desktop", "Abakus", &["Utility"]),
@@ -370,8 +412,8 @@ pub(crate) mod tests {
                         "Addierer -> menu.launch(r.desktop)"
                     ]
                 ),
-                group("Programmierung", &["Text -> menu.launch(t.desktop)"]),
-                group("Sonstiges", &["Neu -> menu.launch(n.desktop)"]),
+                group("Entwicklung", &["Text -> menu.launch(t.desktop)"]),
+                group("Sonstige", &["Neu -> menu.launch(n.desktop)"]),
             ]
         );
 

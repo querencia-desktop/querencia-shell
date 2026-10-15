@@ -220,8 +220,9 @@ mod tests {
 
     #[test]
     fn action_group_does_not_clash_with_the_applets() {
-        // app_menu, system_menu and places_menu use "menu", "system" and
-        // "places"; one group of the same name would hide the other.
-        assert!(!["menu", "system", "places"].contains(&ACTION_GROUP));
+        // app_menu, system_menu and places_menu use "menu", "system",
+        // "session" and "places"; one group of the same name would hide the
+        // other.
+        assert!(!["menu", "system", "session", "places"].contains(&ACTION_GROUP));
     }
 }

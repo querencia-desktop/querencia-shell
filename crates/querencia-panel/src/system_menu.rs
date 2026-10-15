@@ -1,32 +1,52 @@
-//! The "System" menu: the settings from the application catalog, split the
-//! GNOME 2 way into "Einstellungen" and "Systemverwaltung" (see
-//! [`AppEntry::system_section`]). Entries launch through GIO by desktop ID
-//! and the menu follows changed applications, both exactly like the
-//! applications menu, whose code it shares. Session actions such as lock or
-//! log out are not part of it yet.
+//! The "System" menu as in GNOME 2: the settings from the application
+//! catalog, split into "Einstellungen" and "Systemverwaltung" (see
+//! [`AppEntry::system_section`]); then "Informationen über Querencia"; then
+//! "Abmelden …" if the session can be ended safely (`session.rs`). GTK draws
+//! separators between these sections. Settings launch through GIO by
+//! desktop ID, and the menu follows changed applications, both exactly like
+//! the applications menu, whose code it shares.
+//!
+//! GNOME 2 also had "Hilfe und Support", "Bildschirm sperren" and
+//! "Ausschalten …". They are left out until something real stands behind
+//! them: no help browser and no screen locker are installed, and Querencia
+//! has no shutdown mechanism yet.
 
-use gtk4::MenuButton;
-use gtk4::gio;
 use gtk4::prelude::*;
+use gtk4::{MenuButton, Window, gio, glib};
 
-use crate::app_menu;
 use crate::apps::{AppEntry, Catalog, SystemSection};
+use crate::{about, app_menu, session};
 
 const ACTION_GROUP: &str = "system";
+const SESSION_GROUP: &str = "session";
+const ABOUT: &str = "about";
+const LOGOUT: &str = "logout";
 const NAME: &str = "Systemmenü";
-const NO_SETTINGS: &str = "Keine Einstellungen";
 
-/// Menu button with the installed settings, kept up to date.
+/// Menu button with the installed settings and the session entries, kept
+/// up to date.
 pub fn button() -> MenuButton {
     let menu = gio::Menu::new();
     rebuild(&menu);
 
-    let button = MenuButton::builder()
-        .label("System")
-        .menu_model(&menu)
-        .has_frame(false)
-        .build();
+    let button = app_menu::menu_button("System", None, &menu);
     app_menu::add_launch_action(&button, ACTION_GROUP);
+
+    // One window each, as in GNOME 2; choosing the entry again raises it.
+    let about_window = glib::WeakRef::<Window>::new();
+    let about = gio::SimpleAction::new(ABOUT, None);
+    about.connect_activate(move |_, _| about::present(&about_window));
+    let question = glib::WeakRef::<Window>::new();
+    let logout = gio::SimpleAction::new(LOGOUT, None);
+    logout.connect_activate(move |_, _| match session::logout_command() {
+        Some(labwc) => session::confirm_logout(&question, labwc),
+        None => eprintln!("querencia-panel: Abmelden nicht möglich: kein labwc (LABWC_PID)"),
+    });
+    let actions = gio::SimpleActionGroup::new();
+    actions.add_action(&about);
+    actions.add_action(&logout);
+    button.insert_action_group(SESSION_GROUP, Some(&actions));
+
     app_menu::follow_changes(&button, &menu, NAME, rebuild);
     button
 }
@@ -35,35 +55,53 @@ pub fn button() -> MenuButton {
 fn rebuild(menu: &gio::Menu) {
     let catalog = Catalog::load();
     let sections = catalog.system_sections();
-    let summary: Vec<_> = sections
+    let logout = session::logout_command();
+    let mut summary: Vec<_> = sections
         .iter()
         .map(|(section, entries)| format!("{} {}", section.label(), entries.len()))
         .collect();
-    let summary = if summary.is_empty() {
-        NO_SETTINGS.to_string()
-    } else {
-        summary.join(", ")
-    };
-    eprintln!("querencia-panel: {NAME}: {summary}");
-    fill(menu, &sections);
+    if summary.is_empty() {
+        summary.push("keine Einstellungen".to_string());
+    }
+    summary.push(match &logout {
+        Some(labwc) => format!("Abmelden über {} --exit", labwc.display()),
+        None => "kein Abmelden (kein labwc in LABWC_PID)".to_string(),
+    });
+    eprintln!("querencia-panel: {NAME}: {}", summary.join(", "));
+    fill(menu, &sections, logout.is_some());
 }
 
-/// Replaces the contents of `menu` in place: one submenu per section, as
-/// [`Catalog::system_sections`] lists them, so empty sections never show.
-/// Without any setting the menu holds one item without action instead of
-/// an empty popover. The menu object itself, and with it the button's
-/// popover and actions, stays the same.
-fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)]) {
+/// Replaces the contents of `menu` in place: a section with one submenu
+/// per settings section, as [`Catalog::system_sections`] lists them (none
+/// without settings), then "Informationen über Querencia", then
+/// "Abmelden …" if `logout`. The menu object itself, and with it the
+/// button's popover and actions, stays the same.
+fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], logout: bool) {
     menu.remove_all();
-    for (section, entries) in sections {
-        let submenu = gio::Menu::new();
-        for entry in entries {
-            submenu.append_item(&app_menu::launch_item(entry, ACTION_GROUP));
+    if !sections.is_empty() {
+        let settings = gio::Menu::new();
+        for (section, entries) in sections {
+            let submenu = gio::Menu::new();
+            for entry in entries {
+                submenu.append_item(&app_menu::launch_item(entry, ACTION_GROUP));
+            }
+            settings.append_submenu(Some(section.label()), &submenu);
         }
-        menu.append_submenu(Some(section.label()), &submenu);
+        menu.append_section(None, &settings);
     }
-    if menu.n_items() == 0 {
-        menu.append(Some(NO_SETTINGS), None);
+    let information = gio::Menu::new();
+    information.append(
+        Some("Informationen über Querencia"),
+        Some(&format!("{SESSION_GROUP}.{ABOUT}")),
+    );
+    menu.append_section(None, &information);
+    if logout {
+        let session = gio::Menu::new();
+        session.append(
+            Some("Abmelden …"),
+            Some(&format!("{SESSION_GROUP}.{LOGOUT}")),
+        );
+        menu.append_section(None, &session);
     }
 }
 
@@ -84,10 +122,31 @@ mod tests {
         }
     }
 
+    fn section(menu: &gio::Menu, index: i32) -> gio::Menu {
+        menu.item_link(index, "section")
+            .expect("section link")
+            .downcast::<gio::Menu>()
+            .expect("gio::Menu")
+    }
+
+    /// The submenus of the settings section, the first one.
     fn model(catalog: &Catalog) -> gio::Menu {
         let menu = gio::Menu::new();
-        fill(&menu, &catalog.system_sections());
-        menu
+        fill(&menu, &catalog.system_sections(), true);
+        section(&menu, 0)
+    }
+
+    /// Every item of a section as "label -> action".
+    fn actions(section: &gio::Menu) -> Vec<String> {
+        (0..section.n_items())
+            .map(|i| {
+                let action = section
+                    .item_attribute_value(i, "action", Some(glib::VariantTy::STRING))
+                    .and_then(|v| v.get::<String>())
+                    .unwrap_or_default();
+                format!("{} -> {action}", label(section.upcast_ref(), i))
+            })
+            .collect()
     }
 
     #[test]
@@ -179,17 +238,52 @@ mod tests {
     }
 
     #[test]
-    fn no_settings_give_a_placeholder() {
+    fn gnome2_order_settings_then_information_then_session() {
+        let catalog = catalog(vec![entry("w.desktop", "Wlan", &["Settings"])]);
+        let menu = gio::Menu::new();
+        fill(&menu, &catalog.system_sections(), true);
+        assert_eq!(menu.n_items(), 3);
+        assert_eq!(
+            actions(&section(&menu, 1)),
+            ["Informationen über Querencia -> session.about"]
+        );
+        assert_eq!(
+            actions(&section(&menu, 2)),
+            ["Abmelden … -> session.logout"]
+        );
+    }
+
+    #[test]
+    fn logout_only_with_a_session_to_end() {
+        let menu = gio::Menu::new();
+        fill(&menu, &[], false);
+        assert_eq!(menu.n_items(), 1);
+        assert_eq!(
+            actions(&section(&menu, 0)),
+            ["Informationen über Querencia -> session.about"]
+        );
+    }
+
+    #[test]
+    fn without_settings_only_information_and_session_remain() {
+        // Replaces the placeholder "Keine Einstellungen" of M1.5b: the menu
+        // is never empty now, so no placeholder is needed.
         let no_settings = catalog(vec![
             entry("u.desktop", "Uhr", &["Utility"]),
             entry("m.desktop", "Monitor", &["System", "Monitor"]),
         ]);
         for catalog in [Catalog::default(), no_settings] {
-            let menu = model(&catalog);
-            assert_eq!(menu.n_items(), 1);
-            assert_eq!(label(menu.upcast_ref(), 0), NO_SETTINGS);
-            assert!(menu.item_attribute_value(0, "action", None).is_none());
-            assert!(menu.item_link(0, "submenu").is_none());
+            let menu = gio::Menu::new();
+            fill(&menu, &catalog.system_sections(), true);
+            assert_eq!(menu.n_items(), 2);
+            assert_eq!(
+                actions(&section(&menu, 0)),
+                ["Informationen über Querencia -> session.about"]
+            );
+            assert_eq!(
+                actions(&section(&menu, 1)),
+                ["Abmelden … -> session.logout"]
+            );
         }
     }
 
@@ -204,7 +298,8 @@ mod tests {
             entry("p.desktop", "Partitionen", &["Settings"]),
             entry("d.desktop", "Drucker", &["Settings", "System"]),
         ]);
-        let menu = model(&before);
+        let menu = gio::Menu::new();
+        fill(&menu, &before.system_sections(), true);
         let changes = Rc::new(Cell::new(0));
         menu.connect_items_changed(glib::clone!(
             #[strong]
@@ -212,10 +307,10 @@ mod tests {
             move |_, _, _, _| changes.set(changes.get() + 1)
         ));
 
-        fill(&menu, &after.system_sections());
+        fill(&menu, &after.system_sections(), true);
         assert!(changes.get() > 0);
         assert_eq!(
-            structure(&menu),
+            structure(&section(&menu, 0)),
             [
                 group(
                     "Einstellungen",
@@ -225,10 +320,10 @@ mod tests {
             ]
         );
 
-        fill(&menu, &[]);
-        assert_eq!(menu.n_items(), 1);
-        assert_eq!(label(menu.upcast_ref(), 0), NO_SETTINGS);
-        fill(&menu, &before.system_sections());
-        assert_eq!(structure(&menu), structure(&model(&before)));
+        fill(&menu, &[], true);
+        assert_eq!(menu.n_items(), 2);
+        fill(&menu, &before.system_sections(), true);
+        assert_eq!(menu.n_items(), 3);
+        assert_eq!(structure(&section(&menu, 0)), structure(&model(&before)));
     }
 }

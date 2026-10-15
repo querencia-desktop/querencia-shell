@@ -14,17 +14,24 @@ use gtk4::gio;
 use gtk4::glib::CollationKey;
 use gtk4::prelude::*;
 
-/// Submenus of "Anwendungen"; declaration order is menu order.
+/// Submenus of "Anwendungen"; declaration order is menu order. Groups and
+/// labels follow the GNOME 2 menu of Ubuntu 10.04 (`gnome-menus`
+/// `applications.menu`, German names of `gnome-menus`): the order is the
+/// one of the English names there (Accessories, Education, Games, Graphics,
+/// Internet, Office, Programming, Sound & Video, System Tools, Universal
+/// Access), with "Sonstige" last. Only groups with applications are shown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MenuGroup {
     Accessories,
+    Education,
+    Games,
     Graphics,
     Internet,
     Office,
     Programming,
-    Games,
     Multimedia,
     SystemTools,
+    Accessibility,
     Other,
 }
 
@@ -32,14 +39,16 @@ impl MenuGroup {
     pub fn label(self) -> &'static str {
         match self {
             Self::Accessories => "Zubehör",
+            Self::Education => "Bildung",
+            Self::Games => "Spiele",
             Self::Graphics => "Grafik",
             Self::Internet => "Internet",
             Self::Office => "Büro",
-            Self::Programming => "Programmierung",
-            Self::Games => "Spiele",
-            Self::Multimedia => "Multimedia",
+            Self::Programming => "Entwicklung",
+            Self::Multimedia => "Unterhaltungsmedien",
             Self::SystemTools => "Systemwerkzeuge",
-            Self::Other => "Sonstiges",
+            Self::Accessibility => "Barrierefreiheit",
+            Self::Other => "Sonstige",
         }
     }
 }
@@ -63,18 +72,22 @@ impl SystemSection {
 /// Classification rules, highest priority first. The first rule naming one
 /// of the entry's freedesktop categories wins, whatever their order in the
 /// desktop file. Specific groups come before the broad `System` and
-/// `Utility`. `Settings` is no rule: settings keep their group here and are
+/// `Utility`, so every application shows exactly once, where GNOME 2 would
+/// list it: "Zubehör" takes `Utility` without `Accessibility` and `System`.
+/// `Settings` is no rule: settings keep their group here and are
 /// recognisable through [`AppEntry::is_settings`]; the "System" menu shows
 /// them instead of the applications menu.
-const RULES: [(MenuGroup, &[&str]); 8] = [
+const RULES: [(MenuGroup, &[&str]); 10] = [
     (MenuGroup::Games, &["Game"]),
     (MenuGroup::Programming, &["Development"]),
+    (MenuGroup::Education, &["Education", "Science"]),
     (MenuGroup::Graphics, &["Graphics"]),
     (MenuGroup::Multimedia, &["AudioVideo", "Audio", "Video"]),
     (MenuGroup::Internet, &["Network"]),
     (MenuGroup::Office, &["Office"]),
+    (MenuGroup::Accessibility, &["Accessibility"]),
     (MenuGroup::SystemTools, &["System"]),
-    (MenuGroup::Accessories, &["Utility", "Accessibility"]),
+    (MenuGroup::Accessories, &["Utility"]),
 ];
 
 /// Menu group for a list of freedesktop categories; anything no rule
