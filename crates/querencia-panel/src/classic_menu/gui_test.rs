@@ -18,7 +18,12 @@
 //! - activating an entry closes every menu and runs its action;
 //! - Querencia Files, Querencia Terminal and "Bildschirmfoto aufnehmen" are
 //!   in Zubehör exactly once and start from the menu;
-//! - Orte offers its places now that a file manager is installed.
+//! - Orte offers its places now that a file manager is installed;
+//! - HMP-05: no submenu grabs, the keyboard focus stays in the top level, a
+//!   pending open of a row the pointer has left never fires, and after a
+//!   dwell of 0.5 s or 2 s on an open submenu the next row takes over and
+//!   the old submenu closes. (Real pointer and keyboard with the popup
+//!   grab: `tools/isolierte-gui-pruefung/pruefen.sh`.)
 //!
 //! The System menu is opened, but nothing in it is ever activated.
 //! Screenshots go to `$HMP04_SHOT_DIR`.
@@ -135,10 +140,13 @@ fn contrast(a: &gdk::RGBA, b: &gdk::RGBA) -> f64 {
 /// Menu background (`@theme_bg_color` of GTK's default theme) and the
 /// Ambiance highlight, as in `PANEL_CSS`.
 fn menu_background() -> gdk::RGBA {
-    gdk::RGBA::parse("#f6f5f4").unwrap()
+    gdk::RGBA::parse("#f5f4f2").unwrap()
 }
+/// Middle of the highlight gradient #f8875d..#ea703d (HMP-05), as in the
+/// GNOME 2 reference; white text on it has a contrast of about 2.7:1, the
+/// same as in the reference.
 fn highlight() -> gdk::RGBA {
-    gdk::RGBA::parse("#f07746").unwrap()
+    gdk::RGBA::parse("#f17c4d").unwrap()
 }
 
 /// Surface rectangle of an open popover, relative to its parent surface.
@@ -161,6 +169,16 @@ fn row_top(level: &Level, index: usize) -> f64 {
     f64::from(bounds.y()) + dy
 }
 
+/// Middle of row `index` in its menu's content coordinates (as the motion
+/// controller reports them).
+fn row_mid(level: &Level, index: usize) -> (f64, f64) {
+    let bounds = level.widgets[index].compute_bounds(&level.content).unwrap();
+    (
+        f64::from(bounds.x() + bounds.width() / 3.0),
+        f64::from(bounds.y() + bounds.height() / 2.0),
+    )
+}
+
 fn is_open(button: &MenuButton) -> bool {
     super::is_open(button)
 }
@@ -171,13 +189,14 @@ fn isolated_gui_menus() {
     let runtime = std::env::var("XDG_RUNTIME_DIR").unwrap_or_default();
     assert!(
         std::env::var("QUERENCIA_ISOLATED_GUI").as_deref() == Ok("1")
-            && runtime.contains("/hmp04-runtime-"),
+            && (runtime.contains("/hmp04-runtime-") || runtime.contains("/hmp05-runtime-")),
         "Abbruch: nur in der isolierten Sitzung von isoliert.py (XDG_RUNTIME_DIR={runtime})"
     );
     gtk4::init().expect("GTK in the isolated session");
     crate::install_panel_style();
-    // No input device, no serial for a popup grab (see NO_GRAB).
-    NO_GRAB.with(|g| g.set(true));
+    // No input device here, so no input serial for a popup grab: the top
+    // levels must not grab in this test (submenus never grab, HMP-05). Real
+    // pointer and keyboard with grabs: tools/isolierte-gui-pruefung.
     let no_grab = |button: &MenuButton| button.popover().unwrap().set_autohide(false);
 
     // A panel like the real one: the three main menus in a .querencia-panel.
@@ -257,6 +276,17 @@ fn isolated_gui_menus() {
         assert!(popover.has_css_class(MENU_CLASS));
     }
     assert!(apps.has_css_class("popup") && apps.has_css_class("querencia-main-menu"));
+    // HMP-05 cause: a submenu must never grab (gtk_grab_add would hand it
+    // every pointer event over the menu above)
+    assert!(!sub_popover.is_autohide(), "Untermenü greift");
+    // and keyboard focus stays in the top level
+    let focus: Option<gtk4::Widget> = gtk4::prelude::GtkWindowExt::focus(&window);
+    assert!(
+        focus
+            .as_ref()
+            .is_none_or(|f: &gtk4::Widget| !f.is_ancestor(&sub_popover)),
+        "Tastaturfokus im Untermenü: {focus:?}"
+    );
     let rect = popup_rect(&sub_popover);
     let root_width = f64::from(root.popover.upgrade().unwrap().surface().unwrap().width());
     println!("Untermenü {rect:?}, Menübreite {root_width}");
@@ -343,6 +373,49 @@ fn isolated_gui_menus() {
         is_open(&apps) && !is_open(&system),
         "Right: System -> Anwendungen"
     );
+
+    // ---- pointer and timers (HMP-05), state of the menu itself ----
+    // (The grab cause needs a real pointer: tools/isolierte-gui-pruefung.)
+    let root = level(&apps);
+    let acc = index_of(&root, "Zubehör");
+    let net = index_of(&root, "Internet");
+    let tools = index_of(&root, "Systemwerkzeuge");
+    let point = |index: usize| {
+        let (x, y) = row_mid(&root, index);
+        root.on_motion(x, y);
+    };
+    // a pending open of Zubehör must not fire once the pointer is on Internet
+    point(acc);
+    pump(SUBMENU_DELAY_MS / 2);
+    point(net);
+    // the Zubehör timer would have fired by now, Internet's not yet
+    pump(SUBMENU_DELAY_MS / 2 + 60);
+    assert_eq!(
+        root.child_row(),
+        None,
+        "veralteter Zeitgeber hat ein Untermenü geöffnet"
+    );
+    pump(SUBMENU_DELAY_MS + AIM_TIMEOUT_MS);
+    assert_eq!(root.active.get(), Some(net), "Markierung auf Internet");
+    assert_eq!(
+        root.child_row(),
+        Some(net),
+        "veralteter Zeitgeber öffnete Zubehör"
+    );
+    // dwell on Systemwerkzeuge with its submenu open, then switch away and back
+    for dwell in [500, 2000] {
+        point(tools);
+        pump(SUBMENU_DELAY_MS + 150);
+        assert_eq!(root.child_row(), Some(tools), "Systemwerkzeuge offen");
+        let old = child(&root).popover.upgrade().unwrap();
+        pump(dwell);
+        point(acc);
+        pump(SUBMENU_DELAY_MS + AIM_TIMEOUT_MS + 100);
+        assert_eq!(root.active.get(), Some(acc), "nach {dwell} ms: Markierung");
+        assert_eq!(root.child_row(), Some(acc), "nach {dwell} ms: Untermenü");
+        assert!(!old.is_visible(), "nach {dwell} ms: altes Untermenü offen");
+        println!("Verweilen {dwell} ms auf Systemwerkzeuge, Wechsel zu Zubehör: ok");
+    }
 
     // pointer onto Orte while Anwendungen is open switches over
     super::switch_on_hover(&places);

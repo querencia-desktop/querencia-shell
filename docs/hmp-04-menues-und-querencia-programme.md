@@ -101,3 +101,8 @@ dieselben Methoden eingespeist, die die Ereignis-Controller aufrufen, und
 Popover greifen nicht (`NO_GRAB`, nur im Test), weil ein Popup-Grab eine
 Eingabe-Seriennummer braucht. Das Schließen per Klick daneben und echte
 Zeigerbewegung prüft deshalb erst die GUI-Abnahme.
+
+*Seit HMP-05:* `NO_GRAB` entfällt (Untermenüs greifen nie, nur die oberste
+Ebene; im In-Prozess-Test greift auch sie nicht). Echter Zeiger und echte
+Tastatur samt Grab: `tools/isolierte-gui-pruefung/`, siehe
+`docs/hmp-05-menue-maus-und-optik.md`.

@@ -1,0 +1,281 @@
+[
+[
+"t00-offen",
+{
+"menu": "anwendungen",
+"aktiv": "-",
+"sub": "-"
+}
+],
+[
+"t01-500-a-system",
+{
+"menu": "anwendungen",
+"aktiv": "Systemwerkzeuge",
+"sub": "Systemwerkzeuge"
+}
+],
+[
+"t01-500-b-internet",
+{
+"menu": "anwendungen",
+"aktiv": "Internet",
+"sub": "Internet"
+}
+],
+[
+"t01-500-c-zubehoer",
+{
+"menu": "anwendungen",
+"aktiv": "Zubehör",
+"sub": "Zubehör"
+}
+],
+[
+"t01-500-d-zurueck-system",
+{
+"menu": "anwendungen",
+"aktiv": "Systemwerkzeuge",
+"sub": "Systemwerkzeuge"
+}
+],
+[
+"t01-2000-a-system",
+{
+"menu": "anwendungen",
+"aktiv": "Systemwerkzeuge",
+"sub": "Systemwerkzeuge"
+}
+],
+[
+"t01-2000-b-internet",
+{
+"menu": "anwendungen",
+"aktiv": "Internet",
+"sub": "Internet"
+}
+],
+[
+"t01-2000-c-zubehoer",
+{
+"menu": "anwendungen",
+"aktiv": "Zubehör",
+"sub": "Zubehör"
+}
+],
+[
+"t01-2000-d-zurueck-system",
+{
+"menu": "anwendungen",
+"aktiv": "Systemwerkzeuge",
+"sub": "Systemwerkzeuge"
+}
+],
+[
+"t01-5000-a-system",
+{
+"menu": "anwendungen",
+"aktiv": "Systemwerkzeuge",
+"sub": "Systemwerkzeuge"
+}
+],
+[
+"t01-5000-b-internet",
+{
+"menu": "anwendungen",
+"aktiv": "Internet",
+"sub": "Internet"
+}
+],
+[
+"t01-5000-c-zubehoer",
+{
+"menu": "anwendungen",
+"aktiv": "Zubehör",
+"sub": "Zubehör"
+}
+],
+[
+"t01-5000-d-zurueck-system",
+{
+"menu": "anwendungen",
+"aktiv": "Systemwerkzeuge",
+"sub": "Systemwerkzeuge"
+}
+],
+[
+"t01-10000-a-system",
+{
+"menu": "anwendungen",
+"aktiv": "Systemwerkzeuge",
+"sub": "Systemwerkzeuge"
+}
+],
+[
+"t01-10000-b-internet",
+{
+"menu": "anwendungen",
+"aktiv": "Internet",
+"sub": "Internet"
+}
+],
+[
+"t01-10000-c-zubehoer",
+{
+"menu": "anwendungen",
+"aktiv": "Zubehör",
+"sub": "Zubehör"
+}
+],
+[
+"t01-10000-d-zurueck-system",
+{
+"menu": "anwendungen",
+"aktiv": "Systemwerkzeuge",
+"sub": "Systemwerkzeuge"
+}
+],
+[
+"t02-schnell-ende-internet",
+{
+"menu": "anwendungen",
+"aktiv": "Internet",
+"sub": "Internet"
+}
+],
+[
+"t03-timer-system",
+{
+"menu": "anwendungen",
+"aktiv": "Systemwerkzeuge",
+"sub": "Systemwerkzeuge"
+}
+],
+[
+"t06-zwanzig-ende-internet",
+{
+"menu": "anwendungen",
+"aktiv": "Internet",
+"sub": "Internet"
+}
+],
+[
+"t04-schraeg-im-untermenue",
+{
+"menu": "anwendungen",
+"aktiv": "Zubehör",
+"sub": "Zubehör",
+"subzeile": 142
+}
+],
+[
+"t05-zurueck-internet",
+{
+"menu": "anwendungen",
+"aktiv": "Internet",
+"sub": "Internet"
+}
+],
+[
+"t05b-zubehoer",
+{
+"menu": "anwendungen",
+"aktiv": "Zubehör",
+"sub": "Zubehör"
+}
+],
+[
+"t07-a-escape-untermenue",
+{
+"menu": "anwendungen",
+"sub": "-"
+}
+],
+[
+"t07-b-escape-menue",
+{
+"menu": "keins"
+}
+],
+[
+"t09-a-rechts-zubehoer",
+{
+"menu": "anwendungen",
+"aktiv": "Zubehör",
+"sub": "Zubehör",
+"subzeile": 46
+}
+],
+[
+"t09-b-runter-im-untermenue",
+{
+"menu": "anwendungen",
+"aktiv": "Zubehör",
+"sub": "Zubehör",
+"subzeile": 70
+}
+],
+[
+"t09-c-internet-firefox",
+{
+"menu": "anwendungen",
+"aktiv": "Internet",
+"sub": "Internet",
+"subzeile": 70
+}
+],
+[
+"t09-d-links-zu-system",
+{
+"menu": "system"
+}
+],
+[
+"t09-e-rechts-zu-anwendungen",
+{
+"menu": "anwendungen"
+}
+],
+[
+"t09-f-geschlossen",
+{
+"menu": "keins"
+}
+],
+[
+"t10-a-orte",
+{
+"menu": "orte"
+}
+],
+[
+"t10-b-system",
+{
+"menu": "system"
+}
+],
+[
+"t10-c-anwendungen",
+{
+"menu": "anwendungen"
+}
+],
+[
+"t08-klick-aussen",
+{
+"menu": "keins"
+}
+],
+[
+"t11-terminal-gestartet",
+{
+"menu": "keins"
+}
+],
+[
+"t11b-orte-offen",
+{
+"menu": "orte"
+}
+]
+]

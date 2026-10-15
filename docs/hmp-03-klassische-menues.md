@@ -62,6 +62,9 @@ Schrift. Der Knopf des offenen Hauptmenüs wird ebenso hervorgehoben. Alle
 Regeln sind auf `.querencia-panel` und `popover.querencia-menu` begrenzt
 (Test `menu_style_is_scoped_to_the_panel_and_its_menus`).
 
+*Seit HMP-05 überholt:* Hervorhebung als Verlauf nach der GNOME-2-Referenz,
+Hauptmenüknöpfe bleiben neutral, siehe `docs/hmp-05-menue-maus-und-optik.md`.
+
 ## Bewusst offen
 
 - Kein Tastenkürzel zum Öffnen des Anwendungsmenüs (GNOME 2: Alt+F1); das

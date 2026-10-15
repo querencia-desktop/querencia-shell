@@ -1,0 +1,227 @@
+mark T0 Anwendungen per Klick öffnen
+move 77 15
+wait 300
+click
+wait 600
+shot SHOT/t00-offen.png
+mark T1 Verweilen 500 ms auf Systemwerkzeuge
+glide 100 94 200
+wait 500
+shot SHOT/t01-500-a-system.png
+glide 100 70 150
+wait 500
+shot SHOT/t01-500-b-internet.png
+glide 100 46 150
+wait 500
+shot SHOT/t01-500-c-zubehoer.png
+wait 500
+glide 100 94 200
+wait 500
+shot SHOT/t01-500-d-zurueck-system.png
+mark T1 Verweilen 2000 ms auf Systemwerkzeuge
+glide 100 94 200
+wait 2000
+shot SHOT/t01-2000-a-system.png
+glide 100 70 150
+wait 500
+shot SHOT/t01-2000-b-internet.png
+glide 100 46 150
+wait 500
+shot SHOT/t01-2000-c-zubehoer.png
+wait 2000
+glide 100 94 200
+wait 500
+shot SHOT/t01-2000-d-zurueck-system.png
+mark T1 Verweilen 5000 ms auf Systemwerkzeuge
+glide 100 94 200
+wait 5000
+shot SHOT/t01-5000-a-system.png
+glide 100 70 150
+wait 500
+shot SHOT/t01-5000-b-internet.png
+glide 100 46 150
+wait 500
+shot SHOT/t01-5000-c-zubehoer.png
+wait 5000
+glide 100 94 200
+wait 500
+shot SHOT/t01-5000-d-zurueck-system.png
+mark T1 Verweilen 10000 ms auf Systemwerkzeuge
+glide 100 94 200
+wait 10000
+shot SHOT/t01-10000-a-system.png
+glide 100 70 150
+wait 500
+shot SHOT/t01-10000-b-internet.png
+glide 100 46 150
+wait 500
+shot SHOT/t01-10000-c-zubehoer.png
+wait 10000
+glide 100 94 200
+wait 500
+shot SHOT/t01-10000-d-zurueck-system.png
+mark T2 schnelle Wechsel
+glide 100 46 60
+glide 100 70 60
+glide 100 94 60
+glide 100 46 60
+glide 100 70 60
+glide 100 94 60
+glide 100 46 60
+glide 100 70 60
+glide 100 94 60
+glide 100 46 60
+glide 100 70 60
+glide 100 94 60
+glide 100 46 60
+glide 100 70 60
+glide 100 94 60
+glide 100 70 60
+wait 500
+shot SHOT/t02-schnell-ende-internet.png
+mark T3 Wechsel bei laufendem Öffnungszeitgeber
+glide 100 46 100
+wait 120
+glide 100 70 60
+wait 120
+glide 100 94 60
+wait 500
+shot SHOT/t03-timer-system.png
+mark T6 zwanzig Wechsel mit Verweilen 300 ms
+glide 100 46 80
+wait 300
+glide 100 70 80
+wait 300
+glide 100 94 80
+wait 300
+glide 100 46 80
+wait 300
+glide 100 70 80
+wait 300
+glide 100 94 80
+wait 300
+glide 100 46 80
+wait 300
+glide 100 70 80
+wait 300
+glide 100 94 80
+wait 300
+glide 100 46 80
+wait 300
+glide 100 70 80
+wait 300
+glide 100 94 80
+wait 300
+glide 100 46 80
+wait 300
+glide 100 70 80
+wait 300
+glide 100 94 80
+wait 300
+glide 100 46 80
+wait 300
+glide 100 70 80
+wait 300
+glide 100 94 80
+wait 300
+glide 100 46 80
+wait 300
+glide 100 70 80
+wait 300
+shot SHOT/t06-zwanzig-ende-internet.png
+mark T4 schräg ins Zubehör-Untermenü über die Internet-Zeile
+glide 150 46 150
+wait 600
+glide 300 142 250
+wait 600
+shot SHOT/t04-schraeg-im-untermenue.png
+mark T5 aus dem Untermenü zurück auf Internet
+glide 100 70 250
+wait 600
+shot SHOT/t05-zurueck-internet.png
+mark T5b und zurück auf Zubehör
+glide 100 46 150
+wait 600
+shot SHOT/t05b-zubehoer.png
+mark T7 Escape schließt erst das Untermenü, dann das Menü
+key Escape
+wait 400
+shot SHOT/t07-a-escape-untermenue.png
+key Escape
+wait 400
+shot SHOT/t07-b-escape-menue.png
+mark T9 Tastatur
+move 77 15
+wait 300
+click
+wait 500
+move 640 400
+wait 300
+key Down
+wait 200
+key Right
+wait 400
+shot SHOT/t09-a-rechts-zubehoer.png
+key Down
+wait 200
+shot SHOT/t09-b-runter-im-untermenue.png
+key Left
+wait 300
+key Down
+wait 200
+key Right
+wait 400
+shot SHOT/t09-c-internet-firefox.png
+key Escape
+wait 300
+key Left
+wait 500
+shot SHOT/t09-d-links-zu-system.png
+key Right
+wait 500
+shot SHOT/t09-e-rechts-zu-anwendungen.png
+key Escape
+wait 400
+shot SHOT/t09-f-geschlossen.png
+mark T10 Hauptmenüs per Zeiger wechseln
+move 77 15
+wait 300
+click
+wait 500
+glide 183 15 250
+wait 500
+shot SHOT/t10-a-orte.png
+glide 253 15 200
+wait 500
+shot SHOT/t10-b-system.png
+glide 77 15 300
+wait 500
+shot SHOT/t10-c-anwendungen.png
+mark T8 Klick außerhalb schließt alles
+glide 100 46 150
+wait 600
+glide 700 400 200
+wait 200
+click
+wait 500
+shot SHOT/t08-klick-aussen.png
+mark T11 Querencia Terminal aus Zubehör starten
+move 77 15
+wait 300
+click
+wait 500
+glide 100 46 150
+wait 600
+glide 300 46 200
+glide 300 94 150
+wait 300
+click
+wait 4000
+shot SHOT/t11-terminal-gestartet.png
+mark T11b Orte > Papierkorb
+move 183 15
+wait 300
+click
+wait 600
+shot SHOT/t11b-orte-offen.png
+mark ENDE

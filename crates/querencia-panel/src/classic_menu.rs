@@ -21,7 +21,13 @@
 //! - the main menus of a panel act as one menu bar (HMP-04): while one is
 //!   open, moving the pointer onto another main menu button opens that one
 //!   instead, and Right on an entry without submenu or Left in the top
-//!   level switch to the next or previous main menu, wrapping around.
+//!   level switch to the next or previous main menu, wrapping around;
+//! - only the top level grabs (HMP-05), as GTK 2's menu shell: a grabbing
+//!   submenu got every pointer event over the menus above it from GTK
+//!   (`gtk_grab_add`), so the menu above stuck on its old row. Keys go
+//!   through the top level to the innermost menu with a highlighted row;
+//!   Escape closes the innermost menu. `QUERENCIA_MENU_DEBUG=1` logs every
+//!   state change.
 //!
 //! Text colour (HMP-04): GTK gives every popover the CSS class
 //! `background`, through which the theme sets the text colour again
@@ -194,6 +200,28 @@ pub const SUBMENU_DELAY_MS: u64 = 225;
 /// How long a move towards an open submenu keeps it open at most, before
 /// the row under the pointer takes over after all.
 pub const AIM_TIMEOUT_MS: u64 = 300;
+/// Pointer events within this distance (px) of where the pointer was when
+/// a key was pressed are no movement (see `Level::key_hold`).
+pub const HOLD_TOLERANCE: f64 = 3.0;
+
+/// A key hold (see `Level::key_hold`) after a pointer event at `(x, y)`:
+/// whether the event is a real movement, and the hold that remains.
+pub fn hold_step(
+    hold: Option<Option<(f64, f64)>>,
+    x: f64,
+    y: f64,
+) -> (bool, Option<Option<(f64, f64)>>) {
+    match hold {
+        None => (true, None),
+        Some(None) => (false, Some(Some((x, y)))),
+        Some(Some((hx, hy)))
+            if (x - hx).abs() < HOLD_TOLERANCE && (y - hy).abs() < HOLD_TOLERANCE =>
+        {
+            (false, hold)
+        }
+        Some(Some(_)) => (true, None),
+    }
+}
 
 /// Whether the pointer, moving from `apex` (where it last was on the row
 /// of the open submenu) to `pointer`, heads for `submenu`: it lies in the
@@ -265,8 +293,44 @@ pub fn attach(button: &MenuButton, model: &gio::MenuModel) {
         }
     ));
 
-    // Menu bar behaviour: entering this button while another main menu of
-    // the same panel is open switches over, as in GNOME 2.
+    // The keyboard (HMP-05): this top level is the only grabbing popup, so
+    // it has the keyboard focus, and keys arrive at this popover, also
+    // when no row has the focus yet (menu just opened by click). One
+    // controller on the long-lived popover, capture phase so it comes
+    // before GTK's own popover keys; it hands the key to the open level.
+    let keys = EventControllerKey::new();
+    keys.set_propagation_phase(PropagationPhase::Capture);
+    keys.connect_key_pressed(glib::clone!(
+        #[strong]
+        current,
+        move |_, key, _, _| {
+            let level = current.borrow().clone();
+            match level {
+                Some(level) => level.on_key(key),
+                None => glib::Propagation::Proceed,
+            }
+        }
+    ));
+    popover.add_controller(keys);
+
+    // Menu bar behaviour: moving onto another main menu button of the same
+    // panel while this menu is open switches over, as in GNOME 2. The open
+    // top level grabs, so GTK hands the pointer motion over the panel to
+    // its popover (with coordinates of the wrong surface); the position is
+    // taken from the event itself, in panel surface coordinates.
+    let panel_motion = EventControllerMotion::new();
+    panel_motion.connect_motion(glib::clone!(
+        #[weak]
+        button,
+        move |controller, _, _| {
+            if let Some(event) = controller.current_event() {
+                hover_panel(&button, &event);
+            }
+        }
+    ));
+    popover.add_controller(panel_motion);
+    // Without a grab (no menu open, or a grab-free test) the button sees
+    // the pointer itself.
     let motion = EventControllerMotion::new();
     motion.connect_enter(glib::clone!(
         #[weak]
@@ -291,27 +355,6 @@ thread_local! {
     /// Every main menu button with its open top level; GTK runs on one
     /// thread, so this is the panel's whole set of main menus.
     static MAIN_MENUS: RefCell<Vec<MainMenu>> = const { RefCell::new(Vec::new()) };
-}
-
-#[cfg(test)]
-thread_local! {
-    /// Set by the isolated GUI test: its compositor has no input device, so
-    /// there is no input serial a popup grab could use, and a grabbing
-    /// popover would be dismissed at once.
-    static NO_GRAB: Cell<bool> = const { Cell::new(false) };
-}
-
-/// Whether submenus grab the pointer (close on a click elsewhere), as
-/// every menu does; only the isolated GUI test turns it off.
-fn grabs() -> bool {
-    #[cfg(test)]
-    {
-        !NO_GRAB.with(Cell::get)
-    }
-    #[cfg(not(test))]
-    {
-        true
-    }
 }
 
 /// A popover for a classic menu: GTK's own CSS classes (`background`, which
@@ -359,6 +402,76 @@ fn descendants(widget: &Widget) -> Vec<Widget> {
     all
 }
 
+/// Position of `button` along its panel: (left edge, width) in the panel
+/// window's surface coordinates.
+fn panel_span(button: &MenuButton) -> Option<(f64, f64)> {
+    let native = button.native()?;
+    let bounds = button.compute_bounds(&native)?;
+    let (dx, _) = native.surface_transform();
+    Some((f64::from(bounds.x()) + dx, f64::from(bounds.width())))
+}
+
+/// The index of the span (left edge, width) that holds `x`.
+pub fn span_at(spans: &[(f64, f64)], x: f64) -> Option<usize> {
+    spans
+        .iter()
+        .position(|&(left, width)| x >= left && x < left + width)
+}
+
+/// Pointer motion handed to the open top level of `open`: if it happened
+/// over the panel window, above another main menu button, switch to it.
+fn hover_panel(open: &MenuButton, event: &gdk::Event) {
+    let panel_surface = open.native().and_then(|n| n.surface());
+    if event.surface().is_none() || event.surface() != panel_surface || !is_open(open) {
+        return;
+    }
+    let Some((x, _)) = event.position() else {
+        return;
+    };
+    let menus = main_menus_beside(open);
+    let spans: Vec<(f64, f64)> = menus
+        .iter()
+        .map(|(button, _)| panel_span(button).unwrap_or((0.0, 0.0)))
+        .collect();
+    if let Some(index) = span_at(&spans, x) {
+        let target = &menus[index].0;
+        if target != open {
+            debug(&format!(
+                "Hauptmenü per Zeiger: {} -> {}",
+                label_of(open),
+                label_of(target)
+            ));
+            open.popdown();
+            target.popup();
+        }
+    }
+}
+
+/// The label of a main menu button, for the debug log.
+fn label_of(button: &MenuButton) -> String {
+    descendants(button.upcast_ref())
+        .into_iter()
+        .find_map(|w| w.downcast::<Label>().ok().map(|l| l.label().to_string()))
+        .unwrap_or_default()
+}
+
+/// Whether `QUERENCIA_MENU_DEBUG=1`: state changes of the menus go to the
+/// log (stderr), for the isolated tests and the owner's GUI check.
+fn debugging() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var("QUERENCIA_MENU_DEBUG").is_ok_and(|v| v == "1"))
+}
+
+fn debug(message: &str) {
+    if debugging() {
+        let time = glib::DateTime::now_local()
+            .and_then(|t| t.format("%H:%M:%S.%f"))
+            .map(|t| t.chars().take(12).collect::<String>())
+            .unwrap_or_default();
+        eprintln!("querencia-panel: menü {time}: {message}");
+    }
+}
+
 /// Whether the main menu of `button` is open.
 fn is_open(button: &MenuButton) -> bool {
     button.popover().is_some_and(|p| p.is_visible())
@@ -377,6 +490,11 @@ fn switch_on_hover(button: &MenuButton) {
     else {
         return;
     };
+    debug(&format!(
+        "Hauptmenü per Zeiger: {} -> {}",
+        label_of(open),
+        label_of(button)
+    ));
     open.popdown();
     button.popup();
 }
@@ -392,6 +510,11 @@ fn switch_main_menu(button: &MenuButton, forward: bool) {
         return;
     };
     let (target, current) = &menus[next];
+    debug(&format!(
+        "Hauptmenü per Taste: {} -> {}",
+        label_of(button),
+        label_of(target)
+    ));
     button.popdown();
     target.popup();
     if let Some(level) = current.borrow().as_ref() {
@@ -418,6 +541,11 @@ struct Level {
     apex: Cell<Option<(f64, f64)>>,
     /// Last pointer position in `content`.
     pointer: Cell<Option<(f64, f64)>>,
+    /// After a key: pointer events at the position the pointer had then are
+    /// not a movement (the compositor repeats the position when a submenu
+    /// surface goes away) and must not undo what the key did, e.g. reopen
+    /// a submenu Escape closed. `Some(None)`: position not yet known.
+    key_hold: Cell<Option<Option<(f64, f64)>>>,
 }
 
 impl Level {
@@ -445,6 +573,7 @@ impl Level {
             aim_timer: RefCell::new(None),
             apex: Cell::new(None),
             pointer: Cell::new(None),
+            key_hold: Cell::new(None),
         });
         level.connect_input();
         level
@@ -483,17 +612,7 @@ impl Level {
         });
         self.content.add_controller(click);
 
-        // On the content, not the popover: the root popover stays while
-        // its content is rebuilt at every opening, and controllers on it
-        // would pile up. The focus is always on a row of the content.
-        let keys = EventControllerKey::new();
-        keys.set_propagation_phase(PropagationPhase::Capture);
-        let weak = Rc::downgrade(self);
-        keys.connect_key_pressed(move |_, key, _, _| match weak.upgrade() {
-            Some(level) => level.on_key(key),
-            None => glib::Propagation::Proceed,
-        });
-        self.content.add_controller(keys);
+        // Keys: one controller on the top level's popover (`attach`).
     }
 
     /// Whether the event `controller` is handling happened on this menu's
@@ -515,7 +634,10 @@ impl Level {
         self.active.set(index);
         if let Some(widget) = index.and_then(|i| self.widgets.get(i)) {
             widget.add_css_class(ACTIVE_CLASS);
-            if focus {
+            // GTK keyboard focus only ever in the top level (HMP-05): a row
+            // of a submenu with the focus would draw the keys into that
+            // submenu's popover. A submenu's highlight is the CSS class.
+            if focus && self.parent.is_none() {
                 widget.grab_focus();
             }
         }
@@ -549,6 +671,9 @@ impl Level {
             cancel(&parent.open_timer);
             parent.pointer.set(None);
         }
+        if !self.pointer_moved(x, y) {
+            return;
+        }
         self.pointer.set(Some((x, y)));
         let here = self.to_surface(x, y);
         let Some(index) = self.row_index_at(y) else {
@@ -569,12 +694,17 @@ impl Level {
             && aiming(apex, here, rect)
         {
             if self.aim_timer.borrow().is_none() {
+                self.log_state(&format!(
+                    "Zielbewegung zum Untermenü über {}, Wechsel höchstens {AIM_TIMEOUT_MS} ms gesperrt",
+                    self.label(Some(index))
+                ));
                 let weak = Rc::downgrade(self);
                 let id = glib::timeout_add_local_once(
                     std::time::Duration::from_millis(AIM_TIMEOUT_MS),
                     move || {
                         if let Some(level) = weak.upgrade() {
                             level.aim_timer.take();
+                            level.log_state("Zielsperre abgelaufen");
                             level.follow_pointer();
                         }
                     },
@@ -584,6 +714,30 @@ impl Level {
             return;
         }
         self.switch_to(index);
+    }
+
+    /// Whether `(x, y)` is a real pointer movement, given a key hold (see
+    /// [`Level::key_hold`]); ends the hold once the pointer really moves.
+    fn pointer_moved(&self, x: f64, y: f64) -> bool {
+        let held = self.key_hold.get().is_some();
+        let (moved, hold) = hold_step(self.key_hold.get(), x, y);
+        self.key_hold.set(hold);
+        if held && moved {
+            self.log_state("Zeiger bewegt, Tastatursperre aufgehoben");
+        }
+        moved
+    }
+
+    /// Holds this level and every open submenu below it against pointer
+    /// events at the current pointer position (see [`Level::key_hold`]).
+    fn hold_for_keyboard(&self) {
+        self.key_hold.set(Some(self.pointer.get()));
+        cancel(&self.open_timer);
+        cancel(&self.aim_timer);
+        let child = self.child.borrow().as_ref().map(|(_, _, c)| c.clone());
+        if let Some(child) = child {
+            child.hold_for_keyboard();
+        }
     }
 
     /// Highlights the row under the last pointer position, if it is
@@ -608,6 +762,7 @@ impl Level {
         if self.child_row().is_none() {
             self.schedule_open(index);
         }
+        self.log_state(&format!("Zeiger auf {}", self.label(Some(index))));
     }
 
     fn on_leave(&self) {
@@ -618,6 +773,7 @@ impl Level {
         if self.child_row().is_none() {
             self.select(None, false);
         }
+        self.log_state("Zeiger verlässt das Menü");
     }
 
     /// `(x, y)` in `content` as coordinates of this menu's surface.
@@ -660,8 +816,11 @@ impl Level {
             move || {
                 if let Some(level) = weak.upgrade() {
                     level.open_timer.take();
+                    // Cancelled on every change of row; checked again anyway.
                     if level.active.get() == Some(index) {
                         level.open_child(index, false);
+                    } else {
+                        level.log_state("veraltete Öffnung verworfen");
                     }
                 }
             },
@@ -685,11 +844,27 @@ impl Level {
         let popover = menu_popover();
         popover.set_position(PositionType::Right);
         popover.set_valign(Align::Start);
-        popover.set_autohide(grabs());
+        // Submenus never grab (HMP-05). Only the top level of a main menu
+        // grabs, like the menu shell of GTK 2: a grabbing GtkPopover calls
+        // gtk_grab_add(), and GTK then hands every pointer event outside it
+        // to it, with coordinates of the wrong surface. A grabbing submenu
+        // therefore swallowed all pointer motion over the menu above: the
+        // row that opened it stayed highlighted and its submenu open.
+        popover.set_autohide(false);
         popover.set_cascade_popdown(false);
         popover.set_offset(0, -MENU_TOP_INSET);
         popover.set_parent(&self.widgets[index]);
         let level = Level::new(&popover, model, Some(Rc::downgrade(self)));
+        // Should a key ever reach a submenu popover, it goes to the top level
+        // like all keys (see `attach`).
+        let keys = EventControllerKey::new();
+        keys.set_propagation_phase(PropagationPhase::Capture);
+        let root = Rc::downgrade(&self.root());
+        keys.connect_key_pressed(move |_, key, _, _| match root.upgrade() {
+            Some(root) => root.on_key(key),
+            None => glib::Propagation::Proceed,
+        });
+        popover.add_controller(keys);
         let weak = Rc::downgrade(self);
         popover.connect_closed(move |popover| {
             if let Some(parent) = weak.upgrade() {
@@ -714,6 +889,11 @@ impl Level {
             .replace(Some((index, popover.clone(), level.clone())));
         self.select(Some(index), false);
         popover.popup();
+        self.log_state(&format!(
+            "Untermenü {} geöffnet ({})",
+            self.label(Some(index)),
+            if keyboard { "Tastatur" } else { "Zeiger" }
+        ));
         if keyboard {
             level.select(step(&level.selectable(), None, Move::First), true);
         }
@@ -765,10 +945,51 @@ impl Level {
     }
 
     fn on_key(self: &Rc<Self>, key: gdk::Key) -> glib::Propagation {
-        // Only the innermost open menu reacts; keys for a submenu pass
-        // through this one first.
-        if self.child_row().is_some() && self.child_has_focus() {
-            return glib::Propagation::Proceed;
+        // Only the top level grabs and has the keyboard (HMP-05), so every
+        // key arrives here; it belongs to the innermost menu the keyboard
+        // works in: the deepest open submenu with a highlighted row.
+        let target = self.keyboard_level();
+        self.hold_for_keyboard();
+        debug(&format!(
+            "Taste {} -> Menü {}",
+            key.name().unwrap_or_default(),
+            target.describe()
+        ));
+        target.handle_key(key)
+    }
+
+    /// The innermost level below (or) this one whose open submenu has a
+    /// highlighted row, following open submenus.
+    fn keyboard_level(self: &Rc<Self>) -> Rc<Level> {
+        let mut level = self.clone();
+        loop {
+            let child = level.child.borrow().as_ref().map(|(_, _, c)| c.clone());
+            match child {
+                Some(child) if child.active.get().is_some() => level = child,
+                _ => return level,
+            }
+        }
+    }
+
+    fn handle_key(self: &Rc<Self>, key: gdk::Key) -> glib::Propagation {
+        if key == gdk::Key::Escape {
+            // GNOME 2: Escape closes the innermost open menu only.
+            if self.child_row().is_some() {
+                self.close_child();
+                self.log_state("Escape schließt Untermenü");
+                return glib::Propagation::Stop;
+            }
+            if self.parent.is_some() {
+                if let Some(popover) = self.popover.upgrade() {
+                    popover.popdown();
+                }
+                return glib::Propagation::Stop;
+            }
+            debug("Escape schließt das Hauptmenü");
+            if let Some(popover) = self.popover.upgrade() {
+                popover.popdown();
+            }
+            return glib::Propagation::Stop;
         }
         let how = match key {
             gdk::Key::Down | gdk::Key::KP_Down | gdk::Key::Tab => Some(Move::Next),
@@ -830,19 +1051,42 @@ impl Level {
         }
     }
 
-    /// Whether the keyboard focus is in the open submenu.
-    fn child_has_focus(&self) -> bool {
-        let child = self.child.borrow();
-        let Some((_, popover, _)) = child.as_ref() else {
-            return false;
-        };
-        popover.is_visible()
-            && popover
-                .root()
-                .and_then(|root| root.focus())
-                .is_some_and(|focus| {
-                    focus.is_ancestor(popover) || focus == *popover.upcast_ref::<Widget>()
-                })
+    // -- debug log ------------------------------------------------------
+
+    fn label(&self, index: Option<usize>) -> String {
+        match index.and_then(|i| self.rows.get(i)) {
+            Some(Row::Entry { label, .. } | Row::Submenu { label, .. }) => label.clone(),
+            _ => "-".into(),
+        }
+    }
+
+    /// This level's highlighted row and open submenu.
+    fn describe(&self) -> String {
+        format!(
+            "[aktiv={} offen={}]",
+            self.label(self.active.get()),
+            self.label(self.child_row())
+        )
+    }
+
+    /// Logs `what` with the state of this level and the submenus below it.
+    fn log_state(&self, what: &str) {
+        if !debugging() {
+            return;
+        }
+        let mut state = self.describe();
+        let mut child = self.child.borrow().as_ref().map(|(_, _, c)| c.clone());
+        while let Some(level) = child {
+            state.push_str(&format!(" > {}", level.describe()));
+            child = level.child.borrow().as_ref().map(|(_, _, c)| c.clone());
+        }
+        let mut depth = 0;
+        let mut parent = self.parent.as_ref().and_then(Weak::upgrade);
+        while let Some(level) = parent {
+            depth += 1;
+            parent = level.parent.as_ref().and_then(Weak::upgrade);
+        }
+        debug(&format!("Ebene {depth}: {what}: {state}"));
     }
 }
 
@@ -1141,6 +1385,44 @@ mod tests {
         assert_eq!(neighbour(1, 0, true), None);
         assert_eq!(neighbour(0, 0, true), None);
         assert_eq!(neighbour(3, 3, true), None, "unknown position");
+    }
+
+    #[test]
+    fn main_menu_under_the_pointer_on_the_panel() {
+        // Anwendungen 10..146, Orte 156..211, System 221..286 (gaps between)
+        let spans = [(10.0, 136.0), (156.0, 55.0), (221.0, 65.0)];
+        assert_eq!(span_at(&spans, 10.0), Some(0));
+        assert_eq!(span_at(&spans, 145.9), Some(0));
+        assert_eq!(span_at(&spans, 146.0), None, "gap");
+        assert_eq!(span_at(&spans, 183.0), Some(1));
+        assert_eq!(span_at(&spans, 253.0), Some(2));
+        assert_eq!(span_at(&spans, 900.0), None, "clock, window list");
+        assert_eq!(span_at(&[], 50.0), None);
+    }
+
+    #[test]
+    fn a_key_holds_until_the_pointer_really_moves() {
+        // no hold: every event is a movement
+        assert_eq!(hold_step(None, 10.0, 10.0), (true, None));
+        // hold without a known position: the first event only records it
+        assert_eq!(
+            hold_step(Some(None), 50.0, 46.0),
+            (false, Some(Some((50.0, 46.0))))
+        );
+        // the compositor repeating that position is no movement, however
+        // often and however long after the key
+        let hold = Some(Some((50.0, 46.0)));
+        for _ in 0..5 {
+            assert_eq!(hold_step(hold, 50.0, 46.0), (false, hold));
+        }
+        assert_eq!(
+            hold_step(hold, 52.0, 44.5),
+            (false, hold),
+            "within tolerance"
+        );
+        // a real movement ends the hold
+        assert_eq!(hold_step(hold, 50.0, 70.0), (true, None));
+        assert_eq!(hold_step(hold, 54.0, 46.0), (true, None));
     }
 
     #[test]
