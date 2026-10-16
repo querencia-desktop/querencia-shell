@@ -1,0 +1,10 @@
+mark B0 Start
+wait 800
+shot SHOT/b01-start.png
+mark B1 Klick letzte Zelle
+move 1255 704
+wait 300
+click
+wait 700
+shot SHOT/b02-letzte.png
+mark ENDE

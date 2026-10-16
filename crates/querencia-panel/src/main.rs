@@ -29,8 +29,14 @@ const APP_ID: &str = "org.example.Querencia.Panel";
 
 // GTK's default button min-height plus padding is 34 px and would push a
 // panel of layout::DEFAULT_HEIGHT past its height; panel buttons fill the
-// bar height instead. A workspace button is highlighted while labwc
-// reports it active.
+// bar height instead.
+//
+// Workspace switcher (HMP-07), measured in the GNOME 2 reference: cells
+// side by side in a 1 px frame #cdc6be, separated by 1 px light lines
+// #faf1e8, inactive taupe #b7ab9f; the active cell as the reference shows
+// it: dark orange frame #a5522d (3 px), cream line #fff2da, salmon #feb396.
+// GTK paints the later of two inset shadows on top: the 3 px frame is
+// listed after the 4 px cream one.
 //
 // Window list (HMP-06), measured in the GNOME 2 reference (Ambiance): framed
 // buttons, 1 px border #c6c1bb on top, #9e9993 below, light gradient; the
@@ -62,9 +68,13 @@ const APP_ID: &str = "org.example.Querencia.Panel";
 // insensitive grey.
 const PANEL_CSS: &str = "
 .querencia-panel menubutton > button,
-.querencia-panel button.window-button,
-.querencia-panel button.workspace-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
-.querencia-panel button.workspace-button.active { background-color: alpha(currentColor, 0.15); font-weight: bold; }
+.querencia-panel button.window-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
+.querencia-panel box.workspace-pager { border: 1px solid #cdc6be; border-radius: 2px; background-color: #b7ab9f; }
+.querencia-panel box.workspace-pager > button.workspace-cell { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; border-radius: 0; background-image: none; background-color: #b7ab9f; box-shadow: none; outline: none; }
+.querencia-panel box.workspace-pager > button.workspace-cell + button.workspace-cell { border-left: 1px solid #faf1e8; }
+.querencia-panel box.workspace-pager > button.workspace-cell:hover { background-color: #c5bbb1; }
+.querencia-panel box.workspace-pager > button.workspace-cell.active { background-color: #feb396; box-shadow: inset 0 0 0 4px #fff2da, inset 0 0 0 3px #a5522d; }
+.querencia-panel box.workspace-pager > button.workspace-cell:disabled { opacity: 0.5; }
 .querencia-panel windowlist button.window-button { margin: 2px 0; padding: 0 6px 0 4px; border-radius: 2px; border: 1px solid #b7b3b0; border-top-color: #c6c1bb; border-bottom-color: #9e9993; background-color: #f4f2f0; background-image: linear-gradient(to bottom, #fdfcfb, #ebe8e5); box-shadow: none; outline: none; color: #3c3c3c; font-weight: normal; }
 .querencia-panel windowlist button.window-button:hover { background-image: linear-gradient(to bottom, #ffffff, #f1efec); }
 .querencia-panel windowlist button.window-button.active { background-color: #e4dfd9; background-image: linear-gradient(to bottom, #dcd6d0, #ebe7e3); border-color: #9e9993; box-shadow: inset 0 1px 2px alpha(#000000, 0.15); }
@@ -297,6 +307,34 @@ mod tests {
         assert!(active.contains("inset 0 1px #fd9975"), "{active}");
         assert!(PANEL_CSS.contains("border-radius: 0"));
         assert!(PANEL_CSS.contains("min-height: 20px"));
+    }
+
+    /// HMP-07: the pager looks like GNOME 2's and stays in the panel.
+    #[test]
+    fn workspace_pager_looks_like_the_gnome2_pager() {
+        let rule = |sel: &str| {
+            PANEL_CSS
+                .lines()
+                .find(|l| l.starts_with(sel))
+                .unwrap_or_else(|| panic!("keine Regel für {sel}"))
+        };
+        let cell = rule(".querencia-panel box.workspace-pager > button.workspace-cell {");
+        assert!(cell.contains("background-color: #b7ab9f"), "{cell}");
+        assert!(
+            cell.contains("min-width: 0") && cell.contains("padding: 0"),
+            "{cell}"
+        );
+        let line = rule(
+            ".querencia-panel box.workspace-pager > button.workspace-cell + button.workspace-cell {",
+        );
+        assert!(line.contains("border-left: 1px solid #faf1e8"), "{line}");
+        let active = rule(".querencia-panel box.workspace-pager > button.workspace-cell.active {");
+        assert!(active.contains("background-color: #feb396"), "{active}");
+        assert!(active.contains("inset 0 0 0 3px #a5522d"), "{active}");
+        for l in PANEL_CSS.lines().filter(|l| l.contains("workspace")) {
+            assert!(l.starts_with(".querencia-panel "), "nicht begrenzt: {l}");
+            assert!(!l.contains("font-weight"), "{l}");
+        }
     }
 
     /// HMP-06: window buttons are classic framed buttons, never orange or

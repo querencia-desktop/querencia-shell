@@ -1,0 +1,4 @@
+mark L0 Lage
+wait 800
+shot SHOT/lage.png
+mark ENDE

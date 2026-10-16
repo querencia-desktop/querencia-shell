@@ -6,6 +6,15 @@
 //! The panel only shows what the compositor reports: a click sends
 //! `activate` and `commit`, and the highlight changes when labwc reports
 //! the new state.
+//!
+//! HMP-07, the GNOME 2 pager look: small cells side by side, miniatures of
+//! the screen ([`cell_size`]) without numbers, 1 px light lines between
+//! them, inactive cells taupe, the active one as in the Ubuntu reference
+//! (dark orange frame, cream line, salmon inside). The name is in the
+//! tooltip; the mouse wheel steps through the workspaces. GNOME 2 drew the
+//! windows into the cells; labwc 0.9.8 does not tell which workspace a
+//! window is on (neither `zwlr_foreign_toplevel` nor `ext_workspace` v1
+//! link them), so the cells stay empty.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -216,6 +225,49 @@ impl<W: Clone + Eq + Hash, G: Clone + Eq> Workspaces<W, G> {
     }
 }
 
+/// Height of a workspace cell (HMP-07): the GNOME 2 pager drew 20 px cells
+/// in a 24 px panel; 22 px fits the default 32 px panel and panels down to
+/// 24 px.
+const CELL_HEIGHT: i32 = 22;
+
+/// Size of a workspace cell: a miniature of the screen, `height` high and
+/// as wide as the monitor's aspect ratio makes it (16:9 if unknown), at
+/// least square and at most three times as wide as high.
+fn cell_size(height: i32, monitor: Option<(i32, i32)>) -> (i32, i32) {
+    let aspect = match monitor {
+        Some((w, h)) if w > 0 && h > 0 => f64::from(w) / f64::from(h),
+        _ => 16.0 / 9.0,
+    };
+    let width = (f64::from(height) * aspect.clamp(1.0, 3.0)).round() as i32;
+    (width, height)
+}
+
+/// Tooltip of a cell: "Arbeitsfläche N", or the workspace's own name if it
+/// has a real one (labwc's default names are just the numbers).
+fn cell_tooltip(number: usize, name: &str) -> String {
+    if name.is_empty() || name.chars().all(|c| c.is_ascii_digit()) {
+        format!("Arbeitsfläche {number}")
+    } else {
+        name.to_owned()
+    }
+}
+
+/// Where the mouse wheel goes from the active workspace, as in GNOME 2: one
+/// workspace on per notch, down/right = next, up/left = previous, no
+/// wrap-around, skipping workspaces that cannot be activated.
+fn scroll_target(shown: &[Shown], forward: bool) -> Option<WorkspaceKey> {
+    let active = shown.iter().position(|s| s.active)?;
+    let candidates: Box<dyn Iterator<Item = &Shown>> = if forward {
+        Box::new(shown[active + 1..].iter())
+    } else {
+        Box::new(shown[..active].iter().rev())
+    };
+    candidates
+        .into_iter()
+        .find(|s| s.activatable)
+        .map(|s| s.key)
+}
+
 fn bits<T: Into<u32>>(value: WEnum<T>) -> u32 {
     match value {
         WEnum::Value(value) => value.into(),
@@ -341,7 +393,9 @@ type Shared = Rc<RefCell<Switcher>>;
 /// The workspace switcher for the bottom panel. Without a compositor that
 /// offers the protocol it stays empty.
 pub fn widget() -> GtkBox {
-    let container = GtkBox::new(Orientation::Horizontal, 2);
+    let container = GtkBox::new(Orientation::Horizontal, 0);
+    container.add_css_class("workspace-pager");
+    container.set_valign(gtk4::Align::Center);
     let switcher = Rc::new(RefCell::new(Switcher {
         container: container.downgrade(),
         session: None,
@@ -361,6 +415,17 @@ pub fn widget() -> GtkBox {
                 },
             );
             switcher.borrow_mut().source = Some(source);
+            // Mouse wheel; weak, the fd source holds the only strong reference.
+            let scroll = gtk4::EventControllerScroll::new(
+                gtk4::EventControllerScrollFlags::BOTH_AXES
+                    | gtk4::EventControllerScrollFlags::DISCRETE,
+            );
+            let weak = Rc::downgrade(&switcher);
+            scroll.connect_scroll(move |_, dx, dy| match weak.upgrade() {
+                Some(switcher) => on_scroll(&switcher, dx, dy),
+                None => glib::Propagation::Proceed,
+            });
+            container.add_controller(scroll);
             // The switcher ends with the bottom panel: removing the source
             // drops its closure, then the switcher and the connection. A
             // source that already ended with `Break` has given up its id.
@@ -506,11 +571,24 @@ fn sync(switcher: &Shared) {
     switcher.borrow_mut().buttons = buttons;
 }
 
+/// Width and height of the first monitor, for the cells' aspect ratio.
+fn monitor_size() -> Option<(i32, i32)> {
+    let display = gtk4::gdk::Display::default()?;
+    let monitor = display
+        .monitors()
+        .item(0)?
+        .downcast::<gtk4::gdk::Monitor>()
+        .ok()?;
+    let geometry = monitor.geometry();
+    Some((geometry.width(), geometry.height()))
+}
+
 fn new_button(switcher: Weak<RefCell<Switcher>>, key: WorkspaceKey) -> Button {
-    let button = Button::builder()
-        .has_frame(false)
-        .css_classes(["workspace-button"])
-        .build();
+    let button = Button::new();
+    // added, not set: GTK's own classes of the button stay (HMP-04 lesson)
+    button.add_css_class("workspace-cell");
+    let (width, height) = cell_size(CELL_HEIGHT, monitor_size());
+    button.set_size_request(width, height);
     button.connect_clicked(move |_| {
         if let Some(switcher) = switcher.upgrade() {
             activate(&switcher.borrow(), key);
@@ -519,9 +597,24 @@ fn new_button(switcher: Weak<RefCell<Switcher>>, key: WorkspaceKey) -> Button {
     button
 }
 
+/// The mouse wheel over the pager (see [`scroll_target`]).
+fn on_scroll(switcher: &Shared, dx: f64, dy: f64) -> glib::Propagation {
+    let forward = if dy != 0.0 { dy > 0.0 } else { dx > 0.0 };
+    let target = {
+        let switcher = switcher.borrow();
+        switcher
+            .session
+            .as_ref()
+            .and_then(|s| scroll_target(&s.protocol.workspaces.shown, forward))
+    };
+    if let Some(key) = target {
+        activate(&switcher.borrow(), key);
+    }
+    glib::Propagation::Stop
+}
+
 fn update_button(button: &Button, number: usize, workspace: &Shown) {
-    button.set_label(&number.to_string());
-    button.set_tooltip_text((!workspace.name.is_empty()).then_some(workspace.name.as_str()));
+    button.set_tooltip_text(Some(&cell_tooltip(number, &workspace.name)));
     button.set_sensitive(workspace.activatable);
     if workspace.active {
         button.add_css_class("active");
@@ -556,6 +649,59 @@ mod tests {
     use super::*;
 
     const GROUP: u32 = 100;
+
+    fn shown(active: usize, activatable: &[bool]) -> Vec<Shown> {
+        activatable
+            .iter()
+            .enumerate()
+            .map(|(i, &activatable)| Shown {
+                key: WorkspaceKey(i as u64 + 1),
+                name: (i + 1).to_string(),
+                active: i == active,
+                activatable,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn cells_are_miniatures_of_the_screen() {
+        assert_eq!(cell_size(22, Some((1920, 1080))), (39, 22));
+        assert_eq!(cell_size(22, Some((1280, 720))), (39, 22));
+        assert_eq!(cell_size(22, Some((1366, 768))), (39, 22));
+        assert_eq!(cell_size(22, Some((1280, 1024))), (28, 22));
+        assert_eq!(cell_size(22, None), (39, 22), "16:9 if unknown");
+        // nonsense monitor data stays within square .. three times as wide
+        assert_eq!(cell_size(22, Some((1080, 1920))), (22, 22));
+        assert_eq!(cell_size(22, Some((10000, 100))), (66, 22));
+        assert_eq!(cell_size(22, Some((0, 0))), (39, 22));
+    }
+
+    #[test]
+    fn tooltip_names_the_workspace() {
+        assert_eq!(cell_tooltip(1, "1"), "Arbeitsfläche 1");
+        assert_eq!(cell_tooltip(3, ""), "Arbeitsfläche 3");
+        assert_eq!(cell_tooltip(2, "Workspace 2"), "Workspace 2");
+        assert_eq!(cell_tooltip(2, "Büro"), "Büro");
+    }
+
+    #[test]
+    fn mouse_wheel_steps_through_workspaces_without_wrapping() {
+        let four = shown(1, &[true; 4]);
+        assert_eq!(scroll_target(&four, true), Some(WorkspaceKey(3)));
+        assert_eq!(scroll_target(&four, false), Some(WorkspaceKey(1)));
+        let last = shown(3, &[true; 4]);
+        assert_eq!(scroll_target(&last, true), None, "no wrap at the end");
+        let first = shown(0, &[true; 4]);
+        assert_eq!(scroll_target(&first, false), None, "no wrap at the start");
+        // a workspace that cannot be activated is skipped
+        let gap = shown(0, &[true, false, true, true]);
+        assert_eq!(scroll_target(&gap, true), Some(WorkspaceKey(3)));
+        // nothing active (changing data) or a single workspace: nothing to do
+        let none: Vec<Shown> = shown(9, &[true; 3]);
+        assert_eq!(scroll_target(&none, true), None);
+        assert_eq!(scroll_target(&shown(0, &[true]), true), None);
+        assert_eq!(scroll_target(&[], true), None);
+    }
 
     /// A workspace in GROUP with a name and state, completed by `done`.
     fn add(workspaces: &mut Workspaces<u32, u32>, id: u32, name: &str, state: u32) {

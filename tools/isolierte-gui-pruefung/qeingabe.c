@@ -12,6 +12,7 @@
 //   click             left button press + release
 //   rclick / dclick   right click / left double click
 //   run CMD           start CMD in the background (test windows, HMP-06)
+//   scroll N          N wheel notches, positive = down (HMP-07)
 //   key NAME          Escape Down Up Left Right Return
 //   wait MS
 //   shot FILE         grim FILE
@@ -118,6 +119,12 @@ int main(void) {
                 wl_display_roundtrip(display);
                 if (n > 1) sleep_ms(80);
             }
+        } else if (!strcmp(cmd, "scroll") && sscanf(line, "%*s %ld", &ms) == 1) {
+            // ms = notches: positive = down (next), negative = up
+            zwlr_virtual_pointer_v1_axis_source(pointer, WL_POINTER_AXIS_SOURCE_WHEEL);
+            zwlr_virtual_pointer_v1_axis_discrete(pointer, now_ms(), WL_POINTER_AXIS_VERTICAL_SCROLL,
+                                                  wl_fixed_from_int(15 * (int)ms), (int32_t)ms);
+            zwlr_virtual_pointer_v1_frame(pointer);
         } else if (!strcmp(cmd, "run")) {
             // start a test program in the background, in this (isolated) session
             char sh[600]; snprintf(sh, sizeof sh, "(%.*s) >/dev/null 2>&1 &", (int)strcspn(line + 4, "\n"), line + 4);

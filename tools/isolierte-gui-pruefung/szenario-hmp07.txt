@@ -1,0 +1,48 @@
+mark A0 Start
+wait 800
+shot SHOT/a01-start.png
+mark a02-klick-3
+move 1209 704
+wait 300
+click
+wait 600
+shot SHOT/a02-klick-3.png
+mark a03-klick-4
+move 1249 704
+wait 300
+click
+wait 600
+shot SHOT/a03-klick-4.png
+mark a04-klick-1
+move 1131 704
+wait 300
+click
+wait 600
+shot SHOT/a04-klick-1.png
+mark A5 Mausrad
+move 1170 704
+wait 300
+scroll 1
+wait 600
+shot SHOT/a05-rad-vor.png
+scroll 1
+wait 600
+shot SHOT/a06-rad-vor.png
+scroll 1
+wait 600
+scroll 1
+wait 600
+shot SHOT/a07-rad-ende-kein-umlauf.png
+scroll -1
+wait 600
+shot SHOT/a08-rad-zurueck.png
+mark A9 Fenster auf Arbeitsfläche 3 und Wechsel
+run foot -a foot -T 'Fenster auf 3' sleep 900
+wait 1500
+shot SHOT/a09-fenster.png
+move 1131 704
+wait 300
+click
+wait 800
+shot SHOT/a10-zurueck-1.png
+mark ENDE
