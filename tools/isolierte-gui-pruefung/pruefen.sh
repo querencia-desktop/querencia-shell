@@ -11,8 +11,8 @@ PROFIL="${2:?Profilname}"
 # Arbeitsordner für Profile, Bilder und das gebaute qeingabe (außerhalb des Baums)
 G="${HMP_GUI_TEST:-$HOME/projects/querencia-panel-werkstatt/hmp-05/gui-test}"
 [ -x "$G/bin/qeingabe" ] || bash "$HIER/bauen.sh" "$G/bin"
+. "$HIER/testprofil.sh"; testprofil_neu "$G" "$PROFIL"
 cd "$G"
-rm -rf "$PROFIL"
 HMP_PANEL="$PANEL" HMP_SZENARIO="$HIER/szenario-hmp05.txt" HMP_QEINGABE="$G/bin/qeingabe" \
   HMP_APPS="$HIER/../../session/querencia/applications" \
   /usr/bin/python3 "$HIER/isoliert.py" "$PROFIL" "$HIER/szenario.sh" 400

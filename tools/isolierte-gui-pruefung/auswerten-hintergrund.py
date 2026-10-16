@@ -120,13 +120,17 @@ def main():
             if dark < len(centre) * 0.6:
                 problems.append(f"Testfenster nicht sichtbar ({dark}/{len(centre)} dunkel)")
         if name.startswith("w02"):
-            # labwc's root menu at the pointer (900, 450)
+            # a menu at the pointer (900, 450): with the icon layer (HMP-09)
+            # the Querencia desktop menu, with QUERENCIA_DESKTOP_ICONS=0
+            # labwc's root menu (the background itself takes no input)
             menu = [shot.getpixel((x, y)) for x in range(905, 960, 5) for y in range(455, 490, 5)]
             n = sum(1 for p in menu if light(p))
             if n < len(menu) * 0.5:
-                problems.append(f"kein labwc-Menü am Zeiger ({n}/{len(menu)} hell)")
+                problems.append(f"kein Menü am Zeiger ({n}/{len(menu)} hell)")
         if name.startswith("w09"):
-            bar = shot.getpixel((40, 100))
+            # in the top border, clear of the desktop icons (HMP-09) and of
+            # the test window in the middle
+            bar = shot.getpixel((1230, 100))
             if max(abs(a - b) for a, b in zip(bar, color)) > 6:
                 problems.append(f"Rand im Modus scaled {bar} statt {color}")
         check(name, not problems, "; ".join(problems) or f"{good} Punkte wie Sollbild, {bad} abweichend")

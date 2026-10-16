@@ -59,6 +59,31 @@ static void sleep_ms(long ms) {
     struct timespec t = { ms / 1000, (ms % 1000) * 1000000L }; nanosleep(&t, NULL);
 }
 
+
+// German (de) layout: evdev key and Shift for the characters "type" sends.
+static int de_key(char c, int *shift) {
+    static const char *row1 = "qwertzuiop", *row2 = "asdfghjkl", *row3 = "yxcvbnm";
+    static const int k1[] = {KEY_Q, KEY_W, KEY_E, KEY_R, KEY_T, KEY_Y, KEY_U, KEY_I, KEY_O, KEY_P};
+    static const int k2[] = {KEY_A, KEY_S, KEY_D, KEY_F, KEY_G, KEY_H, KEY_J, KEY_K, KEY_L};
+    static const int k3[] = {KEY_Z, KEY_X, KEY_C, KEY_V, KEY_B, KEY_N, KEY_M};
+    static const int digits[] = {KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9};
+    *shift = 0;
+    if (c >= 'A' && c <= 'Z') { *shift = 1; c = (char)(c - 'A' + 'a'); }
+    const char *p;
+    if ((p = strchr(row1, c)) && c) return k1[p - row1];
+    if ((p = strchr(row2, c)) && c) return k2[p - row2];
+    if ((p = strchr(row3, c)) && c) return k3[p - row3];
+    if (c >= '0' && c <= '9') return digits[c - '0'];
+    switch (c) {
+    case '/': *shift = 1; return KEY_7;
+    case '-': return KEY_SLASH;
+    case '_': *shift = 1; return KEY_SLASH;
+    case '.': return KEY_DOT;
+    case ' ': return KEY_SPACE;
+    default: return -1;
+    }
+}
+
 int main(void) {
     const char *runtime = getenv("XDG_RUNTIME_DIR");
     if (!runtime || !strstr(runtime, "/hmp05-runtime-")) {
@@ -129,16 +154,54 @@ int main(void) {
             // start a test program in the background, in this (isolated) session
             char sh[600]; snprintf(sh, sizeof sh, "(%.*s) >/dev/null 2>&1 &", (int)strcspn(line + 4, "\n"), line + 4);
             if (system(sh) != 0) fprintf(stderr, "qeingabe: run fehlgeschlagen\n");
+        } else if ((!strcmp(cmd, "keydown") /* chords: keydown Alt_L, keydown F4, keyup … */ || !strcmp(cmd, "keyup")) && sscanf(line, "%*s %399s", arg) == 1) {
+            int code = !strcmp(arg, "Control_L") ? KEY_LEFTCTRL : !strcmp(arg, "Alt_L") ? KEY_LEFTALT
+                     : !strcmp(arg, "Shift_L") ? KEY_LEFTSHIFT : !strcmp(arg, "Super_L") ? KEY_LEFTMETA
+                     : !strcmp(arg, "F4") ? KEY_F4
+                     : !strcmp(arg, "Left") ? KEY_LEFT
+                     : !strcmp(arg, "Right") ? KEY_RIGHT : -1;
+            if (code < 0) { fprintf(stderr, "qeingabe: Taste %s?\n", arg); continue; }
+            zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, !strcmp(cmd, "keydown")
+                                        ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED);
+            // wlroots does not derive modifiers from virtual key events
+            // (update_state = false): send the modifier state explicitly.
+            static uint32_t mods;
+            uint32_t bit = code == KEY_LEFTCTRL ? 4 : code == KEY_LEFTALT ? 8 : code == KEY_LEFTSHIFT ? 1
+                         : code == KEY_LEFTMETA ? 64 : 0;
+            if (bit) {
+                mods = !strcmp(cmd, "keydown") ? (mods | bit) : (mods & ~bit);
+                zwp_virtual_keyboard_v1_modifiers(keyboard, mods, 0, 0, 0);
+            }
+            wl_display_roundtrip(display); sleep_ms(30);
         } else if (!strcmp(cmd, "key") && sscanf(line, "%*s %399s", arg) == 1) {
             int code = !strcmp(arg, "Escape") ? KEY_ESC : !strcmp(arg, "Down") ? KEY_DOWN
                      : !strcmp(arg, "Up") ? KEY_UP : !strcmp(arg, "Left") ? KEY_LEFT
                      : !strcmp(arg, "Right") ? KEY_RIGHT : !strcmp(arg, "Return") ? KEY_ENTER
                      : !strcmp(arg, "Tab") ? KEY_TAB : !strcmp(arg, "F2") ? KEY_F2
-                     : !strcmp(arg, "Delete") ? KEY_DELETE : -1;
+                     : !strcmp(arg, "Delete") ? KEY_DELETE : !strcmp(arg, "Print") ? KEY_SYSRQ : -1;
             if (code < 0) { fprintf(stderr, "qeingabe: Taste %s?\n", arg); continue; }
             zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_PRESSED);
             wl_display_roundtrip(display); sleep_ms(30);
             zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_RELEASED);
+        } else if (!strcmp(cmd, "type")) {
+            // type TEXT: letters, digits, space and / - _ . on the de layout
+            const char *t = line + 5;
+            for (; *t && *t != '\n'; t++) {
+                int shift, code = de_key(*t, &shift);
+                if (code < 0) { fprintf(stderr, "qeingabe: Zeichen %c?\n", *t); continue; }
+                if (shift) {
+                    zwp_virtual_keyboard_v1_key(keyboard, now_ms(), KEY_LEFTSHIFT, WL_KEYBOARD_KEY_STATE_PRESSED);
+                    zwp_virtual_keyboard_v1_modifiers(keyboard, 1, 0, 0, 0);
+                }
+                zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_PRESSED);
+                wl_display_roundtrip(display); sleep_ms(15);
+                zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_RELEASED);
+                if (shift) {
+                    zwp_virtual_keyboard_v1_key(keyboard, now_ms(), KEY_LEFTSHIFT, WL_KEYBOARD_KEY_STATE_RELEASED);
+                    zwp_virtual_keyboard_v1_modifiers(keyboard, 0, 0, 0, 0);
+                }
+                wl_display_roundtrip(display); sleep_ms(15);
+            }
         } else if (!strcmp(cmd, "wait") && sscanf(line, "%*s %ld", &ms) == 1) {
             wl_display_flush(display); sleep_ms(ms);
         } else if (!strcmp(cmd, "shot") && sscanf(line, "%*s %399s", arg) == 1) {

@@ -1150,7 +1150,10 @@ fn usable_icon(icon: &gio::Icon) -> gio::Icon {
     icon.clone()
 }
 
-#[cfg(test)]
+// The panel's isolated GUI test needs the panel's own modules; the desktop
+// (HMP-09) shares this file for its context menu and builds without it.
+#[cfg(all(test, not(querencia_desktop)))]
+#[path = "classic_menu/gui_test.rs"]
 mod gui_test;
 
 #[cfg(test)]

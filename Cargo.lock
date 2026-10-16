@@ -616,6 +616,7 @@ dependencies = [
 name = "querencia-desktop"
 version = "0.1.0"
 dependencies = [
+ "gio-unix",
  "gtk4",
  "gtk4-layer-shell",
 ]

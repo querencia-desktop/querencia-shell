@@ -121,8 +121,7 @@ pub fn parse(text: &str) -> (Background, Vec<String>) {
 }
 
 /// The key file text for `background`. Written by the desktop menu's
-/// "Hintergrund der Arbeitsfläche ändern" (HMP-09); until then only tested.
-#[allow(dead_code)]
+/// "Hintergrund der Arbeitsfläche ändern" (HMP-09).
 pub fn render(background: &Background) -> String {
     let (r, g, b) = background.color;
     format!(

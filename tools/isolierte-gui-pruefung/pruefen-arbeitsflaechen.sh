@@ -7,7 +7,8 @@ HIER="$(cd "$(dirname "$0")" && pwd)"
 PANEL="${1:?Panel-Binary}"; PROFIL="${2:?Profilname}"; N="${3:?Anzahl}"; SZ="${4:?Szenario}"
 G="${HMP_GUI_TEST:-$HOME/projects/querencia-panel-werkstatt/gui-test-nacht}"
 [ -x "$G/bin/qeingabe" ] || bash "$HIER/bauen.sh" "$G/bin"
-cd "$G"; rm -rf "$PROFIL"; mkdir -p "$PROFIL/config/labwc"
+. "$HIER/testprofil.sh"; testprofil_neu "$G" "$PROFIL"
+cd "$G"; mkdir -p "$PROFIL/config/labwc"
 cat > "$PROFIL/config/labwc/rc.xml" <<RC
 <?xml version="1.0"?>
 <labwc_config>
