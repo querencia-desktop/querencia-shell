@@ -1,0 +1,46 @@
+mark W0 Vorher: nur Panels
+shot SHOT/w00-ohne-desktop.png
+mark W1 querencia-desktop starten (Standard: Querencia Blau, zoom)
+run QDESKTOP >SHOT/desktop.log 2>&1
+wait 2500
+shot SHOT/w01-hintergrund-1280x720.png
+mark W2 Rechtsklick auf die freie Fläche: muss labwc erreichen (Wurzelmenü)
+move 900 450
+wait 300
+rclick
+wait 800
+shot SHOT/w02-rechtsklick-labwc-menue.png
+key Escape
+wait 500
+mark W3 Fenster über dem Hintergrund
+run foot -a foot -T 'Testfenster über dem Hintergrund' sleep 900
+wait 1500
+shot SHOT/w03-fenster.png
+mark W4 zweiter Start: muss sich beenden (eine Instanz)
+run QDESKTOP >SHOT/desktop-zweiter.log 2>&1; echo "zweiter Start exit $?" >>SHOT/desktop-zweiter.log
+wait 2000
+mark W5 Auflösungen
+run QAUSGABE 1920x1080
+wait 2500
+shot SHOT/w05-1920x1080.png
+run QAUSGABE 1600x900
+wait 2500
+shot SHOT/w06-1600x900.png
+run QAUSGABE 1366x768
+wait 2500
+shot SHOT/w07-1366x768.png
+run QAUSGABE 1280x1024
+wait 2500
+shot SHOT/w08-1280x1024-zoom.png
+mark W6 desktop.ini: scaled mit eigener Farbe, sofort wirksam
+run sh -c 'mkdir -p "$XDG_CONFIG_HOME/querencia" && printf "[Background]\nMode=scaled\nColor=#3a6ea5\n" > "$XDG_CONFIG_HOME/querencia/desktop.ini"'
+wait 2500
+shot SHOT/w09-1280x1024-scaled.png
+mark W7 unlesbares Bild: Rückfall auf Querencia Blau
+run sh -c 'printf "[Background]\nFile=/gibt/es/nicht.png\nMode=zoom\n" > "$XDG_CONFIG_HOME/querencia/desktop.ini"'
+wait 2500
+shot SHOT/w10-unlesbar-rueckfall.png
+run QAUSGABE 1280x720
+wait 2500
+shot SHOT/w11-1280x720-zurueck.png
+mark ENDE
