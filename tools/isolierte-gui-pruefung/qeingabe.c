@@ -10,6 +10,8 @@
 //   move X Y          jump the pointer
 //   glide X Y MS      move in 10 ms steps over MS milliseconds
 //   click             left button press + release
+//   rclick / dclick   right click / left double click
+//   run CMD           start CMD in the background (test windows, HMP-06)
 //   key NAME          Escape Down Up Left Right Return
 //   wait MS
 //   shot FILE         grim FILE
@@ -105,16 +107,27 @@ int main(void) {
                 wl_display_flush(display);
                 sleep_ms(10);
             }
-        } else if (!strcmp(cmd, "click")) {
-            zwlr_virtual_pointer_v1_button(pointer, now_ms(), BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
-            zwlr_virtual_pointer_v1_frame(pointer);
-            wl_display_roundtrip(display); sleep_ms(40);
-            zwlr_virtual_pointer_v1_button(pointer, now_ms(), BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED);
-            zwlr_virtual_pointer_v1_frame(pointer);
+        } else if (!strcmp(cmd, "click") || !strcmp(cmd, "rclick") || !strcmp(cmd, "dclick")) {
+            uint32_t button = !strcmp(cmd, "rclick") ? BTN_RIGHT : BTN_LEFT;
+            for (int n = !strcmp(cmd, "dclick") ? 2 : 1; n > 0; n--) {
+                zwlr_virtual_pointer_v1_button(pointer, now_ms(), button, WL_POINTER_BUTTON_STATE_PRESSED);
+                zwlr_virtual_pointer_v1_frame(pointer);
+                wl_display_roundtrip(display); sleep_ms(40);
+                zwlr_virtual_pointer_v1_button(pointer, now_ms(), button, WL_POINTER_BUTTON_STATE_RELEASED);
+                zwlr_virtual_pointer_v1_frame(pointer);
+                wl_display_roundtrip(display);
+                if (n > 1) sleep_ms(80);
+            }
+        } else if (!strcmp(cmd, "run")) {
+            // start a test program in the background, in this (isolated) session
+            char sh[600]; snprintf(sh, sizeof sh, "(%.*s) >/dev/null 2>&1 &", (int)strcspn(line + 4, "\n"), line + 4);
+            if (system(sh) != 0) fprintf(stderr, "qeingabe: run fehlgeschlagen\n");
         } else if (!strcmp(cmd, "key") && sscanf(line, "%*s %399s", arg) == 1) {
             int code = !strcmp(arg, "Escape") ? KEY_ESC : !strcmp(arg, "Down") ? KEY_DOWN
                      : !strcmp(arg, "Up") ? KEY_UP : !strcmp(arg, "Left") ? KEY_LEFT
-                     : !strcmp(arg, "Right") ? KEY_RIGHT : !strcmp(arg, "Return") ? KEY_ENTER : -1;
+                     : !strcmp(arg, "Right") ? KEY_RIGHT : !strcmp(arg, "Return") ? KEY_ENTER
+                     : !strcmp(arg, "Tab") ? KEY_TAB : !strcmp(arg, "F2") ? KEY_F2
+                     : !strcmp(arg, "Delete") ? KEY_DELETE : -1;
             if (code < 0) { fprintf(stderr, "qeingabe: Taste %s?\n", arg); continue; }
             zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_PRESSED);
             wl_display_roundtrip(display); sleep_ms(30);

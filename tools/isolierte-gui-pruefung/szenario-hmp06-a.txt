@@ -1,0 +1,32 @@
+mark W0 Panel ohne Fenster
+wait 500
+shot SHOT/w00-leer.png
+run foot -a 'foot' -T 'foot' sleep 900
+wait 1500
+mark W1 1 Fenster
+shot SHOT/w01-fenster.png
+run foot -a 'firefox' -T 'Mozilla Firefox' sleep 900
+wait 1500
+mark W2 2 Fenster
+shot SHOT/w02-fenster.png
+run foot -a 'io.github.lgse.Strata' -T 'Querencia Files' sleep 900
+wait 1500
+run foot -a 'org.example.Querencia.Terminal' -T 'Querencia Terminal' sleep 900
+wait 1500
+run foot -a 'org.querencia.Screenshot' -T 'Querencia Screenshot' sleep 900
+wait 1500
+mark W5 5 Fenster
+shot SHOT/w05-fenster.png
+run foot -a 'unbekannt.app' -T 'Unbekannte Anwendung' sleep 900
+wait 1500
+run foot -a '' -T 'Fenster ohne App-ID' sleep 900
+wait 1500
+run foot -a 'foot' -T 'R1 Abschlussreview austauschen und den Bericht für ChatGPT vollständig prüfen' sleep 900
+wait 1500
+run foot -a 'foot' -T 'a' sleep 900
+wait 1500
+run foot -a 'foot' -T 'zweites foot-Fenster' sleep 900
+wait 1500
+mark W10 10 Fenster
+shot SHOT/w10-fenster.png
+mark ENDE

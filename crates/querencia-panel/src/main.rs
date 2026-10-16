@@ -13,6 +13,7 @@ mod panel_menu;
 mod places_menu;
 mod session;
 mod system_menu;
+mod window_icons;
 mod window_list;
 mod workspace_switcher;
 
@@ -28,8 +29,14 @@ const APP_ID: &str = "org.example.Querencia.Panel";
 
 // GTK's default button min-height plus padding is 34 px and would push a
 // panel of layout::DEFAULT_HEIGHT past its height; panel buttons fill the
-// bar height instead. A window or workspace button is highlighted while
-// labwc reports it active.
+// bar height instead. A workspace button is highlighted while labwc
+// reports it active.
+//
+// Window list (HMP-06), measured in the GNOME 2 reference (Ambiance): framed
+// buttons, 1 px border #c6c1bb on top, #9e9993 below, light gradient; the
+// active window's button looks pressed (darker gradient #dcd6d0..#ebe7e3,
+// inset shadow); a minimized window's button is flat and its icon and
+// title dimmed. Dark text always, no orange (the orange belongs to menus).
 //
 // The classic menus of Anwendungen, Orte and System (classic_menu.rs) look
 // like the GNOME 2 menus of Ubuntu with its theme Ambiance. The colours are
@@ -57,8 +64,12 @@ const PANEL_CSS: &str = "
 .querencia-panel menubutton > button,
 .querencia-panel button.window-button,
 .querencia-panel button.workspace-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
-.querencia-panel button.window-button.active,
 .querencia-panel button.workspace-button.active { background-color: alpha(currentColor, 0.15); font-weight: bold; }
+.querencia-panel windowlist button.window-button { margin: 2px 0; padding: 0 6px 0 4px; border-radius: 2px; border: 1px solid #b7b3b0; border-top-color: #c6c1bb; border-bottom-color: #9e9993; background-color: #f4f2f0; background-image: linear-gradient(to bottom, #fdfcfb, #ebe8e5); box-shadow: none; outline: none; color: #3c3c3c; font-weight: normal; }
+.querencia-panel windowlist button.window-button:hover { background-image: linear-gradient(to bottom, #ffffff, #f1efec); }
+.querencia-panel windowlist button.window-button.active { background-color: #e4dfd9; background-image: linear-gradient(to bottom, #dcd6d0, #ebe7e3); border-color: #9e9993; box-shadow: inset 0 1px 2px alpha(#000000, 0.15); }
+.querencia-panel windowlist button.window-button.minimized { background-image: none; background-color: #f7f6f4; border-color: #cdc8c3; }
+.querencia-panel windowlist button.window-button.minimized > box { opacity: 0.55; }
 .querencia-panel menubutton.querencia-main-menu > button { border-radius: 0; padding-left: 6px; padding-right: 6px; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; color: #3c3c3c; }
 .querencia-panel menubutton.querencia-main-menu > button:hover,
 .querencia-panel menubutton.querencia-main-menu > button:active,
@@ -286,6 +297,37 @@ mod tests {
         assert!(active.contains("inset 0 1px #fd9975"), "{active}");
         assert!(PANEL_CSS.contains("border-radius: 0"));
         assert!(PANEL_CSS.contains("min-height: 20px"));
+    }
+
+    /// HMP-06: window buttons are classic framed buttons, never orange or
+    /// white text, active pressed, minimized dimmed; scoped to the panel.
+    #[test]
+    fn window_buttons_look_like_the_gnome2_window_list() {
+        let rules: Vec<&str> = PANEL_CSS
+            .lines()
+            .filter(|l| l.contains("window-button"))
+            .collect();
+        let rule = |sel: &str| {
+            *rules
+                .iter()
+                .find(|r| r.starts_with(sel))
+                .unwrap_or_else(|| panic!("keine Regel für {sel}"))
+        };
+        let base = rule(".querencia-panel windowlist button.window-button {");
+        assert!(base.contains("border-top-color: #c6c1bb"), "{base}");
+        assert!(base.contains("border-bottom-color: #9e9993"), "{base}");
+        assert!(base.contains("color: #3c3c3c"), "{base}");
+        let active = rule(".querencia-panel windowlist button.window-button.active {");
+        assert!(active.contains("inset"), "gedrückt: {active}");
+        let minimized = rule(".querencia-panel windowlist button.window-button.minimized > box {");
+        assert!(minimized.contains("opacity: 0.55"), "{minimized}");
+        for r in &rules {
+            assert!(r.starts_with(".querencia-panel "), "nicht begrenzt: {r}");
+            for orange in ["#f07746", "#f8875d", "#ea703d", "orange", "#ffffff;"] {
+                assert!(!r.contains(orange), "{r}");
+            }
+            assert!(!r.contains("font-weight: bold"), "{r}");
+        }
     }
 
     /// HMP-05: Anwendungen, Orte and System stay neutral, open or not; the

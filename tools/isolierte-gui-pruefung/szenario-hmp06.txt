@@ -1,0 +1,84 @@
+mark B0 fünf Fenster öffnen
+run foot -a 'foot' -T 'foot' sleep 900
+wait 1200
+run foot -a 'firefox' -T 'Mozilla Firefox' sleep 900
+wait 1200
+run foot -a 'io.github.lgse.Strata' -T 'Querencia Files' sleep 900
+wait 1200
+run foot -a 'org.example.Querencia.Terminal' -T 'Titel vorher' sh -c 'sleep 9; printf "\033]2;Neuer Titel nach Änderung\007"; sleep 900'
+wait 1200
+run foot -a 'org.querencia.Screenshot' -T 'Querencia Screenshot' sleep 900
+wait 1200
+wait 500
+shot SHOT/b01-fuenf.png
+mark B1 Klick auf foot: Wechsel
+move 110 702
+wait 300
+click
+wait 700
+shot SHOT/b02-wechsel-foot.png
+mark B2 Klick auf aktives foot: minimieren
+click
+wait 700
+shot SHOT/b03-foot-minimiert.png
+mark B3 Klick auf minimiertes foot: wiederherstellen
+click
+wait 700
+shot SHOT/b04-foot-wiederhergestellt.png
+mark B4 Klick auf Files
+move 514 702
+wait 300
+click
+wait 700
+shot SHOT/b05-files-aktiv.png
+mark B5 Firefox minimieren: Klick, Klick
+move 312 702
+wait 300
+click
+wait 600
+click
+wait 700
+shot SHOT/b06-firefox-minimiert.png
+mark B6 Titeländerung abwarten
+wait 3000
+shot SHOT/b07-titel-geaendert.png
+mark B7 kurzlebiges Fenster
+run foot -a foot -T 'kurzlebig' sleep 3
+wait 1200
+shot SHOT/b08-sechs.png
+wait 3500
+shot SHOT/b09-wieder-fuenf.png
+mark B8 auf 20 Fenster
+run foot -a foot -T 'Fenster 6 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 7 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 8 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 9 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 10 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 11 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 12 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 13 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 14 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 15 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 16 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 17 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 18 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 19 mit einem etwas längeren Titel' sleep 900
+wait 500
+run foot -a foot -T 'Fenster 20 mit einem etwas längeren Titel' sleep 900
+wait 500
+wait 1500
+shot SHOT/b10-zwanzig.png
+mark ENDE

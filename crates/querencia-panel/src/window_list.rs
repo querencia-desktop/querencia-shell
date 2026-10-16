@@ -3,8 +3,17 @@
 //! own. The connection's fd is a GLib source in the GTK main context, so
 //! events are dispatched there; there is no thread and no polling.
 //!
-//! The panel only shows what the compositor reports: a click sends
-//! `activate` and the highlight changes when labwc reports the new state.
+//! The panel only shows what the compositor reports: a click sends a
+//! request and the look changes when labwc reports the new state.
+//!
+//! HMP-06, the classic GNOME 2 window list: every button is
+//! `[16 px application icon] [title…]` (icon from the window's desktop entry,
+//! `window_icons`), all buttons equally wide (the available width shared
+//! out, at most [`MAX_BUTTON_WIDTH`], see `button_width`) and as high as the
+//! panel allows. The active window's button looks pressed, a minimized
+//! window's button is dimmed (instead of GNOME 2's brackets around the
+//! title), the full title is in the tooltip. A click minimizes the active
+//! window, restores a minimized one and activates any other, as in GNOME 2.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -13,7 +22,8 @@ use std::os::fd::AsRawFd;
 use std::rc::{Rc, Weak};
 
 use gtk4::prelude::*;
-use gtk4::{Box as GtkBox, Button, Label, Orientation, glib, pango};
+use gtk4::subclass::prelude::*;
+use gtk4::{Box as GtkBox, Button, Image, Label, Orientation, glib, pango};
 use wayland_client::backend::WaylandError;
 use wayland_client::globals::{GlobalListContents, registry_queue_init};
 use wayland_client::protocol::{wl_registry::WlRegistry, wl_seat::WlSeat};
@@ -105,6 +115,14 @@ impl<H: Clone + Eq + Hash> Windows<H> {
         }
     }
 
+    /// The completed state of a window that is still open.
+    fn info(&self, key: WindowKey) -> Option<&Info> {
+        self.entries
+            .values()
+            .find(|e| e.key == key)
+            .and_then(|e| e.current.as_ref())
+    }
+
     /// The handle of a window that is still open.
     fn handle(&self, key: WindowKey) -> Option<&H> {
         self.entries
@@ -143,17 +161,70 @@ fn parse_state(raw: &[u8]) -> (bool, bool) {
     flags
 }
 
-/// Button text: the title, in brackets when minimized as in GNOME 2.
+/// Button text: the title (the app ID for an untitled window). GNOME 2's
+/// libwnck put a minimized window's title in brackets; the owner prefers
+/// the state shown by the button's look instead (HMP-06, class
+/// `minimized`), so the text is the title alone.
 fn button_text(info: &Info) -> String {
-    let title = match (info.title.is_empty(), info.app_id.is_empty()) {
-        (false, _) => info.title.as_str(),
-        (true, false) => info.app_id.as_str(),
-        (true, true) => "Unbenanntes Fenster",
-    };
+    match (info.title.is_empty(), info.app_id.is_empty()) {
+        (false, _) => info.title.clone(),
+        (true, false) => info.app_id.clone(),
+        (true, true) => "Unbenanntes Fenster".to_owned(),
+    }
+}
+
+/// Tooltip: the full title, and the state where the look alone shows it.
+fn tooltip_text(info: &Info) -> String {
+    let text = button_text(info);
     if info.minimized {
-        format!("[{title}]")
+        format!("{text} (minimiert)")
     } else {
-        title.to_owned()
+        text
+    }
+}
+
+/// Width of a button in the window list (HMP-06): as in GNOME 2 all
+/// buttons are equally wide, the available width shared out, but never
+/// wider than [`MAX_BUTTON_WIDTH`]. Below [`MIN_BUTTON_WIDTH`] per button
+/// they still shrink to fit (the title ellipsized down to the icon) rather
+/// than run out of the panel.
+fn button_width(available: i32, count: usize, spacing: i32) -> i32 {
+    let Ok(count) = i32::try_from(count) else {
+        return 1;
+    };
+    if count == 0 {
+        return 0;
+    }
+    let share = (available - spacing * (count - 1)) / count;
+    share.clamp(1, MAX_BUTTON_WIDTH)
+}
+
+/// Widest button, the width of a window button in the GNOME 2 reference
+/// (~185 px on a 1366 px panel) rounded up.
+const MAX_BUTTON_WIDTH: i32 = 200;
+/// Narrowest useful button (icon and a little of the title): what the list
+/// asks for at least while it has windows, so it never disappears.
+const MIN_BUTTON_WIDTH: i32 = 32;
+/// Gap between two buttons, as in the reference.
+const BUTTON_SPACING: i32 = 2;
+
+/// What a click on a window's button does, as in GNOME 2: the active
+/// window is minimized, a minimized one restored and activated, any other
+/// activated.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Click {
+    Activate,
+    Restore,
+    Minimize,
+}
+
+fn click_action(info: &Info) -> Click {
+    if info.minimized {
+        Click::Restore
+    } else if info.activated {
+        Click::Minimize
+    } else {
+        Click::Activate
     }
 }
 
@@ -242,7 +313,7 @@ struct Session {
 
 struct WindowList {
     /// Weak, so the list never keeps the panel's widgets alive.
-    container: glib::WeakRef<GtkBox>,
+    container: glib::WeakRef<WindowRow>,
     /// `None` once the connection has failed or was never there.
     session: Option<Session>,
     buttons: HashMap<WindowKey, Button>,
@@ -255,8 +326,12 @@ type Shared = Rc<RefCell<WindowList>>;
 
 /// The window list for the bottom panel. Without a compositor that offers
 /// the protocol it stays empty.
-pub fn widget() -> GtkBox {
-    let container = GtkBox::new(Orientation::Horizontal, 2);
+pub fn widget() -> WindowRow {
+    let container: WindowRow = glib::Object::new();
+    container.set_hexpand(true);
+    container.set_overflow(gtk4::Overflow::Hidden);
+    // a little air before the next applet (workspace switcher), as in GNOME 2
+    container.set_margin_end(6);
     let list = Rc::new(RefCell::new(WindowList {
         container: container.downgrade(),
         session: None,
@@ -414,64 +489,181 @@ fn sync(list: &Shared) {
     for (key, info) in snapshot {
         let button = stale.remove(&key).unwrap_or_else(|| {
             let button = new_button(Rc::downgrade(list), key);
-            container.append(&button);
+            // appended last: the order of the windows' appearance
+            button.set_parent(&container);
             button
         });
         update_button(&button, &info);
         buttons.insert(key, button);
     }
     for button in stale.into_values() {
-        container.remove(&button);
+        button.unparent();
     }
+    container.queue_resize();
     list.borrow_mut().buttons = buttons;
 }
 
+/// Icon size in a window button, as in GNOME 2.
+const ICON_SIZE: i32 = 16;
+
 fn new_button(list: Weak<RefCell<WindowList>>, key: WindowKey) -> Button {
+    let icon = Image::builder().pixel_size(ICON_SIZE).build();
+    icon.add_css_class("window-icon");
     let label = Label::builder()
         .ellipsize(pango::EllipsizeMode::End)
-        .max_width_chars(24)
         .xalign(0.0)
+        .hexpand(true)
         .build();
-    let button = Button::builder()
-        .child(&label)
-        .has_frame(false)
-        .css_classes(["window-button"])
-        .build();
+    let content = GtkBox::new(Orientation::Horizontal, 4);
+    content.append(&icon);
+    content.append(&label);
+    let button = Button::builder().child(&content).build();
+    // added, not set: GTK's own classes of the button stay (HMP-04 lesson)
+    button.add_css_class("window-button");
     button.connect_clicked(move |_| {
         if let Some(list) = list.upgrade() {
-            activate(&list.borrow(), key);
+            click(&list.borrow(), key);
         }
     });
     button
 }
 
+/// The icon and label of a button made by [`new_button`].
+fn parts(button: &Button) -> Option<(Image, Label)> {
+    let content = button.child()?;
+    let icon = content.first_child()?.downcast::<Image>().ok()?;
+    let label = content.last_child()?.downcast::<Label>().ok()?;
+    Some((icon, label))
+}
+
 fn update_button(button: &Button, info: &Info) {
-    if let Some(label) = button.child().and_downcast::<Label>() {
+    if let Some((icon, label)) = parts(button) {
         label.set_label(&button_text(info));
+        icon.set_from_gicon(&crate::window_icons::icon_for(&info.app_id));
     }
-    button.set_tooltip_text((!info.title.is_empty()).then_some(info.title.as_str()));
-    if info.activated {
-        button.add_css_class("active");
-    } else {
-        button.remove_css_class("active");
+    button.set_tooltip_text(Some(&tooltip_text(info)));
+    for (class, on) in [
+        ("active", info.activated && !info.minimized),
+        ("minimized", info.minimized),
+    ] {
+        if on {
+            button.add_css_class(class);
+        } else {
+            button.remove_css_class(class);
+        }
     }
 }
 
-/// Asks the compositor to activate the window. The highlight follows only
-/// the state labwc reports back; a closed window's key finds nothing.
-fn activate(list: &WindowList, key: WindowKey) {
+/// Sends what a click on the window's button asks for ([`click_action`]).
+/// The look follows only the state labwc reports back; a closed window's
+/// key finds nothing.
+fn click(list: &WindowList, key: WindowKey) {
     let Some(session) = &list.session else { return };
-    let Some(handle) = session.protocol.windows.handle(key) else {
+    let windows = &session.protocol.windows;
+    let (Some(handle), Some(info)) = (windows.handle(key), windows.info(key)) else {
         return;
     };
-    handle.activate(&session.seat);
+    let action = click_action(info);
+    match action {
+        Click::Activate => handle.activate(&session.seat),
+        Click::Restore => {
+            handle.unset_minimized();
+            handle.activate(&session.seat);
+        }
+        Click::Minimize => handle.set_minimized(),
+    }
     match flush(&session.conn) {
         Ok(()) => eprintln!(
-            "querencia-panel: Aktivierung von Fenster {} angefragt",
-            key.0
+            "querencia-panel: Fenster {}: {} angefragt",
+            key.0,
+            match action {
+                Click::Activate => "Aktivierung",
+                Click::Restore => "Wiederherstellen",
+                Click::Minimize => "Minimieren",
+            }
         ),
-        Err(err) => eprintln!("querencia-panel: Aktivierung nicht gesendet: {err}"),
+        Err(err) => eprintln!("querencia-panel: Anfrage nicht gesendet: {err}"),
     }
+}
+
+/// The row of window buttons: lays its children out side by side, all
+/// equally wide ([`button_width`]) and as high as the row.
+mod row {
+    use super::*;
+
+    #[derive(Default)]
+    pub struct WindowRow;
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for WindowRow {
+        const NAME: &'static str = "QuerenciaWindowRow";
+        type Type = super::WindowRow;
+        type ParentType = gtk4::Widget;
+
+        fn class_init(klass: &mut Self::Class) {
+            klass.set_css_name("windowlist");
+        }
+    }
+
+    impl ObjectImpl for WindowRow {
+        fn dispose(&self) {
+            while let Some(child) = self.obj().first_child() {
+                child.unparent();
+            }
+        }
+    }
+
+    impl WidgetImpl for WindowRow {
+        fn measure(&self, orientation: Orientation, for_size: i32) -> (i32, i32, i32, i32) {
+            let children = children(&self.obj());
+            if orientation == Orientation::Horizontal {
+                // as wide as the classic width of all buttons, if there is
+                // room; at least one narrow button, never forcing the panel
+                let n = i32::try_from(children.len()).unwrap_or(i32::MAX / MAX_BUTTON_WIDTH);
+                let natural = n * MAX_BUTTON_WIDTH + (n - 1).max(0) * BUTTON_SPACING;
+                (MIN_BUTTON_WIDTH.min(natural), natural, -1, -1)
+            } else {
+                let (min, nat) = children.iter().fold((0, 0), |(min, nat), child| {
+                    let (m, n, _, _) = child.measure(orientation, for_size);
+                    (min.max(m), nat.max(n))
+                });
+                (min, nat, -1, -1)
+            }
+        }
+
+        fn size_allocate(&self, width: i32, height: i32, _baseline: i32) {
+            let children = children(&self.obj());
+            let share = button_width(width, children.len(), BUTTON_SPACING);
+            let mut x = 0;
+            for child in children {
+                let (min, _, _, _) = child.measure(Orientation::Horizontal, height);
+                // never below what the button needs (icon and padding):
+                // with too many windows the row is clipped at the end
+                let w = share.max(min);
+                child.size_allocate(&gtk4::Allocation::new(x, 0, w, height), -1);
+                x += w + BUTTON_SPACING;
+            }
+        }
+    }
+
+    fn children(row: &super::WindowRow) -> Vec<gtk4::Widget> {
+        let mut list = Vec::new();
+        let mut child = row.first_child();
+        while let Some(widget) = child {
+            child = widget.next_sibling();
+            if widget.should_layout() {
+                list.push(widget);
+            }
+        }
+        list
+    }
+}
+
+glib::wrapper! {
+    /// The window list's row of buttons (`windowlist` in CSS).
+    pub struct WindowRow(ObjectSubclass<row::WindowRow>)
+        @extends gtk4::Widget,
+        @implements gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget;
 }
 
 #[cfg(test)]
@@ -546,7 +738,9 @@ mod tests {
 
         windows.state(&1, &state(false, true));
         windows.done(&1);
-        assert_eq!(titles(&windows), ["[neu]"]);
+        // minimized: the title stays as it is (HMP-06), the state is kept
+        assert_eq!(titles(&windows), ["neu"]);
+        assert!(windows.snapshot()[0].1.minimized);
 
         // A done without a difference is no change.
         windows.take_changed();
@@ -629,12 +823,73 @@ mod tests {
             ..Info::default()
         };
         assert_eq!(button_text(&info), "Dokument");
+        // HMP-06: no brackets; minimized is shown by the look (class)
         info.minimized = true;
-        assert_eq!(button_text(&info), "[Dokument]");
+        assert_eq!(button_text(&info), "Dokument");
         info.title.clear();
-        assert_eq!(button_text(&info), "[editor]");
+        assert_eq!(button_text(&info), "editor");
         info.app_id.clear();
         info.minimized = false;
         assert_eq!(button_text(&info), "Unbenanntes Fenster");
+    }
+
+    #[test]
+    fn tooltip_has_the_full_title_and_the_hidden_state() {
+        let mut info = Info {
+            title: "R1 Abschlussreview austauschen und den Bericht prüfen".into(),
+            app_id: "foot".into(),
+            ..Info::default()
+        };
+        assert_eq!(tooltip_text(&info), info.title);
+        info.minimized = true;
+        assert_eq!(
+            tooltip_text(&info),
+            "R1 Abschlussreview austauschen und den Bericht prüfen (minimiert)"
+        );
+        info.title.clear();
+        assert_eq!(tooltip_text(&info), "foot (minimiert)");
+    }
+
+    #[test]
+    fn buttons_share_the_width_up_to_the_classic_maximum() {
+        let w = |available, count| button_width(available, count, BUTTON_SPACING);
+        // few windows: the classic width, never wider
+        assert_eq!(w(1100, 1), MAX_BUTTON_WIDTH);
+        assert_eq!(w(1100, 2), MAX_BUTTON_WIDTH);
+        assert_eq!(w(1100, 5), MAX_BUTTON_WIDTH);
+        // many windows: equal shares that fit, spacing included
+        let ten = w(1100, 10);
+        assert!((MIN_BUTTON_WIDTH..MAX_BUTTON_WIDTH).contains(&ten));
+        assert!(10 * ten + 9 * BUTTON_SPACING <= 1100, "{ten}");
+        assert!(
+            10 * (ten + 1) + 9 * BUTTON_SPACING > 1100,
+            "uses the space: {ten}"
+        );
+        // narrow panel: still all in, smaller than the minimum
+        let tight = w(200, 10);
+        assert!(10 * tight + 9 * BUTTON_SPACING <= 200, "{tight}");
+        assert!(tight >= 1);
+        // nothing to share
+        assert_eq!(w(1100, 0), 0);
+        assert_eq!(w(0, 3), 1, "a button is never zero wide");
+    }
+
+    #[test]
+    fn click_minimizes_the_active_window_and_restores_minimized_ones() {
+        let mut info = Info {
+            title: "x".into(),
+            ..Info::default()
+        };
+        assert_eq!(click_action(&info), Click::Activate);
+        info.activated = true;
+        assert_eq!(click_action(&info), Click::Minimize);
+        info.minimized = true;
+        assert_eq!(
+            click_action(&info),
+            Click::Restore,
+            "minimized wins over activated"
+        );
+        info.activated = false;
+        assert_eq!(click_action(&info), Click::Restore);
     }
 }
