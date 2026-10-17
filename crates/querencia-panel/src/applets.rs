@@ -33,13 +33,16 @@ pub struct AppletType {
     /// HMP-11): the "Zum Panel hinzufügen" dialog then shows its second
     /// page.
     pub chooses_application: bool,
-    factory: fn(&Instance) -> Widget,
+    /// Builds the widget for a layout instance on a panel of the given
+    /// height (only "Anwendungen" uses the height, for its logo).
+    factory: fn(&Instance, i32) -> Widget,
 }
 
 impl AppletType {
-    /// Builds the widget of the layout instance `instance` of this type.
-    pub fn create(&self, instance: &Instance) -> Widget {
-        (self.factory)(instance)
+    /// Builds the widget of the layout instance `instance` of this type for
+    /// a panel `panel_height` pixels high.
+    pub fn create(&self, instance: &Instance, panel_height: i32) -> Widget {
+        (self.factory)(instance, panel_height)
     }
 }
 
@@ -54,7 +57,7 @@ pub const APPLETS: &[AppletType] = &[
         classic_icon: None,
         multiple: true,
         chooses_application: false,
-        factory: |_| app_menu::button().upcast(),
+        factory: |_, height| app_menu::button(height).upcast(),
     },
     AppletType {
         id: "places",
@@ -64,7 +67,7 @@ pub const APPLETS: &[AppletType] = &[
         classic_icon: None,
         multiple: true,
         chooses_application: false,
-        factory: |_| places_menu::button().upcast(),
+        factory: |_, _| places_menu::button().upcast(),
     },
     AppletType {
         id: "system",
@@ -74,7 +77,7 @@ pub const APPLETS: &[AppletType] = &[
         classic_icon: None,
         multiple: true,
         chooses_application: false,
-        factory: |_| system_menu::button().upcast(),
+        factory: |_, _| system_menu::button().upcast(),
     },
     AppletType {
         id: "window-list",
@@ -84,7 +87,7 @@ pub const APPLETS: &[AppletType] = &[
         classic_icon: None,
         multiple: false,
         chooses_application: false,
-        factory: |_| window_list::widget().upcast(),
+        factory: |_, _| window_list::widget().upcast(),
     },
     AppletType {
         id: "workspace-switcher",
@@ -94,7 +97,7 @@ pub const APPLETS: &[AppletType] = &[
         classic_icon: Some("workspace-switcher"),
         multiple: false,
         chooses_application: false,
-        factory: |_| workspace_switcher::widget().upcast(),
+        factory: |_, _| workspace_switcher::widget().upcast(),
     },
     AppletType {
         id: "clock",
@@ -104,7 +107,7 @@ pub const APPLETS: &[AppletType] = &[
         classic_icon: Some("clock"),
         multiple: true,
         chooses_application: false,
-        factory: |_| {
+        factory: |_, _| {
             let label = Label::new(None);
             clock::attach(&label);
             label.upcast()
@@ -118,7 +121,9 @@ pub const APPLETS: &[AppletType] = &[
         classic_icon: None,
         multiple: true,
         chooses_application: true,
-        factory: |instance| launcher::button(instance.app.as_deref().unwrap_or_default()).upcast(),
+        factory: |instance, _| {
+            launcher::button(instance.app.as_deref().unwrap_or_default()).upcast()
+        },
     },
 ];
 

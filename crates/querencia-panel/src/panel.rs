@@ -74,7 +74,7 @@ fn region(spec: &PanelSpec, region: Region) -> Option<GtkBox> {
     }
     let row = new_row();
     for instance in spec.region(region) {
-        if let Some(widget) = applet_widget(instance) {
+        if let Some(widget) = applet_widget(instance, spec.height) {
             row.append(&widget);
         }
     }
@@ -84,10 +84,16 @@ fn region(spec: &PanelSpec, region: Region) -> Option<GtkBox> {
 
 /// Puts a new widget for `instance` at `index` of `region` in the panel bar
 /// `bar`, as [`crate::layout::Layout::add_applet`] placed it in the layout.
-/// A region that had no applets gets its row now. Returns whether the
-/// applet type was known.
-pub fn insert_applet(bar: &CenterBox, region: Region, index: usize, instance: &Instance) -> bool {
-    let Some(widget) = applet_widget(instance) else {
+/// A region that had no applets gets its row now. `panel_height` is the
+/// height of that panel. Returns whether the applet type was known.
+pub fn insert_applet(
+    bar: &CenterBox,
+    region: Region,
+    index: usize,
+    instance: &Instance,
+    panel_height: i32,
+) -> bool {
+    let Some(widget) = applet_widget(instance, panel_height) else {
         return false;
     };
     let row = region_row(bar, region).unwrap_or_else(|| {
@@ -185,9 +191,9 @@ fn gap(left_is_launcher: bool, right_is_launcher: bool) -> i32 {
     }
 }
 
-/// A new widget for `instance`, or `None` (with a log line) for an unknown
-/// applet type.
-fn applet_widget(instance: &Instance) -> Option<Widget> {
+/// A new widget for `instance` on a panel `panel_height` pixels high, or
+/// `None` (with a log line) for an unknown applet type.
+fn applet_widget(instance: &Instance, panel_height: i32) -> Option<Widget> {
     let Some(applet) = applets::find(&instance.applet) else {
         eprintln!(
             "querencia-panel: Applet-Typ {} unbekannt, {} ausgelassen",
@@ -195,7 +201,7 @@ fn applet_widget(instance: &Instance) -> Option<Widget> {
         );
         return None;
     };
-    let widget = applet.create(instance);
+    let widget = applet.create(instance, panel_height);
     // Names the widget after its instance, e.g. for the GTK inspector and
     // for finding it again when the layout changes.
     widget.set_widget_name(&instance.id);

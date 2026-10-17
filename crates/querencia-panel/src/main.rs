@@ -10,6 +10,7 @@ mod launcher;
 mod layout;
 mod layout_editor;
 mod layout_store;
+mod logo;
 mod panel;
 mod panel_menu;
 mod places_menu;

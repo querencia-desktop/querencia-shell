@@ -2,8 +2,8 @@
 //! see `apps.rs`), each entry launching its application through GIO by
 //! desktop ID. The menu follows installed, removed and changed applications
 //! without a panel restart. [`menu_button`] gives all three main menus their
-//! GNOME 2 button: label (and for "Anwendungen" the logo), no dropdown
-//! arrow, menu left-aligned below the button.
+//! GNOME 2 button: label (and for "Anwendungen" the Querencia logo,
+//! `logo.rs`), no dropdown arrow, menu left-aligned below the button.
 //! Launching and following changes are shared with the "System" menu
 //! (`system_menu.rs`). Details and test results:
 //! `docs/m1-1b1b-anwendungsmenue-test.md`, `docs/m1-1b1c-appinfo-monitor-test.md`.
@@ -16,44 +16,36 @@ use gtk4::prelude::*;
 use gtk4::{Box as GtkBox, Image, Label, MenuButton, Orientation, Popover, gdk, gio, glib};
 
 use crate::apps::{AppEntry, Catalog};
-use crate::classic_menu;
+use crate::{classic_menu, logo};
 
 const ACTION_GROUP: &str = "menu";
 const LAUNCH: &str = "launch";
 const NAME: &str = "Anwendungsmenü";
 const NO_APPLICATIONS: &str = "Keine Anwendungen";
 
-/// Menu button with the installed applications, kept up to date.
-pub fn button() -> MenuButton {
+/// Menu button with the installed applications, kept up to date, on a
+/// panel `panel_height` pixels high (for the size of the logo).
+pub fn button(panel_height: i32) -> MenuButton {
     let menu = gio::Menu::new();
     rebuild(&menu);
 
-    let button = menu_button("Anwendungen", Some(&APPLICATIONS_ICON), &menu);
+    let button = menu_button("Anwendungen", Some(logo::image(panel_height)), &menu);
     add_launch_action(&button, ACTION_GROUP);
     follow_changes(&button, &menu, NAME, rebuild);
     button
 }
 
-/// Icon of the "Anwendungen" button, as the GNOME 2 panel showed it before
-/// the label: the distribution or GNOME logo (`start-here`; GNOME Human
-/// inherits it from `gnome`), else the generic names.
-pub(crate) const APPLICATIONS_ICON: [&str; 3] =
-    ["start-here", "distributor-logo", "start-here-symbolic"];
-/// Size of that icon on a panel of the standard height.
-const PANEL_ICON_SIZE: i32 = 22;
 /// CSS class of the three main menu buttons (style in `main.rs`).
 pub(crate) const MAIN_MENU_CLASS: &str = "querencia-main-menu";
 
 /// A panel menu button for `menu` in the GNOME 2 manner: the label, with
-/// `icon` (names tried in order) before it if given, and no dropdown arrow;
+/// the image `icon` before it if given, and no dropdown arrow;
 /// the menu is a classic menu (`classic_menu.rs`) with icons and submenus
 /// beside it, opening left-aligned below the button (above it if there is no
 /// room).
-pub(crate) fn menu_button(label: &str, icon: Option<&[&str]>, menu: &gio::Menu) -> MenuButton {
+pub(crate) fn menu_button(label: &str, icon: Option<Image>, menu: &gio::Menu) -> MenuButton {
     let content = GtkBox::new(Orientation::Horizontal, 4);
-    if let Some(names) = icon {
-        let image = Image::from_gicon(&gio::ThemedIcon::from_names(names));
-        image.set_pixel_size(PANEL_ICON_SIZE);
+    if let Some(image) = icon {
         content.append(&image);
     }
     content.append(&Label::new(Some(label)));
@@ -374,14 +366,6 @@ pub(crate) mod tests {
         assert_eq!(
             icon(&internet, 0).as_deref(),
             Some("/snap/firefox/current/default256.png")
-        );
-    }
-
-    #[test]
-    fn applications_button_shows_the_classic_logo_first() {
-        assert_eq!(
-            APPLICATIONS_ICON,
-            ["start-here", "distributor-logo", "start-here-symbolic"]
         );
     }
 

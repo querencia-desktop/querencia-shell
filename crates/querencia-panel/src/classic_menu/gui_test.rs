@@ -207,7 +207,7 @@ fn isolated_gui_menus() {
     panel.add_css_class("querencia-panel");
     panel.set_valign(gtk4::Align::Start);
     panel.set_halign(gtk4::Align::Start);
-    let apps = crate::app_menu::button();
+    let apps = crate::app_menu::button(crate::layout::DEFAULT_HEIGHT);
     let places = crate::places_menu::button();
     let system = crate::system_menu::button();
     for button in [&apps, &places, &system] {

@@ -248,8 +248,14 @@ fn add_applet(
     app: Option<&str>,
     region: Region,
 ) -> Result<(), String> {
-    let (change, path) = {
+    let (change, path, height) = {
         let mut editor = editor.borrow_mut();
+        let height = editor
+            .layout()
+            .panels
+            .iter()
+            .find(|p| p.id == panel_id)
+            .map_or(crate::layout::DEFAULT_HEIGHT, |p| p.height);
         let change = match app {
             Some(app) if applet == crate::layout::LAUNCHER => {
                 editor.add_launcher(panel_id, app, region)?
@@ -257,7 +263,7 @@ fn add_applet(
             Some(app) => return Err(format!("{applet} braucht keine Anwendung ({app})")),
             None => editor.add(panel_id, applet, region)?,
         };
-        (change, editor.path().to_path_buf())
+        (change, editor.path().to_path_buf(), height)
     };
     if let Some(backup) = &change.backup {
         eprintln!(
@@ -267,7 +273,7 @@ fn add_applet(
         );
     }
     let added = &change.added;
-    if !panel::insert_applet(bar, added.region, added.index, &added.instance) {
+    if !panel::insert_applet(bar, added.region, added.index, &added.instance, height) {
         return Err(format!(
             "gespeichert, aber nicht angezeigt: Applet-Typ {} unbekannt",
             added.instance.applet

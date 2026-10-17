@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="58 -5 384 384" role="img" aria-labelledby="title description">
+  <title id="title">Querencia Desktop – offizielles Logo C2</title>
+  <desc id="description">Kräftiges geometrisches Q mit harmonisch verbundenem, weich gerundetem Q-Strich. Flaches Querencia-Orange.</desc>
+  <path fill="#F07746" fill-rule="nonzero" d="M 384 274
+L 393.5 265.5
+A 166 166 0 1 0 295.6 346.5
+C 306 341 324 336 336 339
+L 262.5 293
+A 108 108 0 1 1 344.9 231.8
+L 384 274 Z
+M 244 245
+C 252 233 269 225 284 223.8
+C 308 220 324 235.5 343 254.5
+C 370 281.5 395 310 418.2 325.3
+C 423.5 328.8 418 334.8 414.6 337.4
+C 400 349.9 383 354.8 363 351
+C 342 347.5 326 334.5 306.5 314.9
+C 285.3 293.3 266 264 244.2 248.1
+Q 242.3 246.7 244 245 Z"/>
+</svg>
