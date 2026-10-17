@@ -11,6 +11,8 @@
 //   glide X Y MS      move in 10 ms steps over MS milliseconds
 //   click             left button press + release
 //   rclick / dclick   right click / left double click
+//   press / release   left button down / up alone (drag and drop, HMP-10)
+//   extent W H        coordinates from now on in a W×H output (HMP-10)
 //   run CMD           start CMD in the background (test windows, HMP-06)
 //   scroll N          N wheel notches, positive = down (HMP-07)
 //   key NAME          Escape Down Up Left Right Return
@@ -33,7 +35,7 @@
 static struct wl_seat *seat;
 static struct zwlr_virtual_pointer_manager_v1 *pointer_manager;
 static struct zwp_virtual_keyboard_manager_v1 *keyboard_manager;
-static const unsigned W = 1280, H = 720;
+static unsigned W = 1280, H = 720;
 static double px = 640, py = 600;
 
 static void global(void *data, struct wl_registry *registry, uint32_t name,
@@ -79,9 +81,23 @@ static int de_key(char c, int *shift) {
     case '-': return KEY_SLASH;
     case '_': *shift = 1; return KEY_SLASH;
     case '.': return KEY_DOT;
+    case ',': return KEY_COMMA;
     case ' ': return KEY_SPACE;
     default: return -1;
     }
+}
+
+// HMP-10: German letters (UTF-8) on the de layout; *len = bytes used.
+static int de_utf8(const char *t, int *shift, int *len) {
+    static const struct { const char *utf8; int key, shift; } letters[] = {
+        {"\xc3\xa4", KEY_APOSTROPHE, 0}, {"\xc3\xb6", KEY_SEMICOLON, 0}, {"\xc3\xbc", KEY_LEFTBRACE, 0},
+        {"\xc3\x84", KEY_APOSTROPHE, 1}, {"\xc3\x96", KEY_SEMICOLON, 1}, {"\xc3\x9c", KEY_LEFTBRACE, 1},
+        {"\xc3\x9f", KEY_MINUS, 0},
+    };
+    for (size_t i = 0; i < sizeof letters / sizeof letters[0]; i++)
+        if (!strncmp(t, letters[i].utf8, 2)) { *shift = letters[i].shift; *len = 2; return letters[i].key; }
+    *len = 1;
+    return de_key(*t, shift);
 }
 
 int main(void) {
@@ -144,6 +160,13 @@ int main(void) {
                 wl_display_roundtrip(display);
                 if (n > 1) sleep_ms(80);
             }
+        } else if (!strcmp(cmd, "press") || !strcmp(cmd, "release")) {
+            zwlr_virtual_pointer_v1_button(pointer, now_ms(), BTN_LEFT, !strcmp(cmd, "press")
+                                           ? WL_POINTER_BUTTON_STATE_PRESSED : WL_POINTER_BUTTON_STATE_RELEASED);
+            zwlr_virtual_pointer_v1_frame(pointer);
+            wl_display_roundtrip(display);
+        } else if (!strcmp(cmd, "extent") && sscanf(line, "%*s %lf %lf", &x, &y) == 2 && x >= 1 && y >= 1) {
+            W = (unsigned)x; H = (unsigned)y;
         } else if (!strcmp(cmd, "scroll") && sscanf(line, "%*s %ld", &ms) == 1) {
             // ms = notches: positive = down (next), negative = up
             zwlr_virtual_pointer_v1_axis_source(pointer, WL_POINTER_AXIS_SOURCE_WHEEL);
@@ -178,16 +201,18 @@ int main(void) {
                      : !strcmp(arg, "Up") ? KEY_UP : !strcmp(arg, "Left") ? KEY_LEFT
                      : !strcmp(arg, "Right") ? KEY_RIGHT : !strcmp(arg, "Return") ? KEY_ENTER
                      : !strcmp(arg, "Tab") ? KEY_TAB : !strcmp(arg, "F2") ? KEY_F2
-                     : !strcmp(arg, "Delete") ? KEY_DELETE : !strcmp(arg, "Print") ? KEY_SYSRQ : -1;
+                     : !strcmp(arg, "Delete") ? KEY_DELETE : !strcmp(arg, "Print") ? KEY_SYSRQ
+                     : !strcmp(arg, "BackSpace") ? KEY_BACKSPACE : !strcmp(arg, "Home") ? KEY_HOME
+                     : !strcmp(arg, "End") ? KEY_END : -1;
             if (code < 0) { fprintf(stderr, "qeingabe: Taste %s?\n", arg); continue; }
             zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_PRESSED);
             wl_display_roundtrip(display); sleep_ms(30);
             zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_RELEASED);
         } else if (!strcmp(cmd, "type")) {
-            // type TEXT: letters, digits, space and / - _ . on the de layout
+            // type TEXT: letters (with ä ö ü ß), digits, space and / - _ . , on the de layout
             const char *t = line + 5;
-            for (; *t && *t != '\n'; t++) {
-                int shift, code = de_key(*t, &shift);
+            for (int len = 1; *t && *t != '\n'; t += len) {
+                int shift, code = de_utf8(t, &shift, &len);
                 if (code < 0) { fprintf(stderr, "qeingabe: Zeichen %c?\n", *t); continue; }
                 if (shift) {
                     zwp_virtual_keyboard_v1_key(keyboard, now_ms(), KEY_LEFTSHIFT, WL_KEYBOARD_KEY_STATE_PRESSED);

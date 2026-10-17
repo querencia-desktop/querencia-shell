@@ -26,6 +26,9 @@ mod classic_menu;
 mod config;
 mod desktop_view;
 mod icons;
+mod layout;
+mod rename;
+mod store;
 mod wallpaper;
 
 use std::cell::RefCell;
@@ -281,6 +284,9 @@ window.querencia-desktop-icons box.desktop-icon { padding: 1px; }
 window.querencia-desktop-icons box.desktop-icon > label { color: #ffffff; text-shadow: 1px 1px 2px alpha(#000000, 0.85); padding: 0 2px; border-radius: 3px; }
 window.querencia-desktop-icons box.desktop-icon.selected > label { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); text-shadow: none; }
 window.querencia-desktop-icons box.desktop-icon.selected > image { opacity: 0.7; }
+window.querencia-desktop-icons box.desktop-icon.dragging { opacity: 0.6; }
+window.querencia-desktop-icons entry.desktop-rename { min-height: 0; padding: 1px 3px; border: 1px solid #000000; border-radius: 0; box-shadow: none; outline: none; background-color: #ffffff; background-image: none; color: #000000; }
+window.querencia-desktop-icons entry.desktop-rename > text > selection { background-color: #f07746; color: #ffffff; }
 ";
 
 fn install_style() {

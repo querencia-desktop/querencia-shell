@@ -1,4 +1,4 @@
-//! The icon layer of the desktop (HMP-09).
+//! The icon layer of the desktop (HMP-09, HMP-10).
 //!
 //! A second layer-shell surface on the **bottom** layer: above the
 //! background (HMP-08), below every window and below the panels (top
@@ -9,44 +9,81 @@
 //!
 //! - Left click selects an icon (or clears the selection), double click
 //!   opens it; right click opens the desktop menu or, on an icon, its menu.
+//! - HMP-10: pressing the left button on an icon and moving it further than
+//!   GTK's drag threshold drags the icon: a translucent copy follows the
+//!   pointer, the release puts the icon there (the nearest free spot if
+//!   that is taken, always inside the area). Only the icon moves, never the
+//!   file. A press that became a drag never counts towards a double click.
+//! - HMP-10: every position and the user's own names are kept in the state
+//!   file `desktop-symbole` (`store.rs`); refreshes by the file monitor,
+//!   restarts and other screen sizes keep them (`layout.rs`).
+//! - HMP-10: F2 or "Umbenennen …" in the icon menu edits the label in
+//!   place, as Nautilus did: Enter keeps the new name, Escape keeps the old
+//!   one, a click elsewhere keeps the new one. Files and folders are renamed
+//!   with GIO and keep their place; starters change their visible name.
 //! - The menus are the panel's classic GNOME 2 menus (`classic_menu.rs`,
 //!   shared source) on an invisible menu button; the menu points at the click.
 //! - Only entries that work are shown: "Ordner anlegen", "Dokument anlegen"
 //!   ("Leere Datei" and the real files of the XDG templates directory),
 //!   "Nach Namen aufräumen" and "Hintergrund der Arbeitsfläche ändern …"
 //!   (writes `desktop.ini`, HMP-08 applies it). Not yet: "Starter
-//!   anlegen", "Anordnung fixieren" (needs drag and drop), "Einfügen".
+//!   anlegen", "Einfügen".
 //! - New folders and documents are created with GIO calls that fail on an
 //!   existing name, after [`icons::unique_name`] picked a free one: nothing
 //!   is ever overwritten. The desktop directory itself is created only by
 //!   such a user action.
 
 use std::cell::{Cell, RefCell};
-use std::path::PathBuf;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::time::Duration;
 
 use gio_unix::DesktopAppInfo;
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Application, ApplicationWindow, Fixed, GestureClick, Image, Label, MenuButton,
-    Orientation, gdk, gio, glib,
+    Align, Application, ApplicationWindow, EventControllerFocus, EventControllerKey, Fixed,
+    GestureClick, GestureDrag, Image, Label, MenuButton, Orientation, PropagationPhase, gdk, gio,
+    glib,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 use crate::classic_menu;
 use crate::config;
 use crate::icons::{self, Item, Kind};
+use crate::layout::{self, Geometry, Point};
+use crate::rename;
+use crate::store::{self, Store};
 
 pub const FILES_APP: &str = "io.github.lgse.Strata.desktop";
 pub const TERMINAL_APP: &str = "org.example.Querencia.Terminal.desktop";
 // Grid cell: wide enough for "Persönlicher" on one line (GNOME 2 broke
-// labels between words).
+// labels between words). One icon with its label (at most two lines)
+// takes one cell; cells never overlap.
 const CELL: (i32, i32) = (100, 88);
 const MARGIN: i32 = 8;
 const ICON_PX: i32 = 48;
+// The rename box is a little wider than a cell, as Nautilus' was.
+const RENAME_WIDTH: i32 = 150;
 
 /// What a `desktop.*` menu action does.
 type ActionFn = Box<dyn Fn(&Rc<Icons>, Option<&glib::Variant>)>;
+
+/// An icon being dragged (HMP-10).
+struct Drag {
+    index: usize,
+    start: (f64, f64),
+    /// Pointer position inside the dragged tile.
+    grab: (f64, f64),
+    /// The translucent copy under the pointer, once it is a drag.
+    ghost: Option<gtk4::Box>,
+}
+
+/// The label being edited (HMP-10).
+struct Editing {
+    key: String,
+    entry: gtk4::Entry,
+}
 
 pub struct Icons {
     pub window: ApplicationWindow,
@@ -55,11 +92,27 @@ pub struct Icons {
     menu: gio::Menu,
     items: RefCell<Vec<Item>>,
     widgets: RefCell<Vec<gtk4::Box>>,
+    /// Where each icon is shown (top left corner of its cell).
+    positions: RefCell<Vec<Point>>,
     selected: Cell<Option<usize>>,
-    rows: Cell<usize>,
+    geometry: Cell<Geometry>,
+    store: RefCell<Store>,
+    /// HMP-09's saved order, for the first start without a state file.
+    migrated_order: Vec<String>,
     watches: RefCell<Vec<gio::FileMonitor>>,
     /// Applies a new desktop.ini at once (main.rs `load`).
     background_changed: Rc<dyn Fn()>,
+    drag: RefCell<Option<Drag>>,
+    /// Counts drags; a double click must not span one.
+    drags: Cell<u64>,
+    drags_at_first_press: Cell<u64>,
+    /// This press only ended a rename: no selection, drag or open.
+    press_swallowed: Cell<bool>,
+    editing: RefCell<Option<Editing>>,
+    /// A refresh that waits for the end of a drag or rename.
+    reload_waiting: Cell<bool>,
+    reload_timer: RefCell<Option<glib::SourceId>>,
+    last_logged: RefCell<String>,
 }
 
 fn desktop_dir() -> Option<PathBuf> {
@@ -69,18 +122,43 @@ fn desktop_dir() -> Option<PathBuf> {
     )
 }
 
-/// `$XDG_STATE_HOME/querencia/desktop-order` (default `~/.local/state`).
-fn order_path() -> PathBuf {
+/// `$XDG_STATE_HOME/querencia` (default `~/.local/state/querencia`).
+fn state_dir() -> PathBuf {
     std::env::var_os("XDG_STATE_HOME")
         .map(PathBuf::from)
         .filter(|dir| dir.is_absolute())
         .unwrap_or_else(|| glib::home_dir().join(".local/state"))
         .join("querencia")
-        .join("desktop-order")
+}
+
+/// HMP-09's order file; still written, so that a return to HMP-09 finds
+/// the icons in about the same order.
+fn order_path() -> PathBuf {
+    state_dir().join("desktop-order")
+}
+
+fn store_path() -> PathBuf {
+    state_dir().join(store::FILE_NAME)
 }
 
 fn log(text: &str) {
     eprintln!("querencia-desktop: {text}");
+}
+
+/// Writes `text` to `path` atomically: a temporary file in the same
+/// directory, flushed to disk, then renamed over the old one.
+fn write_atomically(path: &Path, text: &str) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut temporary = path.as_os_str().to_owned();
+    temporary.push(".neu");
+    let temporary = PathBuf::from(temporary);
+    let mut file = std::fs::File::create(&temporary)?;
+    file.write_all(text.as_bytes())?;
+    file.sync_all()?;
+    drop(file);
+    std::fs::rename(&temporary, path)
 }
 
 impl Icons {
@@ -119,6 +197,7 @@ impl Icons {
         let menu = gio::Menu::new();
         classic_menu::attach(&anchor, menu.upcast_ref());
 
+        let (store, migrated_order) = load_store();
         let icons = Rc::new(Self {
             window,
             fixed,
@@ -126,19 +205,43 @@ impl Icons {
             menu,
             items: RefCell::default(),
             widgets: RefCell::default(),
+            positions: RefCell::default(),
             selected: Cell::new(None),
-            rows: Cell::new(1),
+            geometry: Cell::new(Geometry {
+                width: 0,
+                height: 0,
+                tile: CELL,
+                margin: MARGIN,
+            }),
+            store: RefCell::new(store),
+            migrated_order,
             watches: RefCell::default(),
             background_changed,
+            drag: RefCell::default(),
+            drags: Cell::new(0),
+            drags_at_first_press: Cell::new(0),
+            press_swallowed: Cell::new(false),
+            editing: RefCell::default(),
+            reload_waiting: Cell::new(false),
+            reload_timer: RefCell::default(),
+            last_logged: RefCell::default(),
         });
         icons.install_actions();
         icons.install_clicks();
+        icons.install_drag();
+        icons.install_keys();
+        // The area between the panels: known after the first configure,
+        // changes with the panels, the resolution and the scale factor.
         let weak = Rc::downgrade(&icons);
         icons.fixed.add_tick_callback(move |fixed, _| {
             if let Some(icons) = weak.upgrade() {
-                let rows = icons::rows_for(fixed.height(), MARGIN, CELL.1);
-                if fixed.height() > 0 && rows != icons.rows.get() {
-                    icons.rows.set(rows);
+                let mut geometry = icons.geometry.get();
+                let size = (fixed.width(), fixed.height());
+                if size.0 > 0 && size.1 > 0 && size != (geometry.width, geometry.height) {
+                    geometry.width = size.0;
+                    geometry.height = size.1;
+                    icons.geometry.set(geometry);
+                    log(&format!("Symbolfläche {}x{}", size.0, size.1));
                     icons.layout();
                 }
             }
@@ -150,11 +253,56 @@ impl Icons {
         icons
     }
 
-    /// Re-reads which icons there are and shows them in the saved order.
+    /// Re-reads which icons there are; places come from the state file.
     pub fn reload(self: &Rc<Self>) {
-        let saved = std::fs::read_to_string(order_path()).unwrap_or_default();
-        let items = icons::ordered(&icons::parse_order(&saved), load_items());
+        if self.drag.borrow().is_some() || self.editing.borrow().is_some() {
+            self.reload_waiting.set(true);
+            return;
+        }
+        self.reload_waiting.set(false);
+        let (mut items, listed) = load_items();
+        {
+            let mut store = self.store.borrow_mut();
+            for item in &mut items {
+                if let Some(alias) = store.alias(&item.key) {
+                    item.name = alias.to_owned();
+                }
+            }
+            // Gone files lose their place (a new file of the same name later
+            // gets a free one), but only when the directory could be read.
+            if listed {
+                let present: Vec<String> = items.iter().map(Item::ident).collect();
+                if store.forget_missing(|name| present.iter().any(|p| p == name)) {
+                    drop(store);
+                    self.save();
+                }
+            }
+        }
+        let mut saved: Vec<String> = self
+            .store
+            .borrow()
+            .entries
+            .iter()
+            .map(|e| e.key())
+            .collect();
+        saved.extend(self.migrated_order.iter().cloned());
+        let items = icons::ordered(&saved, items);
         self.set_items(items);
+    }
+
+    /// A refresh shortly after file monitor events (they come in bursts).
+    fn reload_soon(self: &Rc<Self>) {
+        if let Some(id) = self.reload_timer.take() {
+            id.remove();
+        }
+        let weak = Rc::downgrade(self);
+        let id = glib::timeout_add_local_once(Duration::from_millis(120), move || {
+            if let Some(icons) = weak.upgrade() {
+                icons.reload_timer.take();
+                icons.reload();
+            }
+        });
+        *self.reload_timer.borrow_mut() = Some(id);
     }
 
     fn set_items(self: &Rc<Self>, items: Vec<Item>) {
@@ -167,12 +315,12 @@ impl Icons {
         }
         let widgets: Vec<gtk4::Box> = items.iter().map(icon_widget).collect();
         for widget in &widgets {
+            // shown once placed (`layout`), never first at the top left
+            widget.set_visible(false);
             self.fixed.put(widget, 0.0, 0.0);
         }
         self.selected
             .set(selected_key.and_then(|key| items.iter().position(|item| item.key == key)));
-        let order: String = items.iter().map(|item| format!("{}\n", item.key)).collect();
-        save_order(&order);
         log(&format!(
             "{} Symbole: {}",
             items.len(),
@@ -188,15 +336,102 @@ impl Icons {
         self.show_selection();
     }
 
+    /// Shows every icon at its place; icons without one get a free spot,
+    /// which is remembered. A smaller area moves icons in for display only.
     fn layout(&self) {
-        let rows = self.rows.get();
-        for (index, widget) in self.widgets.borrow().iter().enumerate() {
-            let (col, row) = icons::cell(index, rows);
-            self.fixed.move_(
-                widget,
-                f64::from(MARGIN) + col as f64 * f64::from(CELL.0),
-                f64::from(MARGIN) + row as f64 * f64::from(CELL.1),
-            );
+        let geometry = self.geometry.get();
+        if !geometry.known() {
+            return;
+        }
+        let items = self.items.borrow();
+        // Priority: the order of the state file (the last moved icon is
+        // first), then the icons without a place.
+        let mut order: Vec<usize> = (0..items.len()).collect();
+        {
+            let store = self.store.borrow();
+            let rank = |i: &usize| {
+                store
+                    .entries
+                    .iter()
+                    .position(|e| e.key() == items[*i].key)
+                    .unwrap_or(usize::MAX)
+            };
+            order.sort_by_key(|i| (rank(i), *i));
+        }
+        let wanted: Vec<_> = order
+            .iter()
+            .map(|&i| self.store.borrow().place(&items[i].key))
+            .collect();
+        let placed = geometry.place_all(&wanted);
+        let mut positions = vec![(0, 0); items.len()];
+        let mut new_places = false;
+        for (n, &i) in order.iter().enumerate() {
+            positions[i] = placed[n];
+            if wanted[n].is_none() {
+                self.store.borrow_mut().set_place(
+                    items[i].art(),
+                    &items[i].ident(),
+                    geometry.top_left_place(placed[n]),
+                );
+                new_places = true;
+            }
+        }
+        for (widget, &(x, y)) in self.widgets.borrow().iter().zip(&positions) {
+            self.fixed.move_(widget, f64::from(x), f64::from(y));
+            widget.set_visible(true);
+        }
+        let text: Vec<String> = items
+            .iter()
+            .zip(&positions)
+            .map(|(item, (x, y))| format!("{}={x},{y}", item.name))
+            .collect();
+        let text = text.join("; ");
+        if *self.last_logged.borrow() != text {
+            log(&format!("Lage: {text}"));
+            *self.last_logged.borrow_mut() = text;
+        }
+        drop(items);
+        *self.positions.borrow_mut() = positions;
+        if new_places {
+            self.save();
+        }
+    }
+
+    /// Writes the state file (and HMP-09's order file).
+    fn save(&self) {
+        let store = self.store.borrow();
+        if let Some(version) = store.newer {
+            log(&format!(
+                "{} ist von Version {version}, wird nicht überschrieben",
+                store_path().display()
+            ));
+            return;
+        }
+        let text = store.render();
+        let path = store_path();
+        if std::fs::read_to_string(&path).ok().as_deref() != Some(text.as_str())
+            && let Err(err) = write_atomically(&path, &text)
+        {
+            log(&format!("Anordnung nicht gespeichert: {err}"));
+        }
+        // HMP-09 order: by column, then row.
+        let items = self.items.borrow();
+        let positions = self.positions.borrow();
+        let mut by_place: Vec<(Point, String)> = items
+            .iter()
+            .zip(positions.iter())
+            .filter_map(|(item, p)| store::hmp09_order_key(&item.key).map(|k| (*p, k)))
+            .collect();
+        by_place.sort();
+        let order: String = by_place
+            .into_iter()
+            .map(|(_, k)| format!("{k}\n"))
+            .collect();
+        if !order.is_empty()
+            && std::fs::read_to_string(order_path()).ok().as_deref() != Some(order.as_str())
+            && let Err(err) = write_atomically(&order_path(), &order)
+        {
+            log(&format!("Reihenfolge nicht gespeichert: {err}"));
         }
     }
 
@@ -211,13 +446,16 @@ impl Icons {
     }
 
     fn hit(&self, x: f64, y: f64) -> Option<usize> {
-        icons::hit(
-            self.items.borrow().len(),
-            self.rows.get(),
-            (f64::from(MARGIN), f64::from(MARGIN)),
-            (f64::from(CELL.0), f64::from(CELL.1)),
-            (x, y),
-        )
+        self.geometry.get().hit(&self.positions.borrow(), (x, y))
+    }
+
+    /// Whether `(x, y)` is on the rename box.
+    fn on_rename_box(&self, x: f64, y: f64) -> bool {
+        self.editing.borrow().as_ref().is_some_and(|edit| {
+            edit.entry
+                .compute_bounds(&self.fixed)
+                .is_some_and(|b| b.contains_point(&gtk4::graphene::Point::new(x as f32, y as f32)))
+        })
     }
 
     fn install_clicks(self: &Rc<Self>) {
@@ -226,26 +464,181 @@ impl Icons {
         let weak = Rc::downgrade(self);
         click.connect_pressed(move |gesture, n_press, x, y| {
             let Some(icons) = weak.upgrade() else { return };
+            if icons.on_rename_box(x, y) {
+                return;
+            }
+            if icons.editing.borrow().is_some() {
+                // A click elsewhere ends the rename (and does nothing else).
+                // Only a left press has a drag gesture that clears the flag
+                // again at its release.
+                if gesture.current_button() == gdk::BUTTON_PRIMARY {
+                    icons.press_swallowed.set(true);
+                }
+                icons.finish_rename(true);
+                return;
+            }
             let index = icons.hit(x, y);
             icons.selected.set(index);
             icons.show_selection();
-            match gesture.current_button() {
-                gdk::BUTTON_PRIMARY if n_press == 2 => {
-                    if let Some(item) = index.and_then(|i| icons.items.borrow().get(i).cloned()) {
-                        open(&item, &icons.window);
-                    }
+            if n_press == 1 {
+                icons.drags_at_first_press.set(icons.drags.get());
+            }
+            if gesture.current_button() == gdk::BUTTON_SECONDARY {
+                icons.popup_menu(index, x, y);
+            }
+        });
+        let weak = Rc::downgrade(self);
+        click.connect_released(move |gesture, n_press, x, y| {
+            let Some(icons) = weak.upgrade() else { return };
+            // Open on the release of the second click, and only if neither
+            // press became a drag.
+            if gesture.current_button() != gdk::BUTTON_PRIMARY
+                || n_press != 2
+                || icons.drags.get() != icons.drags_at_first_press.get()
+                || icons.press_swallowed.get()
+                || icons.editing.borrow().is_some()
+            {
+                return;
+            }
+            let index = icons.hit(x, y);
+            if index.is_some() && index == icons.selected.get() {
+                let item = index.and_then(|i| icons.items.borrow().get(i).cloned());
+                if let Some(item) = item {
+                    open(&item, &icons.window);
                 }
-                gdk::BUTTON_SECONDARY => icons.popup_menu(index.is_some(), x, y),
-                _ => {}
             }
         });
         self.fixed.add_controller(click);
     }
 
-    fn popup_menu(&self, on_icon: bool, x: f64, y: f64) {
+    fn install_drag(self: &Rc<Self>) {
+        let drag = GestureDrag::new();
+        drag.set_button(gdk::BUTTON_PRIMARY);
+        let weak = Rc::downgrade(self);
+        drag.connect_drag_begin(move |_, x, y| {
+            let Some(icons) = weak.upgrade() else { return };
+            if icons.editing.borrow().is_some() || icons.press_swallowed.get() {
+                return;
+            }
+            let Some(index) = icons.hit(x, y) else { return };
+            let (px, py) = icons.positions.borrow()[index];
+            *icons.drag.borrow_mut() = Some(Drag {
+                index,
+                start: (x, y),
+                grab: (x - f64::from(px), y - f64::from(py)),
+                ghost: None,
+            });
+        });
+        let weak = Rc::downgrade(self);
+        drag.connect_drag_update(move |_, dx, dy| {
+            let Some(icons) = weak.upgrade() else { return };
+            let mut state = icons.drag.borrow_mut();
+            let Some(drag) = state.as_mut() else { return };
+            if drag.ghost.is_none() {
+                if !layout::is_drag(dx, dy, drag_threshold(&icons.window)) {
+                    return;
+                }
+                let Some(item) = icons.items.borrow().get(drag.index).cloned() else {
+                    return;
+                };
+                let ghost = icon_widget(&item);
+                ghost.add_css_class("dragging");
+                ghost.add_css_class("selected");
+                ghost.set_can_target(false);
+                icons.fixed.put(&ghost, 0.0, 0.0);
+                drag.ghost = Some(ghost);
+                icons.drags.set(icons.drags.get() + 1);
+            }
+            let at = icons.geometry.get().clamp(drop_point(drag, dx, dy));
+            if let Some(ghost) = &drag.ghost {
+                icons.fixed.move_(ghost, f64::from(at.0), f64::from(at.1));
+            }
+        });
+        let weak = Rc::downgrade(self);
+        drag.connect_drag_end(move |_, dx, dy| {
+            let Some(icons) = weak.upgrade() else { return };
+            icons.press_swallowed.set(false);
+            let Some(drag) = icons.drag.borrow_mut().take() else {
+                return;
+            };
+            if let Some(ghost) = &drag.ghost {
+                icons.fixed.remove(ghost);
+                icons.drop_icon(drag.index, drop_point(&drag, dx, dy));
+            }
+            if icons.reload_waiting.get() {
+                icons.reload();
+            }
+        });
+        self.fixed.add_controller(drag);
+    }
+
+    /// Puts icon `index` at `want` or, if that is taken, at the nearest
+    /// free spot; remembers it. The file is not touched.
+    fn drop_icon(&self, index: usize, want: Point) {
+        let geometry = self.geometry.get();
+        let others: Vec<Point> = self
+            .positions
+            .borrow()
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i != index)
+            .map(|(_, p)| *p)
+            .collect();
+        let at = geometry
+            .nearest_free(want, &others)
+            .unwrap_or_else(|| geometry.clamp(want));
+        let Some(item) = self.items.borrow().get(index).cloned() else {
+            return;
+        };
+        {
+            let mut store = self.store.borrow_mut();
+            store.set_place(item.art(), &item.ident(), geometry.free_place(at));
+            // the last moved icon keeps its spot first
+            let key = item.key.clone();
+            if let Some(i) = store.entries.iter().position(|e| e.key() == key) {
+                let entry = store.entries.remove(i);
+                store.entries.insert(0, entry);
+            }
+        }
+        log(&format!(
+            "verschoben: {} nach {},{} (gewünscht {},{})",
+            item.name, at.0, at.1, want.0, want.1
+        ));
+        self.layout();
+        self.save();
+    }
+
+    fn install_keys(self: &Rc<Self>) {
+        let keys = EventControllerKey::new();
+        let weak = Rc::downgrade(self);
+        keys.connect_key_pressed(move |_, key, _, _| {
+            let Some(icons) = weak.upgrade() else {
+                return glib::Propagation::Proceed;
+            };
+            if key == gdk::Key::F2 && icons.editing.borrow().is_none() {
+                if let Some(index) = icons.selected.get() {
+                    icons.start_rename(index);
+                }
+                return glib::Propagation::Stop;
+            }
+            glib::Propagation::Proceed
+        });
+        self.window.add_controller(keys);
+    }
+
+    fn popup_menu(&self, index: Option<usize>, x: f64, y: f64) {
         self.menu.remove_all();
-        if on_icon {
+        if let Some(index) = index {
             self.menu.append(Some("Öffnen"), Some("desktop.open"));
+            let edit = gio::Menu::new();
+            let can_rename = self
+                .items
+                .borrow()
+                .get(index)
+                .is_some_and(|item| renamable(item).is_ok());
+            // insensitive (no action) where renaming cannot work
+            edit.append(Some("Umbenennen …"), can_rename.then_some("desktop.rename"));
+            self.menu.append_section(None, &edit);
         } else {
             let can_create = desktop_dir().is_some();
             let create = gio::Menu::new();
@@ -325,6 +718,21 @@ impl Icons {
             }),
         );
         add(
+            "rename",
+            None,
+            Box::new(|icons, _| {
+                // after the menu has closed and given back the keyboard
+                let weak = Rc::downgrade(icons);
+                glib::idle_add_local_once(move || {
+                    if let Some(icons) = weak.upgrade()
+                        && let Some(index) = icons.selected.get()
+                    {
+                        icons.start_rename(index);
+                    }
+                });
+            }),
+        );
+        add(
             "new-folder",
             None,
             Box::new(|icons, _| {
@@ -354,10 +762,7 @@ impl Icons {
         add(
             "arrange-by-name",
             None,
-            Box::new(|icons, _| {
-                let items = icons::by_name(icons.items.borrow().clone());
-                icons.set_items(items);
-            }),
+            Box::new(|icons, _| icons.arrange_by_name()),
         );
         add(
             "change-background",
@@ -365,6 +770,30 @@ impl Icons {
             Box::new(|icons, _| choose_background(icons.background_changed.clone())),
         );
         self.window.insert_action_group("desktop", Some(&group));
+    }
+
+    /// "Nach Namen aufräumen": every icon gets a new place in grid order
+    /// (the fixed icons first, then by name); no file is touched.
+    fn arrange_by_name(self: &Rc<Self>) {
+        let geometry = self.geometry.get();
+        if !geometry.known() {
+            return;
+        }
+        let sorted = icons::by_name(self.items.borrow().clone());
+        let positions = geometry.arranged(sorted.len());
+        {
+            let mut store = self.store.borrow_mut();
+            let keys: Vec<&str> = sorted.iter().map(|i| i.key.as_str()).collect();
+            store.entries.retain(|e| !keys.contains(&e.key().as_str()));
+            for (n, (item, at)) in sorted.iter().zip(&positions).enumerate() {
+                store.set_place(item.art(), &item.ident(), geometry.top_left_place(*at));
+                let entry = store.entries.pop().expect("eben eingefügt");
+                store.entries.insert(n, entry);
+            }
+        }
+        log("nach Namen aufgeräumt");
+        self.set_items(sorted);
+        self.save();
     }
 
     /// The desktop directory, created on this first user action if missing.
@@ -392,10 +821,37 @@ impl Icons {
             targets.push(gio::File::for_path(dir));
         }
         for target in targets {
-            match target.monitor_directory(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
+            // WATCH_MOVES: a rename inside the folder comes as one event with
+            // the old and the new name (HMP-10), not as delete and create.
+            match target
+                .monitor_directory(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE)
+            {
                 Ok(monitor) => {
                     let weak = Rc::downgrade(self);
-                    monitor.connect_changed(move |_, _, _, event| {
+                    monitor.connect_changed(move |_, file, other, event| {
+                        let Some(icons) = weak.upgrade() else { return };
+                        // renamed elsewhere (a file manager): keep the place
+                        if event == gio::FileMonitorEvent::Renamed
+                            && let (Some(old), Some(new)) =
+                                (file.basename(), other.and_then(|o| o.basename()))
+                            && file.parent().is_some_and(|dir| {
+                                Some(dir.uri())
+                                    == desktop_dir().map(|d| gio::File::for_path(d).uri())
+                            })
+                        {
+                            let (old, new) = (old.to_string_lossy(), new.to_string_lossy());
+                            if icons
+                                .store
+                                .borrow()
+                                .place(&store::key(store::Art::File, &old))
+                                .is_some()
+                            {
+                                icons.store.borrow_mut().rename(&old, &new);
+                                icons.save();
+                                log(&format!("umbenannt (außerhalb): {old} → {new}"));
+                            }
+                        }
+                        // ChangesDoneHint: a starter edited elsewhere
                         if matches!(
                             event,
                             gio::FileMonitorEvent::Created
@@ -403,9 +859,9 @@ impl Icons {
                                 | gio::FileMonitorEvent::MovedIn
                                 | gio::FileMonitorEvent::MovedOut
                                 | gio::FileMonitorEvent::Renamed
-                        ) && let Some(icons) = weak.upgrade()
-                        {
-                            icons.reload();
+                                | gio::FileMonitorEvent::ChangesDoneHint
+                        ) {
+                            icons.reload_soon();
                         }
                     });
                     watches.push(monitor);
@@ -415,22 +871,364 @@ impl Icons {
         }
         *self.watches.borrow_mut() = watches;
     }
+
+    /// Edits the label of icon `index` in place (F2, "Umbenennen …").
+    fn start_rename(self: &Rc<Self>, index: usize) {
+        if self.editing.borrow().is_some() || self.drag.borrow().is_some() {
+            return;
+        }
+        let Some(item) = self.items.borrow().get(index).cloned() else {
+            return;
+        };
+        if let Err(reason) = renamable(&item) {
+            log(&format!(
+                "Umbenennen nicht möglich: {}: {reason}",
+                item.name
+            ));
+            show_error(
+                &format!("„{}“ kann nicht umbenannt werden.", item.name),
+                &reason,
+            );
+            return;
+        }
+        let Some(&(x, y)) = self.positions.borrow().get(index) else {
+            return;
+        };
+        let entry = gtk4::Entry::new();
+        entry.add_css_class("desktop-rename");
+        entry.set_text(&item.name);
+        entry.set_size_request(RENAME_WIDTH, -1);
+        EditableExt::set_alignment(&entry, 0.5);
+        let geometry = self.geometry.get();
+        let left =
+            (x + (CELL.0 - RENAME_WIDTH) / 2).clamp(0, (geometry.width - RENAME_WIDTH).max(0));
+        self.fixed
+            .put(&entry, f64::from(left), f64::from(y + ICON_PX + 3));
+        if let Some(label) = self.label_of(index) {
+            label.set_opacity(0.0);
+        }
+        let weak = Rc::downgrade(self);
+        entry.connect_activate(move |_| {
+            if let Some(icons) = weak.upgrade() {
+                icons.finish_rename(true);
+            }
+        });
+        let escape = EventControllerKey::new();
+        escape.set_propagation_phase(PropagationPhase::Capture);
+        let weak = Rc::downgrade(self);
+        escape.connect_key_pressed(move |_, key, _, _| {
+            if key == gdk::Key::Escape
+                && let Some(icons) = weak.upgrade()
+            {
+                icons.finish_rename(false);
+                return glib::Propagation::Stop;
+            }
+            glib::Propagation::Proceed
+        });
+        entry.add_controller(escape);
+        // Leaving the box (another window took the keyboard) keeps the new
+        // name, as in Nautilus; later, outside the focus change.
+        let focus = EventControllerFocus::new();
+        let weak = Rc::downgrade(self);
+        focus.connect_leave(move |_| {
+            let weak = weak.clone();
+            glib::idle_add_local_once(move || {
+                if let Some(icons) = weak.upgrade() {
+                    icons.finish_rename(true);
+                }
+            });
+        });
+        entry.add_controller(focus);
+        *self.editing.borrow_mut() = Some(Editing {
+            key: item.key.clone(),
+            entry: entry.clone(),
+        });
+        entry.grab_focus();
+        let selected = rename::selected_chars(&item.name, matches!(item.kind, Kind::File(_)));
+        entry.select_region(0, i32::try_from(selected).unwrap_or(-1));
+        log(&format!("Umbenennen: {}", item.name));
+    }
+
+    fn label_of(&self, index: usize) -> Option<Label> {
+        self.widgets
+            .borrow()
+            .get(index)
+            .and_then(|tile| tile.last_child())
+            .and_downcast::<Label>()
+    }
+
+    /// Ends the rename: `keep` applies the new name, else nothing changes.
+    fn finish_rename(self: &Rc<Self>, keep: bool) {
+        let Some(edit) = self.editing.borrow_mut().take() else {
+            return;
+        };
+        let new = edit.entry.text().to_string();
+        self.fixed.remove(&edit.entry);
+        let item = self
+            .items
+            .borrow()
+            .iter()
+            .find(|i| i.key == edit.key)
+            .cloned();
+        if let Some(index) = self.items.borrow().iter().position(|i| i.key == edit.key)
+            && let Some(label) = self.label_of(index)
+        {
+            label.set_opacity(1.0);
+        }
+        match (keep, item) {
+            (false, Some(item)) => log(&format!("Umbenennen abgebrochen: {}", item.name)),
+            (true, Some(item)) => {
+                if let Err((title, detail)) = self.apply_rename(&item, &new) {
+                    log(&format!(
+                        "Umbenennen fehlgeschlagen: {} → {new}: {detail}",
+                        item.name
+                    ));
+                    show_error(&title, &detail);
+                }
+            }
+            (_, None) => {}
+        }
+        self.reload();
+    }
+
+    /// Gives `item` the name `new`. Err: (title, explanation) for the user.
+    fn apply_rename(&self, item: &Item, new: &str) -> Result<(), (String, String)> {
+        let failed = |detail: String| {
+            (
+                format!("„{}“ konnte nicht in „{new}“ umbenannt werden.", item.name),
+                detail,
+            )
+        };
+        if new == item.name {
+            return Ok(());
+        }
+        match &item.kind {
+            Kind::File(path) | Kind::Folder(path) => {
+                rename::check_file_name(new).map_err(|p| failed(p.text(new)))?;
+                let old = item.ident();
+                let gone = || {
+                    format!(
+                        "„{old}“ gibt es nicht mehr. Vielleicht wurde es inzwischen gelöscht oder verschoben."
+                    )
+                };
+                if path.symlink_metadata().is_err() {
+                    return Err(failed(gone()));
+                }
+                let exists = || {
+                    format!(
+                        "Der Name „{new}“ wird in diesem Ordner bereits verwendet. \
+                         Bitte verwenden Sie einen anderen Namen."
+                    )
+                };
+                if path.with_file_name(new).symlink_metadata().is_ok() {
+                    return Err(failed(exists()));
+                }
+                // GIO refuses an existing name (G_IO_ERROR_EXISTS) itself.
+                let renamed = gio::File::for_path(path)
+                    .set_display_name(new, gio::Cancellable::NONE)
+                    .map_err(|err| {
+                        failed(match err.kind::<gio::IOErrorEnum>() {
+                            Some(gio::IOErrorEnum::Exists) => exists(),
+                            Some(gio::IOErrorEnum::NotFound) => gone(),
+                            Some(gio::IOErrorEnum::PermissionDenied) => {
+                                format!("Sie haben keine Berechtigung, „{old}“ umzubenennen.")
+                            }
+                            Some(gio::IOErrorEnum::InvalidFilename) => {
+                                rename::Problem::Dots.text(new)
+                            }
+                            _ => err.message().to_owned(),
+                        })
+                    })?;
+                let new_name = renamed
+                    .basename()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| new.to_owned());
+                // the place goes with the name, before the file monitor
+                // reports the "new" file
+                self.store.borrow_mut().rename(&old, &new_name);
+                self.save();
+                log(&format!("umbenannt: {old} → {new_name}"));
+                Ok(())
+            }
+            Kind::Launcher(path) => {
+                rename::check_label(new).map_err(|p| failed(p.text(new)))?;
+                if own_launcher(path) {
+                    set_launcher_name(path, new).map_err(failed)?;
+                    self.store
+                        .borrow_mut()
+                        .set_alias(item.art(), &item.ident(), None);
+                    self.save();
+                    log(&format!(
+                        "Starter {} heißt jetzt {new}",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    ));
+                } else {
+                    self.set_alias(item, new);
+                }
+                Ok(())
+            }
+            Kind::Computer | Kind::Home | Kind::Trash | Kind::App(_) => {
+                rename::check_label(new).map_err(|p| failed(p.text(new)))?;
+                self.set_alias(item, new);
+                Ok(())
+            }
+        }
+    }
+
+    /// The user's own name for an icon whose name is not its own to change;
+    /// the original name removes it again.
+    fn set_alias(&self, item: &Item, new: &str) {
+        let label = (new != item.default_name).then_some(new);
+        self.store
+            .borrow_mut()
+            .set_alias(item.art(), &item.ident(), label);
+        self.save();
+        log(&format!(
+            "eigener Name für {}: {}",
+            item.key,
+            label.unwrap_or("(keiner)")
+        ));
+    }
 }
 
-fn save_order(text: &str) {
-    let path = order_path();
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    if std::fs::read_to_string(&path).ok().as_deref() != Some(text)
-        && let Err(err) = std::fs::write(&path, text)
-    {
-        log(&format!("Reihenfolge nicht gespeichert: {err}"));
+/// The drop position of a drag after a movement of `(dx, dy)`.
+fn drop_point(drag: &Drag, dx: f64, dy: f64) -> Point {
+    (
+        (drag.start.0 + dx - drag.grab.0).round() as i32,
+        (drag.start.1 + dy - drag.grab.1).round() as i32,
+    )
+}
+
+fn drag_threshold(window: &ApplicationWindow) -> i32 {
+    gtk4::Settings::for_display(&WidgetExt::display(window)).gtk_dnd_drag_threshold()
+}
+
+/// The state file, or (first start after HMP-09) HMP-09's order.
+fn load_store() -> (Store, Vec<String>) {
+    let path = store_path();
+    match std::fs::read_to_string(&path) {
+        Ok(text) => {
+            let (store, problems) = Store::parse(&text);
+            for problem in problems {
+                log(&format!("{}: {problem}", path.display()));
+            }
+            (store, Vec::new())
+        }
+        Err(_) => {
+            let old = std::fs::read_to_string(order_path()).unwrap_or_default();
+            let order: Vec<String> = icons::parse_order(&old)
+                .iter()
+                .filter_map(|k| store::migrate_order_key(k))
+                .collect();
+            if !order.is_empty() {
+                log("Anordnung aus der HMP-09-Reihenfolge übernommen");
+            }
+            (Store::default(), order)
+        }
     }
 }
 
-/// Which icons there are right now (see `icons.rs`).
-fn load_items() -> Vec<Item> {
+/// Whether a desktop directory starter is the user's own to change: a
+/// regular file (no link into the system), writable, in a writable folder.
+fn own_launcher(path: &Path) -> bool {
+    let regular = path
+        .symlink_metadata()
+        .is_ok_and(|m| m.file_type().is_file());
+    let writable = |p: &Path| {
+        gio::File::for_path(p)
+            .query_info(
+                "access::can-write",
+                gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+                gio::Cancellable::NONE,
+            )
+            .is_ok_and(|info| info.boolean("access::can-write"))
+    };
+    regular && writable(path) && path.parent().is_some_and(writable)
+}
+
+/// Changes the visible name of a starter: only the `Name` line the desktop
+/// shows; the file is replaced atomically and keeps its permissions.
+fn set_launcher_name(path: &Path, new: &str) -> Result<(), String> {
+    let file = gio::File::for_path(path);
+    let (bytes, etag) = file
+        .load_contents(gio::Cancellable::NONE)
+        .map_err(|err| err.message().to_owned())?;
+    let text = std::str::from_utf8(&bytes)
+        .map_err(|_| "Die Starter-Datei ist kein gültiger Text.".to_owned())?;
+    let keys = glib::KeyFile::new();
+    keys.load_from_data(text, glib::KeyFileFlags::KEEP_TRANSLATIONS)
+        .map_err(|err| format!("Die Starter-Datei ist ungültig: {}", err.message()))?;
+    let key = rename::name_key(
+        keys.locale_for_key("Desktop Entry", "Name", None)
+            .as_deref(),
+    );
+    let changed = rename::with_name(text, &key, new)
+        .ok_or_else(|| "Die Starter-Datei hat keine Gruppe [Desktop Entry].".to_owned())?;
+    let mode =
+        std::fs::metadata(path).map(|m| std::os::unix::fs::PermissionsExt::mode(&m.permissions()));
+    // The etag refuses to overwrite a file changed in the meantime.
+    file.replace_contents(
+        changed.as_bytes(),
+        etag.as_deref(),
+        false,
+        gio::FileCreateFlags::NONE,
+        gio::Cancellable::NONE,
+    )
+    .map_err(|err| match err.kind::<gio::IOErrorEnum>() {
+        Some(gio::IOErrorEnum::WrongEtag) => {
+            "Die Starter-Datei wurde inzwischen verändert. Bitte versuchen Sie es erneut."
+                .to_owned()
+        }
+        _ => err.message().to_owned(),
+    })?;
+    if let Ok(mode) = mode {
+        let _ = std::fs::set_permissions(
+            path,
+            std::os::unix::fs::PermissionsExt::from_mode(mode & 0o7777),
+        );
+    }
+    Ok(())
+}
+
+/// Whether `item` can get a new name; Err: why not (for the user).
+fn renamable(item: &Item) -> Result<(), String> {
+    match &item.kind {
+        Kind::File(path) | Kind::Folder(path) => {
+            let info = gio::File::for_path(path).query_info(
+                "access::can-rename",
+                gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+                gio::Cancellable::NONE,
+            );
+            match info {
+                Ok(info) if info.boolean("access::can-rename") => Ok(()),
+                Ok(_) => Err(format!(
+                    "Sie haben keine Berechtigung, „{}“ umzubenennen.",
+                    item.name
+                )),
+                Err(_) => Err(format!("„{}“ gibt es nicht mehr.", item.name)),
+            }
+        }
+        // a name of the user's own, kept in the state file
+        Kind::Launcher(_) | Kind::Computer | Kind::Home | Kind::Trash | Kind::App(_) => Ok(()),
+    }
+}
+
+fn show_error(title: &str, detail: &str) {
+    let dialog = gtk4::AlertDialog::builder()
+        .message(title)
+        .detail(detail)
+        .buttons(["Schließen"])
+        .cancel_button(0)
+        .default_button(0)
+        .modal(false)
+        .build();
+    // No parent: the desktop is a layer surface, not a toplevel window.
+    dialog.show(None::<&gtk4::Window>);
+}
+
+/// Which icons there are right now (see `icons.rs`), and whether the
+/// desktop directory could be read.
+fn load_items() -> (Vec<Item>, bool) {
     let mut items = Vec::new();
     let files = DesktopAppInfo::new(FILES_APP);
     if files.is_some() {
@@ -448,15 +1246,28 @@ fn load_items() -> Vec<Item> {
             &terminal.display_name(),
         ));
     }
+    let mut listed = false;
     if let Some(entries) = desktop_dir().and_then(|dir| std::fs::read_dir(dir).ok()) {
+        listed = true;
         for entry in entries.filter_map(Result::ok) {
             let name = entry.file_name().to_string_lossy().into_owned();
-            if !name.starts_with('.') {
-                items.push(Item::new(Kind::File(entry.path()), &name));
+            if name.starts_with('.') {
+                continue;
+            }
+            let path = entry.path();
+            if name.ends_with(".desktop")
+                && path.is_file()
+                && let Some(app) = DesktopAppInfo::from_filename(&path)
+            {
+                items.push(Item::new(Kind::Launcher(path), &app.display_name()));
+            } else if path.is_dir() {
+                items.push(Item::new(Kind::Folder(path), &name));
+            } else {
+                items.push(Item::new(Kind::File(path), &name));
             }
         }
     }
-    items
+    (items, listed)
 }
 
 fn icon_for(item: &Item) -> gio::Icon {
@@ -481,7 +1292,10 @@ fn icon_for(item: &Item) -> gio::Icon {
         Kind::App(id) => DesktopAppInfo::new(id)
             .and_then(|app| app.icon())
             .unwrap_or_else(|| themed("application-x-executable")),
-        Kind::File(path) => gio::File::for_path(path)
+        Kind::Launcher(path) => DesktopAppInfo::from_filename(path)
+            .and_then(|app| app.icon())
+            .unwrap_or_else(|| themed("application-x-executable")),
+        Kind::File(path) | Kind::Folder(path) => gio::File::for_path(path)
             .query_info(
                 "standard::icon,standard::content-type",
                 gio::FileQueryInfoFlags::NONE,
@@ -552,7 +1366,15 @@ fn open(item: &Item, window: &ApplicationWindow) {
                 "Anwendung fehlt",
             )),
         },
-        Kind::File(path) => {
+        Kind::Launcher(path) => {
+            if is_trusted(path) {
+                launch_starter(path, &context)
+            } else {
+                ask_trust(item, path.clone(), context.clone());
+                return;
+            }
+        }
+        Kind::File(path) | Kind::Folder(path) => {
             gio::AppInfo::launch_default_for_uri(&gio::File::for_path(path).uri(), Some(&context))
         }
     };
@@ -560,6 +1382,83 @@ fn open(item: &Item, window: &ApplicationWindow) {
         Ok(()) => log(&format!("geöffnet: {}", item.name)),
         Err(err) => log(&format!("{} nicht geöffnet: {err}", item.name)),
     }
+}
+
+fn launch_starter(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), glib::Error> {
+    match DesktopAppInfo::from_filename(path) {
+        Some(app) => app.launch(&[], Some(context)),
+        None => Err(glib::Error::new(
+            gio::IOErrorEnum::NotFound,
+            "Starter ungültig",
+        )),
+    }
+}
+
+/// A starter on the desktop runs only when it is executable for its owner,
+/// as Nautilus 2.30 required ("vertrauenswürdig").
+fn is_trusted(path: &Path) -> bool {
+    let executable = std::fs::metadata(path)
+        .is_ok_and(|m| std::os::unix::fs::PermissionsExt::mode(&m.permissions()) & 0o100 != 0);
+    // A link to an installed starter (…/applications of the XDG data
+    // directories) is trusted, as Nautilus 2.30 trusted system launchers.
+    let installed = std::fs::canonicalize(path).is_ok_and(|real| {
+        std::iter::once(glib::user_data_dir())
+            .chain(glib::system_data_dirs())
+            .filter_map(|dir| std::fs::canonicalize(dir.join("applications")).ok())
+            .any(|apps| real.starts_with(apps))
+    });
+    executable || installed
+}
+
+/// Nautilus 2.30's question for an untrusted starter.
+fn ask_trust(item: &Item, path: PathBuf, context: gdk::AppLaunchContext) {
+    let dialog = gtk4::AlertDialog::builder()
+        .message("Nicht vertrauenswürdiger Anwendungsstarter")
+        .detail(format!(
+            "Der Anwendungsstarter „{}“ wurde nicht als vertrauenswürdig markiert. \
+             Wenn Sie die Herkunft dieser Datei nicht kennen, kann ihr Start unsicher sein.",
+            item.name
+        ))
+        .buttons([
+            "Abbrechen",
+            "Als vertrauenswürdig markieren",
+            "Trotzdem starten",
+        ])
+        .cancel_button(0)
+        .default_button(0)
+        .modal(false)
+        .build();
+    let name = item.name.clone();
+    dialog.choose(
+        None::<&gtk4::Window>,
+        gio::Cancellable::NONE,
+        move |answer| {
+            let answer = answer.unwrap_or(0);
+            if answer == 0 {
+                log(&format!("Starter {name} nicht gestartet"));
+                return;
+            }
+            if answer == 1 {
+                let mode = std::fs::metadata(&path)
+                    .map(|m| std::os::unix::fs::PermissionsExt::mode(&m.permissions()))
+                    .unwrap_or(0o644);
+                let marked = gio::File::for_path(&path).set_attribute_uint32(
+                    "unix::mode",
+                    (mode | 0o100) & 0o7777,
+                    gio::FileQueryInfoFlags::NONE,
+                    gio::Cancellable::NONE,
+                );
+                match marked {
+                    Ok(()) => log(&format!("Starter {name} als vertrauenswürdig markiert")),
+                    Err(err) => log(&format!("Starter {name} nicht markiert: {err}")),
+                }
+            }
+            match launch_starter(&path, &context) {
+                Ok(()) => log(&format!("geöffnet: {name}")),
+                Err(err) => log(&format!("{name} nicht geöffnet: {err}")),
+            }
+        },
+    );
 }
 
 /// "Leere Datei" (`template` empty) or a copy of a template, under a free

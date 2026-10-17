@@ -7,12 +7,16 @@
 //! - Querencia Terminal: only when its desktop entry is installed;
 //! - every file and folder in the XDG desktop directory.
 //!
-//! The order is the order icons appeared (kept in the state file
-//! `desktop-order`); new icons go to the end. "Nach Namen aufräumen" sorts
-//! by name: the fixed icons first, then everything else by name. This
-//! changes only the layout, never a file.
+//! Where the icons are is `layout.rs` and `store.rs` (HMP-10); here is
+//! the order in which icons without a place get one: the order of the
+//! remembered places, then (for icons that have none yet) the natural
+//! order. "Nach Namen aufräumen" sorts by name: the fixed icons first,
+//! then everything else by name. This changes only the layout, never a
+//! file.
 
 use std::path::{Path, PathBuf};
+
+use crate::store::{self, Art};
 
 /// What an icon stands for.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -20,39 +24,46 @@ pub enum Kind {
     Computer,
     Home,
     Trash,
-    /// An application by its desktop file ID.
+    /// A built-in Querencia starter, by its desktop file ID.
     App(String),
-    /// A file or folder in the desktop directory.
+    /// A starter (`.desktop` file) in the desktop directory (HMP-10).
+    Launcher(PathBuf),
+    /// A file in the desktop directory.
     File(PathBuf),
+    /// A folder in the desktop directory (HMP-10).
+    Folder(PathBuf),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Item {
-    /// Stable key for the saved order.
+    /// Stable identity in the state file (`store::key`).
     pub key: String,
+    /// The name shown under the icon.
     pub name: String,
+    /// The name without the user's own one (special icons, starters).
+    pub default_name: String,
     pub kind: Kind,
 }
 
 impl Item {
     pub fn new(kind: Kind, name: &str) -> Self {
-        let key = match &kind {
-            Kind::Computer => "special:computer".to_owned(),
-            Kind::Home => "special:home".to_owned(),
-            Kind::Trash => "special:trash".to_owned(),
-            Kind::App(id) => format!("app:{id}"),
-            Kind::File(path) => format!(
-                "file:{}",
-                path.file_name()
-                    .map(|n| n.to_string_lossy())
-                    .unwrap_or_default()
-            ),
-        };
+        let key = store::key(art(&kind), &ident(&kind));
         Self {
             key,
             name: name.to_owned(),
+            default_name: name.to_owned(),
             kind,
         }
+    }
+
+    pub fn art(&self) -> Art {
+        art(&self.kind)
+    }
+
+    /// The name part of the identity: `computer`, the desktop file ID or
+    /// the file name.
+    pub fn ident(&self) -> String {
+        ident(&self.kind)
     }
 
     fn fixed_rank(&self) -> Option<usize> {
@@ -61,8 +72,31 @@ impl Item {
             Kind::Home => Some(1),
             Kind::Trash => Some(2),
             Kind::App(_) => Some(3),
-            Kind::File(_) => None,
+            Kind::Launcher(_) | Kind::File(_) | Kind::Folder(_) => None,
         }
+    }
+}
+
+fn art(kind: &Kind) -> Art {
+    match kind {
+        Kind::Computer | Kind::Home | Kind::Trash => Art::Special,
+        Kind::App(_) => Art::Program,
+        Kind::Launcher(_) => Art::Launcher,
+        Kind::File(_) => Art::File,
+        Kind::Folder(_) => Art::Folder,
+    }
+}
+
+fn ident(kind: &Kind) -> String {
+    match kind {
+        Kind::Computer => "computer".to_owned(),
+        Kind::Home => "home".to_owned(),
+        Kind::Trash => "trash".to_owned(),
+        Kind::App(id) => id.clone(),
+        Kind::Launcher(path) | Kind::File(path) | Kind::Folder(path) => path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
     }
 }
 
@@ -142,41 +176,6 @@ pub fn by_name(mut items: Vec<Item>) -> Vec<Item> {
             .then_with(|| a.name.cmp(&b.name)),
     });
     items
-}
-
-/// Grid cell of icon `index`: columns from the left, each filled from the
-/// top, as GNOME 2 arranges desktop icons.
-pub fn cell(index: usize, rows: usize) -> (usize, usize) {
-    let rows = rows.max(1);
-    (index / rows, index % rows)
-}
-
-/// How many icons fit below each other in `height` pixels.
-pub fn rows_for(height: i32, margin: i32, cell_height: i32) -> usize {
-    usize::try_from((height - 2 * margin) / cell_height.max(1))
-        .unwrap_or(0)
-        .max(1)
-}
-
-/// The index of the icon whose cell contains `(x, y)`, if any.
-pub fn hit(
-    count: usize,
-    rows: usize,
-    origin: (f64, f64),
-    size: (f64, f64),
-    point: (f64, f64),
-) -> Option<usize> {
-    let (dx, dy) = (point.0 - origin.0, point.1 - origin.1);
-    if dx < 0.0 || dy < 0.0 {
-        return None;
-    }
-    let (col, row) = ((dx / size.0) as usize, (dy / size.1) as usize);
-    let rows = rows.max(1);
-    if row >= rows {
-        return None;
-    }
-    let index = col * rows + row;
-    (index < count).then_some(index)
 }
 
 /// Whether GIO's content type means an empty file.
@@ -284,33 +283,33 @@ mod tests {
             Item::new(Kind::Home, "Home"),
             file("neu"),
         ];
-        let saved = parse_order("file:b\n\nspecial:home\nfile:weg\nfile:a\n");
+        let saved = parse_order("flaeche:b\n\nsonder:home\nflaeche:weg\nflaeche:a\n");
         let keys: Vec<_> = ordered(&saved, items).into_iter().map(|i| i.key).collect();
-        assert_eq!(keys, ["file:b", "special:home", "file:a", "file:neu"]);
+        assert_eq!(
+            keys,
+            ["flaeche:b", "sonder:home", "flaeche:a", "flaeche:neu"]
+        );
         // nothing saved: natural order
         let keys: Vec<_> = ordered(&[], vec![file("b"), Item::new(Kind::Trash, "P")])
             .into_iter()
             .map(|i| i.key)
             .collect();
-        assert_eq!(keys, ["special:trash", "file:b"]);
+        assert_eq!(keys, ["sonder:trash", "flaeche:b"]);
     }
 
     #[test]
-    fn icons_fill_columns_from_the_top_left() {
-        assert_eq!(rows_for(658, 8, 88), 7);
-        assert_eq!(rows_for(50, 8, 88), 1);
-        assert_eq!(cell(0, 7), (0, 0));
-        assert_eq!(cell(6, 7), (0, 6));
-        assert_eq!(cell(7, 7), (1, 0));
-        let (origin, size) = ((8.0, 8.0), (96.0, 88.0));
-        assert_eq!(hit(9, 7, origin, size, (10.0, 10.0)), Some(0));
-        assert_eq!(hit(9, 7, origin, size, (110.0, 100.0)), Some(8));
-        assert_eq!(hit(9, 7, origin, size, (110.0, 190.0)), None, "freie Zelle");
-        assert_eq!(hit(9, 7, origin, size, (4.0, 10.0)), None, "Rand");
+    fn identities_name_kind_and_file() {
+        assert_eq!(Item::new(Kind::Computer, "Rechner").key, "sonder:computer");
         assert_eq!(
-            hit(9, 7, origin, size, (10.0, 8.0 + 7.0 * 88.0 + 1.0)),
-            None,
-            "unter der letzten Zeile"
+            Item::new(Kind::App("t.desktop".into()), "T").key,
+            "programm:t.desktop"
         );
+        let folder = Item::new(Kind::Folder("/d/Neuer Ordner".into()), "Neuer Ordner");
+        assert_eq!(folder.key, "flaeche:Neuer Ordner");
+        assert_eq!(folder.art(), Art::Folder);
+        let launcher = Item::new(Kind::Launcher("/d/b.desktop".into()), "Mein Browser");
+        assert_eq!(launcher.key, "flaeche:b.desktop");
+        assert_eq!(launcher.name, "Mein Browser");
+        assert_eq!(Item::new(Kind::Home, "H").ident(), "home");
     }
 }
