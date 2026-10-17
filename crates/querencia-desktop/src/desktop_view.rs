@@ -34,6 +34,7 @@
 //!   such a user action.
 
 use std::cell::{Cell, RefCell};
+use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -69,14 +70,26 @@ const RENAME_WIDTH: i32 = 150;
 /// What a `desktop.*` menu action does.
 type ActionFn = Box<dyn Fn(&Rc<Icons>, Option<&glib::Variant>)>;
 
-/// An icon being dragged (HMP-10).
+/// A press with the left button that may become a drag (HMP-10, HMP-10a).
 struct Drag {
-    index: usize,
+    /// The icon under the pointer at the press; `None`: the free desktop
+    /// (a rubber band).
+    index: Option<usize>,
     start: (f64, f64),
-    /// Pointer position inside the dragged tile.
+    /// Pointer position inside the icon under the pointer.
     grab: (f64, f64),
-    /// The translucent copy under the pointer, once it is a drag.
-    ghost: Option<gtk4::Box>,
+    /// Past the threshold on an icon: the icons moved together (the one
+    /// under the pointer first) with their translucent copies.
+    moving: Vec<(usize, gtk4::Box)>,
+    /// Past the threshold on the free desktop: the rectangle and the
+    /// selection it adds to (Strg/Umschalt kept it).
+    band: Option<(gtk4::Box, BTreeSet<usize>)>,
+}
+
+impl Drag {
+    fn started(&self) -> bool {
+        !self.moving.is_empty() || self.band.is_some()
+    }
 }
 
 /// The label being edited (HMP-10).
@@ -94,11 +107,20 @@ pub struct Icons {
     widgets: RefCell<Vec<gtk4::Box>>,
     /// Where each icon is shown (top left corner of its cell).
     positions: RefCell<Vec<Point>>,
+    /// The icon the last click was on (menu actions, F2, Umschalt+Klick
+    /// counts from here); always one of `selection` or `None`.
     selected: Cell<Option<usize>>,
+    /// HMP-10a: every selected icon.
+    selection: RefCell<BTreeSet<usize>>,
+    /// A plain press on an icon of a larger selection keeps the selection
+    /// for a drag of all; without a drag its release selects that icon only.
+    collapse_on_release: Cell<Option<usize>>,
     geometry: Cell<Geometry>,
     store: RefCell<Store>,
     /// HMP-09's saved order, for the first start without a state file.
     migrated_order: Vec<String>,
+    /// HMP-10a: the HMP-10 state file was copied once before the first write.
+    backed_up: Cell<bool>,
     watches: RefCell<Vec<gio::FileMonitor>>,
     /// Applies a new desktop.ini at once (main.rs `load`).
     background_changed: Rc<dyn Fn()>,
@@ -106,6 +128,7 @@ pub struct Icons {
     /// Counts drags; a double click must not span one.
     drags: Cell<u64>,
     drags_at_first_press: Cell<u64>,
+    drags_at_press: Cell<u64>,
     /// This press only ended a rename: no selection, drag or open.
     press_swallowed: Cell<bool>,
     editing: RefCell<Option<Editing>>,
@@ -113,6 +136,8 @@ pub struct Icons {
     reload_waiting: Cell<bool>,
     reload_timer: RefCell<Option<glib::SourceId>>,
     last_logged: RefCell<String>,
+    last_selection: RefCell<String>,
+    check_tiles: Cell<bool>,
 }
 
 fn desktop_dir() -> Option<PathBuf> {
@@ -207,24 +232,32 @@ impl Icons {
             widgets: RefCell::default(),
             positions: RefCell::default(),
             selected: Cell::new(None),
+            selection: RefCell::default(),
+            collapse_on_release: Cell::new(None),
             geometry: Cell::new(Geometry {
                 width: 0,
                 height: 0,
                 tile: CELL,
                 margin: MARGIN,
+                // "Am Raster ausrichten": on unless switched off
+                snap: store.snap.unwrap_or(true),
             }),
             store: RefCell::new(store),
             migrated_order,
+            backed_up: Cell::new(false),
             watches: RefCell::default(),
             background_changed,
             drag: RefCell::default(),
             drags: Cell::new(0),
             drags_at_first_press: Cell::new(0),
+            drags_at_press: Cell::new(0),
             press_swallowed: Cell::new(false),
             editing: RefCell::default(),
             reload_waiting: Cell::new(false),
             reload_timer: RefCell::default(),
             last_logged: RefCell::default(),
+            last_selection: RefCell::default(),
+            check_tiles: Cell::new(false),
         });
         icons.install_actions();
         icons.install_clicks();
@@ -243,6 +276,9 @@ impl Icons {
                     icons.geometry.set(geometry);
                     log(&format!("Symbolfläche {}x{}", size.0, size.1));
                     icons.layout();
+                }
+                if icons.check_tiles.get() && icons.log_oversized_tiles() {
+                    icons.check_tiles.set(false);
                 }
             }
             glib::ControlFlow::Continue
@@ -310,6 +346,19 @@ impl Icons {
             .selected
             .get()
             .and_then(|i| self.items.borrow().get(i).map(|item| item.key.clone()));
+        let selection_keys: Vec<String> = self
+            .selection
+            .borrow()
+            .iter()
+            .filter_map(|&i| self.items.borrow().get(i).map(|item| item.key.clone()))
+            .collect();
+        *self.selection.borrow_mut() = items
+            .iter()
+            .enumerate()
+            .filter(|(_, item)| selection_keys.contains(&item.key))
+            .map(|(i, _)| i)
+            .collect();
+        self.collapse_on_release.set(None);
         for widget in self.widgets.borrow_mut().drain(..) {
             self.fixed.remove(&widget);
         }
@@ -319,8 +368,11 @@ impl Icons {
             widget.set_visible(false);
             self.fixed.put(widget, 0.0, 0.0);
         }
-        self.selected
-            .set(selected_key.and_then(|key| items.iter().position(|item| item.key == key)));
+        self.selected.set(
+            selected_key
+                .and_then(|key| items.iter().position(|item| item.key == key))
+                .filter(|i| self.selection.borrow().contains(i)),
+        );
         log(&format!(
             "{} Symbole: {}",
             items.len(),
@@ -392,6 +444,9 @@ impl Icons {
         }
         drop(items);
         *self.positions.borrow_mut() = positions;
+        // HMP-10a: after the next allocation, check that no tile (icon and
+        // label, however long) is larger than its cell
+        self.check_tiles.set(true);
         if new_places {
             self.save();
         }
@@ -409,6 +464,35 @@ impl Icons {
         }
         let text = store.render();
         let path = store_path();
+        // HMP-10a: before its first write, a complete copy of the file as
+        // it was (written by HMP-10), once (`store::back_up`: temporary
+        // files, checked, published without overwriting, completed by its
+        // checksum mark). Without it nothing is written
+        // (the places stay in memory and are saved at the next write once
+        // the copy succeeds).
+        if !self.backed_up.get() {
+            let copy = state_dir().join(format!("{}.vor-hmp10a", store::FILE_NAME));
+            match store::back_up(&path, &copy) {
+                Ok(done) => {
+                    if let store::Backup::Made { set_aside } = done {
+                        for aside in set_aside {
+                            log(&format!(
+                                "unvollständige Sicherung beiseitegelegt: {}",
+                                aside.display()
+                            ));
+                        }
+                        log(&format!("Sicherung der Anordnung: {}", copy.display()));
+                    }
+                    self.backed_up.set(true);
+                }
+                Err(err) => {
+                    log(&format!(
+                        "Sicherung fehlgeschlagen ({err}): Anordnung nicht gespeichert"
+                    ));
+                    return;
+                }
+            }
+        }
         if std::fs::read_to_string(&path).ok().as_deref() != Some(text.as_str())
             && let Err(err) = write_atomically(&path, &text)
         {
@@ -435,13 +519,46 @@ impl Icons {
         }
     }
 
+    /// Logs tiles whose allocation is larger than a cell (a label that
+    /// would reach into the next cell); the isolated test looks for these.
+    /// `false` while a tile has no size yet (not drawn): check again at the
+    /// next frame.
+    fn log_oversized_tiles(&self) -> bool {
+        let items = self.items.borrow();
+        let widgets = self.widgets.borrow();
+        if widgets.iter().any(|w| w.is_visible() && w.width() == 0) {
+            return false;
+        }
+        for (item, widget) in items.iter().zip(widgets.iter()) {
+            let (w, h) = (widget.width(), widget.height());
+            if w > CELL.0 || h > CELL.1 {
+                log(&format!(
+                    "Kachel größer als die Zelle: {} {w}x{h}",
+                    item.name
+                ));
+            }
+        }
+        true
+    }
+
     fn show_selection(&self) {
+        let selection = self.selection.borrow();
         for (index, widget) in self.widgets.borrow().iter().enumerate() {
-            if Some(index) == self.selected.get() {
+            if selection.contains(&index) {
                 widget.add_css_class("selected");
             } else {
                 widget.remove_css_class("selected");
             }
+        }
+        // the selection in the log when it changes (for the isolated tests)
+        let names: Vec<String> = selection
+            .iter()
+            .filter_map(|&i| self.items.borrow().get(i).map(|item| item.name.clone()))
+            .collect();
+        let text = names.join("; ");
+        if *self.last_selection.borrow() != text {
+            log(&format!("Auswahl: {text}"));
+            *self.last_selection.borrow_mut() = text;
         }
     }
 
@@ -456,6 +573,19 @@ impl Icons {
                 .compute_bounds(&self.fixed)
                 .is_some_and(|b| b.contains_point(&gtk4::graphene::Point::new(x as f32, y as f32)))
         })
+    }
+
+    /// Only `index` selected (or nothing); it is also the anchor for
+    /// Umschalt+Klick.
+    fn select_only(&self, index: Option<usize>) {
+        *self.selection.borrow_mut() = index.into_iter().collect();
+        self.selected.set(index);
+        self.show_selection();
+    }
+
+    /// The selected icons, sorted.
+    fn selection_list(&self) -> Vec<usize> {
+        self.selection.borrow().iter().copied().collect()
     }
 
     fn install_clicks(self: &Rc<Self>) {
@@ -478,29 +608,92 @@ impl Icons {
                 return;
             }
             let index = icons.hit(x, y);
-            icons.selected.set(index);
-            icons.show_selection();
+            icons.collapse_on_release.set(None);
+            icons.drags_at_press.set(icons.drags.get());
+            if gesture.current_button() == gdk::BUTTON_SECONDARY {
+                // on a selected icon the selection stays (GNOME 2)
+                match index {
+                    Some(i) if icons.selection.borrow().contains(&i) => {
+                        icons.selected.set(Some(i));
+                    }
+                    other => icons.select_only(other),
+                }
+                icons.popup_menu(index, x, y);
+                return;
+            }
+            if gesture.current_button() != gdk::BUTTON_PRIMARY {
+                return;
+            }
             if n_press == 1 {
                 icons.drags_at_first_press.set(icons.drags.get());
             }
-            if gesture.current_button() == gdk::BUTTON_SECONDARY {
-                icons.popup_menu(index, x, y);
+            let modifiers = gesture.current_event_state();
+            let ctrl = modifiers.contains(gdk::ModifierType::CONTROL_MASK);
+            let shift = modifiers.contains(gdk::ModifierType::SHIFT_MASK);
+            match index {
+                // the free desktop: a plain press clears the selection
+                // (Strg/Umschalt keep it for the rubber band)
+                None => {
+                    if !ctrl && !shift {
+                        icons.select_only(None);
+                    }
+                }
+                // Strg+Klick: in or out of the selection
+                Some(i) if ctrl => {
+                    let now_in = {
+                        let mut selection = icons.selection.borrow_mut();
+                        if !selection.remove(&i) {
+                            selection.insert(i);
+                        }
+                        selection.contains(&i)
+                    };
+                    icons.selected.set(if now_in {
+                        Some(i)
+                    } else {
+                        icons.selection.borrow().iter().next().copied()
+                    });
+                    icons.show_selection();
+                }
+                // Umschalt+Klick: from the last clicked icon to this one
+                Some(i) if shift => {
+                    let from = icons.selected.get().unwrap_or(i);
+                    let range = layout::range_between(&icons.positions.borrow(), from, i);
+                    *icons.selection.borrow_mut() = range.into_iter().collect();
+                    // the anchor stays where the range started
+                    icons.selected.set(Some(from));
+                    icons.show_selection();
+                }
+                Some(i) if icons.selection.borrow().contains(&i) => {
+                    icons.selected.set(Some(i));
+                    if icons.selection.borrow().len() > 1 {
+                        icons.collapse_on_release.set(Some(i));
+                    }
+                }
+                Some(i) => icons.select_only(Some(i)),
             }
         });
         let weak = Rc::downgrade(self);
         click.connect_released(move |gesture, n_press, x, y| {
             let Some(icons) = weak.upgrade() else { return };
-            // Open on the release of the second click, and only if neither
-            // press became a drag.
             if gesture.current_button() != gdk::BUTTON_PRIMARY
-                || n_press != 2
-                || icons.drags.get() != icons.drags_at_first_press.get()
                 || icons.press_swallowed.get()
                 || icons.editing.borrow().is_some()
             {
                 return;
             }
             let index = icons.hit(x, y);
+            // a click (no drag) on one icon of a larger selection selects it alone
+            if let Some(i) = icons.collapse_on_release.take()
+                && icons.drags.get() == icons.drags_at_press.get()
+                && index == Some(i)
+            {
+                icons.select_only(Some(i));
+            }
+            // Open on the release of the second click, and only if neither
+            // press became a drag.
+            if n_press != 2 || icons.drags.get() != icons.drags_at_first_press.get() {
+                return;
+            }
             if index.is_some() && index == icons.selected.get() {
                 let item = index.and_then(|i| icons.items.borrow().get(i).cloned());
                 if let Some(item) = item {
@@ -520,13 +713,17 @@ impl Icons {
             if icons.editing.borrow().is_some() || icons.press_swallowed.get() {
                 return;
             }
-            let Some(index) = icons.hit(x, y) else { return };
-            let (px, py) = icons.positions.borrow()[index];
+            let index = icons.hit(x, y);
+            let grab = index.map_or((0.0, 0.0), |i| {
+                let (px, py) = icons.positions.borrow()[i];
+                (x - f64::from(px), y - f64::from(py))
+            });
             *icons.drag.borrow_mut() = Some(Drag {
                 index,
                 start: (x, y),
-                grab: (x - f64::from(px), y - f64::from(py)),
-                ghost: None,
+                grab,
+                moving: Vec::new(),
+                band: None,
             });
         });
         let weak = Rc::downgrade(self);
@@ -534,24 +731,66 @@ impl Icons {
             let Some(icons) = weak.upgrade() else { return };
             let mut state = icons.drag.borrow_mut();
             let Some(drag) = state.as_mut() else { return };
-            if drag.ghost.is_none() {
+            if !drag.started() {
                 if !layout::is_drag(dx, dy, drag_threshold(&icons.window)) {
                     return;
                 }
-                let Some(item) = icons.items.borrow().get(drag.index).cloned() else {
-                    return;
-                };
-                let ghost = icon_widget(&item);
-                ghost.add_css_class("dragging");
-                ghost.add_css_class("selected");
-                ghost.set_can_target(false);
-                icons.fixed.put(&ghost, 0.0, 0.0);
-                drag.ghost = Some(ghost);
                 icons.drags.set(icons.drags.get() + 1);
+                icons.collapse_on_release.set(None);
+                match drag.index {
+                    Some(i) => {
+                        // the whole selection moves if the icon is part of
+                        // it, else this icon alone
+                        if !icons.selection.borrow().contains(&i) {
+                            icons.select_only(Some(i));
+                        }
+                        let mut members = vec![i];
+                        members.extend(icons.selection_list().into_iter().filter(|&m| m != i));
+                        for m in members {
+                            let Some(item) = icons.items.borrow().get(m).cloned() else {
+                                continue;
+                            };
+                            let ghost = icon_widget(&item);
+                            ghost.add_css_class("dragging");
+                            ghost.add_css_class("selected");
+                            ghost.set_can_target(false);
+                            icons.fixed.put(&ghost, 0.0, 0.0);
+                            drag.moving.push((m, ghost));
+                        }
+                    }
+                    None => {
+                        let frame = gtk4::Box::new(Orientation::Horizontal, 0);
+                        frame.add_css_class("rubberband");
+                        frame.set_can_target(false);
+                        icons.fixed.put(&frame, drag.start.0, drag.start.1);
+                        drag.band = Some((frame, icons.selection.borrow().clone()));
+                    }
+                }
             }
-            let at = icons.geometry.get().clamp(drop_point(drag, dx, dy));
-            if let Some(ghost) = &drag.ghost {
-                icons.fixed.move_(ghost, f64::from(at.0), f64::from(at.1));
+            let geometry = icons.geometry.get();
+            let positions = icons.positions.borrow().clone();
+            if let Some((lead, _)) = drag.moving.first() {
+                let lead_at = positions[*lead];
+                let want = drop_point(drag, dx, dy);
+                let (mx, my) = (want.0 - lead_at.0, want.1 - lead_at.1);
+                for (m, ghost) in &drag.moving {
+                    let at = geometry.clamp((positions[*m].0 + mx, positions[*m].1 + my));
+                    icons.fixed.move_(ghost, f64::from(at.0), f64::from(at.1));
+                }
+            }
+            if let Some((frame, base)) = &drag.band {
+                let corner = (drag.start.0 + dx, drag.start.1 + dy);
+                let (x0, y0) = (drag.start.0.min(corner.0), drag.start.1.min(corner.1));
+                frame.set_size_request(
+                    (dx.abs().round() as i32).max(1),
+                    (dy.abs().round() as i32).max(1),
+                );
+                icons.fixed.move_(frame, x0, y0);
+                let inside = geometry.in_rectangle(&positions, drag.start, corner);
+                let mut selection: BTreeSet<usize> = base.clone();
+                selection.extend(inside);
+                *icons.selection.borrow_mut() = selection;
+                icons.show_selection();
             }
         });
         let weak = Rc::downgrade(self);
@@ -561,9 +800,28 @@ impl Icons {
             let Some(drag) = icons.drag.borrow_mut().take() else {
                 return;
             };
-            if let Some(ghost) = &drag.ghost {
+            for (_, ghost) in &drag.moving {
                 icons.fixed.remove(ghost);
-                icons.drop_icon(drag.index, drop_point(&drag, dx, dy));
+            }
+            match drag.moving.len() {
+                0 => {}
+                1 => icons.drop_icon(drag.moving[0].0, drop_point(&drag, dx, dy)),
+                _ => {
+                    let members: Vec<usize> = drag.moving.iter().map(|(m, _)| *m).collect();
+                    icons.drop_group(&members, drop_point(&drag, dx, dy));
+                }
+            }
+            if let Some((frame, _)) = &drag.band {
+                icons.fixed.remove(frame);
+                let selection = icons.selection_list();
+                if !selection.contains(&icons.selected.get().unwrap_or(usize::MAX)) {
+                    icons.selected.set(selection.first().copied());
+                }
+                let names: Vec<String> = selection
+                    .iter()
+                    .filter_map(|&i| icons.items.borrow().get(i).map(|item| item.name.clone()))
+                    .collect();
+                log(&format!("Auswahl (Rahmen): {}", names.join(", ")));
             }
             if icons.reload_waiting.get() {
                 icons.reload();
@@ -573,7 +831,8 @@ impl Icons {
     }
 
     /// Puts icon `index` at `want` or, if that is taken, at the nearest
-    /// free spot; remembers it. The file is not touched.
+    /// free spot (with the grid: the nearest free cell); remembers it. The
+    /// file is not touched.
     fn drop_icon(&self, index: usize, want: Point) {
         let geometry = self.geometry.get();
         let others: Vec<Point> = self
@@ -584,21 +843,22 @@ impl Icons {
             .filter(|(i, _)| *i != index)
             .map(|(_, p)| *p)
             .collect();
-        let at = geometry
-            .nearest_free(want, &others)
-            .unwrap_or_else(|| geometry.clamp(want));
         let Some(item) = self.items.borrow().get(index).cloned() else {
             return;
         };
-        {
-            let mut store = self.store.borrow_mut();
-            store.set_place(item.art(), &item.ident(), geometry.free_place(at));
-            // the last moved icon keeps its spot first
-            let key = item.key.clone();
-            if let Some(i) = store.entries.iter().position(|e| e.key() == key) {
-                let entry = store.entries.remove(i);
-                store.entries.insert(0, entry);
-            }
+        // no free spot at all (more icons than room): the icon stays
+        let Some(at) = geometry.nearest_free(want, &others) else {
+            log(&format!(
+                "Verschieben abgelehnt (kein freier Platz): {}",
+                item.name
+            ));
+            self.layout();
+            return;
+        };
+        if !self.remember_moved(&[(index, at)]) {
+            log(&format!("{} bleibt an seinem Platz", item.name));
+            self.layout();
+            return;
         }
         log(&format!(
             "verschoben: {} nach {},{} (gewünscht {},{})",
@@ -608,17 +868,117 @@ impl Icons {
         self.save();
     }
 
+    /// HMP-10a: moves the selected icons `members` (the one under the
+    /// pointer first) together, that one dropped at `want`: same
+    /// arrangement, on the grid, inside the area, never onto other icons
+    /// (`Geometry::move_group`). If the arrangement fits nowhere, the icons
+    /// go one by one to the nearest free spots; if not every one finds
+    /// one, the move is refused and all stay where they were.
+    fn drop_group(&self, members: &[usize], want: Point) {
+        let geometry = self.geometry.get();
+        let positions = self.positions.borrow().clone();
+        let group: Vec<Point> = members.iter().map(|&m| positions[m]).collect();
+        let others: Vec<Point> = positions
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !members.contains(i))
+            .map(|(_, p)| *p)
+            .collect();
+        // the whole group or nothing: no icon onto another (HMP-10a review)
+        let Some(moved) = geometry.move_group(&group, 0, want, &others) else {
+            log(&format!(
+                "Verschieben abgelehnt (kein Platz für {} Symbole): alle bleiben, wo sie sind",
+                members.len()
+            ));
+            self.layout();
+            return;
+        };
+        let pairs: Vec<(usize, Point)> = members.iter().copied().zip(moved).collect();
+        if !self.remember_moved(&pairs) {
+            log(&format!(
+                "{} Symbole bleiben an ihren Plätzen",
+                members.len()
+            ));
+            self.layout();
+            return;
+        }
+        let text: Vec<String> = pairs
+            .iter()
+            .filter_map(|(m, (x, y))| {
+                self.items
+                    .borrow()
+                    .get(*m)
+                    .map(|item| format!("{}={x},{y}", item.name))
+            })
+            .collect();
+        log(&format!("gemeinsam verschoben: {}", text.join("; ")));
+        self.layout();
+        self.save();
+    }
+
+    /// Stores the places the user chose; the moved icons keep their spots
+    /// first (front of the state file, in this order).
+    /// An icon that ends up where it already was is not moved: its
+    /// remembered place stays as it is (a drop on a full or smaller desktop
+    /// must not replace a place chosen for a larger screen). `false` when
+    /// nothing moved.
+    fn remember_moved(&self, moved: &[(usize, Point)]) -> bool {
+        let geometry = self.geometry.get();
+        let items = self.items.borrow();
+        let shown = self.positions.borrow().clone();
+        let mut store = self.store.borrow_mut();
+        let mut any = false;
+        for (n, &(index, at)) in moved.iter().enumerate() {
+            let Some(item) = items.get(index) else {
+                continue;
+            };
+            if shown.get(index) == Some(&at) {
+                continue;
+            }
+            any = true;
+            store.set_place(item.art(), &item.ident(), geometry.free_place(at));
+            if let Some(i) = store.entries.iter().position(|e| e.key() == item.key) {
+                let entry = store.entries.remove(i);
+                store.entries.insert(n, entry);
+            }
+        }
+        any
+    }
+
     fn install_keys(self: &Rc<Self>) {
         let keys = EventControllerKey::new();
         let weak = Rc::downgrade(self);
-        keys.connect_key_pressed(move |_, key, _, _| {
+        keys.connect_key_pressed(move |_, key, _, modifiers| {
             let Some(icons) = weak.upgrade() else {
                 return glib::Propagation::Proceed;
             };
-            if key == gdk::Key::F2 && icons.editing.borrow().is_none() {
-                if let Some(index) = icons.selected.get() {
+            if icons.editing.borrow().is_some() {
+                return glib::Propagation::Proceed;
+            }
+            if key == gdk::Key::F2 {
+                // renaming is for one icon at a time
+                if icons.selection.borrow().len() == 1
+                    && let Some(index) = icons.selected.get()
+                {
                     icons.start_rename(index);
                 }
+                return glib::Propagation::Stop;
+            }
+            if modifiers.contains(gdk::ModifierType::CONTROL_MASK)
+                && matches!(key, gdk::Key::a | gdk::Key::A)
+            {
+                let count = icons.items.borrow().len();
+                *icons.selection.borrow_mut() = (0..count).collect();
+                if icons.selected.get().is_none() {
+                    icons.selected.set((count > 0).then_some(0));
+                }
+                icons.show_selection();
+                log(&format!("alle {count} Symbole ausgewählt"));
+                return glib::Propagation::Stop;
+            }
+            if key == gdk::Key::Escape && !icons.selection.borrow().is_empty() {
+                icons.select_only(None);
+                log("Auswahl aufgehoben");
                 return glib::Propagation::Stop;
             }
             glib::Propagation::Proceed
@@ -631,11 +991,13 @@ impl Icons {
         if let Some(index) = index {
             self.menu.append(Some("Öffnen"), Some("desktop.open"));
             let edit = gio::Menu::new();
-            let can_rename = self
-                .items
-                .borrow()
-                .get(index)
-                .is_some_and(|item| renamable(item).is_ok());
+            // one icon at a time (HMP-10a: not with several selected)
+            let can_rename = self.selection.borrow().len() <= 1
+                && self
+                    .items
+                    .borrow()
+                    .get(index)
+                    .is_some_and(|item| renamable(item).is_ok());
             // insensitive (no action) where renaming cannot work
             edit.append(Some("Umbenennen …"), can_rename.then_some("desktop.rename"));
             self.menu.append_section(None, &edit);
@@ -674,6 +1036,22 @@ impl Icons {
                 Some("Nach Namen aufräumen"),
                 Some("desktop.arrange-by-name"),
             );
+            // HMP-10a: put every icon on the grid once; switch the grid on
+            // or off (a check mark in the icon column, as GNOME 2 drew it)
+            arrange.append(
+                Some("Symbole am Raster ausrichten"),
+                Some("desktop.align-to-grid"),
+            );
+            let toggle =
+                gio::MenuItem::new(Some("Am Raster ausrichten"), Some("desktop.toggle-grid"));
+            if self.geometry.get().snap {
+                toggle.set_icon(&gio::ThemedIcon::from_names(&[
+                    "object-select-symbolic",
+                    "emblem-ok",
+                    "emblem-OK",
+                ]));
+            }
+            arrange.append_item(&toggle);
             self.menu.append_section(None, &arrange);
             let background = gio::Menu::new();
             background.append(
@@ -765,6 +1143,16 @@ impl Icons {
             Box::new(|icons, _| icons.arrange_by_name()),
         );
         add(
+            "align-to-grid",
+            None,
+            Box::new(|icons, _| icons.align_to_grid()),
+        );
+        add(
+            "toggle-grid",
+            None,
+            Box::new(|icons, _| icons.toggle_grid()),
+        );
+        add(
             "change-background",
             None,
             Box::new(|icons, _| choose_background(icons.background_changed.clone())),
@@ -793,6 +1181,64 @@ impl Icons {
         }
         log("nach Namen aufgeräumt");
         self.set_items(sorted);
+        self.save();
+    }
+
+    /// HMP-10a "Symbole am Raster ausrichten": every icon is put on the
+    /// nearest free grid cell (in the order of the state file, as shown),
+    /// and that is remembered; each keeps the edge it was measured from.
+    /// No file is touched.
+    fn align_to_grid(self: &Rc<Self>) {
+        let mut geometry = self.geometry.get();
+        if !geometry.known() {
+            return;
+        }
+        geometry.snap = true;
+        let items = self.items.borrow().clone();
+        let mut order: Vec<usize> = (0..items.len()).collect();
+        {
+            let store = self.store.borrow();
+            let rank = |i: &usize| {
+                store
+                    .entries
+                    .iter()
+                    .position(|e| e.key() == items[*i].key)
+                    .unwrap_or(usize::MAX)
+            };
+            order.sort_by_key(|i| (rank(i), *i));
+        }
+        let wanted: Vec<_> = order
+            .iter()
+            .map(|&i| self.store.borrow().place(&items[i].key))
+            .collect();
+        let placed = geometry.place_all(&wanted);
+        {
+            let mut store = self.store.borrow_mut();
+            for (n, &i) in order.iter().enumerate() {
+                let place = match wanted[n] {
+                    Some(old) => geometry.place_like(old, placed[n]),
+                    None => geometry.top_left_place(placed[n]),
+                };
+                store.set_place(items[i].art(), &items[i].ident(), place);
+            }
+        }
+        log("Symbole am Raster ausgerichtet");
+        self.layout();
+        self.save();
+    }
+
+    /// HMP-10a "Am Raster ausrichten" on or off (remembered). Off shows
+    /// the remembered pixel places again (HMP-10); nothing is lost.
+    fn toggle_grid(self: &Rc<Self>) {
+        let mut geometry = self.geometry.get();
+        geometry.snap = !geometry.snap;
+        self.geometry.set(geometry);
+        self.store.borrow_mut().snap = Some(geometry.snap);
+        log(&format!(
+            "Am Raster ausrichten: {}",
+            if geometry.snap { "an" } else { "aus" }
+        ));
+        self.layout();
         self.save();
     }
 

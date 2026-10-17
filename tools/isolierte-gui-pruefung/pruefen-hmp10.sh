@@ -3,6 +3,11 @@
 # Umbenennen der Desktop-Symbole (querencia-desktop) mit echtem Panel, echten
 # virtuellen Eingaben und eigenem Arbeitsflächenordner im Testprofil.
 #   pruefen-hmp10.sh <desktop-binary> <panel-binary> <profil>
+# HMP-10a:
+#   HMP10_TREIBER=<datei>  anderer Treiber (hmp10a-treiber.py)
+#   HMP10_RASTER=aus       „Am Raster ausrichten“ vorab aus (HMP-10-Verhalten)
+#   HMP10_ZUSTAND=<datei>  vorhandene Zustandsdatei desktop-symbole vorab
+#   HMP10_ANMELDUNG2=1     danach zweite Anmeldung: neuer labwc, gleiches Profil
 # Ergebnis: <testordner>/<profil>/logs/pruefung.txt und Bilder in logs/bilder/.
 # Der echte ~/ bleibt unberührt: Desktop-Ordner, Vorlagen, Zustand, Papierkorb
 # und Programme liegen im Profil; geöffnete „Programme“ sind Markerskripte.
@@ -67,6 +72,10 @@ Exec=$P/bin/marker-fremd
 Icon=dialog-warning
 D
 chmod 644 "$P/schreibtisch/Fremd.desktop"
+# HMP-10a: vorhandener Zustand (Migration) bzw. Raster aus
+mkdir -p "$P/state/querencia"
+if [ -n "${HMP10_ZUSTAND:-}" ]; then cp "$HMP10_ZUSTAND" "$P/state/querencia/desktop-symbole"; fi
+if [ "${HMP10_RASTER:-}" = aus ]; then printf 'version\t1\neinstellung\traster\tnein\n' > "$P/state/querencia/desktop-symbole"; fi
 # Einfarbiger Hintergrund: Symbole sind per Pixel eindeutig erkennbar
 python3 -c "from PIL import Image; Image.new('RGB',(64,64),(58,110,165)).save('$P/hintergrund.png')"
 mkdir -p "$P/config/querencia"
@@ -91,9 +100,14 @@ cat > "$P/logs/szenario-hmp10.sh" <<S
 mkdir -p "\$XDG_DATA_HOME/applications"; cp "$P/apps"/*.desktop "\$XDG_DATA_HOME/applications/"
 update-desktop-database "\$XDG_DATA_HOME/applications"
 HMP10_DESKTOP="$DESKTOP" HMP_PANEL="$PANEL" HMP_QEINGABE="$G/bin/qeingabe" HMP_QAUSGABE="$G/bin/qausgabe" \\
-  HMP10_NUR="${HMP10_NUR:-}" python3 "$HIER/hmp10-treiber.py" >> "$P/logs/treiber.txt" 2>&1
+  HMP10_NUR="\${HMP10_NUR:-}" HMP10_PHASE="\${HMP10_PHASE:-1}" python3 "${HMP10_TREIBER:-$HIER/hmp10-treiber.py}" >> "$P/logs/treiber.txt" 2>&1
 touch "$P/logs/FERTIG"
 sleep 30
 S
-/usr/bin/python3 "$HIER/isoliert.py" "$P" "$P/logs/szenario-hmp10.sh" "${HMP_ZEIT:-900}"
+HMP10_PHASE=1 /usr/bin/python3 "$HIER/isoliert.py" "$P" "$P/logs/szenario-hmp10.sh" "${HMP_ZEIT:-900}"
 cat "$P/logs/pruefung.txt"
+if [ "${HMP10_ANMELDUNG2:-}" = 1 ]; then
+  # erneute Anmeldung: neuer Compositor, neues D-Bus, gleiches Profil
+  HMP10_PHASE=2 /usr/bin/python3 "$HIER/isoliert.py" "$P" "$P/logs/szenario-hmp10.sh" 300
+  cat "$P/logs/pruefung-phase2.txt"
+fi

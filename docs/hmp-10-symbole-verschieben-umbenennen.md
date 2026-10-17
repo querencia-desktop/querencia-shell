@@ -1,6 +1,6 @@
 # HMP-10: Desktop-Symbole verschieben und umbenennen
 
-Baut auf HMP-09 (`hmp-09-arbeitsflaeche.md`) auf. Alles aus HMP-09 bleibt: Hintergrund, Symbole, Dateimonitor, Auswahl, Doppelklick, Kontextmenüs, „Ordner anlegen“, „Dokument anlegen“, „Nach Namen aufräumen“.
+Baut auf HMP-09 (`hmp-09-arbeitsflaeche.md`) auf. HMP-10a ergänzt Raster und Mehrfachauswahl: `hmp-10a-raster-und-mehrfachauswahl.md`. Alles aus HMP-09 bleibt: Hintergrund, Symbole, Dateimonitor, Auswahl, Doppelklick, Kontextmenüs, „Ordner anlegen“, „Dokument anlegen“, „Nach Namen aufräumen“.
 
 ## Bedienung
 

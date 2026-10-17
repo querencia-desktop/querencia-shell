@@ -23,6 +23,10 @@
 //!   file name of their own (special icons, built-in starters, starters the
 //!   user may not change).
 //! - Names are escaped: `%` `\t` `\n` `\r` as `%25` `%09` `%0A` `%0D`.
+//! - HMP-10a: `einstellung → raster → ja|nein` keeps "Am Raster
+//!   ausrichten" (missing: on). Version stays 1: HMP-10 skips the line as
+//!   unknown and still reads and writes everything else, so a return to
+//!   HMP-10 keeps all places.
 //! - Unknown or broken lines are skipped and reported, never fatal. A file
 //!   of a newer version is read as far as understood but not overwritten.
 //!
@@ -108,6 +112,8 @@ pub struct Store {
     pub aliases: Vec<Alias>,
     /// Written by a newer Querencia: do not overwrite.
     pub newer: Option<u32>,
+    /// HMP-10a: "Am Raster ausrichten"; `None` = not set (on).
+    pub snap: Option<bool>,
 }
 
 fn escape(text: &str) -> String {
@@ -173,6 +179,11 @@ impl Store {
             let fields: Vec<&str> = line.split('\t').collect();
             let problem = |what: &str| format!("Zeile {}: {what}", number + 1);
             match fields.as_slice() {
+                ["einstellung", "raster", value] => match value.trim() {
+                    "ja" => store.snap = Some(true),
+                    "nein" => store.snap = Some(false),
+                    _ => problems.push(problem("Einstellung unlesbar")),
+                },
                 ["version", v] => match v.trim().parse::<u32>() {
                     Ok(v) => version = Some(v),
                     Err(_) => problems.push(problem("Version unlesbar")),
@@ -219,9 +230,14 @@ impl Store {
             "# Querencia Desktop: Lage und Namen der Arbeitsflächen-Symbole.\n\
              # Geschrieben vom Desktop; Spalten durch Tabulatoren getrennt.\n\
              # <Art> <Name> <waagrecht> <senkrecht>   Art: sonder programm starter datei ordner\n\
-             # name <Art> <Name> <Anzeigename>\n",
+             # name <Art> <Name> <Anzeigename>\n\
+             # einstellung raster ja|nein   (Am Raster ausrichten, HMP-10a)\n",
         );
         out.push_str(&format!("version\t{VERSION}\n"));
+        if let Some(snap) = self.snap {
+            let value = if snap { "ja" } else { "nein" };
+            out.push_str(&format!("einstellung\traster\t{value}\n"));
+        }
         for entry in &self.entries {
             out.push_str(&format!(
                 "{}\t{}\t{}\t{}\n",
@@ -315,6 +331,168 @@ impl Store {
             .retain(|a| a.art.namespace() != "flaeche" || present(&a.name));
         before != (self.entries.len(), self.aliases.len())
     }
+}
+
+/// What [`back_up`] found or did.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Backup {
+    /// A complete backup was there already (left as it is).
+    Present,
+    /// No state file yet: nothing to back up.
+    NoFile,
+    /// Backed up now. `set_aside`: incomplete leftovers that were in the
+    /// way, kept under new names (never overwritten, never deleted).
+    Made { set_aside: Vec<std::path::PathBuf> },
+}
+
+/// The completion mark of a backup: `<copy>.sha256`.
+pub fn mark_path(copy: &std::path::Path) -> std::path::PathBuf {
+    let mut name = copy.as_os_str().to_owned();
+    name.push(".sha256");
+    std::path::PathBuf::from(name)
+}
+
+/// The content of a completion mark for `data`.
+pub fn mark_text(data: &[u8]) -> String {
+    let sum = gtk4::glib::compute_checksum_for_data(gtk4::glib::ChecksumType::Sha256, data)
+        .map(|s| s.to_string())
+        .unwrap_or_default();
+    format!("sha256 {sum}\nbytes {}\n", data.len())
+}
+
+/// Whether `copy` is a complete backup: its mark is there and matches.
+fn complete(copy: &std::path::Path) -> bool {
+    match (
+        std::fs::read(copy),
+        std::fs::read_to_string(mark_path(copy)),
+    ) {
+        (Ok(data), Ok(mark)) => mark == mark_text(&data),
+        _ => false,
+    }
+}
+
+/// A fresh name next to `path` (process and time), for temporary files and
+/// set-aside leftovers.
+fn beside(path: &std::path::Path, what: &str) -> std::path::PathBuf {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let mut name = path.as_os_str().to_owned();
+    name.push(format!(".{what}-{}-{nanos}", std::process::id()));
+    std::path::PathBuf::from(name)
+}
+
+/// Writes `data` to the new file `path` (never an existing one) with
+/// `write`, then checks it byte for byte; removes it again on any error.
+fn write_new(
+    path: &std::path::Path,
+    data: &[u8],
+    write: &dyn Fn(&mut std::fs::File, &[u8]) -> std::io::Result<()>,
+) -> Result<(), String> {
+    let result = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .and_then(|mut file| write(&mut file, data))
+        .map_err(|err| format!("{} nicht geschrieben: {err}", path.display()))
+        .and_then(|()| {
+            if std::fs::read(path).ok().as_deref() == Some(data) {
+                Ok(())
+            } else {
+                Err(format!("{} weicht beim Nachlesen ab", path.display()))
+            }
+        });
+    if result.is_err() {
+        let _ = std::fs::remove_file(path);
+    }
+    result
+}
+
+/// HMP-10a: copies the state file `path` (as HMP-10 left it) to `copy`
+/// once, before HMP-10a writes it for the first time. The caller writes
+/// the state file only after `Ok`.
+///
+/// Crash-safe and never overwriting:
+/// 1. A complete backup (`copy` with a matching mark `copy.sha256`) is
+///    kept as it is (`Present`).
+/// 2. Anything else in its place that is a regular file (a copy without
+///    a mark, a wrong mark, a mark alone) is incomplete: never taken for a
+///    backup, never overwritten or deleted, but set aside under a new name.
+///    A folder or link there is an error.
+/// 3. Copy and mark are written to new temporary files, flushed to disk
+///    and read back.
+/// 4. Only then are they published with `hard_link` (fails if the name
+///    exists: nothing can be overwritten), the copy first, the mark last;
+///    the mark completes the backup. A crash in between leaves a copy
+///    without a mark: incomplete, see 2.
+pub fn back_up(path: &std::path::Path, copy: &std::path::Path) -> Result<Backup, String> {
+    back_up_with(path, copy, &|file, data| {
+        use std::io::Write;
+        file.write_all(data)?;
+        file.sync_all()
+    })
+}
+
+/// [`back_up`] with the writing step given (the tests inject failures).
+pub fn back_up_with(
+    path: &std::path::Path,
+    copy: &std::path::Path,
+    write: &dyn Fn(&mut std::fs::File, &[u8]) -> std::io::Result<()>,
+) -> Result<Backup, String> {
+    let mark = mark_path(copy);
+    let mut there = Vec::new();
+    for p in [copy, mark.as_path()] {
+        match p.symlink_metadata() {
+            Ok(meta) if meta.file_type().is_file() => there.push(p.to_path_buf()),
+            Ok(_) => return Err(format!("{} ist keine gewöhnliche Datei", p.display())),
+            Err(_) => {}
+        }
+    }
+    if there.len() == 2 && complete(copy) {
+        return Ok(Backup::Present);
+    }
+    let data = match std::fs::read(path) {
+        Ok(data) => data,
+        // nothing to protect (leftovers stay untouched)
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(Backup::NoFile),
+        Err(err) => return Err(format!("{} nicht lesbar: {err}", path.display())),
+    };
+    // incomplete leftovers: kept under a new name, never overwritten
+    let mut set_aside = Vec::new();
+    for p in &there {
+        let aside = beside(p, "unvollstaendig");
+        std::fs::hard_link(p, &aside)
+            .and_then(|()| std::fs::remove_file(p))
+            .map_err(|err| format!("{} nicht beiseitegelegt: {err}", p.display()))?;
+        set_aside.push(aside);
+    }
+    let (temp_copy, temp_mark) = (beside(copy, "neu"), beside(&mark, "neu"));
+    write_new(&temp_copy, &data, write)?;
+    if let Err(err) = write_new(&temp_mark, mark_text(&data).as_bytes(), write) {
+        let _ = std::fs::remove_file(&temp_copy);
+        return Err(err);
+    }
+    let published = std::fs::hard_link(&temp_copy, copy)
+        .map_err(|err| format!("{} nicht angelegt: {err}", copy.display()))
+        .and_then(|()| {
+            std::fs::hard_link(&temp_mark, &mark).map_err(|err| {
+                // our own copy without its mark is no backup: take it back
+                let _ = std::fs::remove_file(copy);
+                format!("{} nicht angelegt: {err}", mark.display())
+            })
+        });
+    let _ = std::fs::remove_file(&temp_copy);
+    let _ = std::fs::remove_file(&temp_mark);
+    published?;
+    if let Some(dir) = copy.parent()
+        && let Ok(dir) = std::fs::File::open(dir)
+    {
+        let _ = dir.sync_all();
+    }
+    if !complete(copy) {
+        return Err(format!("{} nach dem Anlegen unvollständig", copy.display()));
+    }
+    Ok(Backup::Made { set_aside })
 }
 
 /// HMP-09's `desktop-order` keys (`special:`, `app:`, `file:`) as HMP-10
@@ -494,5 +672,217 @@ mod tests {
         );
         assert_eq!(migrate_order_key("quatsch"), None);
         assert_eq!(hmp09_order_key("flaeche:a:b").as_deref(), Some("file:a:b"));
+    }
+
+    #[test]
+    fn the_grid_setting_is_kept_and_optional() {
+        let (store, problems) = Store::parse("version\t1\nsonder\thome\tlinks 8\toben 8\n");
+        assert!(problems.is_empty());
+        assert_eq!(store.snap, None, "ohne Zeile: Standard (an)");
+        assert!(
+            !store.render().contains("\neinstellung\t"),
+            "HMP-10-Datei bleibt gleich"
+        );
+        let mut store = store;
+        store.snap = Some(false);
+        let text = store.render();
+        assert!(text.contains("\neinstellung\traster\tnein\n"));
+        let (back, problems) = Store::parse(&text);
+        assert!(problems.is_empty(), "{problems:?}");
+        assert_eq!(back, store);
+        let (_, problems) = Store::parse("version\t1\neinstellung\traster\tvielleicht\n");
+        assert_eq!(problems.len(), 1);
+    }
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let base = std::env::temp_dir().join(format!("hmp10a-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(&base).expect("fixture");
+        base
+    }
+
+    const ORIGINAL: &str = "version\t1\nsonder\ttrash\trechts 26\toben 27\n";
+
+    fn files(dir: &std::path::Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .expect("da")
+            .map(|e| e.expect("da").file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn a_backup_is_complete_once_and_then_kept() {
+        let base = temp_dir("sicherung");
+        let (path, copy) = (
+            base.join("desktop-symbole"),
+            base.join("desktop-symbole.vor-hmp10a"),
+        );
+        assert_eq!(back_up(&path, &copy), Ok(Backup::NoFile));
+        // leftovers without a state file: nothing to protect, left alone
+        std::fs::write(&copy, "halb").expect("fixture");
+        assert_eq!(back_up(&path, &copy), Ok(Backup::NoFile));
+        assert_eq!(std::fs::read_to_string(&copy).ok().as_deref(), Some("halb"));
+        std::fs::remove_file(&copy).expect("cleanup");
+        std::fs::write(&path, ORIGINAL).expect("fixture");
+        assert_eq!(
+            back_up(&path, &copy),
+            Ok(Backup::Made { set_aside: vec![] })
+        );
+        assert_eq!(
+            std::fs::read_to_string(&copy).ok().as_deref(),
+            Some(ORIGINAL)
+        );
+        assert_eq!(
+            std::fs::read_to_string(mark_path(&copy)).ok(),
+            Some(mark_text(ORIGINAL.as_bytes()))
+        );
+        assert_eq!(
+            files(&base),
+            [
+                "desktop-symbole",
+                "desktop-symbole.vor-hmp10a",
+                "desktop-symbole.vor-hmp10a.sha256"
+            ],
+            "keine temporären Reste"
+        );
+        // later: the complete backup stays as it is
+        std::fs::write(&path, "version\t1\n").expect("fixture");
+        assert_eq!(back_up(&path, &copy), Ok(Backup::Present));
+        assert_eq!(
+            std::fs::read_to_string(&copy).ok().as_deref(),
+            Some(ORIGINAL)
+        );
+        std::fs::remove_dir_all(&base).expect("cleanup");
+    }
+
+    #[test]
+    fn a_failed_write_leaves_no_backup_and_can_be_retried() {
+        let base = temp_dir("schreibfehler");
+        let (path, copy) = (
+            base.join("desktop-symbole"),
+            base.join("desktop-symbole.vor-hmp10a"),
+        );
+        std::fs::write(&path, ORIGINAL).expect("fixture");
+        // the copy: half written, then the disk fails
+        let half = |file: &mut std::fs::File, data: &[u8]| {
+            use std::io::Write;
+            file.write_all(&data[..data.len() / 2])?;
+            Err(std::io::Error::other("Platte voll"))
+        };
+        assert!(back_up_with(&path, &copy, &half).is_err());
+        assert_eq!(
+            files(&base),
+            ["desktop-symbole"],
+            "nichts Halbes bleibt liegen"
+        );
+        // the mark fails (second write): no copy published either
+        let calls = std::cell::Cell::new(0);
+        let second_fails = |file: &mut std::fs::File, data: &[u8]| {
+            use std::io::Write;
+            calls.set(calls.get() + 1);
+            if calls.get() == 2 {
+                return Err(std::io::Error::other("sync fehlgeschlagen"));
+            }
+            file.write_all(data)?;
+            file.sync_all()
+        };
+        assert!(back_up_with(&path, &copy, &second_fails).is_err());
+        assert_eq!(files(&base), ["desktop-symbole"]);
+        assert_eq!(
+            std::fs::read_to_string(&path).ok().as_deref(),
+            Some(ORIGINAL),
+            "Original unberührt"
+        );
+        // everything written, but the flush to disk fails: readable now,
+        // yet not safe; no backup either
+        let sync_fails = |file: &mut std::fs::File, data: &[u8]| {
+            use std::io::Write;
+            file.write_all(data)?;
+            Err(std::io::Error::other("fsync fehlgeschlagen"))
+        };
+        assert!(back_up_with(&path, &copy, &sync_fails).is_err());
+        assert_eq!(files(&base), ["desktop-symbole"]);
+        // retry: now it works
+        assert_eq!(
+            back_up(&path, &copy),
+            Ok(Backup::Made { set_aside: vec![] })
+        );
+        assert_eq!(
+            std::fs::read_to_string(&copy).ok().as_deref(),
+            Some(ORIGINAL)
+        );
+        std::fs::remove_dir_all(&base).expect("cleanup");
+    }
+
+    #[test]
+    fn an_incomplete_backup_is_never_taken_and_never_lost() {
+        let base = temp_dir("unvollstaendig");
+        let (path, copy) = (
+            base.join("desktop-symbole"),
+            base.join("desktop-symbole.vor-hmp10a"),
+        );
+        std::fs::write(&path, ORIGINAL).expect("fixture");
+        // a half copy without mark (an older crash)
+        let partial = &ORIGINAL[..ORIGINAL.len() / 2];
+        std::fs::write(&copy, partial).expect("fixture");
+        let Ok(Backup::Made { set_aside }) = back_up(&path, &copy) else {
+            panic!("neu angelegt erwartet");
+        };
+        assert_eq!(set_aside.len(), 1);
+        assert_eq!(
+            std::fs::read_to_string(&set_aside[0]).ok().as_deref(),
+            Some(partial),
+            "beiseitegelegt, nicht gelöscht"
+        );
+        assert_eq!(
+            std::fs::read_to_string(&copy).ok().as_deref(),
+            Some(ORIGINAL)
+        );
+        assert!(complete(&copy));
+        // a copy with a wrong mark, and a mark alone
+        for (with_copy, with_mark) in [(true, true), (false, true)] {
+            std::fs::remove_file(&copy).expect("cleanup");
+            std::fs::remove_file(mark_path(&copy)).expect("cleanup");
+            if with_copy {
+                std::fs::write(&copy, ORIGINAL).expect("fixture");
+            }
+            if with_mark {
+                std::fs::write(mark_path(&copy), mark_text(b"etwas anderes")).expect("fixture");
+            }
+            let Ok(Backup::Made { set_aside }) = back_up(&path, &copy) else {
+                panic!("neu angelegt erwartet");
+            };
+            assert_eq!(
+                set_aside.len(),
+                usize::from(with_copy) + usize::from(with_mark)
+            );
+            assert!(complete(&copy));
+        }
+        std::fs::remove_dir_all(&base).expect("cleanup");
+    }
+
+    #[test]
+    fn nothing_is_written_through_a_folder_or_link() {
+        let base = temp_dir("im-weg");
+        let (path, copy) = (
+            base.join("desktop-symbole"),
+            base.join("desktop-symbole.vor-hmp10a"),
+        );
+        std::fs::write(&path, ORIGINAL).expect("fixture");
+        std::fs::create_dir(&copy).expect("fixture");
+        assert!(back_up(&path, &copy).is_err());
+        std::fs::remove_dir(&copy).expect("cleanup");
+        std::os::unix::fs::symlink(base.join("woanders"), &copy).expect("fixture");
+        assert!(back_up(&path, &copy).is_err());
+        assert!(
+            !base.join("woanders").exists(),
+            "nicht durch den Link geschrieben"
+        );
+        std::fs::remove_file(&copy).expect("cleanup");
+        std::os::unix::fs::symlink(base.join("woanders"), mark_path(&copy)).expect("fixture");
+        assert!(back_up(&path, &copy).is_err());
+        std::fs::remove_dir_all(&base).expect("cleanup");
     }
 }
