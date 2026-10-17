@@ -31,6 +31,14 @@ pub struct AppletType {
     /// own Wayland connection stay single for now: a second instance would
     /// open a second connection and show the same data twice.
     pub multiple: bool,
+    /// Offered only while no panel has one (QREL-04d: the clock, as the
+    /// owner wants a single clock). Technically several work, and a stored
+    /// layout that already has several keeps them; only adding another is
+    /// refused (dialog greyed out, [`crate::layout_editor::Editor::add`]).
+    pub once: bool,
+    /// A right click on it offers "Aus dem Panel entfernen" (`panel_menu.rs`):
+    /// launchers and the clock. The other applets have no menu yet.
+    pub removable: bool,
     /// Adding one first asks for an installed application (the launcher,
     /// HMP-11): the "Zum Panel hinzufügen" dialog then shows its second
     /// page.
@@ -59,6 +67,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: logo::ICON_NAME,
         classic_icon: None,
         multiple: true,
+        once: false,
+        removable: false,
         chooses_application: false,
         factory: |_, height| app_menu::button(height).upcast(),
     },
@@ -69,6 +79,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "folder",
         classic_icon: None,
         multiple: true,
+        once: false,
+        removable: false,
         chooses_application: false,
         factory: |_, _| places_menu::button().upcast(),
     },
@@ -79,6 +91,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-system",
         classic_icon: None,
         multiple: true,
+        once: false,
+        removable: false,
         chooses_application: false,
         factory: |_, _| system_menu::button().upcast(),
     },
@@ -89,6 +103,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-system-windows",
         classic_icon: None,
         multiple: false,
+        once: false,
+        removable: false,
         chooses_application: false,
         factory: |_, _| window_list::widget().upcast(),
     },
@@ -99,6 +115,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-desktop-workspaces",
         classic_icon: Some("workspace-switcher"),
         multiple: false,
+        once: false,
+        removable: false,
         chooses_application: false,
         factory: |_, _| workspace_switcher::widget().upcast(),
     },
@@ -109,6 +127,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-system-time",
         classic_icon: Some("clock"),
         multiple: true,
+        once: true,
+        removable: true,
         chooses_application: false,
         factory: |_, _| {
             let label = Label::new(None);
@@ -123,6 +143,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "system-run",
         classic_icon: None,
         multiple: true,
+        once: false,
+        removable: true,
         chooses_application: true,
         factory: |instance, _| {
             launcher::button(instance.app.as_deref().unwrap_or_default()).upcast()
@@ -196,6 +218,18 @@ mod tests {
             .collect();
         assert_eq!(choosing, [LAUNCHER]);
         assert!(find(LAUNCHER).unwrap().multiple);
+    }
+
+    #[test]
+    fn only_the_clock_is_offered_once_and_launchers_and_clock_are_removable() {
+        let once: Vec<_> = APPLETS.iter().filter(|a| a.once).map(|a| a.id).collect();
+        assert_eq!(once, ["clock"]);
+        let removable: Vec<_> = APPLETS
+            .iter()
+            .filter(|a| a.removable)
+            .map(|a| a.id)
+            .collect();
+        assert_eq!(removable, ["clock", LAUNCHER]);
     }
 
     #[test]

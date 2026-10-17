@@ -470,7 +470,8 @@ impl Layout {
             .find_map(|panel| panel.remove(instance_id))
     }
 
-    fn has_applet(&self, applet_id: &str) -> bool {
+    /// Whether any panel has an instance of the applet type `applet_id`.
+    pub fn has_applet(&self, applet_id: &str) -> bool {
         self.panels
             .iter()
             .flat_map(|p| p.instances())

@@ -164,7 +164,26 @@ pub enum Exclusion {
     NoDisplay,
     /// `OnlyShowIn`/`NotShowIn` rule out the current `XDG_CURRENT_DESKTOP`.
     NotShownInDesktop,
+    /// Installed, but left out of Querencia's menus on the owner's decision
+    /// (QREL-04d), see [`HIDDEN_IN_MENUS`].
+    HiddenInQuerencia,
 }
+
+/// Desktop IDs Querencia leaves out of its menus (and with them out of the
+/// launcher choice, which shows the same catalog), by exact ID only, so no
+/// other entry is touched. The programs stay installed and their desktop
+/// files unchanged; the window list still finds their icons. Decided by the
+/// owner (QREL-04d): TeXInfo and Vim from "Zubehör", Foot, Foot Client, Foot
+/// Server and Htop from "Systemwerkzeuge". A group left without entries is
+/// not shown, as any empty group.
+pub const HIDDEN_IN_MENUS: [&str; 6] = [
+    "info.desktop",
+    "vim.desktop",
+    "foot.desktop",
+    "footclient.desktop",
+    "foot-server.desktop",
+    "htop.desktop",
+];
 
 #[derive(Debug, Default)]
 pub struct Catalog {
@@ -201,6 +220,10 @@ impl Catalog {
             };
             if !seen.insert(id.clone()) {
                 catalog.excluded.push((id, Exclusion::DuplicateId));
+                continue;
+            }
+            if HIDDEN_IN_MENUS.contains(&id.as_str()) {
+                catalog.excluded.push((id, Exclusion::HiddenInQuerencia));
                 continue;
             }
             if !info.should_show() {

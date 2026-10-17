@@ -330,6 +330,9 @@ pub fn widget() -> WindowRow {
     let container: WindowRow = glib::Object::new();
     container.set_hexpand(true);
     container.set_overflow(gtk4::Overflow::Hidden);
+    // Its background is free panel space for the panel menu (QREL-04d):
+    // the list fills the bottom panel, which otherwise had almost none.
+    container.add_css_class(crate::panel_menu::FREE_SPACE_CLASS);
     // a little air before the next applet (workspace switcher), as in GNOME 2
     container.set_margin_end(6);
     let list = Rc::new(RefCell::new(WindowList {

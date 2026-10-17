@@ -1,7 +1,10 @@
 //! The panel's own context menu, as in the GNOME 2 panel: a right click on
 //! free panel space opens it at the pointer. A right click on an applet is
-//! left to the applet; none of them uses it yet, so it does nothing there,
-//! as before. Left and middle clicks never reach this code.
+//! left to the applet (launchers have a menu, the others none yet, so it
+//! does nothing there). The window list fills the bottom panel; the space
+//! between and after its buttons counts as free panel space
+//! ([`FREE_SPACE_CLASS`], QREL-04d), so the bottom panel has its menu too.
+//! Left and middle clicks never reach this code.
 //!
 //! The menu is a `PopoverMenu` like the menus of the applets, so it takes
 //! the keyboard the same way: the panel keeps `KeyboardMode::None`, labwc
@@ -9,7 +12,9 @@
 //! and returns it to the previously focused window afterwards.
 //!
 //! A right click on an application launcher (HMP-11) opens the launcher's
-//! menu instead, as in GNOME 2: "Starten" and "Aus dem Panel entfernen".
+//! menu instead, as in GNOME 2: "Starten" and "Aus dem Panel entfernen";
+//! on the clock (QREL-04d) a menu with "Aus dem Panel entfernen" only, so
+//! the single clock can be removed and added again, e.g. to the other panel.
 //! Removing goes through the shared [`Editor`] too: saved first, then taken
 //! off the screen.
 //!
@@ -30,16 +35,22 @@ use gtk4::{
 
 use crate::layout::{Edge, PanelSpec, Region};
 use crate::layout_editor::Editor;
-use crate::{add_dialog, app_menu, launcher, panel};
+use crate::{add_dialog, app_menu, applets, panel};
 
 /// CSS class of the top widget of every applet; marks where free panel
 /// space ends.
 pub const APPLET_CLASS: &str = "querencia-applet";
+/// CSS class of an applet widget whose own background counts as free panel
+/// space (QREL-04d): the window list fills the bottom panel, and a right
+/// click between or after its buttons opens the panel menu, as on a GNOME 2
+/// panel. Its buttons and all other applets keep their own clicks. No style
+/// rule uses the class.
+pub const FREE_SPACE_CLASS: &str = "querencia-free-space";
 
 const ACTION_GROUP: &str = "panel";
 const ADD: &str = "add";
 const LAUNCH: &str = "launcher-start";
-const REMOVE: &str = "launcher-remove";
+const REMOVE: &str = "applet-remove";
 
 /// The menu entries. More follow with the functions behind them (removing,
 /// moving, properties); until then the menu shows nothing that would not
@@ -65,6 +76,17 @@ pub fn launcher_model() -> gio::Menu {
         Some(&format!("{ACTION_GROUP}.{REMOVE}")),
     );
     menu.append_section(None, &object);
+    menu
+}
+
+/// The menu of a removable applet without other entries (QREL-04d: the
+/// clock): "Aus dem Panel entfernen".
+pub fn applet_model() -> gio::Menu {
+    let menu = gio::Menu::new();
+    menu.append(
+        Some("Aus dem Panel entfernen"),
+        Some(&format!("{ACTION_GROUP}.{REMOVE}")),
+    );
     menu
 }
 
@@ -166,14 +188,22 @@ pub fn attach(
     launcher_popover.set_halign(Align::Start);
     launcher_popover.set_position(popover.position());
     launcher_popover.set_parent(bar);
+    let applet_popover = PopoverMenu::from_model(Some(&applet_model()));
+    applet_popover.set_has_arrow(false);
+    applet_popover.set_halign(Align::Start);
+    applet_popover.set_position(popover.position());
+    applet_popover.set_parent(bar);
     bar.connect_destroy(glib::clone!(
         #[strong]
         popover,
         #[strong]
         launcher_popover,
+        #[strong]
+        applet_popover,
         move |_| {
             popover.unparent();
             launcher_popover.unparent();
+            applet_popover.unparent();
         }
     ));
 
@@ -192,17 +222,24 @@ pub fn attach(
         popover,
         #[weak]
         launcher_popover,
+        #[weak]
+        applet_popover,
         #[strong]
         target,
         #[strong]
         clicked,
+        #[strong]
+        editor,
         move |gesture, presses, x, y| {
             // Pointer events inside a popover, e.g. an open applet menu,
             // bubble up to the panel too; only clicks on the panel surface
             // itself count. Their coordinates are the panel's own.
             let on_panel =
                 gesture.current_event().and_then(|event| event.surface()) == window.surface();
-            if presses != 1 || !on_panel || popover.is_visible() || launcher_popover.is_visible() {
+            let open = [&popover, &launcher_popover, &applet_popover]
+                .iter()
+                .any(|p| p.is_visible());
+            if presses != 1 || !on_panel || open {
                 return;
             }
             let applet = applet_at(&window, x, y);
@@ -211,13 +248,28 @@ pub fn attach(
             };
             let pointer = gdk::Rectangle::new(x as i32, y as i32, 1, 1);
             if let Some(applet) = applet {
-                if applet.has_css_class(launcher::LAUNCHER_CLASS) {
-                    *clicked.borrow_mut() = applet.widget_name().to_string();
+                // The applet's type from the layout, by its instance ID.
+                let id = applet.widget_name().to_string();
+                let kind = editor
+                    .borrow()
+                    .layout()
+                    .panels
+                    .iter()
+                    .flat_map(|p| p.instances())
+                    .find(|i| i.id == id)
+                    .and_then(|i| applets::find(&i.applet));
+                let menu = match kind {
+                    Some(t) if t.id == crate::layout::LAUNCHER => Some(&launcher_popover),
+                    Some(t) if t.removable => Some(&applet_popover),
+                    _ => None,
+                };
+                if let Some(menu) = menu {
+                    *clicked.borrow_mut() = id;
                     gesture.set_state(EventSequenceState::Claimed);
-                    launcher_popover.set_pointing_to(Some(&pointer));
-                    launcher_popover.popup();
+                    menu.set_pointing_to(Some(&pointer));
+                    menu.popup();
                     eprintln!(
-                        "querencia-panel: Startermenü von {} geöffnet",
+                        "querencia-panel: Appletmenü von {} geöffnet",
                         clicked.borrow()
                     );
                 }
@@ -328,9 +380,16 @@ fn remove_applet(
 }
 
 /// The top widget of the applet at the point (window coordinates), `None`
-/// on free panel space.
+/// on free panel space: outside every applet, or directly on an applet's
+/// own background marked with [`FREE_SPACE_CLASS`] (not on its children).
 fn applet_at(window: &ApplicationWindow, x: f64, y: f64) -> Option<gtk4::Widget> {
     let mut hit = window.pick(x, y, PickFlags::DEFAULT);
+    if hit
+        .as_ref()
+        .is_some_and(|w| w.has_css_class(FREE_SPACE_CLASS))
+    {
+        return None;
+    }
     while let Some(widget) = hit {
         if widget.has_css_class(APPLET_CLASS) {
             return Some(widget);
@@ -381,10 +440,21 @@ mod tests {
             label(&section, 0).as_deref(),
             Some("Aus dem Panel entfernen")
         );
-        assert_eq!(
-            action(&section, 0).as_deref(),
-            Some("panel.launcher-remove")
-        );
+        assert_eq!(action(&section, 0).as_deref(), Some("panel.applet-remove"));
+    }
+
+    #[test]
+    fn clock_menu_only_removes() {
+        let menu = applet_model();
+        assert_eq!(menu.n_items(), 1);
+        let label = menu
+            .item_attribute_value(0, "label", Some(glib::VariantTy::STRING))
+            .and_then(|v| v.get::<String>());
+        assert_eq!(label.as_deref(), Some("Aus dem Panel entfernen"));
+        let action = menu
+            .item_attribute_value(0, "action", Some(glib::VariantTy::STRING))
+            .and_then(|v| v.get::<String>());
+        assert_eq!(action.as_deref(), Some("panel.applet-remove"));
     }
 
     #[test]

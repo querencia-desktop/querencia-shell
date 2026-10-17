@@ -7,7 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::layout::{Added, Instance, Layout, Region};
+use crate::layout::{AddError, Added, Instance, Layout, Region};
 use crate::layout_store::{self, Disk, Source};
 
 /// Looks up an applet type: `None` if unknown, otherwise whether it allows
@@ -52,9 +52,15 @@ impl Editor {
         &self.path
     }
 
-    /// Whether one more instance of `applet_id` may be added.
+    /// Whether one more instance of `applet_id` may be added: by the rules
+    /// of the layout, and not a second one of a type offered only once
+    /// ([`crate::applets::AppletType::once`], the clock) on any panel.
     pub fn can_add(&self, applet_id: &str) -> bool {
-        self.layout.can_add(applet_id, self.applet)
+        self.layout.can_add(applet_id, self.applet) && !self.once_and_present(applet_id)
+    }
+
+    fn once_and_present(&self, applet_id: &str) -> bool {
+        crate::applets::find(applet_id).is_some_and(|a| a.once) && self.layout.has_applet(applet_id)
     }
 
     /// Adds a new instance of `applet_id` to `region` of panel `panel_id`
@@ -66,6 +72,9 @@ impl Editor {
         applet_id: &str,
         region: Region,
     ) -> Result<Change, String> {
+        if self.once_and_present(applet_id) {
+            return Err(AddError::SingleInstance(applet_id.to_string()).to_string());
+        }
         let (added, backup) = self.change(|layout, applet| {
             layout
                 .add_applet(panel_id, applet_id, region, applet)
@@ -209,13 +218,13 @@ mod tests {
     fn adding_changes_the_layout_and_saves_it() {
         let scratch = Scratch::new("hinzu");
         let (mut editor, _, _) = Editor::load(scratch.ini(), registry);
-        let change = editor.add("top", "clock", Region::Center).expect("add");
-        assert_eq!(change.added.instance, Instance::new("clock-2", "clock"));
+        let change = editor.add("top", "places", Region::Center).expect("add");
+        assert_eq!(change.added.instance, Instance::new("places-2", "places"));
         assert_eq!(change.backup, None);
 
         let mut expected = Layout::standard();
         expected
-            .add_applet("top", "clock", Region::Center, registry)
+            .add_applet("top", "places", Region::Center, registry)
             .unwrap();
         assert_eq!(editor.layout(), &expected);
         assert_eq!(restart(&scratch.ini()), expected);
@@ -227,8 +236,8 @@ mod tests {
         let (mut editor, _, _) = Editor::load(scratch.ini(), registry);
         for (panel, applet, region) in [
             ("top", "places", Region::Start),
-            ("bottom", "clock", Region::End),
-            ("bottom", "clock", Region::End),
+            ("bottom", "places", Region::End),
+            ("bottom", "places", Region::End),
             ("top", "system", Region::Center),
         ] {
             editor.add(panel, applet, region).expect("add");
@@ -237,8 +246,8 @@ mod tests {
         assert_eq!(&layout, editor.layout());
         let bottom = &layout.panels[1];
         let end: Vec<_> = bottom.region(Region::End).iter().map(|i| &i.id).collect();
-        // each new clock went first in the end region
-        assert_eq!(end, ["clock-3", "clock-2", "workspace-switcher-1"]);
+        // each new one went first in the end region
+        assert_eq!(end, ["places-4", "places-3", "workspace-switcher-1"]);
     }
 
     #[test]
@@ -275,14 +284,17 @@ mod tests {
         assert!(!editor.can_add("wetter"));
         editor.add("top", "window-list", Region::Center).unwrap();
         assert!(!editor.can_add("window-list"));
+        // this layout has no clock: one may be added, then no second one
         assert!(editor.can_add("clock"));
+        editor.add("top", "clock", Region::End).unwrap();
+        assert!(!editor.can_add("clock"));
     }
 
     #[test]
     fn a_file_changed_by_someone_else_is_not_overwritten() {
         let scratch = Scratch::new("fremd");
         let (mut editor, _, _) = Editor::load(scratch.ini(), registry);
-        editor.add("top", "clock", Region::End).unwrap();
+        editor.add("top", "places", Region::End).unwrap();
         let mine = editor.layout().clone();
 
         std::fs::write(scratch.ini(), "[Layout]\nVersion=1\nPanels=bottom\n").unwrap();
@@ -313,6 +325,7 @@ mod tests {
         assert_eq!(source, Source::File);
 
         let first = editor.add("top", "clock", Region::End).unwrap();
+        // (this layout had no clock)
         let backup = first.backup.expect("original kept");
         assert_eq!(std::fs::read_to_string(&backup).unwrap(), original);
         let second = editor.add("top", "places", Region::End).unwrap();
@@ -331,7 +344,7 @@ mod tests {
         assert!(!problems.is_empty());
         assert_eq!(source, Source::Fallback);
         assert_eq!(editor.layout(), &Layout::standard());
-        let change = editor.add("bottom", "clock", Region::Center).unwrap();
+        let change = editor.add("bottom", "places", Region::Center).unwrap();
         let backup = change.backup.expect("original kept");
         assert_eq!(std::fs::read_to_string(backup).unwrap(), "kaputt [");
         assert_eq!(restart(&path), *editor.layout());
@@ -346,7 +359,7 @@ mod tests {
         let (mut editor, problems, source) = Editor::load(path.clone(), registry);
         assert!(!problems.is_empty());
         assert_eq!(source, Source::Fallback);
-        let error = editor.add("top", "clock", Region::Start).unwrap_err();
+        let error = editor.add("top", "places", Region::Start).unwrap_err();
         assert!(error.contains("nicht lesbar"), "{error}");
         assert!(path.is_dir());
         assert_eq!(editor.layout(), &Layout::standard());
@@ -411,5 +424,55 @@ mod tests {
             .map(|i| i.id.as_str())
             .collect();
         assert_eq!(end, ["launcher-2", "workspace-switcher-1"]);
+    }
+
+    // ---- QREL-04d: one clock ----
+
+    #[test]
+    fn the_clock_is_offered_once_on_all_panels_and_again_after_removal() {
+        let scratch = Scratch::new("uhr");
+        let (mut editor, _, _) = Editor::load(scratch.ini(), registry);
+        // the standard layout has its clock on top: none for either panel
+        assert!(!editor.can_add("clock"));
+        for panel in ["top", "bottom"] {
+            let error = editor.add(panel, "clock", Region::End).unwrap_err();
+            assert!(error.contains("nur einmal"), "{error}");
+        }
+        assert!(!scratch.ini().exists(), "nothing written");
+        // moving it to the bottom panel: remove on top, add at the bottom
+        editor.remove("clock-1").unwrap();
+        assert!(editor.can_add("clock"));
+        let added = editor.add("bottom", "clock", Region::End).unwrap();
+        assert_eq!(added.added.instance, Instance::new("clock-1", "clock"));
+        assert!(!editor.can_add("clock"));
+        // and after a new login the same
+        let (again, problems, _) = Editor::load(scratch.ini(), registry);
+        assert!(problems.is_empty(), "{problems:?}");
+        assert!(!again.can_add("clock"));
+        let bottom_end: Vec<_> = again.layout().panels[1]
+            .region(Region::End)
+            .iter()
+            .map(|i| i.id.as_str())
+            .collect();
+        assert_eq!(bottom_end, ["clock-1", "workspace-switcher-1"]);
+        // other types stay multiple
+        assert!(again.can_add("places") && again.can_add(crate::layout::LAUNCHER));
+    }
+
+    #[test]
+    fn a_stored_layout_with_two_clocks_keeps_both_untouched() {
+        let scratch = Scratch::new("zwei-uhren");
+        let path = scratch.ini();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut two = Layout::standard();
+        two.add_applet("bottom", "clock", Region::End, registry)
+            .unwrap();
+        crate::layout_store::save(&two, &path).unwrap();
+        let before = std::fs::read(&path).unwrap();
+        let (editor, problems, _) = Editor::load(path.clone(), registry);
+        assert!(problems.is_empty(), "{problems:?}");
+        assert_eq!(editor.layout(), &two, "both clocks shown");
+        assert!(!editor.can_add("clock"));
+        assert_eq!(std::fs::read(&path).unwrap(), before, "file untouched");
     }
 }

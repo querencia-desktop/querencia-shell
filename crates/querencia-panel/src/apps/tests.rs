@@ -489,6 +489,69 @@ fn fixture_run(desktop: Option<&str>) -> ChildRun {
     run_child(&env)
 }
 
+/// QREL-04d: exactly the owner's list is left out of the menus, by desktop
+/// ID; entries with similar names or IDs stay, and a group without entries
+/// left (here "Systemwerkzeuge") is gone, as any empty group.
+#[test]
+fn owner_hidden_entries_leave_the_menus_and_nothing_else() {
+    let base = std::env::temp_dir().join(format!("querencia-hidden-{}", std::process::id()));
+    let apps = base.join("daten/applications");
+    std::fs::create_dir_all(&apps).unwrap();
+    let entry = |id: &str, name: &str, categories: &str| {
+        std::fs::write(
+            apps.join(id),
+            format!(
+                "[Desktop Entry]\nType=Application\nName={name}\nExec=sh\nCategories={categories}\n"
+            ),
+        )
+        .unwrap();
+    };
+    for id in HIDDEN_IN_MENUS {
+        entry(id, id, "System;Utility;");
+    }
+    entry(
+        "org.example.Querencia.Terminal.desktop",
+        "Querencia Terminal",
+        "GTK;Utility;TerminalEmulator;",
+    );
+    entry("vimx.desktop", "Vim X", "Utility;TextEditor;");
+    entry(
+        "org.codeberg.dnkl.foot.desktop",
+        "Foot (andere ID)",
+        "Utility;",
+    );
+    let run = run_child(&[
+        ("PATH", "/usr/bin:/bin".to_string()),
+        ("HOME", base.join("home").display().to_string()),
+        (
+            "XDG_DATA_HOME",
+            base.join("home-daten").display().to_string(),
+        ),
+        ("XDG_DATA_DIRS", base.join("daten").display().to_string()),
+        ("LANG", "en_US.UTF-8".to_string()),
+        ("LANGUAGE", "de".to_string()),
+        ("XDG_CURRENT_DESKTOP", "X-Querencia".to_string()),
+    ]);
+    let _ = std::fs::remove_dir_all(&base);
+    let hidden: Vec<&str> = run
+        .records("excluded")
+        .iter()
+        .filter(|f| f[1] == "HiddenInQuerencia")
+        .map(|f| f[0])
+        .collect();
+    assert_eq!(sorted(hidden), sorted(HIDDEN_IN_MENUS.to_vec()));
+    assert_eq!(
+        sorted(run.entry_ids()),
+        [
+            "org.codeberg.dnkl.foot.desktop",
+            "org.example.Querencia.Terminal.desktop",
+            "vimx.desktop"
+        ]
+    );
+    let groups: Vec<&str> = run.records("entry").iter().map(|f| f[1]).collect();
+    assert!(groups.iter().all(|g| *g == "Zubehör"), "{groups:?}");
+}
+
 fn sorted(mut ids: Vec<&str>) -> Vec<&str> {
     ids.sort();
     ids
