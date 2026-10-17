@@ -4,11 +4,13 @@
 //! libadwaita, no header bar; labwc draws the title bar.
 
 use gtk4::prelude::*;
-use gtk4::{Align, Box as GtkBox, Image, Label, Orientation, Window, gio, glib};
+use gtk4::{Align, Box as GtkBox, Label, Orientation, Window, glib};
 
-use crate::{add_dialog, session};
+use crate::{add_dialog, logo, session};
 
 const TITLE: &str = "Informationen über Querencia";
+/// Size of the logo at the top of the window.
+const LOGO_SIZE: i32 = 64;
 
 /// The text of the window, line by line: name, version, description,
 /// license (version and license from `Cargo.toml`).
@@ -28,14 +30,12 @@ pub fn present(slot: &glib::WeakRef<Window>) {
         return;
     }
     let window = Window::builder().title(TITLE).resizable(false).build();
+    window.set_application(session::panel_application().as_ref());
     let lines = lines();
 
-    let logo = Image::from_gicon(&gio::ThemedIcon::from_names(&[
-        "start-here",
-        "distributor-logo",
-        "start-here-symbolic",
-    ]));
-    logo.set_pixel_size(64);
+    // The official Querencia logo (C2), as large as the theme's
+    // distribution logo `start-here` was here before QREL-04c.
+    let logo = logo::image_of_size(LOGO_SIZE);
     let name = Label::builder()
         .label(format!(
             "<b><big>{}</big></b>",

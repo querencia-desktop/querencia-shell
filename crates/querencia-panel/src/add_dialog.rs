@@ -26,6 +26,7 @@ use gtk4::{
 
 use crate::app_chooser;
 use crate::applets::{self, AppletType};
+use crate::logo;
 
 const TITLE: &str = "Zum Panel hinzufügen";
 /// Shown when the theme has none of the applet's icons.
@@ -409,12 +410,18 @@ pub(crate) fn stock_button(mnemonic: &str, icon: &str) -> Button {
     button
 }
 
-/// One list row: icon, name in bold, description below.
+/// One list row: icon, name in bold, description below. "Anwendungen"
+/// shows the built-in Querencia logo (QREL-04c) at the same size.
 fn row(applet: &AppletType) -> ListBoxRow {
-    let names = icon_names(applet);
-    let names: Vec<&str> = names.iter().map(String::as_str).collect();
-    let image = Image::from_gicon(&gio::ThemedIcon::from_names(&names));
-    image.set_pixel_size(ICON_SIZE);
+    let image = if applet.icon == logo::ICON_NAME {
+        logo::image_of_size(ICON_SIZE)
+    } else {
+        let names = icon_names(applet);
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        let image = Image::from_gicon(&gio::ThemedIcon::from_names(&names));
+        image.set_pixel_size(ICON_SIZE);
+        image
+    };
 
     let name = Label::builder()
         .label(format!("<b>{}</b>", glib::markup_escape_text(applet.name)))
@@ -499,10 +506,10 @@ mod tests {
 
     #[test]
     fn icons_fall_back_to_symbolic_then_generic() {
-        let applications = applets::find("applications").unwrap();
+        let places = applets::find("places").unwrap();
         assert_eq!(
-            icon_names(applications),
-            ["start-here", "start-here-symbolic", "application-x-addon"]
+            icon_names(places),
+            ["folder", "folder-symbolic", "application-x-addon"]
         );
         for applet in applets::APPLETS {
             assert!(icon_names(applet).contains(&applet.icon.to_string()));

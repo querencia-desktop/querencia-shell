@@ -37,6 +37,9 @@ pub struct Candidate {
 
 /// Generic icon when no desktop entry matches or it has no icon.
 pub const FALLBACK_ICON: &str = "application-x-executable";
+/// Edge of the logo bitmap for the panel's own windows: the window list's
+/// 16 px icons.
+const PANEL_WINDOW_ICON: i32 = 16;
 
 /// Index of the desktop entry for `app_id`, by the rules of the module.
 pub fn best_match(app_id: &str, candidates: &[Candidate]) -> Option<usize> {
@@ -95,8 +98,13 @@ thread_local! {
 }
 
 /// The icon for a window with `app_id`; the generic program icon if there
-/// is no desktop entry for it.
+/// is no desktop entry for it. The panel's own windows ("Zum Panel
+/// hinzufügen", "Informationen über Querencia" …) have no desktop entry and
+/// show the Querencia logo instead of that placeholder (QREL-04c).
 pub fn icon_for(app_id: &str) -> gio::Icon {
+    if app_id == crate::APP_ID {
+        return crate::logo::gicon(PANEL_WINDOW_ICON);
+    }
     let found = CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
         let cache = cache.get_or_insert_with(|| {

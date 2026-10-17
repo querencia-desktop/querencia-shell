@@ -28,7 +28,7 @@ use gtk4::{Application, gio, glib};
 
 use crate::layout_editor::Editor;
 
-const APP_ID: &str = "org.example.Querencia.Panel";
+pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
 
 // GTK's default button min-height plus padding is 34 px and would push a
 // panel of layout::DEFAULT_HEIGHT past its height; panel buttons fill the

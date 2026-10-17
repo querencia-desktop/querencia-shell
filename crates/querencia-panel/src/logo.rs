@@ -3,7 +3,10 @@
 //! `start-here` that HMP-02 to HMP-11 showed there. The image files are the
 //! ones the project lead chose (`data/logo/`, with the SVG master), built
 //! into the binary, so the logo needs no installed file and no icon theme;
-//! the theme's `start-here` stays untouched for everything else.
+//! the theme's `start-here` stays untouched. QREL-04c: the same logo also
+//! replaces `start-here` in "Informationen über Querencia" (`about.rs`) and
+//! in the "Zum Panel hinzufügen" row of "Anwendungen" (`add_dialog.rs`,
+//! marked by [`ICON_NAME`]), so no Debian swirl is left in the panel.
 //!
 //! The logo is as high as the former icon on the standard panel (22 px on
 //! 32 px) and follows the panel height in the same ratio. Of the bitmaps the
@@ -11,7 +14,12 @@
 //! drawn, so it is only ever scaled down, square, never distorted.
 
 use gtk4::prelude::*;
-use gtk4::{Image, gdk, glib};
+use gtk4::{Image, gdk, gio, glib};
+
+/// Icon name an applet type gives (`applets.rs`) to show the Querencia logo
+/// instead of a theme icon. No theme has it; the panel draws the built-in
+/// bitmaps for it.
+pub const ICON_NAME: &str = "querencia-logo";
 
 /// The bitmaps of the logo by edge length, smallest first; all are square
 /// RGBA PNGs with a transparent background.
@@ -49,7 +57,12 @@ pub fn bitmap_for(size: i32, scale: i32) -> i32 {
 /// again when the display scale changes. A bitmap that cannot be read
 /// leaves the image empty with a log line; the panel goes on.
 pub fn image(panel_height: i32) -> Image {
-    let size = size_for_panel(panel_height);
+    image_of_size(size_for_panel(panel_height))
+}
+
+/// The logo `size` logical pixels square, e.g. 64 in the about window, like
+/// [`image`] otherwise.
+pub fn image_of_size(size: i32) -> Image {
     let image = Image::new();
     image.set_pixel_size(size);
     show(&image, size);
@@ -57,13 +70,26 @@ pub fn image(panel_height: i32) -> Image {
     image
 }
 
-fn show(image: &Image, size: i32) {
-    let edge = bitmap_for(size, image.scale_factor());
-    let bytes = BITMAPS
+/// The PNG bytes of the bitmap with edge length `edge` (one of
+/// [`bitmap_for`]'s results).
+fn bitmap(edge: i32) -> &'static [u8] {
+    BITMAPS
         .iter()
         .find(|(e, _)| *e == edge)
         .map(|(_, bytes)| *bytes)
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
+
+/// The logo as a `GIcon` for places that take one (the window list), from
+/// the bitmap for `size` logical pixels at scale 1.
+pub fn gicon(size: i32) -> gio::Icon {
+    let bytes = glib::Bytes::from_static(bitmap(bitmap_for(size, 1)));
+    gio::BytesIcon::new(&bytes).upcast()
+}
+
+fn show(image: &Image, size: i32) {
+    let edge = bitmap_for(size, image.scale_factor());
+    let bytes = bitmap(edge);
     match gdk::Texture::from_bytes(&glib::Bytes::from_static(bytes)) {
         Ok(texture) => image.set_paintable(Some(&texture)),
         Err(err) => {
@@ -118,5 +144,51 @@ mod tests {
         assert_eq!(bitmap_for(88, 2), 256);
         assert_eq!(bitmap_for(200, 2), 256, "größer als alles: die größte");
         assert_eq!(bitmap_for(22, 0), 22, "Skalierung 0 zählt als 1");
+    }
+
+    /// QREL-04c: no surface of the panel asks the icon theme for the
+    /// distribution logo any more (GNOME Human resolves it to the Debian
+    /// swirl); "Anwendungen" carries the Querencia logo instead.
+    #[test]
+    fn no_panel_surface_shows_the_distribution_logo() {
+        let sources = [
+            ("about.rs", include_str!("about.rs")),
+            ("add_dialog.rs", include_str!("add_dialog.rs")),
+            ("app_chooser.rs", include_str!("app_chooser.rs")),
+            ("app_menu.rs", include_str!("app_menu.rs")),
+            ("applets.rs", include_str!("applets.rs")),
+            ("launcher.rs", include_str!("launcher.rs")),
+            ("panel_menu.rs", include_str!("panel_menu.rs")),
+            ("places_menu.rs", include_str!("places_menu.rs")),
+            ("system_menu.rs", include_str!("system_menu.rs")),
+            ("window_icons.rs", include_str!("window_icons.rs")),
+            ("window_list.rs", include_str!("window_list.rs")),
+            (
+                "workspace_switcher.rs",
+                include_str!("workspace_switcher.rs"),
+            ),
+        ];
+        for (file, text) in sources {
+            for name in ["start-here", "distributor-logo"] {
+                assert!(!text.contains(&format!("\"{name}")), "{file}: {name}");
+            }
+        }
+        assert_eq!(
+            crate::applets::find("applications").unwrap().icon,
+            ICON_NAME
+        );
+    }
+
+    #[test]
+    fn the_panels_own_windows_get_the_logo_in_the_window_list() {
+        let own = crate::window_icons::icon_for(crate::APP_ID);
+        let bytes = own
+            .downcast_ref::<gio::BytesIcon>()
+            .expect("eingebautes Logo")
+            .bytes();
+        assert_eq!(png_header(&bytes), (16, 16, 6));
+        // every other window keeps its own lookup and placeholder
+        let other = crate::window_icons::icon_for("unbekannt.app");
+        assert!(other.downcast_ref::<gio::BytesIcon>().is_none());
     }
 }

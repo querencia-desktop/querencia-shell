@@ -10,7 +10,9 @@ use gtk4::prelude::*;
 use gtk4::{Label, Widget};
 
 use crate::layout::{Instance, LAUNCHER};
-use crate::{app_menu, clock, launcher, places_menu, system_menu, window_list, workspace_switcher};
+use crate::{
+    app_menu, clock, launcher, logo, places_menu, system_menu, window_list, workspace_switcher,
+};
 
 /// One applet type.
 pub struct AppletType {
@@ -53,7 +55,8 @@ pub const APPLETS: &[AppletType] = &[
         id: "applications",
         name: "Anwendungen",
         description: "Menü der installierten Anwendungen",
-        icon: "start-here",
+        // The Querencia logo (QREL-04c), not the theme's `start-here`.
+        icon: logo::ICON_NAME,
         classic_icon: None,
         multiple: true,
         chooses_application: false,
