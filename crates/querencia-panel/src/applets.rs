@@ -1,5 +1,6 @@
 //! The applet types a panel can show. Each type wraps one of the existing
-//! panel parts unchanged; its factory builds a fresh widget that releases
+//! panel parts unchanged; its factory builds a fresh widget for one layout
+//! instance (only the launcher reads the instance's settings) that releases
 //! everything it holds (GIO monitor handler, Wayland connection, timer) when
 //! the widget is destroyed, so a panel can later drop an applet by removing
 //! its widget. The type IDs are stable: the panel layout and `panel.ini`
@@ -8,7 +9,8 @@
 use gtk4::prelude::*;
 use gtk4::{Label, Widget};
 
-use crate::{app_menu, clock, places_menu, system_menu, window_list, workspace_switcher};
+use crate::layout::{Instance, LAUNCHER};
+use crate::{app_menu, clock, launcher, places_menu, system_menu, window_list, workspace_switcher};
 
 /// One applet type.
 pub struct AppletType {
@@ -27,13 +29,17 @@ pub struct AppletType {
     /// own Wayland connection stay single for now: a second instance would
     /// open a second connection and show the same data twice.
     pub multiple: bool,
-    factory: fn() -> Widget,
+    /// Adding one first asks for an installed application (the launcher,
+    /// HMP-11): the "Zum Panel hinzufügen" dialog then shows its second
+    /// page.
+    pub chooses_application: bool,
+    factory: fn(&Instance) -> Widget,
 }
 
 impl AppletType {
-    /// Builds a new instance of this applet.
-    pub fn create(&self) -> Widget {
-        (self.factory)()
+    /// Builds the widget of the layout instance `instance` of this type.
+    pub fn create(&self, instance: &Instance) -> Widget {
+        (self.factory)(instance)
     }
 }
 
@@ -47,7 +53,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "start-here",
         classic_icon: None,
         multiple: true,
-        factory: || app_menu::button().upcast(),
+        chooses_application: false,
+        factory: |_| app_menu::button().upcast(),
     },
     AppletType {
         id: "places",
@@ -56,7 +63,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "folder",
         classic_icon: None,
         multiple: true,
-        factory: || places_menu::button().upcast(),
+        chooses_application: false,
+        factory: |_| places_menu::button().upcast(),
     },
     AppletType {
         id: "system",
@@ -65,7 +73,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-system",
         classic_icon: None,
         multiple: true,
-        factory: || system_menu::button().upcast(),
+        chooses_application: false,
+        factory: |_| system_menu::button().upcast(),
     },
     AppletType {
         id: "window-list",
@@ -74,7 +83,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-system-windows",
         classic_icon: None,
         multiple: false,
-        factory: || window_list::widget().upcast(),
+        chooses_application: false,
+        factory: |_| window_list::widget().upcast(),
     },
     AppletType {
         id: "workspace-switcher",
@@ -83,7 +93,8 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-desktop-workspaces",
         classic_icon: Some("workspace-switcher"),
         multiple: false,
-        factory: || workspace_switcher::widget().upcast(),
+        chooses_application: false,
+        factory: |_| workspace_switcher::widget().upcast(),
     },
     AppletType {
         id: "clock",
@@ -92,11 +103,22 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-system-time",
         classic_icon: Some("clock"),
         multiple: true,
-        factory: || {
+        chooses_application: false,
+        factory: |_| {
             let label = Label::new(None);
             clock::attach(&label);
             label.upcast()
         },
+    },
+    AppletType {
+        id: LAUNCHER,
+        name: "Anwendungsstarter …",
+        description: "Einen Starter aus dem Anwendungsmenü kopieren",
+        icon: "system-run",
+        classic_icon: None,
+        multiple: true,
+        chooses_application: true,
+        factory: |instance| launcher::button(instance.app.as_deref().unwrap_or_default()).upcast(),
     },
 ];
 
@@ -121,7 +143,8 @@ mod tests {
                 "system",
                 "window-list",
                 "workspace-switcher",
-                "clock"
+                "clock",
+                "launcher"
             ]
         );
         assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len());
@@ -154,6 +177,17 @@ mod tests {
                 ("clock", "clock")
             ]
         );
+    }
+
+    #[test]
+    fn only_the_launcher_asks_for_an_application_and_it_may_repeat() {
+        let choosing: Vec<_> = APPLETS
+            .iter()
+            .filter(|a| a.chooses_application)
+            .map(|a| a.id)
+            .collect();
+        assert_eq!(choosing, [LAUNCHER]);
+        assert!(find(LAUNCHER).unwrap().multiple);
     }
 
     #[test]

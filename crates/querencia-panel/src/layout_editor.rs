@@ -7,7 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::layout::{Added, Layout, Region};
+use crate::layout::{Added, Instance, Layout, Region};
 use crate::layout_store::{self, Disk, Source};
 
 /// Looks up an applet type: `None` if unknown, otherwise whether it allows
@@ -26,14 +26,6 @@ pub struct Editor {
     /// The file held more than `layout` shows; the next save keeps a copy.
     lossy: bool,
     applet: AppletLookup,
-}
-
-/// A change that was made and saved.
-#[derive(Debug)]
-pub struct Change {
-    pub added: Added,
-    /// Copy of the file the save replaced, if one was made.
-    pub backup: Option<PathBuf>,
 }
 
 impl Editor {
@@ -74,13 +66,55 @@ impl Editor {
         applet_id: &str,
         region: Region,
     ) -> Result<Change, String> {
+        let (added, backup) = self.change(|layout, applet| {
+            layout
+                .add_applet(panel_id, applet_id, region, applet)
+                .map_err(|e| e.to_string())
+        })?;
+        Ok(Change { added, backup })
+    }
+
+    /// Adds a launcher for the application with desktop ID `app` to
+    /// `region` of panel `panel_id` (see [`Layout::add_launcher`]) and saves
+    /// the layout, like [`Editor::add`].
+    pub fn add_launcher(
+        &mut self,
+        panel_id: &str,
+        app: &str,
+        region: Region,
+    ) -> Result<Change, String> {
+        let (added, backup) = self.change(|layout, applet| {
+            layout
+                .add_launcher(panel_id, app, region, applet)
+                .map_err(|e| e.to_string())
+        })?;
+        Ok(Change { added, backup })
+    }
+
+    /// Removes the applet instance `instance_id` (see
+    /// [`Layout::remove_applet`]) and saves the layout. On any error,
+    /// including a failed save, the current layout stays as it was.
+    pub fn remove(&mut self, instance_id: &str) -> Result<Removed, String> {
+        let (instance, backup) = self.change(|layout, _| {
+            layout
+                .remove_applet(instance_id)
+                .ok_or_else(|| format!("Applet „{instance_id}“ gibt es nicht"))
+        })?;
+        Ok(Removed { instance, backup })
+    }
+
+    /// Makes `edit` on a copy of the layout, checks and saves the copy, and
+    /// only then makes it the current layout. Returns what `edit` gave and
+    /// the copy of the file the save replaced, if one was made.
+    fn change<T>(
+        &mut self,
+        edit: impl FnOnce(&mut Layout, AppletLookup) -> Result<T, String>,
+    ) -> Result<(T, Option<PathBuf>), String> {
         let mut next = self.layout.clone();
-        let added = next
-            .add_applet(panel_id, applet_id, region, self.applet)
-            .map_err(|e| e.to_string())?;
-        // add_applet keeps the rules; check anyway before anything is saved.
+        let result = edit(&mut next, self.applet)?;
+        // The edits keep the rules; check anyway before anything is saved.
         let checked = next.clone().validated(self.applet);
-        if checked.fallback || !checked.problems.is_empty() {
+        if checked.fallback || !checked.problems.is_empty() || checked.layout != next {
             return Err(format!(
                 "geändertes Layout ungültig, nichts gespeichert: {}",
                 checked.problems.join("; ")
@@ -90,11 +124,24 @@ impl Editor {
         self.layout = next;
         self.disk = saved.disk;
         self.lossy = false;
-        Ok(Change {
-            added,
-            backup: saved.backup,
-        })
+        Ok((result, saved.backup))
     }
+}
+
+/// An applet added and saved.
+#[derive(Debug)]
+pub struct Change {
+    pub added: Added,
+    /// Copy of the file the save replaced, if one was made.
+    pub backup: Option<PathBuf>,
+}
+
+/// An applet removed and saved.
+#[derive(Debug)]
+pub struct Removed {
+    pub instance: Instance,
+    /// Copy of the file the save replaced, if one was made.
+    pub backup: Option<PathBuf>,
 }
 
 #[cfg(test)]
@@ -303,5 +350,66 @@ mod tests {
         assert!(error.contains("nicht lesbar"), "{error}");
         assert!(path.is_dir());
         assert_eq!(editor.layout(), &Layout::standard());
+    }
+
+    // ---- HMP-11: application launchers ----
+
+    #[test]
+    fn launchers_are_saved_and_survive_a_restart() {
+        let scratch = Scratch::new("starter");
+        let (mut editor, _, _) = Editor::load(scratch.ini(), registry);
+        let first = editor
+            .add_launcher("top", "firefox_firefox.desktop", Region::Start)
+            .expect("Firefox");
+        let second = editor
+            .add_launcher("top", "beispiel.desktop", Region::Start)
+            .expect("Beispiel");
+        assert_eq!(
+            first.added.instance,
+            Instance::launcher("launcher-1", "firefox_firefox.desktop")
+        );
+        assert_eq!(
+            second.added.instance,
+            Instance::launcher("launcher-2", "beispiel.desktop")
+        );
+        assert_eq!(second.added.index, 4, "hinter dem ersten Starter");
+        assert_eq!(restart(&scratch.ini()), *editor.layout());
+    }
+
+    #[test]
+    fn removing_a_launcher_is_saved_and_a_bad_one_changes_nothing() {
+        let scratch = Scratch::new("entfernen");
+        let (mut editor, _, _) = Editor::load(scratch.ini(), registry);
+        editor
+            .add_launcher("bottom", "a.desktop", Region::End)
+            .unwrap();
+        editor
+            .add_launcher("bottom", "b.desktop", Region::End)
+            .unwrap();
+        let before = std::fs::read(scratch.ini()).unwrap();
+        assert!(editor.remove("unbekannt-1").is_err());
+        assert!(
+            editor
+                .add_launcher("bottom", "kein-starter", Region::End)
+                .is_err()
+        );
+        assert_eq!(
+            std::fs::read(scratch.ini()).unwrap(),
+            before,
+            "nichts geschrieben"
+        );
+
+        let removed = editor.remove("launcher-1").expect("remove");
+        assert_eq!(
+            removed.instance,
+            Instance::launcher("launcher-1", "a.desktop")
+        );
+        let after = restart(&scratch.ini());
+        let end: Vec<_> = after.panels[1]
+            .region(Region::End)
+            .iter()
+            .map(|i| i.id.as_str())
+            .collect();
+        assert_eq!(end, ["launcher-2", "workspace-switcher-1"]);
     }
 }

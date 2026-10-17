@@ -15,11 +15,14 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 use crate::layout::{self, Instance, PanelSpec, Region};
 use crate::layout_editor::Editor;
-use crate::{applets, panel_menu};
+use crate::{applets, launcher, panel_menu};
 
 const NAMESPACE: &str = "querencia-panel";
 /// Space between applets of one region (the former menu row).
 const SPACING: i32 = 16;
+/// Space between two launchers next to each other (HMP-11): as in the GNOME
+/// 2 panel, launchers stand in a close row, not 16 px apart.
+const LAUNCHER_SPACING: i32 = 2;
 
 /// Builds the window for `spec`, one of the panels of `editor`'s layout.
 /// The layout has been validated, so every applet type is known.
@@ -75,6 +78,7 @@ fn region(spec: &PanelSpec, region: Region) -> Option<GtkBox> {
             row.append(&widget);
         }
     }
+    space_out(&row);
     Some(row)
 }
 
@@ -104,7 +108,37 @@ pub fn insert_applet(bar: &CenterBox, region: Region, index: usize, instance: &I
         previous = Some(child);
     }
     row.insert_child_after(&widget, previous.as_ref());
+    space_out(&row);
     true
+}
+
+/// Takes the widget of the applet instance `instance_id` out of the panel
+/// bar `bar`. Returns whether there was one. A region left without applets
+/// loses its row, as a region that never had any.
+pub fn remove_applet(bar: &CenterBox, instance_id: &str) -> bool {
+    for region in Region::ALL {
+        let Some(row) = region_row(bar, region) else {
+            continue;
+        };
+        let mut child = row.first_child();
+        while let Some(widget) = child {
+            if widget.widget_name() == instance_id {
+                row.remove(&widget);
+                if row.first_child().is_none() {
+                    match region {
+                        Region::Start => bar.set_start_widget(None::<&Widget>),
+                        Region::Center => bar.set_center_widget(None::<&Widget>),
+                        Region::End => bar.set_end_widget(None::<&Widget>),
+                    }
+                } else {
+                    space_out(&row);
+                }
+                return true;
+            }
+            child = widget.next_sibling();
+        }
+    }
+    false
 }
 
 fn region_row(bar: &CenterBox, region: Region) -> Option<GtkBox> {
@@ -116,8 +150,39 @@ fn region_row(bar: &CenterBox, region: Region) -> Option<GtkBox> {
     .and_then(|widget| widget.downcast::<GtkBox>().ok())
 }
 
+/// The row of one region. It has no spacing of its own: [`space_out`] puts
+/// the gaps in as margins, so they can differ between neighbours.
 fn new_row() -> GtkBox {
-    GtkBox::new(Orientation::Horizontal, SPACING)
+    GtkBox::new(Orientation::Horizontal, 0)
+}
+
+/// Gives every applet of `row` but the first its gap to the one before:
+/// [`SPACING`], as the row spacing was before HMP-11, and
+/// [`LAUNCHER_SPACING`] between two launchers. Run after every change of
+/// the row.
+fn space_out(row: &GtkBox) {
+    let mut previous: Option<Widget> = None;
+    let mut child = row.first_child();
+    while let Some(widget) = child {
+        let gap = previous.as_ref().map_or(0, |previous| {
+            gap(
+                previous.has_css_class(launcher::LAUNCHER_CLASS),
+                widget.has_css_class(launcher::LAUNCHER_CLASS),
+            )
+        });
+        widget.set_margin_start(gap);
+        child = widget.next_sibling();
+        previous = Some(widget);
+    }
+}
+
+/// Gap between two neighbouring applets, given whether each is a launcher.
+fn gap(left_is_launcher: bool, right_is_launcher: bool) -> i32 {
+    if left_is_launcher && right_is_launcher {
+        LAUNCHER_SPACING
+    } else {
+        SPACING
+    }
 }
 
 /// A new widget for `instance`, or `None` (with a log line) for an unknown
@@ -130,7 +195,7 @@ fn applet_widget(instance: &Instance) -> Option<Widget> {
         );
         return None;
     };
-    let widget = applet.create();
+    let widget = applet.create(instance);
     // Names the widget after its instance, e.g. for the GTK inspector and
     // for finding it again when the layout changes.
     widget.set_widget_name(&instance.id);
@@ -144,5 +209,18 @@ fn shell_edge(edge: layout::Edge) -> Edge {
     match edge {
         layout::Edge::Top => Edge::Top,
         layout::Edge::Bottom => Edge::Bottom,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn launchers_stand_close_and_other_applets_keep_their_gap() {
+        assert_eq!(gap(false, false), 16);
+        assert_eq!(gap(true, false), 16);
+        assert_eq!(gap(false, true), 16);
+        assert_eq!(gap(true, true), 2);
     }
 }

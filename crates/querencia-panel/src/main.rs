@@ -1,10 +1,12 @@
 mod about;
 mod add_dialog;
+mod app_chooser;
 mod app_menu;
 mod applets;
 mod apps;
 mod classic_menu;
 mod clock;
+mod launcher;
 mod layout;
 mod layout_editor;
 mod layout_store;
@@ -44,6 +46,11 @@ const APP_ID: &str = "org.example.Querencia.Panel";
 // inset shadow); a minimized window's button is flat and its icon and
 // title dimmed. Dark text always, no orange (the orange belongs to menus).
 //
+// Application launchers (HMP-11): only the icon, no frame, as in the GNOME 2
+// panel; on hover and while pressed the neutral highlight of the main menu
+// buttons (never orange); a launcher whose application is missing has a
+// dimmed generic icon.
+//
 // The classic menus of Anwendungen, Orte and System (classic_menu.rs) look
 // like the GNOME 2 menus of Ubuntu with its theme Ambiance. The colours are
 // measured in the GNOME 2 reference screenshot (MATE, Ambiance; HMP-05):
@@ -80,6 +87,10 @@ const PANEL_CSS: &str = "
 .querencia-panel windowlist button.window-button.active { background-color: #e4dfd9; background-image: linear-gradient(to bottom, #dcd6d0, #ebe7e3); border-color: #9e9993; box-shadow: inset 0 1px 2px alpha(#000000, 0.15); }
 .querencia-panel windowlist button.window-button.minimized { background-image: none; background-color: #f7f6f4; border-color: #cdc8c3; }
 .querencia-panel windowlist button.window-button.minimized > box { opacity: 0.55; }
+.querencia-panel button.querencia-launcher { min-width: 0; min-height: 0; padding: 0 2px; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
+.querencia-panel button.querencia-launcher:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
+.querencia-panel button.querencia-launcher:active { background-color: #dcd6d0; border-color: #9e9993; }
+.querencia-panel button.querencia-launcher.missing > image { opacity: 0.45; }
 .querencia-panel menubutton.querencia-main-menu > button { border-radius: 0; padding-left: 6px; padding-right: 6px; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; color: #3c3c3c; }
 .querencia-panel menubutton.querencia-main-menu > button:hover,
 .querencia-panel menubutton.querencia-main-menu > button:active,
@@ -398,6 +409,48 @@ mod tests {
             assert!(!rule.contains("#ffffff"), "keine weiße Schrift: {rule}");
             if rule.contains("background") {
                 assert!(rule.contains("color: #3c3c3c"), "dunkle Schrift: {rule}");
+            }
+        }
+    }
+
+    /// HMP-11: launchers are a bare icon like in the GNOME 2 panel; hover
+    /// and press use the neutral highlight of the main menu buttons, never
+    /// orange; a missing application is dimmed.
+    #[test]
+    fn launchers_are_compact_icons_without_orange() {
+        let rules: Vec<&str> = PANEL_CSS
+            .lines()
+            .filter(|l| l.contains("querencia-launcher"))
+            .collect();
+        let base = rules
+            .iter()
+            .find(|r| r.starts_with(".querencia-panel button.querencia-launcher {"))
+            .expect("Grundregel");
+        for part in [
+            "padding: 0 2px",
+            "border: 1px solid transparent",
+            "background-image: none",
+            "outline: none",
+        ] {
+            assert!(base.contains(part), "{part}: {base}");
+        }
+        assert!(
+            rules
+                .iter()
+                .any(|r| r.contains(":hover") && r.contains("#ebe7e3"))
+        );
+        assert!(
+            rules
+                .iter()
+                .any(|r| r.contains(".missing") && r.contains("opacity"))
+        );
+        for rule in &rules {
+            assert!(
+                rule.starts_with(".querencia-panel "),
+                "nicht begrenzt: {rule}"
+            );
+            for orange in ["#f07746", "#f8875d", "#ea703d", "orange"] {
+                assert!(!rule.contains(orange), "{rule}");
             }
         }
     }

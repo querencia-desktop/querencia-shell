@@ -8,6 +8,11 @@
 //! gives the popover's grab the keyboard while it is open (Escape closes it)
 //! and returns it to the previously focused window afterwards.
 //!
+//! A right click on an application launcher (HMP-11) opens the launcher's
+//! menu instead, as in GNOME 2: "Starten" and "Aus dem Panel entfernen".
+//! Removing goes through the shared [`Editor`] too: saved first, then taken
+//! off the screen.
+//!
 //! "Zum Panel hinzufügen …" adds to the region of the free space that was
 //! right-clicked (left, middle or right third of the panel, see
 //! [`Region::at`]), next to that space, as GNOME 2 adds where the menu was
@@ -25,7 +30,7 @@ use gtk4::{
 
 use crate::layout::{Edge, PanelSpec, Region};
 use crate::layout_editor::Editor;
-use crate::{add_dialog, panel};
+use crate::{add_dialog, app_menu, launcher, panel};
 
 /// CSS class of the top widget of every applet; marks where free panel
 /// space ends.
@@ -33,6 +38,8 @@ pub const APPLET_CLASS: &str = "querencia-applet";
 
 const ACTION_GROUP: &str = "panel";
 const ADD: &str = "add";
+const LAUNCH: &str = "launcher-start";
+const REMOVE: &str = "launcher-remove";
 
 /// The menu entries. More follow with the functions behind them (removing,
 /// moving, properties); until then the menu shows nothing that would not
@@ -43,6 +50,21 @@ pub fn model() -> gio::Menu {
         Some("Zum Panel hinzufügen …"),
         Some(&format!("{ACTION_GROUP}.{ADD}")),
     );
+    menu
+}
+
+/// The menu of a launcher (GNOME 2: "Starten", then the panel object
+/// entries; only removing is offered, as moving and properties do not exist
+/// yet).
+pub fn launcher_model() -> gio::Menu {
+    let menu = gio::Menu::new();
+    menu.append(Some("Starten"), Some(&format!("{ACTION_GROUP}.{LAUNCH}")));
+    let object = gio::Menu::new();
+    object.append(
+        Some("Aus dem Panel entfernen"),
+        Some(&format!("{ACTION_GROUP}.{REMOVE}")),
+    );
+    menu.append_section(None, &object);
     menu
 }
 
@@ -72,7 +94,7 @@ pub fn attach(
             bar,
             #[upgrade_or_else]
             || Err("Das Panel gibt es nicht mehr".to_string()),
-            move |applet| add_applet(&editor, &bar, &panel_id, applet, target.get())
+            move |applet, app| add_applet(&editor, &bar, &panel_id, applet, app, target.get())
         )),
     });
 
@@ -86,8 +108,48 @@ pub fn attach(
         app,
         move |_, _| add_dialog::present(&app, &dialog, &panel_id, &hooks)
     ));
+    // The launcher last right-clicked (its instance ID): what "Starten" and
+    // "Aus dem Panel entfernen" act on.
+    let clicked = Rc::new(RefCell::new(String::new()));
+    let launch = gio::SimpleAction::new(LAUNCH, None);
+    launch.connect_activate(glib::clone!(
+        #[strong]
+        editor,
+        #[strong]
+        clicked,
+        move |_, _| {
+            let app = editor
+                .borrow()
+                .layout()
+                .panels
+                .iter()
+                .flat_map(|p| p.instances())
+                .find(|i| i.id == *clicked.borrow())
+                .and_then(|i| i.app.clone());
+            if let Some(app) = app {
+                app_menu::launch_app(&app);
+            }
+        }
+    ));
+    let remove = gio::SimpleAction::new(REMOVE, None);
+    remove.connect_activate(glib::clone!(
+        #[strong]
+        editor,
+        #[strong]
+        clicked,
+        #[weak]
+        bar,
+        move |_, _| {
+            let id = clicked.borrow().clone();
+            if let Err(err) = remove_applet(&editor, &bar, &id) {
+                eprintln!("querencia-panel: {id} nicht entfernt: {err}");
+            }
+        }
+    ));
     let actions = gio::SimpleActionGroup::new();
     actions.add_action(&add);
+    actions.add_action(&launch);
+    actions.add_action(&remove);
     bar.insert_action_group(ACTION_GROUP, Some(&actions));
 
     // A single popover per panel: a second right click cannot stack menus.
@@ -99,10 +161,20 @@ pub fn attach(
         Edge::Bottom => PositionType::Top,
     });
     popover.set_parent(bar);
+    let launcher_popover = PopoverMenu::from_model(Some(&launcher_model()));
+    launcher_popover.set_has_arrow(false);
+    launcher_popover.set_halign(Align::Start);
+    launcher_popover.set_position(popover.position());
+    launcher_popover.set_parent(bar);
     bar.connect_destroy(glib::clone!(
         #[strong]
         popover,
-        move |_| popover.unparent()
+        #[strong]
+        launcher_popover,
+        move |_| {
+            popover.unparent();
+            launcher_popover.unparent();
+        }
     ));
 
     // On the window, not the bar, so that the bar's side margins count as
@@ -118,23 +190,42 @@ pub fn attach(
         bar,
         #[weak]
         popover,
+        #[weak]
+        launcher_popover,
         #[strong]
         target,
+        #[strong]
+        clicked,
         move |gesture, presses, x, y| {
             // Pointer events inside a popover, e.g. an open applet menu,
             // bubble up to the panel too; only clicks on the panel surface
             // itself count. Their coordinates are the panel's own.
             let on_panel =
                 gesture.current_event().and_then(|event| event.surface()) == window.surface();
-            if presses != 1 || !on_panel || popover.is_visible() || on_applet(&window, x, y) {
+            if presses != 1 || !on_panel || popover.is_visible() || launcher_popover.is_visible() {
                 return;
             }
+            let applet = applet_at(&window, x, y);
             let Some((x, y)) = window.translate_coordinates(&bar, x, y) else {
                 return;
             };
+            let pointer = gdk::Rectangle::new(x as i32, y as i32, 1, 1);
+            if let Some(applet) = applet {
+                if applet.has_css_class(launcher::LAUNCHER_CLASS) {
+                    *clicked.borrow_mut() = applet.widget_name().to_string();
+                    gesture.set_state(EventSequenceState::Claimed);
+                    launcher_popover.set_pointing_to(Some(&pointer));
+                    launcher_popover.popup();
+                    eprintln!(
+                        "querencia-panel: Startermenü von {} geöffnet",
+                        clicked.borrow()
+                    );
+                }
+                return;
+            }
             target.set(Region::at(x, f64::from(bar.width())));
             gesture.set_state(EventSequenceState::Claimed);
-            popover.set_pointing_to(Some(&gdk::Rectangle::new(x as i32, y as i32, 1, 1)));
+            popover.set_pointing_to(Some(&pointer));
             popover.popup();
             eprintln!(
                 "querencia-panel: Kontextmenü von Panel {panel_id} geöffnet (Bereich {})",
@@ -145,19 +236,27 @@ pub fn attach(
     window.add_controller(click);
 }
 
-/// Adds an `applet` instance to `region` of the panel `panel_id` with the
-/// bar `bar`: first in the layout and `panel.ini` through `editor`, then,
-/// once saved, on screen.
+/// Adds an `applet` instance (for a launcher: of the application with
+/// desktop ID `app`) to `region` of the panel `panel_id` with the bar `bar`:
+/// first in the layout and `panel.ini` through `editor`, then, once saved,
+/// on screen.
 fn add_applet(
     editor: &RefCell<Editor>,
     bar: &CenterBox,
     panel_id: &str,
     applet: &str,
+    app: Option<&str>,
     region: Region,
 ) -> Result<(), String> {
     let (change, path) = {
         let mut editor = editor.borrow_mut();
-        let change = editor.add(panel_id, applet, region)?;
+        let change = match app {
+            Some(app) if applet == crate::layout::LAUNCHER => {
+                editor.add_launcher(panel_id, app, region)?
+            }
+            Some(app) => return Err(format!("{applet} braucht keine Anwendung ({app})")),
+            None => editor.add(panel_id, applet, region)?,
+        };
         (change, editor.path().to_path_buf())
     };
     if let Some(backup) = &change.backup {
@@ -175,9 +274,15 @@ fn add_applet(
         ));
     }
     eprintln!(
-        "querencia-panel: {} ({}) zu Panel {panel_id} hinzugefügt, Bereich {}, Position {}; gespeichert in {}",
+        "querencia-panel: {} ({}{}) zu Panel {panel_id} hinzugefügt, Bereich {}, Position {}; gespeichert in {}",
         added.instance.id,
         added.instance.applet,
+        added
+            .instance
+            .app
+            .as_deref()
+            .map(|app| format!(" {app}"))
+            .unwrap_or_default(),
         added.region.label(),
         added.index + 1,
         path.display()
@@ -185,17 +290,48 @@ fn add_applet(
     Ok(())
 }
 
-/// Whether the point (window coordinates) lies on an applet rather than on
-/// free panel space.
-fn on_applet(window: &ApplicationWindow, x: f64, y: f64) -> bool {
+/// Removes the applet instance `instance_id` from the panel bar `bar`:
+/// first from the layout and `panel.ini` through `editor`, then, once
+/// saved, from the screen.
+fn remove_applet(
+    editor: &RefCell<Editor>,
+    bar: &CenterBox,
+    instance_id: &str,
+) -> Result<(), String> {
+    let (removed, path) = {
+        let mut editor = editor.borrow_mut();
+        let removed = editor.remove(instance_id)?;
+        (removed, editor.path().to_path_buf())
+    };
+    if let Some(backup) = &removed.backup {
+        eprintln!(
+            "querencia-panel: bisherige {} gesichert als {}",
+            path.display(),
+            backup.display()
+        );
+    }
+    if !panel::remove_applet(bar, instance_id) {
+        return Err("gespeichert, aber nicht in diesem Panel angezeigt".to_string());
+    }
+    eprintln!(
+        "querencia-panel: {instance_id} ({}) aus dem Panel entfernt; gespeichert in {}",
+        removed.instance.applet,
+        path.display()
+    );
+    Ok(())
+}
+
+/// The top widget of the applet at the point (window coordinates), `None`
+/// on free panel space.
+fn applet_at(window: &ApplicationWindow, x: f64, y: f64) -> Option<gtk4::Widget> {
     let mut hit = window.pick(x, y, PickFlags::DEFAULT);
     while let Some(widget) = hit {
         if widget.has_css_class(APPLET_CLASS) {
-            return true;
+            return Some(widget);
         }
         hit = widget.parent();
     }
-    false
+    None
 }
 
 #[cfg(test)]
@@ -215,6 +351,33 @@ mod tests {
         assert_eq!(
             action.and_then(|v| v.get::<String>()).as_deref(),
             Some("panel.add")
+        );
+    }
+
+    #[test]
+    fn launcher_menu_starts_and_removes() {
+        let menu = launcher_model();
+        let label = |menu: &gio::Menu, i| {
+            menu.item_attribute_value(i, "label", Some(glib::VariantTy::STRING))
+                .and_then(|v| v.get::<String>())
+        };
+        let action = |menu: &gio::Menu, i| {
+            menu.item_attribute_value(i, "action", Some(glib::VariantTy::STRING))
+                .and_then(|v| v.get::<String>())
+        };
+        assert_eq!(label(&menu, 0).as_deref(), Some("Starten"));
+        assert_eq!(action(&menu, 0).as_deref(), Some("panel.launcher-start"));
+        let section = menu
+            .item_link(1, "section")
+            .and_downcast::<gio::Menu>()
+            .expect("Abschnitt");
+        assert_eq!(
+            label(&section, 0).as_deref(),
+            Some("Aus dem Panel entfernen")
+        );
+        assert_eq!(
+            action(&section, 0).as_deref(),
+            Some("panel.launcher-remove")
         );
     }
 

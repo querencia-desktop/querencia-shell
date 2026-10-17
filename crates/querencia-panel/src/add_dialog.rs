@@ -7,6 +7,10 @@
 //! has) are shown greyed out. If adding fails, the reason is shown above
 //! the buttons and nothing changes.
 //!
+//! A type that needs an application (the launcher, HMP-11) is not added
+//! directly: as in GNOME 2, "Hinzufügen" becomes "Vor" and leads to a second
+//! page with the installed applications (`app_chooser.rs`); "Zurück" returns.
+//!
 //! The dialog is an ordinary toplevel window, not a layer surface, so labwc
 //! gives it the keyboard like any other window. It has no transient parent:
 //! the panels are layer surfaces, not xdg toplevels.
@@ -17,9 +21,10 @@ use gtk4::prelude::*;
 use gtk4::{
     Align, Application, Box as GtkBox, Button, Image, KeyvalTrigger, Label, ListBox, ListBoxRow,
     NamedAction, Orientation, PolicyType, ScrolledWindow, SearchEntry, SelectionMode, Shortcut,
-    ShortcutController, Window, gdk, gio, glib,
+    ShortcutController, Stack, Window, gdk, gio, glib,
 };
 
+use crate::app_chooser;
 use crate::applets::{self, AppletType};
 
 const TITLE: &str = "Zum Panel hinzufügen";
@@ -29,15 +34,16 @@ const ICON_SIZE: i32 = 32;
 /// Tooltip of a type that cannot be added once more.
 const UNAVAILABLE: &str = "Dieses Objekt gibt es nur einmal, und es ist bereits in einem Panel";
 
-/// Adds an instance of an applet type; `Err` carries the reason shown.
-pub type AddFn = Box<dyn Fn(&str) -> Result<(), String>>;
+/// Adds an instance of an applet type, for a launcher with the desktop ID
+/// of its application; `Err` carries the reason shown.
+pub type AddFn = Box<dyn Fn(&str, Option<&str>) -> Result<(), String>>;
 
 /// What the dialog needs from its panel.
 pub struct Hooks {
     /// Whether one more instance of the applet type may be added.
     pub available: Box<dyn Fn(&str) -> bool>,
-    /// Adds an instance of the applet type to the panel; the error text is
-    /// shown to the user.
+    /// Adds an instance of the applet type (with the application's desktop
+    /// ID for a launcher) to the panel; the error text is shown to the user.
     pub add: AddFn,
 }
 
@@ -146,10 +152,42 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
     let add = stock_button("_Hinzufügen", "list-add");
     add.set_sensitive(false);
     add.set_tooltip_text(Some("Das ausgewählte Objekt zum Panel hinzufügen"));
+    // Instead of "Hinzufügen" while a type that needs an application is
+    // selected, as in GNOME 2.
+    let forward = stock_button("_Vor", "go-next");
+    forward.set_visible(false);
+    forward.set_tooltip_text(Some("Eine Anwendung für den Starter auswählen"));
     let buttons = GtkBox::new(Orientation::Horizontal, 6);
     buttons.set_halign(Align::End);
     buttons.append(&close);
     buttons.append(&add);
+    buttons.append(&forward);
+
+    // Page 2: the applications for a launcher.
+    let stack = Stack::new();
+    let panel_for_log = panel_id.to_string();
+    let (apps, app_search) = app_chooser::page(app_chooser::Hooks {
+        add: Box::new(glib::clone!(
+            #[strong]
+            hooks,
+            move |app| (hooks.add)(crate::layout::LAUNCHER, Some(app))
+        )),
+        back: Box::new(glib::clone!(
+            #[weak]
+            stack,
+            #[weak]
+            list,
+            move || {
+                stack.set_visible_child_name(OBJECTS_PAGE);
+                list.grab_focus();
+            }
+        )),
+        close: Box::new(glib::clone!(
+            #[weak]
+            window,
+            move || window.close()
+        )),
+    });
 
     // Greys out what cannot be added and keeps "Hinzufügen" in step. Runs
     // after every change and whenever the dialog becomes active, since the
@@ -159,6 +197,8 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
         list,
         #[weak]
         add,
+        #[weak]
+        forward,
         #[strong]
         hooks,
         move || {
@@ -174,7 +214,7 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
             if list.selected_row().is_some_and(|row| !row.is_selectable()) {
                 list.unselect_all();
             }
-            add.set_sensitive(selected_target(&list, &hooks).is_some());
+            show_buttons(&add, &forward, selected_target(&list, &hooks).as_deref());
         }
     ));
     refresh();
@@ -185,6 +225,10 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
         list,
         #[weak]
         status,
+        #[weak]
+        stack,
+        #[weak]
+        app_search,
         #[strong]
         hooks,
         #[strong]
@@ -193,7 +237,15 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
             let Some(applet) = selected_target(&list, &hooks) else {
                 return;
             };
-            match (hooks.add)(&applet) {
+            if applets::find(&applet).is_some_and(|a| a.chooses_application) {
+                stack.set_visible_child_name(APPS_PAGE);
+                app_search.grab_focus();
+                eprintln!(
+                    "querencia-panel: Dialog „{TITLE}“ (Panel {panel_for_log}): Anwendung für {applet} auswählen"
+                );
+                return;
+            }
+            match (hooks.add)(&applet, None) {
                 Ok(()) => status.set_visible(false),
                 Err(err) => {
                     eprintln!(
@@ -213,6 +265,11 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
         add_selected,
         move |_| add_selected()
     ));
+    forward.connect_clicked(glib::clone!(
+        #[strong]
+        add_selected,
+        move |_| add_selected()
+    ));
     // Double click or Enter on a row, as in GNOME 2. Rows that cannot be
     // added are not activatable.
     list.connect_row_activated(glib::clone!(
@@ -227,12 +284,14 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
         #[weak]
         add,
         #[weak]
+        forward,
+        #[weak]
         status,
         #[strong]
         hooks,
         move |list, _| {
             status.set_visible(false);
-            add.set_sensitive(selected_target(list, &hooks).is_some());
+            show_buttons(&add, &forward, selected_target(list, &hooks).as_deref());
         }
     ));
     search.connect_search_changed(glib::clone!(
@@ -291,7 +350,10 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
     content.append(&scrolled);
     content.append(&status);
     content.append(&buttons);
-    window.set_child(Some(&content));
+    stack.add_named(&content, Some(OBJECTS_PAGE));
+    stack.add_named(&apps, Some(APPS_PAGE));
+    stack.set_visible_child_name(OBJECTS_PAGE);
+    window.set_child(Some(&stack));
 
     // Escape anywhere else in the dialog closes it, as in GNOME 2 dialogs.
     let shortcuts = ShortcutController::new();
@@ -305,6 +367,22 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
     window.add_controller(shortcuts);
     GtkWindowExt::set_focus(&window, Some(&search));
     window
+}
+
+/// Page names of the dialog's stack.
+const OBJECTS_PAGE: &str = "objekte";
+const APPS_PAGE: &str = "anwendungen";
+
+/// "Vor" instead of "Hinzufügen" for a type that needs an application;
+/// either is sensitive only with an addable type selected.
+fn show_buttons(add: &Button, forward: &Button, selected: Option<&str>) {
+    let choosing = selected
+        .and_then(applets::find)
+        .is_some_and(|applet| applet.chooses_application);
+    add.set_visible(!choosing);
+    forward.set_visible(choosing);
+    add.set_sensitive(selected.is_some());
+    forward.set_sensitive(selected.is_some());
 }
 
 /// The type ID of the selected row, if it is visible and may be added.
@@ -382,6 +460,7 @@ mod tests {
             names,
             [
                 "Anwendungen",
+                "Anwendungsstarter …",
                 "Arbeitsflächenumschalter",
                 "Fensterliste",
                 "Orte",

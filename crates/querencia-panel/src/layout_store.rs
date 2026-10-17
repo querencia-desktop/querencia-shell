@@ -15,7 +15,15 @@
 //!
 //! [Applet applications-1]
 //! Type=applications
+//!
+//! [Applet launcher-1]
+//! Type=launcher
+//! DesktopId=firefox_firefox.desktop
 //! ```
+//!
+//! `DesktopId` (HMP-11) names the application of a launcher; other applet
+//! types have none. The format version stays 1: an older panel reads such a
+//! file and only drops the launchers it does not know.
 //!
 //! Lists are `;`-separated; IDs never contain `;` (see
 //! [`crate::layout::valid_id`]). Reading never fails: a missing file gives
@@ -138,8 +146,18 @@ fn parse(file: &glib::KeyFile, problems: &mut Vec<String>) -> Option<Layout> {
         ] {
             let instance_ids = file.string(&group, key).map(|s| split(&s));
             for instance_id in instance_ids.unwrap_or_default() {
-                match file.string(&format!("Applet {instance_id}"), "Type") {
-                    Ok(applet) => panel.push(region, Instance::new(&instance_id, &applet)),
+                let applet_group = format!("Applet {instance_id}");
+                match file.string(&applet_group, "Type") {
+                    Ok(applet) => panel.push(
+                        region,
+                        Instance {
+                            app: file
+                                .string(&applet_group, "DesktopId")
+                                .ok()
+                                .map(|app| app.to_string()),
+                            ..Instance::new(&instance_id, &applet)
+                        },
+                    ),
                     Err(_) => problems.push(format!(
                         "[Applet {instance_id}] Type fehlt, Applet übersprungen"
                     )),
@@ -170,7 +188,11 @@ fn to_key_file(layout: &Layout) -> glib::KeyFile {
             file.set_string(&group, key, &ids.join(";"));
         }
         for instance in panel.instances() {
-            file.set_string(&format!("Applet {}", instance.id), "Type", &instance.applet);
+            let group = format!("Applet {}", instance.id);
+            file.set_string(&group, "Type", &instance.applet);
+            if let Some(app) = &instance.app {
+                file.set_string(&group, "DesktopId", app);
+            }
         }
     }
     file
@@ -796,5 +818,61 @@ mod tests {
         assert_eq!(split("a;b;;c;"), ["a", "b", "c"]);
         assert_eq!(split(" a ; b "), ["a", "b"]);
         assert!(split("").is_empty());
+    }
+
+    // ---- HMP-11: application launchers ----
+
+    #[test]
+    fn launchers_round_trip_with_their_desktop_id() {
+        let scratch = Scratch::new("starter");
+        let path = scratch.0.join("panel.ini");
+        let mut layout = Layout::standard();
+        for app in [
+            "firefox_firefox.desktop",
+            "beispiel.desktop",
+            "org.example.Querencia.Terminal.desktop",
+        ] {
+            layout
+                .add_launcher("top", app, Region::Start, known)
+                .unwrap();
+        }
+        let written = save(&layout, &path).expect("save");
+        let text = String::from_utf8(written).unwrap();
+        assert!(
+            text.contains("[Applet launcher-2]\nType=launcher\nDesktopId=beispiel.desktop\n"),
+            "{text}"
+        );
+        assert!(
+            text.contains("[Applet clock-1]\nType=clock\n\n"),
+            "keine DesktopId: {text}"
+        );
+        let loaded = load_stored(&path, known);
+        assert_eq!(loaded.layout, layout);
+        assert!(loaded.problems.is_empty(), "{:?}", loaded.problems);
+        assert!(
+            !loaded.lossy(),
+            "unverändert gelesen ist nicht verlustbehaftet"
+        );
+    }
+
+    #[test]
+    fn a_launcher_without_desktop_id_is_dropped_with_a_message() {
+        let scratch = Scratch::new("starter-ohne");
+        let path = scratch.write(
+            "panel.ini",
+            "[Layout]\nVersion=1\nPanels=top\n\
+             [Panel top]\nEdge=top\nStart=launcher-1;launcher-2\n\
+             [Applet launcher-1]\nType=launcher\n\
+             [Applet launcher-2]\nType=launcher\nDesktopId=foot.desktop\n",
+        );
+        let loaded = load_stored(&path, known);
+        let start: Vec<_> = loaded.layout.panels[0]
+            .region(Region::Start)
+            .iter()
+            .map(|i| (i.id.as_str(), i.app.as_deref()))
+            .collect();
+        assert_eq!(start, [("launcher-2", Some("foot.desktop"))]);
+        assert_eq!(loaded.problems.len(), 1, "{:?}", loaded.problems);
+        assert!(loaded.lossy());
     }
 }
