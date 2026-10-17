@@ -698,6 +698,379 @@ def test_sicherung_unvollstaendig():
     bild("unvollstaendige-sicherung")
 
 
+BESCHRIFTUNG_NAMEN = ["A", "x.txt", "Ein sehr langer Dateiname mit vielen Wörtern.txt",
+                      "WWWWWWWWWWWWWWWWWWWWWWWW.txt", "Projektunterlagen", "Donaudampfschifffahrtsgesellschaft.txt",
+                      "Übersicht für Jörg.txt", "Größenänderung", "Kurz und gut", "Ärger über Öl"]
+
+
+def beschriftungen():
+    """{Name: (Zeilen, Label-x, Labelbreite, Kachelbreite, Kachelhöhe)} aus dem Protokoll
+    (QUERENCIA_DESKTOP_DEBUG=1; Außenmaße von GTK, CSS-Rand eingeschlossen)."""
+    result = {}
+    for z in d.text().splitlines():
+        m = re.match(r"querencia-desktop: Beschriftung: (.*) → (.*) "
+                     r"\[Label x (-?\d+) Breite (\d+), Kachel (\d+)x(\d+), Symbol x (-?\d+) Breite (\d+)\]$", z)
+        if m:
+            result[m.group(1)] = (m.group(2).split(" | "), *map(int, m.group(3, 4, 5, 6, 7, 8)))
+    return result
+
+
+def wortbreite(wort):
+    """Breite in der Sitzungsschrift (Adwaita Sans 11, 96 dpi) wie GTK sie setzt."""
+    import gi
+    gi.require_version("Pango", "1.0")
+    gi.require_version("PangoCairo", "1.0")
+    from gi.repository import Pango, PangoCairo
+    fm = PangoCairo.FontMap.get_default()
+    fm.set_resolution(96)
+    lay = Pango.Layout.new(fm.create_context())
+    lay.set_font_description(Pango.FontDescription.from_string("Adwaita Sans 11"))
+    lay.set_text(wort, -1)
+    return lay.get_pixel_size()[0]
+
+
+def ueberstand(im, pos, farbe=(255, 255, 255), tol=40, y_von=50, y_bis=88):
+    """Pixel einer Farbe im Beschriftungsband knapp außerhalb der eigenen Zelle
+    (2 px links/rechts; die Nachbarzelle beginnt erst nach der Rasterlücke)."""
+    x0, y0 = t.bildschirm(*pos)
+    spalten = [x for x in list(range(x0 - 2, x0)) + list(range(x0 + CELL[0], x0 + CELL[0] + 2))
+               if 0 <= x < im.size[0]]
+    return sum(t.nah(im.getpixel((x, y)), farbe, tol)
+               for x in spalten for y in range(y0 + y_von, min(im.size[1], y0 + y_bis)))
+
+
+def test_beschriftung():
+    """HMP-10b: Zeilenumbruch der Beschriftungen."""
+    l = lage()
+    im = bild("beschriftung")
+    b = beschriftungen()
+    pruefe("B0 Beschriftungszeilen im Protokoll (QUERENCIA_DESKTOP_DEBUG=1)", len(b) == len(l), (len(b), len(l)))
+    pruefe("B1 „Persönlicher Ordner“ genau zwei saubere Zeilen",
+           b.get("Persönlicher Ordner", ([],))[0] == ["Persönlicher", "Ordner"], b.get("Persönlicher Ordner"))
+    pruefe("B1 „Querencia Terminal“ ganze Wörter",
+           b.get("Querencia Terminal", ([],))[0] == ["Querencia", "Terminal"], b.get("Querencia Terminal"))
+    pruefe("B2 höchstens zwei Zeilen je Beschriftung", all(len(v[0]) <= 2 for v in b.values()),
+           {k: v[0] for k, v in b.items() if len(v[0]) > 2})
+    zerrissen = {}
+    for name, (zeilen, _, breite, *_) in b.items():
+        if len(zeilen) < 2:
+            continue
+        bruch = len(zeilen[0])
+        if name[:bruch] == zeilen[0] and bruch < len(name) and name[bruch - 1] != " " and name[bruch] != " ":
+            # Bruch mitten im Wort: nur erlaubt, wenn das Wort breiter als die Textbreite ist
+            anfang = name.rfind(" ", 0, bruch) + 1
+            ende = name.find(" ", bruch)
+            wort = name[anfang:] if ende < 0 else name[anfang:ende]
+            # Textbreite = Label minus 2 × 2 px CSS-Rand
+            if wortbreite(wort) <= breite - 4:
+                zerrissen[name] = (zeilen, wort, wortbreite(wort), breite)
+    pruefe("B3 kein Wort zerrissen, das in eine Zeile passt (nur überlange Wörter werden geteilt)",
+           not zerrissen, zerrissen)
+    pruefe("B3 lange Namen ohne Leerzeichen bleiben darstellbar (zwei Zeilen, gekürzt mit …)",
+           all(len(b[n][0]) == 2 for n in ["WWWWWWWWWWWWWWWWWWWWWWWW.txt", "Donaudampfschifffahrtsgesellschaft.txt"] if n in b)
+           and all(n in b for n in ["WWWWWWWWWWWWWWWWWWWWWWWW.txt", "Donaudampfschifffahrtsgesellschaft.txt"]),
+           {n: b.get(n) for n in ["WWWWWWWWWWWWWWWWWWWWWWWW.txt", "Donaudampfschifffahrtsgesellschaft.txt"]})
+    umlaute = {n: b.get(n, ([],))[0] for n in ["Übersicht für Jörg.txt", "Ärger über Öl", "Größenänderung"]}
+    pruefe("B4 Umlaute: kein Zeichen verloren (Zeilen ergeben den Namen; Teilung nur überlanger Wörter, siehe B3)",
+           all(z and "".join(z).replace(" ", "") == n.replace(" ", "") for n, z in umlaute.items()), umlaute)
+    kachel = {k: (v[3], v[4]) for k, v in b.items()}
+    pruefe("B5 jede Kachel genau zellbreit (100 px), höchstens 88 px hoch",
+           {w for w, _ in kachel.values()} == {100} and all(h <= CELL[1] for _, h in kachel.values()), kachel)
+    zu_gross = [z for z in d.text().splitlines() if "Kachel größer als die Zelle" in z]
+    pruefe("B5 keine Kachel größer als ihre Zelle", not zu_gross, zu_gross)
+    # zentriert und innerhalb der eigenen Kachel (Grenzen von GTK)
+    schief = {k: v[1:] for k, v in b.items() if abs((v[1] + v[2] / 2) - (v[5] + v[6] / 2)) > 1}
+    pruefe("B6 Beschriftungen zentriert unter dem Symbol (Mitte Beschriftung = Mitte Symbol ±1 px)", not schief, schief)
+    draussen = {k: v[1:] for k, v in b.items() if v[1] < 0 or v[1] + v[2] > v[3]}
+    pruefe("B7 jede Beschriftung liegt ganz in ihrer Kachel (GTK-Grenzen)", not draussen, draussen)
+    pixel = {name: n for name, pos in l.items() if (n := ueberstand(im, pos)) > 0}
+    pruefe("B7 Bild: keine Schriftpixel jenseits der eigenen Zellränder", not pixel, pixel)
+    ok, falsch = auf_raster(l)
+    pruefe("B8 Raster unverändert: alle auf Zellen", ok, falsch)
+    ok, why = t.ueberlappungsfrei(l)
+    pruefe("B8 keine Überschneidung", ok, why)
+    # Mehrfachauswahl: orange Hintergründe bleiben in ihrer Kachel
+    t.klick(t.mitte(l["A"]))
+    q("keydown Control_L", "wait 60", "type a", "wait 60", "keyup Control_L", "wait 500")
+    pruefe("B9 Strg+A wählt alle", neue_auswahl(set(l)), len(auswahl()))
+    im2 = bild("beschriftung-alle-ausgewaehlt")
+    raus = {name: n for name, pos in l.items() if (n := ueberstand(im2, pos, farbe=(0xF0, 0x77, 0x46), tol=45)) > 0}
+    pruefe("B9 Auswahlhintergründe bleiben in der eigenen Zelle (Bild)", not raus, raus)
+    q("key Escape", "wait 300")
+    # ein langer Name wird gezogen: rastet ein, Beschriftung unverändert
+    p0 = l["Persönlicher Ordner"]
+    t.ziehen(t.mitte(p0), ziel(6, 2, (20, 15)), 500)
+    l2 = t.neue_lage(lambda m: m.get("Persönlicher Ordner") != p0, 4)
+    pruefe("B10 Verschieben rastet weiter ein", l2.get("Persönlicher Ordner") == zelle(6, 2), l2.get("Persönlicher Ordner"))
+    q("wait 500")
+    b2 = beschriftungen()
+    pruefe("B10 nach dem Verschieben: weiter „Persönlicher | Ordner“",
+           b2.get("Persönlicher Ordner", ([],))[0] == ["Persönlicher", "Ordner"])
+    bild("beschriftung-nach-verschieben")
+
+
+# ---------------------------------------------------------------------------
+# HMP-10b: Papierkorb leeren – nur der isolierte Papierkorb des Testprofils
+
+ECHTER_PAPIERKORB = "/home/user/.local/share/Trash"
+
+
+def Gio():
+    import gi
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio as g
+    return g
+
+
+def echter_stand():
+    """Fingerabdruck des echten Papierkorbs (nur Metadaten, nichts wird geändert)."""
+    import hashlib
+    h = hashlib.sha256()
+    for wurzel, ordner, dateien in sorted(os.walk(ECHTER_PAPIERKORB)):
+        ordner.sort()
+        for n in sorted(ordner + dateien):
+            st = os.lstat(os.path.join(wurzel, n))
+            h.update(f"{os.path.relpath(os.path.join(wurzel, n), ECHTER_PAPIERKORB)} {st.st_size} {st.st_mtime_ns} {st.st_ino}\n".encode())
+    return h.hexdigest()
+
+
+def papierkorb():
+    """Namen in trash:/// der isolierten Sitzung (GVfs, wie der Desktop ihn sieht)."""
+    g = Gio()
+    en = g.File.new_for_uri("trash:///").enumerate_children("standard::display-name", 1, None)
+    namen = []
+    while (info := en.next_file(None)) is not None:
+        namen.append(info.get_display_name())
+    return sorted(namen)
+
+
+def wegwerfen(pfad):
+    Gio().File.new_for_path(pfad).trash(None)
+
+
+def papierkorb_symbol():
+    zeilen = [z for z in d.text().splitlines() if "Papierkorb-Symbol: " in z]
+    return zeilen[-1].split("Papierkorb-Symbol: ")[1].split(" ")[0] if zeilen else None
+
+
+def menue_eintrag():
+    zeilen = [z for z in d.text().splitlines() if "Menü Papierkorb: " in z]
+    return zeilen[-1].rsplit(" ", 1)[1] if zeilen else None
+
+
+def dialog_rechteck():
+    """Rahmen der hellen Meldung: Zeilen und Spalten, die überwiegend hell sind
+    (zwischen den Panels), für den Klick auf eine Schaltfläche."""
+    pfad = os.path.join(LOGS, "dialog-rechteck.png")
+    subprocess.run(["grim", pfad], check=False)
+    im = t.Image.open(pfad).convert("RGB")
+    w, h = im.size
+    hell = lambda x, y: t.nah(im.getpixel((x, y)), t.DIALOG_BG, 14)
+    zeilen = [y for y in range(40, h - 40) if sum(hell(x, y) for x in range(w // 4, 3 * w // 4, 8)) > 0.6 * (w // 16)]
+    y0, y1 = min(zeilen), max(zeilen)
+    yb = y1 - 6
+    spalten = [x for x in range(0, w) if hell(x, yb)]
+    return min(spalten), y0, max(spalten), y1
+
+
+def papierkorb_menue(eintrag_dy):
+    """Rechtsklick auf den Papierkorb, dann den Eintrag in Höhe dy anklicken."""
+    m = t.mitte(lage()["Papierkorb"])
+    t.klick(m, "rclick")
+    q("wait 500")
+    if eintrag_dy is not None:
+        t.klick((m[0] - 160 if m[0] > 1000 else m[0] + 60, m[1] + eintrag_dy))
+        q("wait 700")
+
+
+LEEREN_DY = 46   # „Papierkorb öffnen“ +15, Trennlinie, „Papierkorb leeren…“ +46
+
+
+def leeren_bestaetigen(wie):
+    """Menü → „Papierkorb leeren…“ → Meldung; wie: escape | return | abbrechen | leeren."""
+    papierkorb_menue(LEEREN_DY)
+    da = warte(t.dialog_offen, 6, "Sicherheitsabfrage")
+    if not da:
+        return False
+    bild(f"papierkorb-abfrage-{wie}")
+    if wie == "escape":
+        q("key Escape", "wait 600")
+    elif wie == "return":
+        q("key Return", "wait 600")
+    else:
+        x0, y0, x1, y1 = dialog_rechteck()
+        x = x0 + (x1 - x0) // 4 if wie == "abbrechen" else x0 + 3 * (x1 - x0) // 4
+        t.klick((x, y1 - 20))
+        q("wait 800")
+    return True
+
+
+def test_papierkorb():
+    """HMP-10b: „Papierkorb leeren…“ im Kontextmenü des Desktop-Papierkorbs."""
+    vorher_echt = echter_stand()
+    isoliert = os.environ.get("XDG_DATA_HOME", "")
+    pruefe("T0 eigener Papierkorb im Testprofil (XDG_DATA_HOME)", isoliert.startswith(P + "/"), isoliert)
+    start = papierkorb()
+    sicher = isoliert.startswith(P + "/") and start == []
+    pruefe("T0 isolierter Papierkorb ist zu Beginn leer (sonst BLOCKED)", sicher, start[:5])
+    fremd = [m for m in open("/proc/mounts").read().split() if m.startswith("/") and
+             (os.path.exists(os.path.join(m, ".Trash-1001")) or os.path.exists(os.path.join(m, ".Trash")))]
+    pruefe("T0 keine weiteren Papierkörbe auf Datenträgern (.Trash-1001/.Trash)", not fremd, fremd)
+    if not (sicher and not fremd):
+        pruefe("T0 BLOCKED: destruktive Tests nicht ausgeführt", False)
+        return
+    muell = os.path.join(P, "testmuell")
+    os.makedirs(muell, exist_ok=True)
+
+    def nur_eigene(erwartet):
+        jetzt = papierkorb()
+        ok = jetzt == sorted(erwartet)
+        if not ok:
+            pruefe("BLOCKED: unerwarteter Inhalt im Papierkorb – nichts geleert", False, jetzt)
+        return ok
+
+    # T1 leer
+    papierkorb_menue(None)
+    bild("papierkorb-menue-leer")
+    if os.environ.get("HMP10B_VORHER") == "1":
+        # nur Bilder vom alten Stand: Menü leer und mit einer Datei
+        q("key Escape", "wait 300")
+        with open(os.path.join(muell, "eins.txt"), "w") as f:
+            f.write("eins\n")
+        wegwerfen(os.path.join(muell, "eins.txt"))
+        time.sleep(2)
+        papierkorb_menue(None)
+        bild("papierkorb-menue-voll")
+        q("key Escape", "wait 300")
+        Gio().File.new_for_uri("trash:///eins.txt").delete(None) if papierkorb() == ["eins.txt"] else None
+        return
+    pruefe("T1 leer: „Papierkorb leeren…“ deaktiviert", menue_eintrag() == "aus", menue_eintrag())
+    q("key Escape", "wait 300")
+    papierkorb_menue(LEEREN_DY)
+    pruefe("T1 leer: Klick bewirkt nichts (keine Abfrage)", not t.dialog_offen()
+           and "Papierkorb leeren:" not in d.text())
+    q("key Escape", "wait 300")
+    pruefe("T1 leer: Symbol „leer“", papierkorb_symbol() == "leer", papierkorb_symbol())
+    im_leer = bild("papierkorb-symbol-leer")
+
+    # T2 eine Datei: Esc, Return (= Abbrechen), Abbrechen, dann Leeren
+    with open(os.path.join(muell, "eins.txt"), "w") as f:
+        f.write("eins\n")
+    wegwerfen(os.path.join(muell, "eins.txt"))
+    warte(lambda: papierkorb_symbol() == "voll", 6, "Symbol voll")
+    pruefe("T2 eine Datei: Symbol wird „voll“", papierkorb_symbol() == "voll", papierkorb_symbol())
+    im_voll = bild("papierkorb-symbol-voll")
+    x, y = t.bildschirm(*lage()["Papierkorb"])
+    diff = sum(not t.nah(im_leer.getpixel((x + i, y + j)), im_voll.getpixel((x + i, y + j)), 30)
+               for i in range(26, 74, 2) for j in range(2, 50, 2))
+    pruefe("T2 Symbol sichtbar gewechselt (Pixel)", diff > 20, diff)
+    papierkorb_menue(None)
+    pruefe("T2 „Papierkorb leeren…“ aktiv", menue_eintrag() == "an", menue_eintrag())
+    bild("papierkorb-menue-voll")
+    q("key Escape", "wait 300")
+    for wie in ("escape", "return", "abbrechen"):
+        n0 = d.text().count("Papierkorb leeren abgebrochen")
+        offen = leeren_bestaetigen(wie)
+        pruefe(f"T3 Abfrage erscheint und „{wie}“ bricht ab, nichts gelöscht",
+               offen and not t.dialog_offen() and papierkorb() == ["eins.txt"]
+               and d.text().count("Papierkorb leeren abgebrochen") == n0 + 1, (offen, papierkorb()))
+    if not nur_eigene(["eins.txt"]):
+        return
+    leeren_bestaetigen("leeren")
+    warte(lambda: papierkorb() == [], 6, "leer")
+    pruefe("T4 „Papierkorb leeren“: Papierkorb leer (GVfs)", papierkorb() == [])
+    pruefe("T4 Dateien und Infos im Profil-Papierkorb weg",
+           not os.listdir(os.path.join(isoliert, "Trash", "files")) and not os.listdir(os.path.join(isoliert, "Trash", "info")))
+    warte(lambda: papierkorb_symbol() == "leer", 6, "Symbol leer")
+    pruefe("T4 Symbol wieder „leer“", papierkorb_symbol() == "leer", papierkorb_symbol())
+    pruefe("T4 keine Fehlermeldung, Protokoll „1 von 1 gelöscht“",
+           not t.dialog_offen() and "Papierkorb geleert: 1 von 1 gelöscht, 0 nicht" in d.text())
+    bild("papierkorb-geleert")
+    papierkorb_menue(None)
+    pruefe("T4 danach „Papierkorb leeren…“ wieder deaktiviert", menue_eintrag() == "aus", menue_eintrag())
+    q("key Escape", "wait 300")
+
+    # T5 mehrere Dateien und Unterordner, ein Link aus dem Papierkorb heraus
+    draussen = os.path.join(P, "draussen.txt")
+    with open(draussen, "w") as f:
+        f.write("darf nicht gelöscht werden\n")
+    os.makedirs(os.path.join(muell, "ordner", "unter"), exist_ok=True)
+    for n in ("a.txt", "b.txt", "ordner/unter/c.txt", "ordner/d.txt"):
+        with open(os.path.join(muell, n), "w") as f:
+            f.write(n + "\n")
+    os.symlink(draussen, os.path.join(muell, "ordner", "link-nach-draussen"))
+    os.symlink(os.path.join(P, "schreibtisch"), os.path.join(muell, "link-auf-ordner"))
+    for n in ("a.txt", "b.txt", "ordner", "link-auf-ordner"):
+        wegwerfen(os.path.join(muell, n))
+    warte(lambda: len(papierkorb()) == 4, 6)
+    if not nur_eigene(["a.txt", "b.txt", "link-auf-ordner", "ordner"]):
+        return
+    vor_schreibtisch = t.bestand()
+    leeren_bestaetigen("leeren")
+    warte(lambda: papierkorb() == [], 8, "leer")
+    time.sleep(2)
+    pruefe("T5 mehrere Dateien, Unterordner, Links: alles aus dem Papierkorb", papierkorb() == [])
+    pruefe("T5 Linkziel außerhalb unverändert (keinem Link gefolgt)",
+           open(draussen).read() == "darf nicht gelöscht werden\n")
+    pruefe("T5 verlinkter Ordner (Schreibtisch) unverändert", t.bestand() == vor_schreibtisch)
+    reste = os.path.join(isoliert, "Trash", "expunged")
+    warte(lambda: not os.path.exists(reste) or not os.listdir(reste), 8, "expunged leer")
+    pruefe("T5 GVfs hat auch die Unterordner entfernt (expunged leer)",
+           not os.path.exists(reste) or not os.listdir(reste), os.listdir(reste) if os.path.exists(reste) else [])
+    pruefe("T5 Protokoll „4 von 4 gelöscht“", "Papierkorb geleert: 4 von 4 gelöscht, 0 nicht" in d.text())
+
+    # T6 teilweise nicht löschbar: Ordner ohne Schreibrecht im Papierkorb
+    with open(os.path.join(muell, "geht.txt"), "w") as f:
+        f.write("geht\n")
+    os.makedirs(os.path.join(muell, "gesperrt", "innen"), exist_ok=True)
+    wegwerfen(os.path.join(muell, "geht.txt"))
+    wegwerfen(os.path.join(muell, "gesperrt"))
+    warte(lambda: len(papierkorb()) == 2, 6)
+    if not nur_eigene(["geht.txt", "gesperrt"]):
+        return
+    gesperrt = os.path.join(isoliert, "Trash", "files", "gesperrt")
+    os.chmod(gesperrt, 0o555)
+    try:
+        leeren_bestaetigen("leeren")
+        meldung = warte(t.dialog_offen, 6, "Fehlermeldung")
+        bild("papierkorb-teilweise")
+        pruefe("T6 Fehler beim Löschen: Meldung statt Erfolg", meldung and "1 von 2 gelöscht, 1 nicht" in d.text(),
+               [z for z in d.text().splitlines() if "Papierkorb" in z][-3:])
+        pruefe("T6 nicht löschbares Objekt bleibt im Papierkorb, das andere ist weg",
+               papierkorb() == ["gesperrt"], papierkorb())
+        q("key Return", "wait 500")
+        pruefe("T6 Meldung lässt sich schließen", warte(lambda: not t.dialog_offen(), 4))
+        warte(lambda: papierkorb_symbol() == "voll", 4)
+        pruefe("T6 Symbol bleibt „voll“", papierkorb_symbol() == "voll", papierkorb_symbol())
+    finally:
+        os.chmod(gesperrt, 0o755)
+    leeren_bestaetigen("leeren")
+    warte(lambda: papierkorb() == [], 8)
+    pruefe("T6 erneuter Versuch nach Behebung: leer", papierkorb() == [])
+
+    # T7 Menü mehrfach öffnen
+    zustaende = []
+    for _ in range(3):
+        papierkorb_menue(None)
+        zustaende.append(menue_eintrag())
+        q("key Escape", "wait 300")
+    with open(os.path.join(muell, "nochmal.txt"), "w") as f:
+        f.write("x\n")
+    wegwerfen(os.path.join(muell, "nochmal.txt"))
+    warte(lambda: papierkorb_symbol() == "voll", 6)
+    for _ in range(3):
+        papierkorb_menue(None)
+        zustaende.append(menue_eintrag())
+        q("key Escape", "wait 300")
+    pruefe("T7 Menü mehrfach geöffnet: Zustand folgt dem Inhalt", zustaende == ["aus"] * 3 + ["an"] * 3, zustaende)
+    vorher = len(t.marker())
+    papierkorb_menue(15)
+    warte(lambda: len(t.marker()) > vorher, 5)
+    pruefe("T7 „Papierkorb öffnen“ öffnet trash:///", t.marker()[vorher:] == ["files trash:///"], t.marker()[vorher:])
+    pruefe("T8 echter Papierkorb des Besitzers unverändert", echter_stand() == vorher_echt)
+    bild("papierkorb-ende")
+
+
 def ueberlappungen(l):
     werte = sorted(l.items())
     return {(a, b) for i, (a, pa) in enumerate(werte) for b, pb in werte[i + 1:]
@@ -795,6 +1168,13 @@ def main():
     nur = os.environ.get("HMP10_NUR", "")
     datei = "pruefung-phase2.txt" if phase == "2" else "pruefung.txt"
     t.protokoll(f"HMP-10a Phase {phase} {nur} Desktop {t.DESKTOP}")
+    if nur == "papierkorb":
+        os.environ["QUERENCIA_DESKTOP_DEBUG"] = "1"
+    if nur == "beschriftung":
+        os.environ["QUERENCIA_DESKTOP_DEBUG"] = "1"
+        for n in BESCHRIFTUNG_NAMEN:
+            with open(os.path.join(SCHREIBTISCH, n), "w") as f:
+                f.write(n + "\n")
     if phase == "1" and (not nur or nur == "platzmangel"):
         for n in EXTRA:
             pfad = os.path.join(SCHREIBTISCH, n.rstrip("/"))
@@ -819,7 +1199,7 @@ def main():
     t.q = t.Eingabe()
     q("move 640 700")
     d.starts = 10 if phase == "2" else 0
-    d.start(lambda l: len(l) >= 8)
+    d.start(lambda l: len(l) >= (18 if nur == "beschriftung" else 8))
     im = bild(f"leer-phase-{phase}")
     t.oben[0] = t.miss_panel(im)
     t.panels_vorher = t.panelstreifen(im)
@@ -835,6 +1215,10 @@ def main():
         tests = [test_platzmangel]
     elif nur == "sicherung-unvollstaendig":
         tests = [test_sicherung_unvollstaendig]
+    elif nur == "beschriftung":
+        tests = [test_beschriftung]
+    elif nur == "papierkorb":
+        tests = [test_papierkorb]
     else:
         tests = [test_r01_start, test_r02_nebeneinander, test_r03_r04_reihen, test_r05_belegt, test_r06_rand,
                  test_r07_neustart, test_m01_strg, test_m14_umschalt, test_m05_esc, test_m02_rahmen,

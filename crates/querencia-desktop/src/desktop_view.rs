@@ -529,8 +529,28 @@ impl Icons {
         if widgets.iter().any(|w| w.is_visible() && w.width() == 0) {
             return false;
         }
+        let lines = debugging();
         for (item, widget) in items.iter().zip(widgets.iter()) {
-            let (w, h) = (widget.width(), widget.height());
+            // the whole tile as drawn (CSS padding included), not only its
+            // content (`width()`)
+            let Some(tile) = widget.compute_bounds(&self.fixed) else {
+                continue;
+            };
+            let (w, h) = (tile.width().round() as i32, tile.height().round() as i32);
+            if lines && let Some(label) = widget.last_child().and_downcast::<Label>() {
+                let span = |child: Option<gtk4::Widget>| {
+                    child
+                        .and_then(|c| c.compute_bounds(widget))
+                        .map_or((0, 0), |b| (b.x().round() as i32, b.width().round() as i32))
+                };
+                let (x, lw) = span(Some(label.clone().upcast()));
+                let (ix, iw) = span(widget.first_child());
+                log(&format!(
+                    "Beschriftung: {} → {} [Label x {x} Breite {lw}, Kachel {w}x{h}, Symbol x {ix} Breite {iw}]",
+                    item.name,
+                    label_lines(&label).join(" | "),
+                ));
+            }
             if w > CELL.0 || h > CELL.1 {
                 log(&format!(
                     "Kachel größer als die Zelle: {} {w}x{h}",
@@ -989,7 +1009,32 @@ impl Icons {
     fn popup_menu(&self, index: Option<usize>, x: f64, y: f64) {
         self.menu.remove_all();
         if let Some(index) = index {
-            self.menu.append(Some("Öffnen"), Some("desktop.open"));
+            let is_trash = self
+                .items
+                .borrow()
+                .get(index)
+                .is_some_and(|item| item.kind == Kind::Trash);
+            if is_trash {
+                // HMP-10b: GNOME 2's trash menu
+                self.menu
+                    .append(Some("Papierkorb öffnen"), Some("desktop.open"));
+                let empty = gio::Menu::new();
+                // insensitive while the trash is empty (or unreachable)
+                let full = trash_count().unwrap_or(0) > 0;
+                empty.append(
+                    Some("Papierkorb leeren…"),
+                    full.then_some("desktop.empty-trash"),
+                );
+                self.menu.append_section(None, &empty);
+                if debugging() {
+                    log(&format!(
+                        "Menü Papierkorb: „Papierkorb leeren…“ {}",
+                        if full { "an" } else { "aus" }
+                    ));
+                }
+            } else {
+                self.menu.append(Some("Öffnen"), Some("desktop.open"));
+            }
             let edit = gio::Menu::new();
             // one icon at a time (HMP-10a: not with several selected)
             let can_rename = self.selection.borrow().len() <= 1
@@ -1096,6 +1141,11 @@ impl Icons {
             }),
         );
         add(
+            "empty-trash",
+            None,
+            Box::new(|icons, _| icons.confirm_empty_trash()),
+        );
+        add(
             "rename",
             None,
             Box::new(|icons, _| {
@@ -1182,6 +1232,81 @@ impl Icons {
         log("nach Namen aufgeräumt");
         self.set_items(sorted);
         self.save();
+    }
+
+    /// HMP-10b "Papierkorb leeren…": asks first (GNOME 2's question,
+    /// "Abbrechen" is the default and Escape cancels); only "Papierkorb
+    /// leeren" empties it.
+    fn confirm_empty_trash(self: &Rc<Self>) {
+        if trash_count().unwrap_or(0) == 0 {
+            log("Papierkorb ist leer: nichts zu tun");
+            return;
+        }
+        let dialog = gtk4::AlertDialog::builder()
+            .message("Möchten Sie alle Dateien im Papierkorb endgültig löschen?")
+            .detail(
+                "Wenn Sie den Papierkorb leeren, werden alle darin befindlichen \
+                 Objekte unwiderruflich gelöscht.",
+            )
+            .buttons(["Abbrechen", "Papierkorb leeren"])
+            .cancel_button(0)
+            .default_button(0)
+            .modal(false)
+            .build();
+        let weak = Rc::downgrade(self);
+        dialog.choose(
+            None::<&gtk4::Window>,
+            gio::Cancellable::NONE,
+            move |answer| match answer {
+                Ok(1) => {
+                    if let Some(icons) = weak.upgrade() {
+                        icons.empty_trash();
+                    }
+                }
+                _ => log("Papierkorb leeren abgebrochen"),
+            },
+        );
+    }
+
+    /// Empties the trash through GVfs (`trash:///`, every trash location
+    /// it knows): each top-level object is deleted with `g_file_delete`.
+    /// GVfs takes it out of the trash and removes it there, never
+    /// following links out of the trash; nothing here deletes paths itself.
+    /// One object after the other, asynchronously; afterwards the icon is
+    /// refreshed, and every object that could not be deleted is reported.
+    fn empty_trash(self: &Rc<Self>) {
+        let trash = gio::File::for_uri("trash:///");
+        let listed = trash
+            .enumerate_children(
+                "standard::name,standard::display-name",
+                gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+                gio::Cancellable::NONE,
+            )
+            .and_then(|objects| {
+                let mut found = std::collections::VecDeque::new();
+                while let Some(info) = objects.next_file(gio::Cancellable::NONE)? {
+                    found.push_back((objects.child(&info), info.display_name().to_string()));
+                }
+                Ok(found)
+            });
+        let objects = match listed {
+            Ok(objects) => objects,
+            Err(err) => {
+                log(&format!("Papierkorb nicht erreichbar: {err}"));
+                show_error(
+                    "Der Papierkorb konnte nicht geleert werden.",
+                    &format!("Der Papierkorb ist nicht erreichbar: {}", err.message()),
+                );
+                return;
+            }
+        };
+        log(&format!("Papierkorb leeren: {} Objekte", objects.len()));
+        let run = Rc::new(RefCell::new(TrashRun {
+            total: objects.len(),
+            objects,
+            failed: Vec::new(),
+        }));
+        delete_next(Rc::downgrade(self), run);
     }
 
     /// HMP-10a "Symbole am Raster ausrichten": every icon is put on the
@@ -1537,6 +1662,97 @@ impl Icons {
     }
 }
 
+/// `QUERENCIA_DESKTOP_DEBUG=1`: extra log lines for the isolated tests.
+fn debugging() -> bool {
+    std::env::var("QUERENCIA_DESKTOP_DEBUG").is_ok_and(|v| v == "1")
+}
+
+/// Objects in the trash (GVfs `trash:///`); `None` when it is not
+/// reachable.
+fn trash_count() -> Option<u32> {
+    gio::File::for_uri("trash:///")
+        .query_info(
+            "trash::item-count",
+            gio::FileQueryInfoFlags::NONE,
+            gio::Cancellable::NONE,
+        )
+        .ok()
+        .map(|info| info.attribute_uint32("trash::item-count"))
+}
+
+/// One "Papierkorb leeren": what is left to delete and what failed.
+struct TrashRun {
+    total: usize,
+    objects: std::collections::VecDeque<(gio::File, String)>,
+    failed: Vec<(String, String)>,
+}
+
+/// Deletes the next object of `run`, then the one after it; at the end
+/// refreshes the icons and reports failures (never a success that was not
+/// one).
+fn delete_next(icons: std::rc::Weak<Icons>, run: Rc<RefCell<TrashRun>>) {
+    let next = run.borrow_mut().objects.pop_front();
+    let Some((file, name)) = next else {
+        let run = run.borrow();
+        let deleted = run.total - run.failed.len();
+        log(&format!(
+            "Papierkorb geleert: {deleted} von {} gelöscht, {} nicht",
+            run.total,
+            run.failed.len()
+        ));
+        if let Some(icons) = icons.upgrade() {
+            icons.reload();
+        }
+        if !run.failed.is_empty() {
+            let (verb, rest) = if run.failed.len() == 1 {
+                ("konnte", "ist")
+            } else {
+                ("konnten", "sind")
+            };
+            let mut detail = format!(
+                "{} von {} Objekten {verb} nicht gelöscht werden und {rest} noch im Papierkorb:",
+                run.failed.len(),
+                run.total
+            );
+            for (name, why) in run.failed.iter().take(5) {
+                detail.push_str(&format!("\n• {name}: {why}"));
+            }
+            if run.failed.len() > 5 {
+                detail.push_str(&format!("\n… und {} weitere", run.failed.len() - 5));
+            }
+            show_error(
+                "Der Papierkorb konnte nicht vollständig geleert werden.",
+                &detail,
+            );
+        }
+        return;
+    };
+    let file2 = file.clone();
+    file.delete_async(
+        glib::Priority::DEFAULT,
+        gio::Cancellable::NONE,
+        move |result| {
+            if let Err(err) = result {
+                log(&format!("nicht gelöscht: {name} ({}): {err}", file2.uri()));
+                // in German first; GVfs' own text (often English) as detail
+                let why = match err.kind::<gio::IOErrorEnum>() {
+                    Some(gio::IOErrorEnum::PermissionDenied) => "keine Berechtigung".to_owned(),
+                    Some(gio::IOErrorEnum::NotFound) => "nicht mehr vorhanden".to_owned(),
+                    Some(
+                        gio::IOErrorEnum::NotMounted
+                        | gio::IOErrorEnum::HostNotFound
+                        | gio::IOErrorEnum::HostUnreachable
+                        | gio::IOErrorEnum::TimedOut,
+                    ) => "Datenträger nicht erreichbar".to_owned(),
+                    _ => format!("nicht löschbar (GVfs: {})", err.message()),
+                };
+                run.borrow_mut().failed.push((name, why));
+            }
+            delete_next(icons, run);
+        },
+    );
+}
+
 /// The drop position of a drag after a movement of `(dx, dy)`.
 fn drop_point(drag: &Drag, dx: f64, dy: f64) -> Point {
     (
@@ -1722,13 +1938,14 @@ fn icon_for(item: &Item) -> gio::Icon {
         Kind::Computer => themed("computer"),
         Kind::Home => themed("user-home"),
         Kind::Trash => {
-            let full = gio::File::for_uri("trash:///")
-                .query_info(
-                    "trash::item-count",
-                    gio::FileQueryInfoFlags::NONE,
-                    gio::Cancellable::NONE,
-                )
-                .is_ok_and(|info| info.attribute_uint32("trash::item-count") > 0);
+            let count = trash_count();
+            let full = count.unwrap_or(0) > 0;
+            if debugging() {
+                log(&format!(
+                    "Papierkorb-Symbol: {} ({count:?} Objekte)",
+                    if full { "voll" } else { "leer" }
+                ));
+            }
             themed(if full {
                 "user-trash-full"
             } else {
@@ -1761,10 +1978,46 @@ fn icon_for(item: &Item) -> gio::Icon {
     }
 }
 
+/// The lines a label shows right now (`QUERENCIA_DESKTOP_DEBUG=1`, for the
+/// isolated test of HMP-10b).
+fn label_lines(label: &Label) -> Vec<String> {
+    let layout = label.layout();
+    let text = layout.text().to_string();
+    let mut lines = Vec::new();
+    let mut iter = layout.iter();
+    loop {
+        if let Some(line) = iter.line_readonly() {
+            let start = usize::try_from(line.start_index()).unwrap_or(0);
+            let end = start + usize::try_from(line.length()).unwrap_or(0);
+            lines.push(
+                text.get(start..end)
+                    .unwrap_or_default()
+                    .trim_end()
+                    .to_owned(),
+            );
+        }
+        if !iter.next_line() {
+            break;
+        }
+    }
+    // An ellipsized last line holds the whole rest of the text; on screen
+    // it is cut and ends with "…". Marked, not shown as drawn.
+    if layout.is_ellipsized()
+        && let Some(last) = lines.last_mut()
+    {
+        last.push_str(" [gekürzt]");
+    }
+    lines
+}
+
 fn icon_widget(item: &Item) -> gtk4::Box {
     let tile = gtk4::Box::new(Orientation::Vertical, 2);
     tile.add_css_class("desktop-icon");
-    tile.set_size_request(CELL.0 - 6, CELL.1 - 6);
+    // HMP-10b: the tile spans the whole cell width (cells never overlap,
+    // every grid keeps at least a cell between columns). With 6 px less,
+    // "Persönlicher" (89 px in DejaVu/Adwaita Sans 11) missed the 88 px
+    // left for the text by one pixel and was split ("Persönliche" / "r").
+    tile.set_size_request(CELL.0, CELL.1 - 6);
     let image = Image::from_gicon(&icon_for(item));
     image.set_pixel_size(ICON_PX);
     image.set_halign(Align::Center);
