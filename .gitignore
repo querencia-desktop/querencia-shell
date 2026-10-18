@@ -13,3 +13,6 @@ id_ed25519*
 # Ungefilterte Wayland-Mitschnitte (WAYLAND_DEBUG) enthalten Aktivierungstoken;
 # gefilterte Fassungen heißen *-auszug.log
 *-wl.log
+
+# G2-J: Laufzeit, Profile und gebaute Werkzeuge der isolierten Prüfung
+nachweis/gui/

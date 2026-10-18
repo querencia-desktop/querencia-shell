@@ -1,0 +1,16 @@
+mark E0 Ausgangslage
+run QPACTL load-module module-null-sink sink_name=Testausgabe sink_properties=device.description=Testausgabe
+run QPACTL spiele Musikspieler Lied
+run QPACTL nimm-auf Rekorder Notiz
+wait 1500
+move 1110 16
+wait 1800
+shot SHOT/e00-tooltip.png
+rclick
+wait 900
+move 1060 68
+wait 300
+click
+wait 3000
+shot SHOT/e01-mixer.png
+mark E2 Liste
