@@ -1,0 +1,43 @@
+# Querencia-Klassisch (Variante B) – labwc-Theme für Querencia Desktop.
+# Grundlage: themerc-Standardwerte von labwc 0.9.8 (das bisher verwendete
+# eingebaute Theme); geändert sind nur Fensterrahmen, Titelleiste und
+# Titelknöpfe. Knöpfe: PNG-Dateien in diesem Ordner (iconify, max,
+# max_toggled, close; -active/-inactive, _hover). Erzeugt von
+# querencia-werkstatt-w3-system/theme-b/werkzeug/theme_b.py.
+
+border.width: 1
+window.active.border.color: #7a7570
+window.inactive.border.color: #aaa6a2
+
+# Titelleiste: dezenter senkrechter Verlauf (aktiv), flach (inaktiv).
+# padding.width 8 ≥ labwc-cornerRadius (8): Die runde obere Fensterecke
+# schneidet so keinen Knopf an – die Knöpfe bleiben eckig.
+window.titlebar.padding.width: 8
+window.titlebar.padding.height: 2
+window.active.title.bg: Gradient Vertical
+window.active.title.bg.color: #eeece9
+window.active.title.bg.colorTo: #d8d4d0
+window.inactive.title.bg: Solid
+window.inactive.title.bg.color: #f2f1ef
+window.active.label.text.color: #000000
+window.inactive.label.text.color: #6e6e6e
+window.label.text.justify: center
+
+# Knöpfe: 24×22, 2 px Abstand (PNG in Knopfgröße)
+window.button.width: 24
+window.button.height: 22
+window.button.spacing: 2
+# Hover zeigen die *_hover-*.png; die Überlagerung bleibt durchsichtig.
+window.button.hover.bg.color: #00000000
+window.button.hover.bg.corner-radius: 0
+# Nur für fehlende Grafiken (xbm-Ersatz von labwc):
+window.active.button.unpressed.image.color: #000000
+window.inactive.button.unpressed.image.color: #6e6e6e
+window.active.button.close.unpressed.image.color: #cc0000
+window.inactive.button.close.unpressed.image.color: #c46e6e
+
+# Schatten wie bisher
+window.active.shadow.size: 60
+window.inactive.shadow.size: 40
+window.active.shadow.color: #00000060
+window.inactive.shadow.color: #00000040
