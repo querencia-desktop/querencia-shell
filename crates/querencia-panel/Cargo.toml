@@ -16,6 +16,9 @@ gtk4-layer-shell = "0.8.1"
 wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+# G2-J: audio service, icons and mixer ID of the volume applet (own crate of
+# the workspace; libpulse is opened at run time, no new external crate).
+querencia-lautstaerke = { path = "../querencia-lautstaerke" }
 
 [lints.rust]
 # classic_menu.rs is shared with querencia-desktop, which sets this cfg.

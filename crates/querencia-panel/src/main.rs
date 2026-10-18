@@ -16,6 +16,7 @@ mod panel_menu;
 mod places_menu;
 mod session;
 mod system_menu;
+mod volume_applet;
 mod window_icons;
 mod window_list;
 mod workspace_switcher;
@@ -50,6 +51,10 @@ pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
 // active window's button looks pressed (darker gradient #dcd6d0..#ebe7e3,
 // inset shadow); a minimized window's button is flat and its icon and
 // title dimmed. Dark text always, no orange (the orange belongs to menus).
+//
+// Volume applet (G2-J): like a launcher, a bare icon with the neutral
+// highlight; greyed out (as a missing launcher) without an audio service.
+// The slider of its popup is filled in the orange of the menu highlight.
 //
 // Application launchers (HMP-11): only the icon, no frame, as in the GNOME 2
 // panel; on hover and while pressed the neutral highlight of the main menu
@@ -96,6 +101,11 @@ const PANEL_CSS: &str = "
 .querencia-panel button.querencia-launcher:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
 .querencia-panel button.querencia-launcher:active { background-color: #dcd6d0; border-color: #9e9993; }
 .querencia-panel button.querencia-launcher.missing > image { opacity: 0.45; }
+.querencia-panel button.querencia-volume { min-width: 0; min-height: 0; padding: 0 2px; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
+.querencia-panel button.querencia-volume:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
+.querencia-panel button.querencia-volume:active { background-color: #dcd6d0; border-color: #9e9993; }
+.querencia-panel button.querencia-volume.unavailable > image { opacity: 0.45; }
+.querencia-panel popover.querencia-volume-popup scale > trough > highlight { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); border-color: #b36c4e; }
 .querencia-panel menubutton.querencia-main-menu > button { border-radius: 0; padding-left: 6px; padding-right: 6px; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; color: #3c3c3c; }
 .querencia-panel menubutton.querencia-main-menu > button:hover,
 .querencia-panel menubutton.querencia-main-menu > button:active,

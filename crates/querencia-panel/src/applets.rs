@@ -11,7 +11,8 @@ use gtk4::{Label, Widget, gio};
 
 use crate::layout::{Instance, LAUNCHER};
 use crate::{
-    app_menu, clock, launcher, logo, places_menu, system_menu, window_list, workspace_switcher,
+    app_menu, clock, launcher, logo, places_menu, system_menu, volume_applet, window_list,
+    workspace_switcher,
 };
 
 /// One applet type.
@@ -43,11 +44,12 @@ pub struct AppletType {
     /// HMP-11): the "Zum Panel hinzufügen" dialog then shows its second
     /// page.
     pub chooses_application: bool,
-    /// The applet's own right-click menu. Its popover is parented to the
-    /// applet's widget (`panel_menu.rs`), so the items reach the applet's
-    /// own action group as well as the panel's `panel.applet-remove`
-    /// ([`crate::panel_menu::REMOVE_ACTION`]). `None`: launchers and
-    /// removable applets get the panel's menus, the others none.
+    /// The applet's own right-click menu (G2-J: the volume applet). Its
+    /// popover is parented to the applet's widget (`panel_menu.rs`), so the
+    /// items reach the applet's own action group as well as the panel's
+    /// `panel.applet-remove` ([`crate::panel_menu::REMOVE_ACTION`]). `None`:
+    /// launchers and removable applets get the panel's menus, the others
+    /// none.
     pub menu: Option<fn() -> gio::Menu>,
     /// Builds the widget for a layout instance on a panel of the given
     /// height (only "Anwendungen" uses the height, for its logo).
@@ -163,7 +165,30 @@ pub const APPLETS: &[AppletType] = &[
             launcher::button(instance.app.as_deref().unwrap_or_default()).upcast()
         },
     },
+    // G2-J: volume of the default output device (PulseAudio protocol, also
+    // PipeWire). Single, like the applets with a connection of their own:
+    // a second one would show the same device twice. Not in the standard
+    // layout; `panel.ini` for the GNOME 2 place next to the clock:
+    // `End=volume-1;clock-1` with `[Applet volume-1]` `Type=volume`.
+    AppletType {
+        id: VOLUME,
+        name: "Lautstärke",
+        description: "Lautstärke einstellen und stummschalten",
+        // The dialog draws the applet's own icon (`add_dialog.rs`); the
+        // theme name is only the fallback for other users of `icon`.
+        icon: "audio-volume-high",
+        classic_icon: None,
+        multiple: false,
+        once: false,
+        removable: true,
+        chooses_application: false,
+        menu: Some(volume_applet::menu),
+        factory: |_, height| volume_applet::widget(height).upcast(),
+    },
 ];
+
+/// Type ID of the volume applet (G2-J).
+pub const VOLUME: &str = "volume";
 
 /// The applet type with `id`, if there is one.
 pub fn find(id: &str) -> Option<&'static AppletType> {
@@ -187,7 +212,8 @@ mod tests {
                 "window-list",
                 "workspace-switcher",
                 "clock",
-                "launcher"
+                "launcher",
+                "volume"
             ]
         );
         assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len());
@@ -242,12 +268,33 @@ mod tests {
             .filter(|a| a.removable)
             .map(|a| a.id)
             .collect();
-        assert_eq!(removable, ["clock", LAUNCHER]);
+        assert_eq!(removable, ["clock", LAUNCHER, VOLUME]);
+    }
+
+    #[test]
+    fn only_the_volume_applet_has_a_menu_of_its_own_and_it_is_single() {
+        let with_menu: Vec<_> = APPLETS
+            .iter()
+            .filter(|a| a.menu.is_some())
+            .map(|a| a.id)
+            .collect();
+        assert_eq!(with_menu, [VOLUME]);
+        let volume = find(VOLUME).unwrap();
+        assert!(!volume.multiple && volume.removable && !volume.chooses_application);
+        assert_eq!(volume.name, "Lautstärke");
+        // its menu removes through the panel's action
+        let menu = (volume.menu.unwrap())();
+        let section = menu.item_link(2, "section").expect("Abschnitt");
+        let action = section
+            .item_attribute_value(0, "action", Some(gtk4::glib::VariantTy::STRING))
+            .and_then(|v| v.get::<String>());
+        assert_eq!(action.as_deref(), Some(crate::panel_menu::REMOVE_ACTION));
     }
 
     #[test]
     fn wayland_applets_are_single() {
         assert!(!find("window-list").unwrap().multiple);
         assert!(!find("workspace-switcher").unwrap().multiple);
+        assert!(!find(VOLUME).unwrap().multiple);
     }
 }
