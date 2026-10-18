@@ -23,6 +23,14 @@
 //! to the applet's widget, so the menu reaches the applet's own actions
 //! (e.g. `volume.mute`) as well as the panel's (`panel.applet-remove`).
 //!
+//! Every applet's menu ends with the GNOME 2 „Verschieben“ entries
+//! ([`move_section`], Teil 5): „Nach links“, „Nach rechts“ (one place,
+//! across the regions), „An den linken Rand“, „An den rechten Rand“;
+//! entries that would not move anything are greyed out. Applets without a
+//! menu of their own (Anwendungen, Orte, System, Fensterliste,
+//! Arbeitsflächenumschalter) get a menu with only these. Dragging with the
+//! middle button (or Alt and the left button) is in `applet_move.rs`.
+//!
 //! "Zum Panel hinzufügen …" adds to the region of the free space that was
 //! right-clicked (left, middle or right third of the panel, see
 //! [`Region::at`]), next to that space, as GNOME 2 adds where the menu was
@@ -38,9 +46,9 @@ use gtk4::{
     PopoverMenu, PositionType, Window, gdk, gio, glib,
 };
 
-use crate::layout::{Edge, PanelSpec, Region};
+use crate::layout::{Edge, Move, PanelSpec, Region};
 use crate::layout_editor::Editor;
-use crate::{add_dialog, app_menu, applets, panel};
+use crate::{add_dialog, app_menu, applet_move, applets, panel};
 
 /// CSS class of the top widget of every applet; marks where free panel
 /// space ends.
@@ -58,6 +66,44 @@ const LAUNCH: &str = "launcher-start";
 const REMOVE: &str = "applet-remove";
 /// Full name of the „Aus dem Panel entfernen“ action, for applet menus.
 pub const REMOVE_ACTION: &str = "panel.applet-remove";
+/// The moving actions (Teil 5), with their labels and moves.
+const MOVES: [(&str, &str, Move); 4] = [
+    ("applet-move-left", "Nach _links", Move::Left),
+    ("applet-move-right", "Nach _rechts", Move::Right),
+    ("applet-move-start", "An den linken _Rand", Move::StartEdge),
+    ("applet-move-end", "An den rechten R_and", Move::EndEdge),
+];
+
+/// Name of the „Verschieben“ action (the applet follows the pointer).
+const FOLLOW: &str = "applet-follow";
+
+/// The „Verschieben“ entries every applet menu ends with.
+pub fn move_section() -> gio::Menu {
+    let menu = gio::Menu::new();
+    menu.append(
+        Some("_Verschieben"),
+        Some(&format!("{ACTION_GROUP}.{FOLLOW}")),
+    );
+    for (name, label, _) in MOVES {
+        menu.append(Some(label), Some(&format!("{ACTION_GROUP}.{name}")));
+    }
+    menu
+}
+
+/// The menu of an applet without entries of its own and that cannot be
+/// removed (Anwendungen, Orte, System, Fensterliste,
+/// Arbeitsflächenumschalter): only the „Verschieben“ entries.
+pub fn fixed_model() -> gio::Menu {
+    move_section()
+}
+
+/// `own` followed by the „Verschieben“ entries.
+fn with_moves(own: &gio::Menu) -> gio::Menu {
+    let menu = gio::Menu::new();
+    menu.append_section(None, own);
+    menu.append_section(None, &move_section());
+    menu
+}
 
 /// The menu entries. More follow with the functions behind them (removing,
 /// moving, properties); until then the menu shows nothing that would not
@@ -80,6 +126,7 @@ pub fn launcher_model() -> gio::Menu {
     let object = gio::Menu::new();
     object.append(Some("Aus dem Panel entfernen"), Some(REMOVE_ACTION));
     menu.append_section(None, &object);
+    menu.append_section(None, &move_section());
     menu
 }
 
@@ -88,6 +135,7 @@ pub fn launcher_model() -> gio::Menu {
 pub fn applet_model() -> gio::Menu {
     let menu = gio::Menu::new();
     menu.append(Some("Aus dem Panel entfernen"), Some(REMOVE_ACTION));
+    menu.append_section(None, &move_section());
     menu
 }
 
@@ -98,11 +146,13 @@ pub fn attach(
     bar: &CenterBox,
     spec: &PanelSpec,
     editor: &Rc<RefCell<Editor>>,
+    mover: &Rc<applet_move::Mover>,
 ) {
     // Region of the free space last right-clicked: where the dialog adds.
     let target = Rc::new(Cell::new(Region::Start));
     let panel_id = spec.id.clone();
     let hooks = Rc::new(add_dialog::Hooks {
+        region: target.clone(),
         available: Box::new(glib::clone!(
             #[strong]
             editor,
@@ -190,6 +240,42 @@ pub fn attach(
     actions.add_action(&add);
     actions.add_action(&launch);
     actions.add_action(&remove);
+    // Teil 5: move the applet last right-clicked within its panel; saved
+    // first, then moved on screen, after the menu has closed (it may be
+    // parented to the applet).
+    let mut moves = Vec::new();
+    for (name, _, how) in MOVES {
+        let action = gio::SimpleAction::new(name, None);
+        action.connect_activate(glib::clone!(
+            #[strong]
+            editor,
+            #[strong]
+            clicked,
+            #[weak]
+            bar,
+            move |_, _| {
+                let id = clicked.borrow().clone();
+                let editor = editor.clone();
+                glib::idle_add_local_once(move || move_applet(&editor, &bar, &id, how));
+            }
+        ));
+        actions.add_action(&action);
+        moves.push((action, how));
+    }
+    let moves = Rc::new(moves);
+    let follow = gio::SimpleAction::new(FOLLOW, None);
+    follow.connect_activate(glib::clone!(
+        #[strong]
+        clicked,
+        #[strong]
+        mover,
+        move |_, _| {
+            let id = clicked.borrow().clone();
+            let mover = mover.clone();
+            glib::idle_add_local_once(move || mover.follow(&id));
+        }
+    ));
+    actions.add_action(&follow);
     bar.insert_action_group(ACTION_GROUP, Some(&actions));
 
     // A single popover per panel: a second right click cannot stack menus.
@@ -211,6 +297,11 @@ pub fn attach(
     applet_popover.set_halign(Align::Start);
     applet_popover.set_position(popover.position());
     applet_popover.set_parent(bar);
+    let fixed_popover = PopoverMenu::from_model(Some(&fixed_model()));
+    fixed_popover.set_has_arrow(false);
+    fixed_popover.set_halign(Align::Start);
+    fixed_popover.set_position(popover.position());
+    fixed_popover.set_parent(bar);
     bar.connect_destroy(glib::clone!(
         #[strong]
         popover,
@@ -218,10 +309,13 @@ pub fn attach(
         launcher_popover,
         #[strong]
         applet_popover,
+        #[strong]
+        fixed_popover,
         move |_| {
             popover.unparent();
             launcher_popover.unparent();
             applet_popover.unparent();
+            fixed_popover.unparent();
         }
     ));
 
@@ -242,6 +336,10 @@ pub fn attach(
         launcher_popover,
         #[weak]
         applet_popover,
+        #[weak]
+        fixed_popover,
+        #[strong]
+        moves,
         #[strong]
         target,
         #[strong]
@@ -258,7 +356,7 @@ pub fn attach(
             // itself count. Their coordinates are the panel's own.
             let on_panel =
                 gesture.current_event().and_then(|event| event.surface()) == window.surface();
-            let open = [&popover, &launcher_popover, &applet_popover]
+            let open = [&popover, &launcher_popover, &applet_popover, &fixed_popover]
                 .iter()
                 .any(|p| p.is_visible())
                 || own_menu.borrow().as_ref().is_some_and(|p| p.is_visible());
@@ -282,6 +380,10 @@ pub fn attach(
                     .flat_map(|p| p.instances())
                     .find(|i| i.id == id)
                     .and_then(|i| applets::find(&i.applet));
+                // Greys out the moves that would do nothing here.
+                for (action, how) in moves.iter() {
+                    action.set_enabled(editor.borrow().can_move(&id, *how));
+                }
                 if let Some(model) = kind.and_then(|t| t.menu) {
                     let Some((ax, ay)) = window.translate_coordinates(&applet, window_x, window_y)
                     else {
@@ -294,7 +396,7 @@ pub fn attach(
                     {
                         old.unparent();
                     }
-                    let menu = PopoverMenu::from_model(Some(&model()));
+                    let menu = PopoverMenu::from_model(Some(&with_moves(&model())));
                     // The panel's actions on the menu itself: an applet
                     // built before the bar got its action group (an applet
                     // from panel.ini) does not find them through its
@@ -324,7 +426,8 @@ pub fn attach(
                 let menu = match kind {
                     Some(t) if t.id == crate::layout::LAUNCHER => Some(&launcher_popover),
                     Some(t) if t.removable => Some(&applet_popover),
-                    _ => None,
+                    Some(_) => Some(&fixed_popover),
+                    None => None,
                 };
                 if let Some(menu) = menu {
                     *clicked.borrow_mut() = id;
@@ -409,6 +512,31 @@ fn add_applet(
         path.display()
     );
     Ok(())
+}
+
+/// Moves the applet instance `instance_id` as `how` says: first in the
+/// layout and `panel.ini` through `editor`, then, once saved, on screen.
+pub(crate) fn move_applet(editor: &RefCell<Editor>, bar: &CenterBox, instance_id: &str, how: Move) {
+    let result = editor.borrow_mut().move_applet(instance_id, how);
+    match result {
+        Ok(Some(moved)) => {
+            if !panel::move_applet(bar, instance_id, moved.to.0, moved.to.1) {
+                eprintln!(
+                    "querencia-panel: {instance_id} gespeichert, aber nicht in diesem Panel angezeigt"
+                );
+            }
+            eprintln!(
+                "querencia-panel: {instance_id} verschoben ({how:?}): {} {} → {} {}; gespeichert in {}",
+                moved.from.0.label(),
+                moved.from.1 + 1,
+                moved.to.0.label(),
+                moved.to.1 + 1,
+                editor.borrow().path().display()
+            );
+        }
+        Ok(None) => eprintln!("querencia-panel: {instance_id} bleibt, wo es ist ({how:?})"),
+        Err(err) => eprintln!("querencia-panel: {instance_id} nicht verschoben: {err}"),
+    }
 }
 
 /// Removes the applet instance `instance_id` from the panel bar `bar`:
@@ -507,9 +635,59 @@ mod tests {
     }
 
     #[test]
-    fn clock_menu_only_removes() {
+    fn every_applet_menu_ends_with_the_moves() {
+        let labels = |menu: &gio::MenuModel| -> Vec<(String, String)> {
+            (0..menu.n_items())
+                .map(|i| {
+                    let get = |key| {
+                        menu.item_attribute_value(i, key, Some(glib::VariantTy::STRING))
+                            .and_then(|v| v.get::<String>())
+                            .unwrap_or_default()
+                    };
+                    (get("label"), get("action"))
+                })
+                .collect()
+        };
+        let moves = labels(move_section().upcast_ref());
+        assert_eq!(
+            moves,
+            [
+                (
+                    "_Verschieben".to_string(),
+                    "panel.applet-follow".to_string()
+                ),
+                (
+                    "Nach _links".to_string(),
+                    "panel.applet-move-left".to_string()
+                ),
+                ("Nach _rechts".into(), "panel.applet-move-right".into()),
+                (
+                    "An den linken _Rand".into(),
+                    "panel.applet-move-start".into()
+                ),
+                (
+                    "An den rechten R_and".into(),
+                    "panel.applet-move-end".into()
+                ),
+            ]
+        );
+        for menu in [
+            launcher_model(),
+            applet_model(),
+            with_moves(&gio::Menu::new()),
+        ] {
+            let last = menu
+                .item_link(menu.n_items() - 1, "section")
+                .expect("Abschnitt");
+            assert_eq!(labels(&last), moves);
+        }
+        assert_eq!(labels(fixed_model().upcast_ref()), moves);
+    }
+
+    #[test]
+    fn clock_menu_removes_then_moves() {
         let menu = applet_model();
-        assert_eq!(menu.n_items(), 1);
+        assert_eq!(menu.n_items(), 2);
         let label = menu
             .item_attribute_value(0, "label", Some(glib::VariantTy::STRING))
             .and_then(|v| v.get::<String>());

@@ -112,6 +112,51 @@ impl Editor {
         Ok(Removed { instance, backup })
     }
 
+    /// Moves the applet instance `instance_id` within its panel (see
+    /// [`Layout::move_applet`]) and saves the layout. `Ok(None)`: it is
+    /// already there, nothing saved.
+    pub fn move_applet(
+        &mut self,
+        instance_id: &str,
+        how: crate::layout::Move,
+    ) -> Result<Option<crate::layout::Moved>, String> {
+        let Some(panel) = self
+            .layout
+            .panels
+            .iter()
+            .find(|p| p.position(instance_id).is_some())
+        else {
+            return Err(format!("Applet „{instance_id}“ gibt es nicht"));
+        };
+        let from = panel.position(instance_id).expect("found above");
+        if panel.move_target(from, how).is_none() {
+            return Ok(None);
+        }
+        let (moved, _) = self.change(|layout, _| {
+            layout
+                .move_applet(instance_id, how)
+                .ok_or_else(|| format!("Applet „{instance_id}“ nicht verschoben"))
+        })?;
+        Ok(Some(moved))
+    }
+
+    /// The position of the applet instance `instance_id` in its panel.
+    pub fn position(&self, instance_id: &str) -> Option<(Region, usize)> {
+        self.layout
+            .panels
+            .iter()
+            .find_map(|p| p.position(instance_id))
+    }
+
+    /// Where `how` would move `instance_id`, `None` if nowhere (it is at
+    /// that edge, or unknown): for greying out menu entries.
+    pub fn can_move(&self, instance_id: &str, how: crate::layout::Move) -> bool {
+        self.layout.panels.iter().any(|p| {
+            p.position(instance_id)
+                .is_some_and(|from| p.move_target(from, how).is_some())
+        })
+    }
+
     /// Makes `edit` on a copy of the layout, checks and saves the copy, and
     /// only then makes it the current layout. Returns what `edit` gave and
     /// the copy of the file the save replaced, if one was made.
@@ -248,6 +293,47 @@ mod tests {
         let end: Vec<_> = bottom.region(Region::End).iter().map(|i| &i.id).collect();
         // each new one went first in the end region
         assert_eq!(end, ["places-4", "places-3", "workspace-switcher-1"]);
+    }
+
+    #[test]
+    fn moves_are_saved_and_come_back_after_a_restart() {
+        use crate::layout::Move;
+        let scratch = Scratch::new("verschieben");
+        let (mut editor, _, _) = Editor::load(scratch.ini(), registry);
+        assert!(editor.can_move("clock-1", Move::Left));
+        assert!(!editor.can_move("clock-1", Move::Right), "rechter Rand");
+        assert!(!editor.can_move("applications-1", Move::StartEdge));
+        assert!(!editor.can_move("fehlt-1", Move::Left));
+        // nothing to do: nothing saved
+        assert!(
+            editor
+                .move_applet("clock-1", Move::EndEdge)
+                .unwrap()
+                .is_none()
+        );
+        assert!(!scratch.ini().exists(), "nichts geschrieben");
+        let moved = editor.move_applet("clock-1", Move::Left).unwrap().unwrap();
+        assert_eq!(moved.to, (Region::Center, 0));
+        assert_eq!(editor.position("clock-1"), Some((Region::Center, 0)));
+        editor.move_applet("places-1", Move::EndEdge).unwrap();
+        editor
+            .move_applet("window-list-1", Move::To(Region::End, 1))
+            .unwrap();
+        let layout = restart(&scratch.ini());
+        assert_eq!(&layout, editor.layout());
+        let top = &layout.panels[0];
+        let ids =
+            |region| -> Vec<&str> { top.region(region).iter().map(|i| i.id.as_str()).collect() };
+        assert_eq!(ids(Region::Start), ["applications-1", "system-1"]);
+        assert_eq!(ids(Region::Center), ["clock-1"]);
+        assert_eq!(ids(Region::End), ["places-1"]);
+        let bottom: Vec<&str> = layout.panels[1]
+            .region(Region::End)
+            .iter()
+            .map(|i| i.id.as_str())
+            .collect();
+        assert_eq!(bottom, ["workspace-switcher-1", "window-list-1"]);
+        assert!(editor.move_applet("fehlt-1", Move::Left).is_err());
     }
 
     #[test]
