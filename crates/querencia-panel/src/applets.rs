@@ -7,7 +7,7 @@
 //! refer to them.
 
 use gtk4::prelude::*;
-use gtk4::{Label, Widget};
+use gtk4::{Label, Widget, gio};
 
 use crate::layout::{Instance, LAUNCHER};
 use crate::{
@@ -43,6 +43,12 @@ pub struct AppletType {
     /// HMP-11): the "Zum Panel hinzufügen" dialog then shows its second
     /// page.
     pub chooses_application: bool,
+    /// The applet's own right-click menu. Its popover is parented to the
+    /// applet's widget (`panel_menu.rs`), so the items reach the applet's
+    /// own action group as well as the panel's `panel.applet-remove`
+    /// ([`crate::panel_menu::REMOVE_ACTION`]). `None`: launchers and
+    /// removable applets get the panel's menus, the others none.
+    pub menu: Option<fn() -> gio::Menu>,
     /// Builds the widget for a layout instance on a panel of the given
     /// height (only "Anwendungen" uses the height, for its logo).
     factory: fn(&Instance, i32) -> Widget,
@@ -70,6 +76,7 @@ pub const APPLETS: &[AppletType] = &[
         once: false,
         removable: false,
         chooses_application: false,
+        menu: None,
         factory: |_, height| app_menu::button(height).upcast(),
     },
     AppletType {
@@ -82,6 +89,7 @@ pub const APPLETS: &[AppletType] = &[
         once: false,
         removable: false,
         chooses_application: false,
+        menu: None,
         factory: |_, _| places_menu::button().upcast(),
     },
     AppletType {
@@ -94,6 +102,7 @@ pub const APPLETS: &[AppletType] = &[
         once: false,
         removable: false,
         chooses_application: false,
+        menu: None,
         factory: |_, _| system_menu::button().upcast(),
     },
     AppletType {
@@ -106,6 +115,7 @@ pub const APPLETS: &[AppletType] = &[
         once: false,
         removable: false,
         chooses_application: false,
+        menu: None,
         factory: |_, _| window_list::widget().upcast(),
     },
     AppletType {
@@ -118,6 +128,7 @@ pub const APPLETS: &[AppletType] = &[
         once: false,
         removable: false,
         chooses_application: false,
+        menu: None,
         factory: |_, _| workspace_switcher::widget().upcast(),
     },
     AppletType {
@@ -130,6 +141,7 @@ pub const APPLETS: &[AppletType] = &[
         once: true,
         removable: true,
         chooses_application: false,
+        menu: None,
         factory: |_, _| {
             let label = Label::new(None);
             clock::attach(&label);
@@ -146,6 +158,7 @@ pub const APPLETS: &[AppletType] = &[
         once: false,
         removable: true,
         chooses_application: true,
+        menu: None,
         factory: |instance, _| {
             launcher::button(instance.app.as_deref().unwrap_or_default()).upcast()
         },

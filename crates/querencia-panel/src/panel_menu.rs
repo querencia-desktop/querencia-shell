@@ -18,6 +18,11 @@
 //! Removing goes through the shared [`Editor`] too: saved first, then taken
 //! off the screen.
 //!
+//! An applet type with a menu of its own ([`applets::AppletType::menu`],
+//! G2-J: the volume applet) gets that menu instead. Its popover is parented
+//! to the applet's widget, so the menu reaches the applet's own actions
+//! (e.g. `volume.mute`) as well as the panel's (`panel.applet-remove`).
+//!
 //! "Zum Panel hinzufügen …" adds to the region of the free space that was
 //! right-clicked (left, middle or right third of the panel, see
 //! [`Region::at`]), next to that space, as GNOME 2 adds where the menu was
@@ -51,6 +56,8 @@ const ACTION_GROUP: &str = "panel";
 const ADD: &str = "add";
 const LAUNCH: &str = "launcher-start";
 const REMOVE: &str = "applet-remove";
+/// Full name of the „Aus dem Panel entfernen“ action, for applet menus.
+pub const REMOVE_ACTION: &str = "panel.applet-remove";
 
 /// The menu entries. More follow with the functions behind them (removing,
 /// moving, properties); until then the menu shows nothing that would not
@@ -71,10 +78,7 @@ pub fn launcher_model() -> gio::Menu {
     let menu = gio::Menu::new();
     menu.append(Some("Starten"), Some(&format!("{ACTION_GROUP}.{LAUNCH}")));
     let object = gio::Menu::new();
-    object.append(
-        Some("Aus dem Panel entfernen"),
-        Some(&format!("{ACTION_GROUP}.{REMOVE}")),
-    );
+    object.append(Some("Aus dem Panel entfernen"), Some(REMOVE_ACTION));
     menu.append_section(None, &object);
     menu
 }
@@ -83,10 +87,7 @@ pub fn launcher_model() -> gio::Menu {
 /// clock): "Aus dem Panel entfernen".
 pub fn applet_model() -> gio::Menu {
     let menu = gio::Menu::new();
-    menu.append(
-        Some("Aus dem Panel entfernen"),
-        Some(&format!("{ACTION_GROUP}.{REMOVE}")),
-    );
+    menu.append(Some("Aus dem Panel entfernen"), Some(REMOVE_ACTION));
     menu
 }
 
@@ -153,19 +154,36 @@ pub fn attach(
             }
         }
     ));
+    // The menu of an applet with a menu of its own (G2-J), parented to the
+    // applet's widget while it is open.
+    let own_menu: Rc<RefCell<Option<PopoverMenu>>> = Rc::new(RefCell::new(None));
     let remove = gio::SimpleAction::new(REMOVE, None);
     remove.connect_activate(glib::clone!(
         #[strong]
         editor,
         #[strong]
         clicked,
+        #[strong]
+        own_menu,
         #[weak]
         bar,
         move |_, _| {
             let id = clicked.borrow().clone();
-            if let Err(err) = remove_applet(&editor, &bar, &id) {
-                eprintln!("querencia-panel: {id} nicht entfernt: {err}");
-            }
+            // A menu parented to the applet must leave the widget before the
+            // widget goes; the menu is still finishing its activation, so
+            // both happen once it has returned.
+            let menu = own_menu.borrow_mut().take();
+            let editor = editor.clone();
+            glib::idle_add_local_once(move || {
+                if let Some(menu) = menu
+                    && menu.parent().is_some()
+                {
+                    menu.unparent();
+                }
+                if let Err(err) = remove_applet(&editor, &bar, &id) {
+                    eprintln!("querencia-panel: {id} nicht entfernt: {err}");
+                }
+            });
         }
     ));
     let actions = gio::SimpleActionGroup::new();
@@ -230,6 +248,10 @@ pub fn attach(
         clicked,
         #[strong]
         editor,
+        #[strong]
+        own_menu,
+        #[strong]
+        actions,
         move |gesture, presses, x, y| {
             // Pointer events inside a popover, e.g. an open applet menu,
             // bubble up to the panel too; only clicks on the panel surface
@@ -238,11 +260,13 @@ pub fn attach(
                 gesture.current_event().and_then(|event| event.surface()) == window.surface();
             let open = [&popover, &launcher_popover, &applet_popover]
                 .iter()
-                .any(|p| p.is_visible());
+                .any(|p| p.is_visible())
+                || own_menu.borrow().as_ref().is_some_and(|p| p.is_visible());
             if presses != 1 || !on_panel || open {
                 return;
             }
             let applet = applet_at(&window, x, y);
+            let (window_x, window_y) = (x, y);
             let Some((x, y)) = window.translate_coordinates(&bar, x, y) else {
                 return;
             };
@@ -258,6 +282,45 @@ pub fn attach(
                     .flat_map(|p| p.instances())
                     .find(|i| i.id == id)
                     .and_then(|i| applets::find(&i.applet));
+                if let Some(model) = kind.and_then(|t| t.menu) {
+                    let Some((ax, ay)) = window.translate_coordinates(&applet, window_x, window_y)
+                    else {
+                        return;
+                    };
+                    *clicked.borrow_mut() = id;
+                    gesture.set_state(EventSequenceState::Claimed);
+                    if let Some(old) = own_menu.borrow_mut().take()
+                        && old.parent().is_some()
+                    {
+                        old.unparent();
+                    }
+                    let menu = PopoverMenu::from_model(Some(&model()));
+                    // The panel's actions on the menu itself: an applet
+                    // built before the bar got its action group (an applet
+                    // from panel.ini) does not find them through its
+                    // parents; GTK does not relink an existing muxer.
+                    menu.insert_action_group(ACTION_GROUP, Some(&actions));
+                    menu.set_has_arrow(false);
+                    menu.set_halign(Align::Start);
+                    menu.set_position(popover.position());
+                    menu.set_parent(&applet);
+                    menu.set_pointing_to(Some(&gdk::Rectangle::new(ax as i32, ay as i32, 1, 1)));
+                    menu.connect_closed(|menu| {
+                        let menu = menu.clone();
+                        glib::idle_add_local_once(move || {
+                            if menu.parent().is_some() {
+                                menu.unparent();
+                            }
+                        });
+                    });
+                    *own_menu.borrow_mut() = Some(menu.clone());
+                    menu.popup();
+                    eprintln!(
+                        "querencia-panel: Appletmenü von {} geöffnet",
+                        clicked.borrow()
+                    );
+                    return;
+                }
                 let menu = match kind {
                     Some(t) if t.id == crate::layout::LAUNCHER => Some(&launcher_popover),
                     Some(t) if t.removable => Some(&applet_popover),
@@ -455,6 +518,11 @@ mod tests {
             .item_attribute_value(0, "action", Some(glib::VariantTy::STRING))
             .and_then(|v| v.get::<String>());
         assert_eq!(action.as_deref(), Some("panel.applet-remove"));
+    }
+
+    #[test]
+    fn remove_action_is_the_panel_groups_remove() {
+        assert_eq!(REMOVE_ACTION, format!("{ACTION_GROUP}.{REMOVE}"));
     }
 
     #[test]
