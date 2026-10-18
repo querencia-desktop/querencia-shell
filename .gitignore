@@ -16,3 +16,5 @@ id_ed25519*
 
 # G2-R: gebaute Binaries der Nachweise (Prüfsummen in nachweis/SHA256SUMS)
 /nachweis/bin/
+# G2-R: Release-Binary der Vorlage (Prüfsumme in vorschlag/SHA256SUMS)
+/integration/kuerzel/vorschlag/querencia-kuerzel
