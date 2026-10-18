@@ -1,0 +1,58 @@
+mark E20 Ausgang
+wait 1200
+mark E21 Info über Rechtsklick, Escape
+move 853 16
+wait 300
+rclick
+wait 1000
+move 874 111
+wait 300
+click
+wait 1500
+key Escape
+wait 800
+mark E22 Menü, 5x runter
+move 853 16
+wait 300
+click
+wait 1200
+shot SHOT/e22-0.png
+key Down
+wait 300
+shot SHOT/e22-1.png
+key Down
+wait 300
+key Down
+wait 300
+key Down
+wait 300
+key Down
+wait 300
+shot SHOT/e22-5.png
+key Escape
+wait 800
+mark E23 Menü kalt, 5x runter
+move 853 16
+wait 300
+click
+wait 1200
+key Down
+wait 300
+key Down
+wait 300
+key Down
+wait 300
+key Down
+wait 300
+key Down
+wait 300
+shot SHOT/e23-5.png
+key Return
+wait 1500
+shot SHOT/e23-verborgen.png
+key Tab
+wait 300
+shot SHOT/e23-tab.png
+key Escape
+wait 800
+mark ENDE

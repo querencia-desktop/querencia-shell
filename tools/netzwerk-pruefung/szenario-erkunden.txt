@@ -1,0 +1,29 @@
+mark E00 Ausgang
+wait 1500
+shot SHOT/e00.png
+mark E01 Linksklick Netzwerk
+move 854 16
+wait 300
+click
+wait 1200
+shot SHOT/e01-menue.png
+key Down
+wait 300
+key Down
+wait 500
+shot SHOT/e01-tasten.png
+key Escape
+wait 800
+mark E02 Rechtsklick
+move 854 16
+wait 300
+rclick
+wait 1200
+shot SHOT/e02-rechts.png
+key Escape
+wait 600
+mark E03 Tooltip
+move 856 17
+wait 2200
+shot SHOT/e03-tooltip.png
+mark ENDE
