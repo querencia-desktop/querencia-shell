@@ -698,7 +698,7 @@ fn state_text(state: &State) -> String {
     let _ = writeln!(
         out,
         "Standardeingabe: {}",
-        state.input().map_or("–", |d| d.name.as_str())
+        state.default_source.as_deref().unwrap_or("–")
     );
     let device = |out: &mut String, kind: &str, d: &Device, default: bool| {
         let _ = writeln!(
@@ -717,7 +717,7 @@ fn state_text(state: &State) -> String {
         device(&mut out, "Ausgabe", d, default);
     }
     for d in &state.sources {
-        let default = state.input().is_some_and(|i| i.name == d.name);
+        let default = state.default_source.as_deref() == Some(d.name.as_str());
         device(
             &mut out,
             if d.monitor { "Monitor" } else { "Eingabe" },

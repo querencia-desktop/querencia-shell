@@ -190,13 +190,22 @@ impl State {
     /// The default output device: the one the server names, else the first
     /// one (a server may name a device that is gone).
     pub fn output(&self) -> Option<&Device> {
-        pick(&self.sinks, self.default_sink.as_deref(), false)
+        pick(&self.sinks, self.default_sink.as_deref())
     }
 
-    /// The default input device, never a monitor unless the server names
-    /// one.
+    /// The input device the mixer shows: the server's default if it is a
+    /// real input; if the server names a monitor (PipeWire without a
+    /// microphone: `auto_null.monitor`) or nothing, the first real input;
+    /// a monitor only if there is no real input at all.
     pub fn input(&self) -> Option<&Device> {
-        pick(&self.sources, self.default_source.as_deref(), true)
+        let named = self
+            .default_source
+            .as_deref()
+            .and_then(|name| self.sources.iter().find(|d| d.name == name));
+        named
+            .filter(|d| !d.monitor)
+            .or_else(|| self.inputs().next())
+            .or(named)
     }
 
     /// The recording devices the mixer offers: no monitors.
@@ -205,9 +214,9 @@ impl State {
     }
 }
 
-fn pick<'a>(devices: &'a [Device], name: Option<&str>, skip_monitors: bool) -> Option<&'a Device> {
+fn pick<'a>(devices: &'a [Device], name: Option<&str>) -> Option<&'a Device> {
     name.and_then(|name| devices.iter().find(|d| d.name == name))
-        .or_else(|| devices.iter().find(|d| !(skip_monitors && d.monitor)))
+        .or_else(|| devices.first())
 }
 
 /// Which of the four applet icons.
@@ -425,12 +434,19 @@ mod tests {
         };
         assert_eq!(state.input().map(|d| d.name.as_str()), Some("mic"));
         assert_eq!(state.inputs().count(), 1);
+        // PipeWire without a microphone names the monitor: the real input
+        // is shown, the monitor only if there is nothing else
         let named_monitor = State {
             default_source: Some("a.monitor".into()),
             ..state
         };
+        assert_eq!(named_monitor.input().map(|d| d.name.as_str()), Some("mic"));
+        let only_monitor = State {
+            sources: vec![device("a.monitor", &[1], false)],
+            ..named_monitor
+        };
         assert_eq!(
-            named_monitor.input().map(|d| d.name.as_str()),
+            only_monitor.input().map(|d| d.name.as_str()),
             Some("a.monitor")
         );
     }

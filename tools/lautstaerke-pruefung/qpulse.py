@@ -204,6 +204,9 @@ class Server:
         if not empty:
             self.add_sink("alsa_output.test-analog-stereo", "Eingebautes Tonsystem Analog Stereo", 40)
             self.add_source("alsa_input.test-analog-stereo", "Eingebautes Tonsystem Mikrofon", 70)
+            # Wie PipeWire 1.6 ohne eigenes Standardmikrofon (isolierte Probe
+            # mit echtem PipeWire, G2-J): Standardquelle ist der Monitor.
+            self.default_source = "alsa_output.test-analog-stereo.monitor"
         self.say("ZUSTAND Start", self.summary())
 
     # ---------------------------------------------------------------- Log
