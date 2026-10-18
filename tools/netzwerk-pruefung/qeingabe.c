@@ -11,6 +11,8 @@
 //   glide X Y MS      move in 10 ms steps over MS milliseconds
 //   click             left button press + release
 //   rclick / dclick   right click / left double click
+//   down B / up B     press / release button B (left, middle, right) alone,
+//                     for drags with glide in between (Teil 5)
 //   run CMD           start CMD in the background (test windows, HMP-06)
 //   scroll N          N wheel notches, positive = down (HMP-07)
 //   key NAME          Escape Down Up Left Right Return
@@ -149,6 +151,12 @@ int main(void) {
                 wl_display_roundtrip(display);
                 if (n > 1) sleep_ms(80);
             }
+        } else if ((!strcmp(cmd, "down") || !strcmp(cmd, "up")) && sscanf(line, "%*s %399s", arg) == 1) {
+            uint32_t button = !strcmp(arg, "middle") ? BTN_MIDDLE : !strcmp(arg, "right") ? BTN_RIGHT : BTN_LEFT;
+            zwlr_virtual_pointer_v1_button(pointer, now_ms(), button,
+                !strcmp(cmd, "down") ? WL_POINTER_BUTTON_STATE_PRESSED : WL_POINTER_BUTTON_STATE_RELEASED);
+            zwlr_virtual_pointer_v1_frame(pointer);
+            wl_display_roundtrip(display);
         } else if (!strcmp(cmd, "scroll") && sscanf(line, "%*s %ld", &ms) == 1) {
             // ms = notches: positive = down (next), negative = up
             zwlr_virtual_pointer_v1_axis_source(pointer, WL_POINTER_AXIS_SOURCE_WHEEL);

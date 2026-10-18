@@ -1,12 +1,12 @@
 #!/bin/bash
 # G2-M: ein isolierter GUI-Lauf.
 #   pruefen.sh <panel-binary> <profilname> <szenario> [zeitlimit-s]
-# Umgebung: G2M_AUFLOESUNG, G2M_NETZ, G2M_PANELINI (siehe szenario-g2m.sh).
+# Umgebung: G2M_AUFLOESUNG, G2M_NETZ, G2M_PANELINI, G2M_VORHER, G2M_NEUSTART (siehe szenario-g2m.sh).
 # Ergebnisse: nachweis/gui/<profil>/logs/ (Bilder, panel.log, qnm.log,
 # szenario.txt, panel.ini.*, qnm-ende.json).
 set -euo pipefail
 HIER="$(cd "$(dirname "$0")" && pwd)"
-WT=~/projects/querencia-runtime-wt-netzwerk
+WT=/home/user/projects/querencia-runtime-wt-netzwerk
 G=$WT/nachweis/gui
 PANEL="$(realpath -e "${1:?Panel-Binary}")"
 PROFIL="${2:?Profilname}"; SZ="$(realpath -e "${3:?Szenario}")"; LIMIT="${4:-300}"

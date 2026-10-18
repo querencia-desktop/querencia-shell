@@ -213,8 +213,9 @@ def has_rows(key, *expected):
 
 
 # ------------------------------------------------------------- allgemein
-check("Panel einmal gestartet (kein Neustart)", len(everywhere(r"Layout aus panel\.ini")) == 1,
-      len(everywhere(r"Layout aus panel\.ini")))
+if ART != "verschieben":
+    check("Panel einmal gestartet (kein Neustart)", len(everywhere(r"Layout aus panel\.ini")) == 1,
+          len(everywhere(r"Layout aus panel\.ini")))
 bad = everywhere(r"CRITICAL|panicked|Speicherzugriffsfehler|segfault")
 check("keine GLib-CRITICAL, kein Absturz", not bad, "; ".join(bad[:3]))
 check("Szenario vollständig", "ENDE" in order and "qeingabe exit 0" in szenario)
@@ -357,8 +358,68 @@ elif ART == "spaet":
     icon_is("s04-kabel-getrennt", "WiredDisconnected")
     check("S05 Info-Dialog und Eingabe schließt", p("S05", r"Dialog „Verbindungsinformationen“ geöffnet")
           and dialog_open("s05-info") and not dialog_open("s05-info-zu"))
+elif ART == "verschieben":
+    def moved(key, pattern):
+        check(f"{key} {pattern}", p(key, re.escape(pattern) + r"; gespeichert"), "")
+    check("V01 Rechtsklick auf die Uhr öffnet ihr Menü", p("V01", r"Appletmenü von clock-1 geöffnet"))
+    moved("V02", "clock-1 verschoben (Left): rechts 2 → rechts 1")
+    check("V03 Orte hat jetzt ein Menü", p("V03", r"Appletmenü von places-1 geöffnet"))
+    moved("V03", "places-1 verschoben (EndEdge): links 2 → rechts 3")
+    moved("V04", "system-1 verschoben (Right): links 2 → links 3")
+    check("V05 Ziehen mit der mittleren Taste beginnt", p("V05", r"Ziehen von launcher-1 beginnt \(mittlere Taste, links 2\)"))
+    moved("V05", "launcher-1 verschoben (gezogen): links 2 → Mitte 1")
+    def busy(shot):
+        """Pixel, die nicht Panelfarbe sind, in der Panelmitte (±14 px)."""
+        pb = load(shot)
+        bg = pixel(pb, 5, 30)
+        return sum(1 for x in range(CX - 14, CX + 15) for y in range(3, 29)
+                   if sum(abs(a_ - b_) for a_, b_ in zip(pixel(pb, x, y), bg)) > 60)
+    before, during = busy("v04-system-rechts"), busy("v05-unterwegs")
+    check("V05 live: bei noch gedrückter Taste steht der Starter schon in der Mitte",
+          before < 10 and during > 80, f"Mitte vorher {before}, während des Ziehens {during} Pixel")
+    check("V06 Verschieben aus dem Menü der Lautstärke", p("V06", r"Verschieben von volume-1 beginnt \(rechts 2\)"))
+    moved("V06", "volume-1 verschoben (Verschieben): rechts 2 → Mitte 2")
+    check("V07 Rechtsklick bricht Verschieben ab, nichts gespeichert",
+          p("V07", r"Verschieben von system-1 abgebrochen") and not p("V07", r"system-1 verschoben"))
+    check("V08 mittlerer Klick schaltet stumm, kein Ziehen",
+          p("V08", r"Lautstärke: mittlere Taste → stumm umschalten") and not p("V08", r"Ziehen von|verschoben"))
+    check("V09 Befund: Alt + Links erreicht das Panel nicht als Alt (kein Ziehen)", not p("V09", r"Ziehen von"))
+    check("V10 unteres Panel: Menü des Umschalters", p("V10", r"Appletmenü von workspace-switcher-1 geöffnet"))
+    moved("V10", "workspace-switcher-1 verschoben (StartEdge): rechts 1 → links 1")
+    moved("V11", "window-list-1 verschoben (gezogen): links 2 → rechts 1")
+    check("V12 Dialog zeigt den Bereich der freien Fläche", p("V12", r"Dialog „Zum Panel hinzufügen“ für Panel top geöffnet \(Bereich links\)"))
+    check("V13 Bereich im Dialog gewählt", p("V13", r"Dialog „Zum Panel hinzufügen“: Bereich rechts"))
+    check("V13 hinzugefügt im gewählten Bereich", p("V13", r"places-2 \(places\) zu Panel top hinzugefügt, Bereich rechts, Position 1; gespeichert"))
+    check("V14 Symbolthema neu eingelesen", p("V14", r"Symbolthema neu eingelesen \(Symbol .*w2m-neu\.svg\)"))
+    def magenta(shot):
+        pb = load(shot)
+        return sum(1 for x in range(0, W) for y in range(2, 30)
+                   if (lambda c: c[0] > 230 and c[1] < 40 and c[2] > 230)(pixel(pb, x, y)))
+    a, b = magenta("v14-vorher"), magenta("v14-nachher")
+    check("V14 Starter zeigt das neue Symbol ohne Neustart", a == 0 and b > 150, f"magenta vorher {a}, nachher {b}")
+    end = ini("panel.ini.ende")
+    for line in ("Start=applications-1;system-1", "Center=launcher-1;volume-1", "End=places-2;clock-1;places-1",
+                 "Start=workspace-switcher-1", "End=window-list-1"):
+        check(f"panel.ini: {line}", ("\n" + line + "\n") in ("\n" + end), "")
+    check("Neustart: Panel liest die Anordnung wieder", len(everywhere(r"Layout aus panel\.ini")) == 2)
+    pa, pb_ = load("vor-neustart"), load("nach-neustart")
+    diff = [(x, y) for y in list(range(0, 32)) + list(range(H - 32, H)) for x in range(W)
+            if pixel(pa, x, y) != pixel(pb_, x, y)]
+    xs = [x for x, _ in diff]
+    check("Neustart: beide Panels gleich (nur die Uhr darf abweichen)",
+          not diff or (max(xs) - min(xs) < 170 and all(y < 32 for _, y in diff)),
+          f"{len(diff)} Pixel" + (f", x {min(xs)}–{max(xs)}" if diff else ""))
+elif ART == "symbol":
+    def magenta(shot):
+        pb = load(shot)
+        return sum(1 for x in range(0, W) for y in range(2, 30)
+                   if (lambda c: c[0] > 230 and c[1] < 40 and c[2] > 230)(pixel(pb, x, y)))
+    counts = [magenta(s_) for s_ in ("y00-vorher", "y01-nach-2s", "y01-nach-12s")]
+    print("MESSUNG magenta-Pixel vorher / nach 2 s / nach 12 s:", counts)
+    check("Y00 vorher kein Symbol", counts[0] == 0, counts[0])
+    check("Y01 Symbol nach 2 s da", counts[1] > 150, counts[1])
 else:
-    sys.exit("Art: rueckfall, attrappe oder spaet")
+    sys.exit("Art: rueckfall, attrappe, spaet, verschieben oder symbol")
 
 n, ok = len(results), sum(results)
 print(f"{ok}/{n} Prüfungen bestanden")
