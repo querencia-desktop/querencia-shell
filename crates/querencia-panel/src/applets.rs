@@ -1,5 +1,6 @@
 //! The applet types a panel can show. Each type wraps one of the existing
-//! panel parts unchanged; its factory builds a fresh widget that releases
+//! panel parts unchanged; its factory builds a fresh widget for one layout
+//! instance (only the launcher reads the instance's settings) that releases
 //! everything it holds (GIO monitor handler, Wayland connection, timer) when
 //! the widget is destroyed, so a panel can later drop an applet by removing
 //! its widget. The type IDs are stable: the panel layout and `panel.ini`
@@ -8,7 +9,10 @@
 use gtk4::prelude::*;
 use gtk4::{Label, Widget};
 
-use crate::{app_menu, clock, places_menu, system_menu, window_list, workspace_switcher};
+use crate::layout::{Instance, LAUNCHER};
+use crate::{
+    app_menu, clock, launcher, logo, places_menu, system_menu, window_list, workspace_switcher,
+};
 
 /// One applet type.
 pub struct AppletType {
@@ -27,13 +31,28 @@ pub struct AppletType {
     /// own Wayland connection stay single for now: a second instance would
     /// open a second connection and show the same data twice.
     pub multiple: bool,
-    factory: fn() -> Widget,
+    /// Offered only while no panel has one (QREL-04d: the clock, as the
+    /// owner wants a single clock). Technically several work, and a stored
+    /// layout that already has several keeps them; only adding another is
+    /// refused (dialog greyed out, [`crate::layout_editor::Editor::add`]).
+    pub once: bool,
+    /// A right click on it offers "Aus dem Panel entfernen" (`panel_menu.rs`):
+    /// launchers and the clock. The other applets have no menu yet.
+    pub removable: bool,
+    /// Adding one first asks for an installed application (the launcher,
+    /// HMP-11): the "Zum Panel hinzufügen" dialog then shows its second
+    /// page.
+    pub chooses_application: bool,
+    /// Builds the widget for a layout instance on a panel of the given
+    /// height (only "Anwendungen" uses the height, for its logo).
+    factory: fn(&Instance, i32) -> Widget,
 }
 
 impl AppletType {
-    /// Builds a new instance of this applet.
-    pub fn create(&self) -> Widget {
-        (self.factory)()
+    /// Builds the widget of the layout instance `instance` of this type for
+    /// a panel `panel_height` pixels high.
+    pub fn create(&self, instance: &Instance, panel_height: i32) -> Widget {
+        (self.factory)(instance, panel_height)
     }
 }
 
@@ -44,10 +63,14 @@ pub const APPLETS: &[AppletType] = &[
         id: "applications",
         name: "Anwendungen",
         description: "Menü der installierten Anwendungen",
-        icon: "start-here",
+        // The Querencia logo (QREL-04c), not the theme's `start-here`.
+        icon: logo::ICON_NAME,
         classic_icon: None,
         multiple: true,
-        factory: || app_menu::button().upcast(),
+        once: false,
+        removable: false,
+        chooses_application: false,
+        factory: |_, height| app_menu::button(height).upcast(),
     },
     AppletType {
         id: "places",
@@ -56,7 +79,10 @@ pub const APPLETS: &[AppletType] = &[
         icon: "folder",
         classic_icon: None,
         multiple: true,
-        factory: || places_menu::button().upcast(),
+        once: false,
+        removable: false,
+        chooses_application: false,
+        factory: |_, _| places_menu::button().upcast(),
     },
     AppletType {
         id: "system",
@@ -65,7 +91,10 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-system",
         classic_icon: None,
         multiple: true,
-        factory: || system_menu::button().upcast(),
+        once: false,
+        removable: false,
+        chooses_application: false,
+        factory: |_, _| system_menu::button().upcast(),
     },
     AppletType {
         id: "window-list",
@@ -74,7 +103,10 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-system-windows",
         classic_icon: None,
         multiple: false,
-        factory: || window_list::widget().upcast(),
+        once: false,
+        removable: false,
+        chooses_application: false,
+        factory: |_, _| window_list::widget().upcast(),
     },
     AppletType {
         id: "workspace-switcher",
@@ -83,7 +115,10 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-desktop-workspaces",
         classic_icon: Some("workspace-switcher"),
         multiple: false,
-        factory: || workspace_switcher::widget().upcast(),
+        once: false,
+        removable: false,
+        chooses_application: false,
+        factory: |_, _| workspace_switcher::widget().upcast(),
     },
     AppletType {
         id: "clock",
@@ -92,10 +127,27 @@ pub const APPLETS: &[AppletType] = &[
         icon: "preferences-system-time",
         classic_icon: Some("clock"),
         multiple: true,
-        factory: || {
+        once: true,
+        removable: true,
+        chooses_application: false,
+        factory: |_, _| {
             let label = Label::new(None);
             clock::attach(&label);
             label.upcast()
+        },
+    },
+    AppletType {
+        id: LAUNCHER,
+        name: "Anwendungsstarter …",
+        description: "Einen Starter aus dem Anwendungsmenü kopieren",
+        icon: "system-run",
+        classic_icon: None,
+        multiple: true,
+        once: false,
+        removable: true,
+        chooses_application: true,
+        factory: |instance, _| {
+            launcher::button(instance.app.as_deref().unwrap_or_default()).upcast()
         },
     },
 ];
@@ -121,7 +173,8 @@ mod tests {
                 "system",
                 "window-list",
                 "workspace-switcher",
-                "clock"
+                "clock",
+                "launcher"
             ]
         );
         assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len());
@@ -154,6 +207,29 @@ mod tests {
                 ("clock", "clock")
             ]
         );
+    }
+
+    #[test]
+    fn only_the_launcher_asks_for_an_application_and_it_may_repeat() {
+        let choosing: Vec<_> = APPLETS
+            .iter()
+            .filter(|a| a.chooses_application)
+            .map(|a| a.id)
+            .collect();
+        assert_eq!(choosing, [LAUNCHER]);
+        assert!(find(LAUNCHER).unwrap().multiple);
+    }
+
+    #[test]
+    fn only_the_clock_is_offered_once_and_launchers_and_clock_are_removable() {
+        let once: Vec<_> = APPLETS.iter().filter(|a| a.once).map(|a| a.id).collect();
+        assert_eq!(once, ["clock"]);
+        let removable: Vec<_> = APPLETS
+            .iter()
+            .filter(|a| a.removable)
+            .map(|a| a.id)
+            .collect();
+        assert_eq!(removable, ["clock", LAUNCHER]);
     }
 
     #[test]

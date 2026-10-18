@@ -47,6 +47,15 @@ pub fn logout_command() -> Option<PathBuf> {
     })
 }
 
+/// The running panel application, for the panel's own windows: belonging
+/// to it gives them the panel's app ID (`org.example.Querencia.Panel`)
+/// instead of the program's file name, so the window list shows them with
+/// the Querencia logo (QREL-04c). `None` outside a running application
+/// (tests).
+pub(crate) fn panel_application() -> Option<gtk4::Application> {
+    gio::Application::default().and_downcast()
+}
+
 /// Asks, as GNOME 2 did, whether to log out; "Abbrechen" has the focus.
 /// Raises the open question in `slot` instead of asking twice.
 pub fn confirm_logout(slot: &glib::WeakRef<Window>, labwc: PathBuf) {
@@ -58,6 +67,7 @@ pub fn confirm_logout(slot: &glib::WeakRef<Window>, labwc: PathBuf) {
         .title(LOGOUT_TITLE)
         .resizable(false)
         .build();
+    window.set_application(panel_application().as_ref());
 
     let icon = Image::from_gicon(&gio::ThemedIcon::from_names(&[
         "system-log-out",

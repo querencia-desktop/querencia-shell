@@ -7,14 +7,19 @@
 //! `activate` and `commit`, and the highlight changes when labwc reports
 //! the new state.
 //!
-//! HMP-07, the GNOME 2 pager look: small cells side by side, miniatures of
-//! the screen ([`cell_size`]) without numbers, 1 px light lines between
-//! them, inactive cells taupe, the active one as in the Ubuntu reference
-//! (dark orange frame, cream line, salmon inside). The name is in the
-//! tooltip; the mouse wheel steps through the workspaces. GNOME 2 drew the
-//! windows into the cells; labwc 0.9.8 does not tell which workspace a
-//! window is on (neither `zwlr_foreign_toplevel` nor `ext_workspace` v1
-//! link them), so the cells stay empty.
+//! The GNOME 2 pager look (HMP-07, colours HMP-11b): small cells side by
+//! side, miniatures of the screen ([`cell_size`]) without numbers, light
+//! grey raised rectangles in a sunken frame, the active one in Querencia
+//! orange (style in `main.rs`). The name is in the tooltip; the mouse wheel
+//! steps through the workspaces.
+//!
+//! GNOME 2 drew the windows into the cells. labwc 0.9.8 gives a client
+//! neither which workspace a window is on (`zwlr_foreign_toplevel_manager_v1`
+//! v3, `ext_foreign_toplevel_list_v1` and `ext_workspace_manager_v1` v1 do
+//! not link them) nor where a window is or how large (no protocol reports
+//! window geometry; `set_rectangle` only goes from client to compositor).
+//! So the cells stay empty instead of showing invented windows; evidence in
+//!  and the HMP-11b report.
 
 use std::cell::RefCell;
 use std::collections::HashMap;

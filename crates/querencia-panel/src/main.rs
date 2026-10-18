@@ -1,13 +1,16 @@
 mod about;
 mod add_dialog;
+mod app_chooser;
 mod app_menu;
 mod applets;
 mod apps;
 mod classic_menu;
 mod clock;
+mod launcher;
 mod layout;
 mod layout_editor;
 mod layout_store;
+mod logo;
 mod panel;
 mod panel_menu;
 mod places_menu;
@@ -25,24 +28,33 @@ use gtk4::{Application, gio, glib};
 
 use crate::layout_editor::Editor;
 
-const APP_ID: &str = "org.example.Querencia.Panel";
+pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
 
 // GTK's default button min-height plus padding is 34 px and would push a
 // panel of layout::DEFAULT_HEIGHT past its height; panel buttons fill the
 // bar height instead.
 //
-// Workspace switcher (HMP-07), measured in the GNOME 2 reference: cells
-// side by side in a 1 px frame #cdc6be, separated by 1 px light lines
-// #faf1e8, inactive taupe #b7ab9f; the active cell as the reference shows
-// it: dark orange frame #a5522d (3 px), cream line #fff2da, salmon #feb396.
-// GTK paints the later of two inset shadows on top: the 3 px frame is
-// listed after the 4 px cream one.
+// Workspace switcher (HMP-11b, replaces the HMP-07 taupe look): the classic
+// GNOME 2 pager in the light greys of the window theme Querencia-Klassisch.
+// The pager sits in a sunken 1 px frame (dark #9e9993 top and left, light
+// #fdfcfb bottom and right) on #d8d4d0; every cell is a small raised
+// rectangle: light gradient #f4f2f0..#e4e1de with a white top-left and a
+// #c6c1bb bottom-right edge, cells separated by 1 px #aaa6a2 (the theme's
+// inactive frame colour). The active cell uses the Querencia orange of the
+// menu highlight (#f8875d..#ea703d, edges #fd9975 and #b36c4e), so it
+// stands out clearly. Square corners, no transitions (GTK would fade the
+// colour on every switch).
 //
 // Window list (HMP-06), measured in the GNOME 2 reference (Ambiance): framed
 // buttons, 1 px border #c6c1bb on top, #9e9993 below, light gradient; the
 // active window's button looks pressed (darker gradient #dcd6d0..#ebe7e3,
 // inset shadow); a minimized window's button is flat and its icon and
 // title dimmed. Dark text always, no orange (the orange belongs to menus).
+//
+// Application launchers (HMP-11): only the icon, no frame, as in the GNOME 2
+// panel; on hover and while pressed the neutral highlight of the main menu
+// buttons (never orange); a launcher whose application is missing has a
+// dimmed generic icon.
 //
 // The classic menus of Anwendungen, Orte and System (classic_menu.rs) look
 // like the GNOME 2 menus of Ubuntu with its theme Ambiance. The colours are
@@ -69,17 +81,21 @@ const APP_ID: &str = "org.example.Querencia.Panel";
 const PANEL_CSS: &str = "
 .querencia-panel menubutton > button,
 .querencia-panel button.window-button { min-height: 0; padding-top: 0; padding-bottom: 0; }
-.querencia-panel box.workspace-pager { border: 1px solid #cdc6be; border-radius: 2px; background-color: #b7ab9f; }
-.querencia-panel box.workspace-pager > button.workspace-cell { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; border-radius: 0; background-image: none; background-color: #b7ab9f; box-shadow: none; outline: none; }
-.querencia-panel box.workspace-pager > button.workspace-cell + button.workspace-cell { border-left: 1px solid #faf1e8; }
-.querencia-panel box.workspace-pager > button.workspace-cell:hover { background-color: #c5bbb1; }
-.querencia-panel box.workspace-pager > button.workspace-cell.active { background-color: #feb396; box-shadow: inset 0 0 0 4px #fff2da, inset 0 0 0 3px #a5522d; }
+.querencia-panel box.workspace-pager { border: 1px solid #9e9993; border-right-color: #fdfcfb; border-bottom-color: #fdfcfb; border-radius: 0; background-color: #d8d4d0; }
+.querencia-panel box.workspace-pager > button.workspace-cell { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; border-radius: 0; background-color: #eeece9; background-image: linear-gradient(to bottom, #f4f2f0, #e4e1de); box-shadow: inset 1px 1px #ffffff, inset -1px -1px #c6c1bb; outline: none; transition: none; }
+.querencia-panel box.workspace-pager > button.workspace-cell + button.workspace-cell { border-left: 1px solid #aaa6a2; }
+.querencia-panel box.workspace-pager > button.workspace-cell:hover { background-image: linear-gradient(to bottom, #fbfaf9, #ecebe8); }
+.querencia-panel box.workspace-pager > button.workspace-cell.active { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); box-shadow: inset 1px 1px #fd9975, inset -1px -1px #b36c4e; }
 .querencia-panel box.workspace-pager > button.workspace-cell:disabled { opacity: 0.5; }
 .querencia-panel windowlist button.window-button { margin: 2px 0; padding: 0 6px 0 4px; border-radius: 2px; border: 1px solid #b7b3b0; border-top-color: #c6c1bb; border-bottom-color: #9e9993; background-color: #f4f2f0; background-image: linear-gradient(to bottom, #fdfcfb, #ebe8e5); box-shadow: none; outline: none; color: #3c3c3c; font-weight: normal; }
 .querencia-panel windowlist button.window-button:hover { background-image: linear-gradient(to bottom, #ffffff, #f1efec); }
 .querencia-panel windowlist button.window-button.active { background-color: #e4dfd9; background-image: linear-gradient(to bottom, #dcd6d0, #ebe7e3); border-color: #9e9993; box-shadow: inset 0 1px 2px alpha(#000000, 0.15); }
 .querencia-panel windowlist button.window-button.minimized { background-image: none; background-color: #f7f6f4; border-color: #cdc8c3; }
 .querencia-panel windowlist button.window-button.minimized > box { opacity: 0.55; }
+.querencia-panel button.querencia-launcher { min-width: 0; min-height: 0; padding: 0 2px; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
+.querencia-panel button.querencia-launcher:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
+.querencia-panel button.querencia-launcher:active { background-color: #dcd6d0; border-color: #9e9993; }
+.querencia-panel button.querencia-launcher.missing > image { opacity: 0.45; }
 .querencia-panel menubutton.querencia-main-menu > button { border-radius: 0; padding-left: 6px; padding-right: 6px; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; color: #3c3c3c; }
 .querencia-panel menubutton.querencia-main-menu > button:hover,
 .querencia-panel menubutton.querencia-main-menu > button:active,
@@ -309,7 +325,8 @@ mod tests {
         assert!(PANEL_CSS.contains("min-height: 20px"));
     }
 
-    /// HMP-07: the pager looks like GNOME 2's and stays in the panel.
+    /// HMP-11b: the pager looks like GNOME 2's in the light greys of
+    /// Querencia-Klassisch, with the active cell in Querencia orange.
     #[test]
     fn workspace_pager_looks_like_the_gnome2_pager() {
         let rule = |sel: &str| {
@@ -318,22 +335,44 @@ mod tests {
                 .find(|l| l.starts_with(sel))
                 .unwrap_or_else(|| panic!("keine Regel für {sel}"))
         };
+        let pager = rule(".querencia-panel box.workspace-pager {");
+        // sunken frame: dark top and left, light bottom and right
+        assert!(pager.contains("border: 1px solid #9e9993"), "{pager}");
+        assert!(pager.contains("border-right-color: #fdfcfb"), "{pager}");
+        assert!(pager.contains("border-bottom-color: #fdfcfb"), "{pager}");
         let cell = rule(".querencia-panel box.workspace-pager > button.workspace-cell {");
-        assert!(cell.contains("background-color: #b7ab9f"), "{cell}");
+        assert!(
+            cell.contains("background-color: #eeece9"),
+            "hellgrau: {cell}"
+        );
+        // raised: light top-left, darker bottom-right edge
+        assert!(
+            cell.contains("inset 1px 1px #ffffff, inset -1px -1px #c6c1bb"),
+            "{cell}"
+        );
         assert!(
             cell.contains("min-width: 0") && cell.contains("padding: 0"),
             "{cell}"
         );
+        assert!(cell.contains("transition: none"), "keine Animation: {cell}");
         let line = rule(
             ".querencia-panel box.workspace-pager > button.workspace-cell + button.workspace-cell {",
         );
-        assert!(line.contains("border-left: 1px solid #faf1e8"), "{line}");
+        assert!(line.contains("border-left: 1px solid #aaa6a2"), "{line}");
         let active = rule(".querencia-panel box.workspace-pager > button.workspace-cell.active {");
-        assert!(active.contains("background-color: #feb396"), "{active}");
-        assert!(active.contains("inset 0 0 0 3px #a5522d"), "{active}");
+        assert!(
+            active.contains("#f8875d, #ea703d"),
+            "Querencia-Orange: {active}"
+        );
+        assert!(active.contains("inset -1px -1px #b36c4e"), "{active}");
         for l in PANEL_CSS.lines().filter(|l| l.contains("workspace")) {
             assert!(l.starts_with(".querencia-panel "), "nicht begrenzt: {l}");
             assert!(!l.contains("font-weight"), "{l}");
+            // square cells, no modern rounded cards
+            assert!(
+                !l.contains("border-radius") || l.contains("border-radius: 0"),
+                "{l}"
+            );
         }
     }
 
@@ -398,6 +437,48 @@ mod tests {
             assert!(!rule.contains("#ffffff"), "keine weiße Schrift: {rule}");
             if rule.contains("background") {
                 assert!(rule.contains("color: #3c3c3c"), "dunkle Schrift: {rule}");
+            }
+        }
+    }
+
+    /// HMP-11: launchers are a bare icon like in the GNOME 2 panel; hover
+    /// and press use the neutral highlight of the main menu buttons, never
+    /// orange; a missing application is dimmed.
+    #[test]
+    fn launchers_are_compact_icons_without_orange() {
+        let rules: Vec<&str> = PANEL_CSS
+            .lines()
+            .filter(|l| l.contains("querencia-launcher"))
+            .collect();
+        let base = rules
+            .iter()
+            .find(|r| r.starts_with(".querencia-panel button.querencia-launcher {"))
+            .expect("Grundregel");
+        for part in [
+            "padding: 0 2px",
+            "border: 1px solid transparent",
+            "background-image: none",
+            "outline: none",
+        ] {
+            assert!(base.contains(part), "{part}: {base}");
+        }
+        assert!(
+            rules
+                .iter()
+                .any(|r| r.contains(":hover") && r.contains("#ebe7e3"))
+        );
+        assert!(
+            rules
+                .iter()
+                .any(|r| r.contains(".missing") && r.contains("opacity"))
+        );
+        for rule in &rules {
+            assert!(
+                rule.starts_with(".querencia-panel "),
+                "nicht begrenzt: {rule}"
+            );
+            for orange in ["#f07746", "#f8875d", "#ea703d", "orange"] {
+                assert!(!rule.contains(orange), "{rule}");
             }
         }
     }

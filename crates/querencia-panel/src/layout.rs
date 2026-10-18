@@ -87,11 +87,19 @@ impl Region {
     }
 }
 
+/// Applet type of an application launcher (HMP-11). It is the only type
+/// whose instances carry a setting of their own: the desktop ID of the
+/// application they start ([`Instance::app`]).
+pub const LAUNCHER: &str = "launcher";
+
 /// One applet on a panel: a stable instance ID and the applet type it shows.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Instance {
     pub id: String,
     pub applet: String,
+    /// Desktop ID (e.g. `firefox_firefox.desktop`) of the application a
+    /// [`LAUNCHER`] starts; `None` for every other applet type.
+    pub app: Option<String>,
 }
 
 impl Instance {
@@ -99,6 +107,16 @@ impl Instance {
         Instance {
             id: id.to_string(),
             applet: applet.to_string(),
+            app: None,
+        }
+    }
+
+    /// A [`LAUNCHER`] instance for the application with desktop ID `app`.
+    #[cfg(test)]
+    pub fn launcher(id: &str, app: &str) -> Instance {
+        Instance {
+            app: Some(app.to_string()),
+            ..Instance::new(id, LAUNCHER)
         }
     }
 }
@@ -143,6 +161,15 @@ impl PanelSpec {
     /// All instances, region by region, each in its order.
     pub fn instances(&self) -> impl Iterator<Item = &Instance> {
         self.regions.iter().flatten()
+    }
+
+    /// Removes the instance `instance_id` and returns it; `None` (nothing
+    /// changed) if the panel has no such instance.
+    fn remove(&mut self, instance_id: &str) -> Option<Instance> {
+        self.regions.iter_mut().find_map(|items| {
+            let index = items.iter().position(|i| i.id == instance_id)?;
+            Some(items.remove(index))
+        })
     }
 }
 
@@ -242,6 +269,10 @@ impl Layout {
                         Some("ungültige ID")
                     } else if instance_ids.contains(&instance.id) {
                         Some("doppelte ID")
+                    } else if instance.applet == LAUNCHER
+                        && !instance.app.as_deref().is_some_and(valid_desktop_id)
+                    {
+                        Some("Anwendung fehlt oder ungültig")
                     } else {
                         match applet(&instance.applet) {
                             None => Some("unbekannter Applet-Typ"),
@@ -262,7 +293,15 @@ impl Layout {
                         single_types.push(instance.applet.clone());
                     }
                     instance_ids.push(instance.id.clone());
-                    kept.push(region, instance.clone());
+                    let mut instance = instance.clone();
+                    if instance.applet != LAUNCHER && instance.app.take().is_some() {
+                        problems.push(format!(
+                            "Applet „{}“ ({}) in Panel „{}“: DesktopId gilt nur für \
+                             Anwendungsstarter, ignoriert",
+                            instance.id, instance.applet, panel.id
+                        ));
+                    }
+                    kept.push(region, instance);
                 }
             }
             panels.push(kept);
@@ -296,6 +335,9 @@ pub enum AddError {
     SingleInstance(String),
     /// Every candidate instance ID is taken (needs thousands of instances).
     NoFreeId(String),
+    /// A launcher needs the valid desktop ID of an application, every other
+    /// type none (the text given).
+    Application(String),
 }
 
 impl std::fmt::Display for AddError {
@@ -308,6 +350,12 @@ impl std::fmt::Display for AddError {
                 "Applet-Typ „{id}“ ist nur einmal erlaubt und schon vorhanden"
             ),
             AddError::NoFreeId(id) => write!(f, "keine freie Instanz-ID für „{id}“"),
+            AddError::Application(app) if app.is_empty() => {
+                write!(f, "ein Anwendungsstarter braucht eine Anwendung")
+            }
+            AddError::Application(app) => {
+                write!(f, "„{app}“ ist keine gültige Desktop-ID für einen Starter")
+            }
         }
     }
 }
@@ -350,6 +398,31 @@ impl Layout {
         region: Region,
         applet: impl Fn(&str) -> Option<bool>,
     ) -> Result<Added, AddError> {
+        self.add_instance(panel_id, applet_id, None, region, applet)
+    }
+
+    /// Adds a new [`LAUNCHER`] for the application with the desktop ID
+    /// `app`, like [`Layout::add_applet`]. Several launchers, even for the
+    /// same application, are allowed; each gets its own instance ID
+    /// `launcher-<n>`.
+    pub fn add_launcher(
+        &mut self,
+        panel_id: &str,
+        app: &str,
+        region: Region,
+        applet: impl Fn(&str) -> Option<bool>,
+    ) -> Result<Added, AddError> {
+        self.add_instance(panel_id, LAUNCHER, Some(app), region, applet)
+    }
+
+    fn add_instance(
+        &mut self,
+        panel_id: &str,
+        applet_id: &str,
+        app: Option<&str>,
+        region: Region,
+        applet: impl Fn(&str) -> Option<bool>,
+    ) -> Result<Added, AddError> {
         let multiple = match applet(applet_id) {
             Some(multiple) if valid_id(applet_id) => multiple,
             _ => return Err(AddError::UnknownApplet(applet_id.to_string())),
@@ -360,6 +433,13 @@ impl Layout {
         if !multiple && self.has_applet(applet_id) {
             return Err(AddError::SingleInstance(applet_id.to_string()));
         }
+        match (applet_id == LAUNCHER, app) {
+            (true, Some(app)) if valid_desktop_id(app) => {}
+            (true, app) | (false, app @ Some(_)) => {
+                return Err(AddError::Application(app.unwrap_or_default().to_string()));
+            }
+            (false, None) => {}
+        }
         let id = self
             .free_instance_id(applet_id)
             .ok_or_else(|| AddError::NoFreeId(applet_id.to_string()))?;
@@ -369,7 +449,10 @@ impl Layout {
             .find(|p| p.id == panel_id)
             .expect("checked above");
         let index = region.insertion_index(panel.region(region).len());
-        let instance = Instance::new(&id, applet_id);
+        let instance = Instance {
+            app: app.map(str::to_string),
+            ..Instance::new(&id, applet_id)
+        };
         panel.insert(region, index, instance.clone());
         Ok(Added {
             instance,
@@ -378,7 +461,17 @@ impl Layout {
         })
     }
 
-    fn has_applet(&self, applet_id: &str) -> bool {
+    /// Removes the applet instance `instance_id` from whichever panel holds
+    /// it and returns the removed instance; `None` if there is no such
+    /// instance, and the layout is unchanged. Its ID becomes free again.
+    pub fn remove_applet(&mut self, instance_id: &str) -> Option<Instance> {
+        self.panels
+            .iter_mut()
+            .find_map(|panel| panel.remove(instance_id))
+    }
+
+    /// Whether any panel has an instance of the applet type `applet_id`.
+    pub fn has_applet(&self, applet_id: &str) -> bool {
         self.panels
             .iter()
             .flat_map(|p| p.instances())
@@ -410,6 +503,18 @@ pub fn valid_id(id: &str) -> bool {
         && id
             .bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
+/// Desktop IDs a launcher may store: what GIO accepts as the ID of an
+/// installed desktop entry, ending in `.desktop`, without `/` (a path is no
+/// ID), without `;` (the list separator of the key file) and without
+/// control characters, at most 255 bytes.
+pub fn valid_desktop_id(id: &str) -> bool {
+    id.len() > ".desktop".len()
+        && id.len() <= 255
+        && id.ends_with(".desktop")
+        && !id.starts_with('.')
+        && !id.chars().any(|c| c == '/' || c == ';' || c.is_control())
 }
 
 #[cfg(test)]
@@ -826,5 +931,130 @@ mod tests {
         }
         assert_eq!(Edge::parse("left"), None);
         assert_eq!(Edge::parse("Top"), None);
+    }
+
+    // ---- HMP-11: application launchers ----
+
+    #[test]
+    fn launchers_get_their_own_ids_and_keep_their_application() {
+        let mut layout = Layout::standard();
+        for (app, id) in [
+            ("firefox_firefox.desktop", "launcher-1"),
+            ("org.example.Beispiel.desktop", "launcher-2"),
+            ("firefox_firefox.desktop", "launcher-3"),
+        ] {
+            let added = layout
+                .add_launcher("top", app, Region::Start, known)
+                .expect("launcher");
+            assert_eq!(added.instance, Instance::launcher(id, app));
+        }
+        let top = &layout.panels[0];
+        assert_eq!(
+            ids(top, Region::Start),
+            [
+                "applications-1",
+                "places-1",
+                "system-1",
+                "launcher-1",
+                "launcher-2",
+                "launcher-3"
+            ]
+        );
+        let apps: Vec<_> = top
+            .region(Region::Start)
+            .iter()
+            .filter_map(|i| i.app.as_deref())
+            .collect();
+        assert_eq!(
+            apps,
+            [
+                "firefox_firefox.desktop",
+                "org.example.Beispiel.desktop",
+                "firefox_firefox.desktop"
+            ]
+        );
+        // The result is a valid layout as it stands.
+        let checked = layout.clone().validated(known);
+        assert!(checked.problems.is_empty(), "{:?}", checked.problems);
+        assert_eq!(checked.layout, layout);
+    }
+
+    #[test]
+    fn a_launcher_needs_a_valid_desktop_id_and_others_take_none() {
+        let mut layout = Layout::standard();
+        for bad in [
+            "",
+            "firefox",
+            ".desktop",
+            "/usr/share/applications/firefox.desktop",
+            "a;b.desktop",
+            "neu\nzeile.desktop",
+        ] {
+            assert_eq!(
+                layout.add_launcher("top", bad, Region::Start, known),
+                Err(AddError::Application(bad.to_string())),
+                "{bad:?}"
+            );
+        }
+        assert_eq!(
+            layout.add_applet("top", LAUNCHER, Region::Start, known),
+            Err(AddError::Application(String::new()))
+        );
+        assert_eq!(layout, Layout::standard());
+        assert!(valid_desktop_id("org.example.Querencia.Terminal.desktop"));
+        assert!(valid_desktop_id("firefox_firefox.desktop"));
+        assert!(valid_desktop_id("kde-org.kde.kate.desktop"));
+    }
+
+    #[test]
+    fn validation_drops_launchers_without_application_and_strips_stray_ids() {
+        let mut panel = PanelSpec::new("top", Edge::Top, DEFAULT_HEIGHT);
+        panel.push(
+            Region::Start,
+            Instance::launcher("launcher-1", "foot.desktop"),
+        );
+        panel.push(Region::Start, Instance::new("launcher-2", LAUNCHER));
+        panel.push(
+            Region::Start,
+            Instance::launcher("launcher-3", "kein/pfad.desktop"),
+        );
+        panel.push(
+            Region::End,
+            Instance {
+                app: Some("foot.desktop".into()),
+                ..Instance::new("clock-1", "clock")
+            },
+        );
+        let checked = Layout {
+            panels: vec![panel],
+        }
+        .validated(known);
+        let top = &checked.layout.panels[0];
+        assert_eq!(ids(top, Region::Start), ["launcher-1"]);
+        assert_eq!(top.region(Region::End), [Instance::new("clock-1", "clock")]);
+        assert_eq!(checked.problems.len(), 3, "{:#?}", checked.problems);
+    }
+
+    #[test]
+    fn removing_frees_the_id_and_leaves_the_rest() {
+        let mut layout = Layout::standard();
+        layout
+            .add_launcher("bottom", "a.desktop", Region::Start, known)
+            .unwrap();
+        layout
+            .add_launcher("bottom", "b.desktop", Region::Start, known)
+            .unwrap();
+        let removed = layout.remove_applet("launcher-1").expect("removed");
+        assert_eq!(removed, Instance::launcher("launcher-1", "a.desktop"));
+        assert_eq!(
+            ids(&layout.panels[1], Region::Start),
+            ["window-list-1", "launcher-2"]
+        );
+        assert_eq!(layout.remove_applet("launcher-1"), None);
+        assert_eq!(layout.remove_applet("unbekannt"), None);
+        let again = layout
+            .add_launcher("bottom", "c.desktop", Region::Start, known)
+            .unwrap();
+        assert_eq!(again.instance.id, "launcher-1");
     }
 }
