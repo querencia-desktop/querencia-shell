@@ -262,6 +262,83 @@ elif ART == "spaet":
     rmenu(R_INFO, 1500); shot("s05-info")
     keys("Return", wait=1200); shot("s05-info-zu")
     mark("ENDE", "")
+elif ART == "verschieben":
+    # Teil 5/6 (unabhängig vom Netzwerk-Applet): panel-verschieben.ini mit
+    # Starter (Symbol w2m-neu kommt später) oben links, Lautstärke und Uhr
+    # oben rechts; Fensterliste und Umschalter unten. Positionen vermessen
+    # bei 1024x768 (Start-Bereich von links, End-Bereich von rechts).
+    UHR = W - 76            # Uhr, zuletzt im End-Bereich
+    LAUT = W - 170          # Lautstärke vor der Uhr
+    ORTE, SYSTEM = 195, 269
+    RM = 38                 # erste Zeile eines Rechtsklickmenüs oben
+    def rm(i):              # Zeile i (0 = Verschieben) des Abschnitts Verschieben
+        return RM + 30 * i
+    mark("V00", "Ausgangslage")
+    z("wait 1000"); shot("v00-ausgang")
+    mark("V01", "Uhr: Rechtsklick, Menü mit Entfernen und Verschieben")
+    click(UHR, NY, 1000, "rclick"); shot("v01-uhr-menue")
+    mark("V02", "Uhr: Nach links (vor die Lautstärke)")
+    click(RMENU_X, 111, 1200); icon("v02-uhr-links")
+    mark("V03", "Orte: Rechtsklick, nur Verschieben; An den rechten Rand")
+    click(ORTE, NY, 1000, "rclick"); shot("v03-orte-menue")
+    click(ORTE + 60, rm(4), 1200); icon("v03-orte-rechts")
+    mark("V04", "System: Nach rechts (tauscht mit dem Starter)")
+    click(SYSTEM - 74, NY, 1000, "rclick")
+    click(SYSTEM - 14, rm(2), 1200); icon("v04-system-rechts")
+    mark("V05", "Starter (jetzt dritter links) mit mittlerer Taste in die Mitte ziehen")
+    z(f"move {SYSTEM - 74} {NY}", "wait 300", "down middle", "wait 100",
+      f"glide {CX - 200} {NY} 300", "wait 200", f"glide {CX} {NY} 300", "wait 400")
+    shot("v05-unterwegs")   # Taste noch gedrückt
+    z("up middle", "wait 1200")
+    icon("v05-mitte")
+    mark("V06", "Lautstärke: Verschieben aus dem eigenen Menü, Zeiger in die Mitte rechts vom Starter, Linksklick setzt")
+    click(W - 87, NY, 1000, "rclick"); shot("v06-laut-menue")
+    click(RMENU_X, 153, 900)
+    z(f"glide {CX + 60} {NY} 500", "wait 400"); shot("v06-folgt")
+    z("click", "wait 1200"); icon("v06-gesetzt")
+    mark("V07", "System: Verschieben, Rechtsklick bricht ab")
+    click(206, NY, 1000, "rclick")
+    click(266, rm(0), 900)
+    z(f"glide {W - 300} {NY} 500", "wait 400"); shot("v07-folgt")
+    z("rclick", "wait 1200"); icon("v07-zurueck")
+    mark("V08", "mittlerer Klick auf die Lautstärke: stumm (kein Ziehen)")
+    z(f"move {CX + 21} {NY}", "wait 300", "mclick", "wait 1200")
+    mark("V09", "Alt + Linksklick-Ziehen (Befund: GTK kennt Alt am Panel nicht)")
+    z(f"move {CX} {NY}", "wait 300", "keydown Alt_L", "wait 100", "down left", "wait 100",
+      f"glide {CX + 200} {NY} 300", "wait 200", "up left", "wait 100", "keyup Alt_L", "wait 1200")
+    z("key Escape", "wait 600"); icon("v09-alt")
+    mark("V10", "unten: Arbeitsflächenumschalter an den linken Rand (Menü öffnet nach oben)")
+    click(W - 30, H - 16, 1000, "rclick"); shot("v10-unten-menue")
+    click(W - 120, H - 67, 1200); icon("v10-umschalter-links")
+    mark("V11", "unten: Fensterliste auf ihrer freien Fläche mit mittlerer Taste nach rechts ziehen")
+    z(f"move {CX} {H - 16}", "wait 300", "down middle", "wait 100",
+      f"glide {W - 60} {H - 16} 500", "wait 300", "up middle", "wait 1200")
+    icon("v11-fensterliste-rechts")
+    mark("V12", "Zum Panel hinzufügen links oben: Dialog zeigt Bereich Links")
+    click(300, NY, 900, "rclick")
+    click(360, 50, 1500); shot("v12-dialog-links")
+    mark("V13", "Bereich auf Rechts stellen, Orte hinzufügen: kommt rechts")
+    click(CX - 121, CY + 203, 900); shot("v13-bereichsliste")
+    click(CX - 121, CY + 203 + 118, 900); shot("v13-bereich-rechts")
+    click(CX, CY - 155, 500)
+    z("type Orte", "wait 800")
+    click(CX, CY - 103, 1800, "dclick"); shot("v13-hinzugefuegt")
+    close_add_dialog()
+    mark("V14", "Teil 6: Symbol des Starters erscheint ohne Neustart")
+    icon("v14-vorher")
+    z("run cp WERKZEUG/w2m-neu.svg $XDG_DATA_HOME/icons/hicolor/scalable/apps/w2m-neu.svg", "wait 2500")
+    icon("v14-nachher")
+    mark("ENDE", "")
+elif ART == "symbol":
+    # Teil 6 als A/B: nur das spät abgelegte Symbol des Starters, auch mit
+    # einem Panel ohne die Korrektur.
+    mark("Y00", "Starter ohne Symbol")
+    z("wait 1000"); icon("y00-vorher")
+    mark("Y01", "Symbol in den bestehenden Ordner hicolor/scalable/apps legen")
+    z("run cp WERKZEUG/w2m-neu.svg $XDG_DATA_HOME/icons/hicolor/scalable/apps/w2m-neu.svg", "wait 2500")
+    icon("y01-nach-2s")
+    z("wait 10000"); icon("y01-nach-12s")
+    mark("ENDE", "")
 else:
-    sys.exit("Art: rueckfall, attrappe oder spaet")
+    sys.exit("Art: rueckfall, attrappe, spaet, verschieben oder symbol")
 print("\n".join(out))

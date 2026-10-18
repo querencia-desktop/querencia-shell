@@ -38,6 +38,8 @@ attrappe|spaet)
   [ "$G2M_NETZ" = attrappe ] && { $QNM "$OUT/qnm.log" & sleep 1.5; }
   ;;
 esac
+# Teil 5/6: Vorbereitung im Profil vor dem Panelstart (optional)
+[ -n "${G2M_VORHER:-}" ] && bash "$G2M_VORHER"
 # Einstellungen mit Netzwerkseite (G2-O) erst, wenn das Szenario sie anlegt
 # („run EINST“): Desktop-Eintrag mit Aktion netzwerk, Exec protokolliert nur.
 EINST="bash $G2M_WERKZEUG/einstellungen-attrappe.sh $XDG_DATA_HOME/applications $OUT/einstellungen-start.txt"
@@ -50,6 +52,17 @@ sed -e "s#SHOT#$OUT#g" -e "s#QNMCTL#$QNMCTL#g" -e "s#QNM#$QNM#g" -e "s#WERKZEUG#
     -e "s#EINST#$EINST#g" "$G2M_SZENARIO" | "$G2M_BIN/qeingabe"
 echo "qeingabe exit $?"
 sleep 1
+if [ "${G2M_NEUSTART:-}" = 1 ]; then
+  # Teil 5: Panel neu starten, die Anordnung muss aus panel.ini wiederkommen
+  cp "$XDG_CONFIG_HOME/querencia/panel.ini" "$OUT/panel.ini.vor-neustart" 2>/dev/null
+  grim "$OUT/vor-neustart.png"
+  kill "$PANEL_PID" 2>/dev/null; wait "$PANEL_PID" 2>/dev/null
+  echo "MARKE $(date +%T.%3N) NEUSTART Panel neu gestartet"
+  QUERENCIA_NETZWERK_DEBUG=1 "$G2M_PANEL" > >(python3 -I -u "$G2M_WERKZEUG/zeitstempel.py" >>"$OUT/panel.log") 2>&1 &
+  PANEL_PID=$!
+  sleep 5
+  grim "$OUT/nach-neustart.png"
+fi
 [ -S "$XDG_RUNTIME_DIR/systembus" ] && $QNMCTL zustand >"$OUT/qnm-ende.json" 2>/dev/null
 cp "$XDG_CONFIG_HOME/querencia/panel.ini" "$OUT/panel.ini.ende" 2>/dev/null
 kill "$PANEL_PID" 2>/dev/null; wait "$PANEL_PID" 2>/dev/null
