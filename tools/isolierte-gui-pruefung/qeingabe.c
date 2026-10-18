@@ -182,7 +182,10 @@ int main(void) {
                      : !strcmp(arg, "Shift_L") ? KEY_LEFTSHIFT : !strcmp(arg, "Super_L") ? KEY_LEFTMETA
                      : !strcmp(arg, "F4") ? KEY_F4
                      : !strcmp(arg, "Left") ? KEY_LEFT
-                     : !strcmp(arg, "Right") ? KEY_RIGHT : -1;
+                     : !strcmp(arg, "Right") ? KEY_RIGHT
+                     : !strcmp(arg, "Tab") ? KEY_TAB
+                     : !strcmp(arg, "ssharp") ? KEY_MINUS /* G2-R: Super+Umschalt+ß = Super+? (de) */
+                     : -1;
             if (code < 0) { fprintf(stderr, "qeingabe: Taste %s?\n", arg); continue; }
             zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, !strcmp(cmd, "keydown")
                                         ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED);

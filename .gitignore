@@ -13,3 +13,6 @@ id_ed25519*
 # Ungefilterte Wayland-Mitschnitte (WAYLAND_DEBUG) enthalten Aktivierungstoken;
 # gefilterte Fassungen heißen *-auszug.log
 *-wl.log
+
+# G2-R: gebaute Binaries der Nachweise (Prüfsummen in nachweis/SHA256SUMS)
+/nachweis/bin/
