@@ -97,10 +97,15 @@ pub fn fixed_model() -> gio::Menu {
     move_section()
 }
 
-/// `own` followed by the „Verschieben“ entries.
+/// The items of `own` followed by the „Verschieben“ entries. The items
+/// are copied, not nested as one section: GTK would flatten the sections
+/// inside and drop their separators (the applet's „Aus dem Panel
+/// entfernen“ would move up).
 fn with_moves(own: &gio::Menu) -> gio::Menu {
     let menu = gio::Menu::new();
-    menu.append_section(None, own);
+    for i in 0..own.n_items() {
+        menu.append_item(&gio::MenuItem::from_model(own, i));
+    }
     menu.append_section(None, &move_section());
     menu
 }
@@ -682,6 +687,30 @@ mod tests {
             assert_eq!(labels(&last), moves);
         }
         assert_eq!(labels(fixed_model().upcast_ref()), moves);
+    }
+
+    #[test]
+    fn own_menus_keep_their_layout_before_the_moves() {
+        let own = gio::Menu::new();
+        own.append(Some("_Stumm"), Some("volume.mute"));
+        let object = gio::Menu::new();
+        object.append(Some("Aus dem Panel entfernen"), Some(REMOVE_ACTION));
+        own.append_section(None, &object);
+        let menu = with_moves(&own);
+        assert_eq!(
+            menu.n_items(),
+            3,
+            "eigene Einträge, ihr Abschnitt, Verschieben"
+        );
+        let label = menu
+            .item_attribute_value(0, "label", Some(glib::VariantTy::STRING))
+            .and_then(|v| v.get::<String>());
+        assert_eq!(label.as_deref(), Some("_Stumm"));
+        let section = menu
+            .item_link(1, "section")
+            .expect("eigener Abschnitt bleibt");
+        assert_eq!(section.n_items(), 1);
+        assert!(menu.item_link(2, "section").is_some());
     }
 
     #[test]
