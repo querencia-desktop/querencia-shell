@@ -3,7 +3,7 @@
 # org.querencia.Lautstaerke, damit labwc und die Fensterliste Symbol und Namen
 # finden. Settings ohne System: das Panel zeigt ihn unter
 # System → Einstellungen; AudioVideo/Mixer für andere Menüs. Exec und TryExec
-# setzt das Integrationsskript auf die versionierte Ablage.
+# zeigen nach der Integration auf ~/opt/querencia/bin/querencia-lautstaerke.
 Type=Application
 Version=1.5
 Name=Lautstärkeregler

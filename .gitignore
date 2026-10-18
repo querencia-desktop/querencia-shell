@@ -16,3 +16,7 @@ id_ed25519*
 
 # G2-J: Laufzeit, Profile und gebaute Werkzeuge der isolierten Prüfung
 nachweis/gui/
+nachweis/build/querencia-panel
+nachweis/build/querencia-lautstaerke
+integration/vorschlag/querencia-panel
+integration/vorschlag/querencia-lautstaerke
