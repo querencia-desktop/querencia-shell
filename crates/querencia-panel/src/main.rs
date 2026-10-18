@@ -7,6 +7,7 @@ mod applets;
 mod apps;
 mod classic_menu;
 mod clock;
+mod icon_reload;
 mod launcher;
 mod layout;
 mod layout_editor;
@@ -203,6 +204,8 @@ fn build_panels(app: &Application) {
     }
 
     install_panel_style();
+    // Teil 6: icons the user gets later appear without a restart.
+    icon_reload::start();
 
     // The panel never writes panel.ini on its own, only when the user
     // changes the layout ("Zum Panel hinzufügen"). Without the file, or if
