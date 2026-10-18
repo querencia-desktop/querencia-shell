@@ -15,6 +15,7 @@
 //! gives it the keyboard like any other window. It has no transient parent:
 //! the panels are layer surfaces, not xdg toplevels.
 
+use std::cell::Cell;
 use std::rc::Rc;
 
 use gtk4::prelude::*;
@@ -26,12 +27,25 @@ use gtk4::{
 
 use crate::app_chooser;
 use crate::applets::{self, AppletType};
+use crate::layout::Region;
 use crate::logo;
 
 const TITLE: &str = "Zum Panel hinzufügen";
 /// Shown when the theme has none of the applet's icons.
 const FALLBACK_ICON: &str = "application-x-addon";
 const ICON_SIZE: i32 = 32;
+/// The choices of the region list, in order.
+pub const REGIONS: [Region; 3] = [Region::Start, Region::Center, Region::End];
+
+/// Name of a region in the dialog.
+pub fn region_name(region: Region) -> &'static str {
+    match region {
+        Region::Start => "Links",
+        Region::Center => "Mitte",
+        Region::End => "Rechts",
+    }
+}
+
 /// Tooltip of a type that cannot be added once more.
 const UNAVAILABLE: &str = "Dieses Objekt gibt es nur einmal, und es ist bereits in einem Panel";
 
@@ -41,6 +55,9 @@ pub type AddFn = Box<dyn Fn(&str, Option<&str>) -> Result<(), String>>;
 
 /// What the dialog needs from its panel.
 pub struct Hooks {
+    /// The region new applets go to (Teil 5): set from the third of the
+    /// panel that was right-clicked, shown and chosen in the dialog.
+    pub region: Rc<Cell<Region>>,
     /// Whether one more instance of the applet type may be added.
     pub available: Box<dyn Fn(&str) -> bool>,
     /// Adds an instance of the applet type (with the application's desktop
@@ -57,7 +74,10 @@ pub fn present(app: &Application, slot: &glib::WeakRef<Window>, panel_id: &str, 
     let window = build(app, panel_id, hooks);
     slot.set(Some(&window));
     window.present();
-    eprintln!("querencia-panel: Dialog „{TITLE}“ für Panel {panel_id} geöffnet");
+    eprintln!(
+        "querencia-panel: Dialog „{TITLE}“ für Panel {panel_id} geöffnet (Bereich {})",
+        hooks.region.get().label()
+    );
 }
 
 /// All applet types, sorted by name for the user's locale.
@@ -158,11 +178,58 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
     let forward = stock_button("_Vor", "go-next");
     forward.set_visible(false);
     forward.set_tooltip_text(Some("Eine Anwendung für den Starter auswählen"));
+    // Teil 5: where in the panel the new applet goes, preset from the
+    // right-clicked third, as a choice left of the buttons.
+    let names: Vec<&str> = REGIONS.iter().map(|r| region_name(*r)).collect();
+    let place = gtk4::DropDown::from_strings(&names);
+    place.set_valign(Align::Center);
+    place.set_tooltip_text(Some("Bereich des Panels, in den das Objekt kommt"));
+    let place_label = Label::builder()
+        .label("_Bereich:")
+        .use_underline(true)
+        .mnemonic_widget(&place)
+        .build();
+    let sync_place = glib::clone!(
+        #[weak]
+        place,
+        #[strong]
+        hooks,
+        move || {
+            let index = REGIONS
+                .iter()
+                .position(|r| *r == hooks.region.get())
+                .unwrap_or(0);
+            if place.selected() as usize != index {
+                place.set_selected(index as u32);
+            }
+        }
+    );
+    sync_place();
+    place.connect_selected_notify(glib::clone!(
+        #[strong]
+        hooks,
+        move |place| {
+            if let Some(region) = REGIONS.get(place.selected() as usize) {
+                if hooks.region.get() != *region {
+                    eprintln!(
+                        "querencia-panel: Dialog „{TITLE}“: Bereich {}",
+                        region.label()
+                    );
+                }
+                hooks.region.set(*region);
+            }
+        }
+    ));
+    let right = GtkBox::new(Orientation::Horizontal, 6);
+    right.set_halign(Align::End);
+    right.set_hexpand(true);
+    right.append(&close);
+    right.append(&add);
+    right.append(&forward);
     let buttons = GtkBox::new(Orientation::Horizontal, 6);
-    buttons.set_halign(Align::End);
-    buttons.append(&close);
-    buttons.append(&add);
-    buttons.append(&forward);
+    buttons.append(&place_label);
+    buttons.append(&place);
+    buttons.append(&right);
 
     // Page 2: the applications for a launcher.
     let stack = Stack::new();
@@ -327,6 +394,8 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
         move |window| {
             if window.is_active() {
                 refresh();
+                // raised again after a right click elsewhere in the panel
+                sync_place();
             }
         }
     ));

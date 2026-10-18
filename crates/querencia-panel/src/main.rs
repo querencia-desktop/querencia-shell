@@ -2,6 +2,7 @@ mod about;
 mod add_dialog;
 mod app_chooser;
 mod app_menu;
+mod applet_move;
 mod applets;
 mod apps;
 mod classic_menu;
