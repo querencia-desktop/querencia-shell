@@ -66,6 +66,14 @@
       <action name="Execute"
               command="~/opt/querencia/bin/querencia-sitzung --dialog" />
     </keybind>
+    <!-- Querencia Tastenkürzel (G2-R, 2026-10-18): Super+? (Super+Umschalt+ß
+         auf der deutschen Tastatur; labwc vergleicht die Modifikatoren
+         genau, deshalb W-S-) zeigt die Übersicht aller Kürzel. Läuft über
+         den Link in ~/opt/querencia/bin (kuerzel-integrieren.sh). -->
+    <keybind key="W-S-question">
+      <action name="Execute"
+              command="~/opt/querencia/bin/querencia-kuerzel" />
+    </keybind>
   </keyboard>
   <!-- Querencia Sitzung and its polkit agent: their dialogs open centred
        on the active output (the default placement policy is "cascade")
@@ -78,11 +86,34 @@
       <action name="AutoPlace" policy="center" />
     </windowRule>
   </windowRules>
+  <!-- Alt+Tab (G2-R, 2026-10-18): Liste („classic“) mit Symbol, Titel und
+       Arbeitsfläche, nur auf dem Bildschirm mit dem Tastaturfokus. Farben
+       und Maße stehen im Theme Querencia-Klassisch (osd.*). Gewechselt
+       wird wie bei Metacity nur zwischen den Fenstern der aktuellen
+       Arbeitsfläche (NextWindow workspace="current", labwc-Standard). -->
+  <windowSwitcher preview="yes" outlines="yes" order="focus">
+    <osd show="yes" style="classic" output="focused" />
+    <fields>
+      <field content="icon" width="6%" />
+      <field content="title" width="70%" />
+      <field content="workspace" width="24%" />
+    </fields>
+  </windowSwitcher>
   <!-- Querencia-Klassisch (Querencia-Werkstatt W3, Variante B): klassische Fensterknöpfe
        aus dem labwc-Theme in ~/.local/share/themes/Querencia-Klassisch
        (Link auf ~/opt/querencia-theme/…). Ohne diesen Block gilt wieder
-       das eingebaute labwc-Theme. -->
+       das eingebaute labwc-Theme. G2-R: Schrift des Fensterwechslers wie
+       im Panel (Sitzungsschrift Adwaita Sans 11); Symbolthema gnome-human
+       (PNG wie GNOME 2, orange Ordner): labwc 0.9.8 ist ohne librsvg
+       gebaut und zeigt keine SVG-Symbole, ohne <icon> sucht es im
+       (nicht vorhandenen) Symbolthema „Querencia-Klassisch“ und zeigt im
+       Fensterwechsler und in der Titelleiste kaum Symbole. -->
   <theme>
     <name>Querencia-Klassisch</name>
+    <icon>gnome-human</icon>
+    <font place="OnScreenDisplay">
+      <name>Adwaita Sans</name>
+      <size>11</size>
+    </font>
   </theme>
 </labwc_config>
