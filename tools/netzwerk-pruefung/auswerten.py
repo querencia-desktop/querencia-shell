@@ -20,7 +20,7 @@ Exit 0 nur, wenn alle bestanden.
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import gi
@@ -62,6 +62,17 @@ def t(text):
 # ------------------------------------------------------------- Marken, Logs
 szenario = (LOGS / "szenario.txt").read_text(errors="replace")
 marks = [(m.group(2), t(m.group(1))) for m in re.finditer(r"^MARKE (\S+) (\S+)", szenario, re.M)]
+# Uhrzeiten ohne Datum: ein Lauf über Mitternacht zählt nach 0 Uhr einen Tag weiter.
+DAY = timedelta(days=1)
+FIRST = marks[0][1] if marks else datetime.min
+
+
+def later(when):
+    return when + DAY if marks and when < FIRST - timedelta(hours=12) else when
+
+
+for i in range(1, len(marks)):
+    marks[i] = (marks[i][0], later(marks[i][1]))
 order = [k for k, _ in marks]
 
 
@@ -78,7 +89,7 @@ def timed(name):
     for line in path.read_text(errors="replace").splitlines():
         m = re.match(r"^(\d\d:\d\d:\d\d\.\d{3}) (.*)$", line)
         if m:
-            out.append((t(m.group(1)), m.group(2)))
+            out.append((later(t(m.group(1))), m.group(2)))
     return out
 
 

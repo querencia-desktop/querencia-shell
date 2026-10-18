@@ -3,10 +3,11 @@
 #   laeufe.sh <panel-binary> [auflösungen …]   (Standard: 1024x768 1920x1080)
 # Je Auflösung: rueckfall (echte eth0, echter Systembus ohne NetworkManager,
 # nur lesend), attrappe (eigener Bus mit qnm.py), spaet (Attrappe startet
-# später). Auswertungen: nachweis/gui/ergebnis-<art><breite>.txt,
+# später), verschieben (Teil 5/6, ohne Netzwerk-Applet, mit Neustart).
+# LAEUFE="verschieben" wählt einzelne Arten. Auswertungen: nachweis/gui/ergebnis-<art><breite>.txt,
 # Zusammenfassung in nachweis/gui/ergebnis.txt.
 set -uo pipefail
-WT=~/projects/querencia-runtime-wt-netzwerk
+WT=/home/user/projects/querencia-runtime-wt-netzwerk
 T=$WT/tools/netzwerk-pruefung; G=$WT/nachweis/gui
 PANEL=$(realpath -e "${1:?Panel}"); shift
 AUFL=("$@"); [ ${#AUFL[@]} -eq 0 ] && AUFL=(1024x768 1920x1080)
@@ -14,9 +15,12 @@ SUMME=$G/ergebnis.txt
 echo "=== $(date '+%F %T') G2-M Panel $(sha256sum "$PANEL" | cut -c1-16)" >>"$SUMME"
 for r in "${AUFL[@]}"; do
   w=${r%x*}; h=${r#*x}
-  for art in rueckfall attrappe spaet; do
-    p=${art:0:1}$w
+  for art in ${LAEUFE:-rueckfall attrappe spaet verschieben}; do
+    p=${art:0:1}$w${G2M_PROFILZUSATZ:-}
+    unset G2M_VORHER G2M_NEUSTART
     case $art in
+      verschieben) netz=echt; ini=$T/panel-verschieben.ini
+        export G2M_VORHER=$T/vorher-verschieben.sh G2M_NEUSTART=1 ;;
       rueckfall) netz=echt; ini=$T/panel-mit-lautstaerke.ini ;;
       attrappe) netz=attrappe; ini=$T/panel-mit-netzwerk.ini ;;
       spaet) netz=spaet; ini=$T/panel-mit-netzwerk.ini ;;

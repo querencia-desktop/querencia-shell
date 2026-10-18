@@ -1,6 +1,6 @@
 # G2-M – Netzwerk-Applet
 
-Stand 18.10.2026 · Zweig `netzwerk-applet` (Basis `lautstaerke-applet`, Tag `panel/lautstaerke-0.1`) · Tag `panel/netzwerk-0.1`
+Stand 19.10.2026 · Zweig `netzwerk-applet` (Basis `lautstaerke-applet`, Tag `panel/lautstaerke-0.1`) · Tags `panel/netzwerk-0.1` (Applet), `panel/netzwerk-0.2` (mit Teil 5/6)
 
 Das Netzwerk-Applet zeigt die Netzwerkverbindung im Panel, nach dem Vorbild des GNOME-2-NetworkManager-Applets. Läuft NetworkManager, kann es verbinden und trennen. Ohne NetworkManager zeigt es nur an, was Kernel und systemd-networkd melden.
 
@@ -65,3 +65,27 @@ Flugmodus: NetworkManager hat keinen eigenen Schalter. Das Applet setzt WLAN und
 
 - Auf der Entwicklungs-VM läuft systemd-networkd und kein NetworkManager. Echt geprüft ist deshalb nur der Rückfall. Der NetworkManager-Weg ist gegen die Attrappe geprüft, nicht gegen echtes NetworkManager. Die Liste für echte Hardware steht im Bericht .
 - WLAN im Rückfall: Netznamen in Reichweite meldet der Kernel ohne nl80211 nicht. Das Menü zeigt dann nur das Gerät, die Adresse und die Verbindungsqualität aus `/proc/net/wireless`.
+
+## Teil 5 und 6 (unabhängig vom Netzwerk-Applet)
+
+Beide Teile stehen in eigenen Commits. Sie gibt es auch eigenständig auf dem Zweig `applets-verschieben` (Basis G2-J 75a1eba, Tag `panel/verschieben-0.1`).
+
+**Applets verschieben (Teil 5), in beiden Panels:**
+
+- Jedes Applet-Menü endet mit „Verschieben“, „Nach links“, „Nach rechts“, „An den linken Rand“ und „An den rechten Rand“.
+  - Ein Schritt tauscht mit dem Nachbarn. Am Rand eines Bereichs wechselt das Applet in den Nachbarbereich (links, Mitte, rechts), auch in eine leere Mitte.
+  - Einträge ohne Wirkung sind grau.
+  - Anwendungen, Orte, System, Fensterliste und Umschalter haben sonst kein Menü; sie bekommen eines nur mit diesen Einträgen.
+- **Ziehen mit gedrückter mittlerer Taste** verschiebt live.
+  - Der Bereich folgt dem Drittel unter dem Zeiger, die Stelle den Mitten der Nachbar-Applets.
+  - Beim Loslassen wird gespeichert; bei einem Fehler geht das Applet zurück.
+  - Die Fensterliste lässt sich auch auf ihrer freien Fläche greifen.
+  - Ein mittlerer Klick ohne Ziehen bleibt beim Applet: Die Lautstärke schaltet beim Loslassen stumm.
+- **Alt + Linksklick** ist eingebaut, kommt auf labwc aber nicht an. Das Panel hat `KeyboardMode::None` und bekommt nie den Tastaturfokus, und Wayland meldet den Zustand der Umschalttasten nur dem fokussierten Programm. GTK erfährt also nie, dass Alt gedrückt ist.
+- **Ersatz für Alt + Linksklick:** „Verschieben“ wie in GNOME 2. Das Applet folgt dem Zeiger über seinem Panel, ein Linksklick setzt es, ein Rechtsklick bricht ab.
+- **„Zum Panel hinzufügen …“** zeigt unten links „Bereich: Links/Mitte/Rechts“, vorbelegt mit dem angeklickten Drittel, und lässt den Bereich wählen.
+- **Speicherung:** `panel.ini` wie bisher, mit den Listen `Start=`, `Center=` und `End=` je Panel. Nach einem Neustart steht alles wieder so.
+
+**Symbolthema neu einlesen (Teil 6, Befund SW-6):** GTK sieht neue Symboldateien in bestehenden Themenordnern nicht. Das Panel überwacht deshalb `~/.local/share/icons` samt Themen-, Größen- und Kontextordnern sowie die installierten Anwendungen. 400 ms nach einer Änderung gibt es GTK denselben Suchpfad erneut. Ein nachträglich abgelegtes Programmsymbol erscheint so ohne Neustart.
+
+Prüfung: `LAEUFE=verschieben bash tools/netzwerk-pruefung/laeufe.sh <panel>` (Prüffall V00–V14 samt Neustart, ohne Netzwerk-Applet). A/B für Teil 6: `szenario-machen.py <b> <h> symbol`.
