@@ -33,6 +33,10 @@ impl Edge {
     }
 }
 
+/// Applet types placed right of a neighbour type when added to the end
+/// region (see [`Region::insertion_index_for`]): (type, neighbour).
+pub const RIGHT_OF: &[(&str, &str)] = &[("network", "volume")];
+
 /// The three areas of a panel, from left to right.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Region {
@@ -67,6 +71,21 @@ impl Region {
             Region::Start | Region::Center => len,
             Region::End => 0,
         }
+    }
+
+    /// Like [`Region::insertion_index`] for a new applet of type
+    /// `applet_id` among `items`: in the end region a type listed in
+    /// [`RIGHT_OF`] goes right of the last applet of its neighbour type if
+    /// the region has one (G2-M: the network applet right of the volume
+    /// applet, the order of the GNOME 2 notification area).
+    pub fn insertion_index_for(self, items: &[Instance], applet_id: &str) -> usize {
+        if self == Region::End
+            && let Some((_, left)) = RIGHT_OF.iter().find(|(kind, _)| *kind == applet_id)
+            && let Some(position) = items.iter().rposition(|i| i.applet == *left)
+        {
+            return position + 1;
+        }
+        self.insertion_index(items.len())
     }
 
     /// Name of the region in messages.
@@ -448,7 +467,7 @@ impl Layout {
             .iter_mut()
             .find(|p| p.id == panel_id)
             .expect("checked above");
-        let index = region.insertion_index(panel.region(region).len());
+        let index = region.insertion_index_for(panel.region(region), applet_id);
         let instance = Instance {
             app: app.map(str::to_string),
             ..Instance::new(&id, applet_id)
@@ -536,6 +555,49 @@ mod tests {
             .iter()
             .map(|i| i.applet.as_str())
             .collect()
+    }
+
+    #[test]
+    fn network_goes_right_of_volume_in_the_end_region_only() {
+        let mut layout = Layout::standard();
+        layout
+            .add_applet("top", "volume", Region::End, known)
+            .unwrap();
+        assert_eq!(types(&layout.panels[0], Region::End), ["volume", "clock"]);
+        let added = layout
+            .add_applet("top", "network", Region::End, known)
+            .unwrap();
+        assert_eq!(added.index, 1);
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            ["volume", "network", "clock"]
+        );
+        // without a volume applet: first, as every other applet
+        let mut layout = Layout::standard();
+        layout
+            .add_applet("top", "network", Region::End, known)
+            .unwrap();
+        assert_eq!(types(&layout.panels[0], Region::End), ["network", "clock"]);
+        // the volume applet added later still goes first (left of it)
+        layout
+            .add_applet("top", "volume", Region::End, known)
+            .unwrap();
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            ["volume", "network", "clock"]
+        );
+        // other regions keep their rule
+        let mut layout = Layout::standard();
+        layout
+            .add_applet("top", "volume", Region::Start, known)
+            .unwrap();
+        layout
+            .add_applet("top", "network", Region::Start, known)
+            .unwrap();
+        assert_eq!(
+            types(&layout.panels[0], Region::Start),
+            ["applications", "places", "system", "volume", "network"]
+        );
     }
 
     #[test]
