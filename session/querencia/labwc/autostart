@@ -4,6 +4,14 @@
 : "${QUERENCIA_STATE_DIR:?nur über querencia-session starten}"
 : "${QUERENCIA_PANEL_RECORD:?nur über querencia-session starten}"
 
+# Querencia polkit agent (G2-K) first: polkit requests of the session
+# (reboot, power off, package installation …) get a password dialog instead
+# of failing with "no agent". Ends with labwc. QUERENCIA_POLKIT_AGENT is
+# empty without the program.
+if [ -n "${QUERENCIA_POLKIT_AGENT-}" ] && [ -x "$QUERENCIA_POLKIT_AGENT" ]; then
+    "$QUERENCIA_POLKIT_AGENT" </dev/null >>"$QUERENCIA_STATE_DIR/polkit-agent.log" 2>&1 &
+fi
+
 # The desktop (background, icons, desktop menu; optional) first, so the
 # panel appears over a finished desktop, as on GNOME 2.
 if [ -n "${QUERENCIA_DESKTOP-}" ] && [ -x "$QUERENCIA_DESKTOP" ]; then
@@ -22,4 +30,20 @@ pid=$!
 if stat=$(cat "/proc/$pid/stat" 2>/dev/null); then
     set -- ${stat##*) }
     echo "$pid ${20}" >"$QUERENCIA_PANEL_RECORD"
+fi
+
+# Benachrichtigungsdienst (org.freedesktop.Notifications, G2-L), optional:
+# ohne installierten Dienst bleibt die Sitzung wie bisher. Belegt ein anderer
+# Dienst den Namen schon, beendet er sich selbst mit einer Meldung im Log.
+# Bewusst nach dem Panel-Eintrag, damit "$!" oben weiter das Panel ist.
+BENACHRICHTIGUNGEN=${QUERENCIA_BENACHRICHTIGUNGEN:-~/opt/querencia/bin/querencia-benachrichtigungen}
+if [ -x "$BENACHRICHTIGUNGEN" ]; then
+    "$BENACHRICHTIGUNGEN" </dev/null >>"$QUERENCIA_STATE_DIR/benachrichtigungen.log" 2>&1 &
+fi
+
+# Querencia Sitzung (G2-K): idle lock. Ends with labwc (Wayland connection
+# closes); no record needed. QUERENCIA_SITZUNG is empty without the program.
+if [ -n "${QUERENCIA_SITZUNG-}" ] && [ -x "$QUERENCIA_SITZUNG" ]; then
+    "$QUERENCIA_SITZUNG" --leerlauf "${QUERENCIA_LEERLAUF_MINUTEN:-10}" \
+        </dev/null >>"$QUERENCIA_STATE_DIR/sitzung.log" 2>&1 &
 fi

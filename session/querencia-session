@@ -27,6 +27,15 @@ PANEL=$COMPONENTS/querencia-panel
 [ -x "$PANEL" ] || PANEL=$QUERENCIA_REPO/target/debug/querencia-panel
 DESKTOP=$COMPONENTS/querencia-desktop
 [ -x "$DESKTOP" ] || DESKTOP=
+# Querencia Sitzung (G2-K): idle lock after this many minutes without
+# input (ext-idle-notify); empty or missing program: no idle lock.
+SITZUNG=$COMPONENTS/querencia-sitzung
+[ -x "$SITZUNG" ] || SITZUNG=
+LEERLAUF_MINUTEN=10
+# Querencia polkit agent (G2-K): answers polkit authentication requests of
+# this session (there is no other agent); empty: none.
+POLKIT_AGENT=$COMPONENTS/querencia-polkit-agent
+[ -x "$POLKIT_AGENT" ] || POLKIT_AGENT=
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/querencia
 
 die() {
@@ -165,7 +174,7 @@ if [ -z "${DBUS_SESSION_BUS_ADDRESS-}" ] && [ -S "$XDG_RUNTIME_DIR/bus" ]; then
 fi
 
 mkdir -p "$STATE_DIR" || die "kann $STATE_DIR nicht anlegen"
-for log in labwc panel desktop; do
+for log in labwc panel desktop sitzung polkit-agent; do
     if [ -f "$STATE_DIR/$log.log" ]; then
         mv -f "$STATE_DIR/$log.log" "$STATE_DIR/$log.log.1"
     fi
@@ -180,8 +189,10 @@ desktop_file=$STATE_DIR/desktop.$$.pid
 # Read by the autostart file (QUERENCIA_DESKTOP empty: no desktop).
 export QUERENCIA_PANEL="$PANEL" QUERENCIA_STATE_DIR="$STATE_DIR" \
     QUERENCIA_PANEL_RECORD="$panel_file" \
-    QUERENCIA_DESKTOP="$DESKTOP" QUERENCIA_DESKTOP_RECORD="$desktop_file"
-echo "querencia-session: Panel $PANEL, Arbeitsfläche ${DESKTOP:-(keine)}"
+    QUERENCIA_DESKTOP="$DESKTOP" QUERENCIA_DESKTOP_RECORD="$desktop_file" \
+    QUERENCIA_SITZUNG="$SITZUNG" QUERENCIA_LEERLAUF_MINUTEN="$LEERLAUF_MINUTEN" \
+    QUERENCIA_POLKIT_AGENT="$POLKIT_AGENT"
+echo "querencia-session: Panel $PANEL, Arbeitsfläche ${DESKTOP:-(keine)}, Leerlaufsperre ${SITZUNG:-(keine)}, polkit-Agent ${POLKIT_AGENT:-(keiner)}"
 
 cd "$HOME" || die "kann nicht nach $HOME wechseln"
 echo "querencia-session: starte labwc $LABWC_VERSION, Log $STATE_DIR/labwc.log"

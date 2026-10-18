@@ -53,7 +53,31 @@
     <keybind key="C-A-S-Right">
       <action name="SendToDesktop" to="right" follow="yes" wrap="no" />
     </keybind>
+    <!-- Querencia Sitzung (Querencia-Werkstatt G2-K, 2026-10-18): Ctrl+Alt+L locks the
+         screen at once (ext-session-lock, as GNOME 2), Ctrl+Alt+Delete
+         opens the session dialog (Abmelden, Bildschirm sperren, Neu
+         starten, Herunterfahren). Both run the installed link in
+         ~/opt/querencia/bin (sitzung-integrieren.sh). -->
+    <keybind key="C-A-l">
+      <action name="Execute"
+              command="~/opt/querencia/bin/querencia-sitzung --sperren --sofort" />
+    </keybind>
+    <keybind key="C-A-Delete">
+      <action name="Execute"
+              command="~/opt/querencia/bin/querencia-sitzung --dialog" />
+    </keybind>
   </keyboard>
+  <!-- Querencia Sitzung and its polkit agent: their dialogs open centred
+       on the active output (the default placement policy is "cascade")
+       and stay out of the window list and Alt+Tab, like GNOME 2 dialogs. -->
+  <windowRules>
+    <windowRule identifier="org.querencia.Sitzung*" skipTaskbar="yes" skipWindowSwitcher="yes">
+      <action name="AutoPlace" policy="center" />
+    </windowRule>
+    <windowRule identifier="org.querencia.PolkitAgent*" skipTaskbar="yes" skipWindowSwitcher="yes">
+      <action name="AutoPlace" policy="center" />
+    </windowRule>
+  </windowRules>
   <!-- Querencia-Klassisch (Querencia-Werkstatt W3, Variante B): klassische Fensterknöpfe
        aus dem labwc-Theme in ~/.local/share/themes/Querencia-Klassisch
        (Link auf ~/opt/querencia-theme/…). Ohne diesen Block gilt wieder
