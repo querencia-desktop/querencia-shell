@@ -1,0 +1,59 @@
+#!/bin/sh
+# Starts Querencia Screenshot for the Print key (session/querencia/labwc/rc.xml).
+#
+# GNOME 2 behaviour (Querencia-Werkstatt W3, QS-1): rc.xml passes one capture option,
+# Print -> --screen (whole screen), Alt+Print -> --window (active window);
+# the program captures at once and then shows "Bildschirmfoto speichern".
+# Without an option the mode window opens as before (QS-0c); that window is
+# a unique GApplication (org.querencia.Screenshot): if it already runs,
+# starting it again only raises it over D-Bus. Each capture option is its own short-lived
+# capture with its own save dialog, as in GNOME 2; this launcher never ends
+# an instance.
+#
+# labwc runs this without a shell and with its own environment (Wayland
+# socket, D-Bus address, XDG variables); exec passes it on unchanged.
+
+set -u
+
+# Fixed on purpose, like the paths in session/querencia-session: never a
+# development build, never whatever is found in PATH.
+SCREENSHOT=/home/user/opt/querencia-screenshot/bin/querencia-screenshot
+
+# Errors go to stderr, which is labwc's log ($QUERENCIA_STATE_DIR/labwc.log),
+# and, if a notification service answers, to the screen.
+fail() {
+    echo "querencia-screenshot-start: $*" >&2
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send --app-name="Querencia Screenshot" \
+            "Querencia Screenshot nicht gestartet" "$*" >/dev/null 2>&1 &
+    fi
+    exit 1
+}
+
+[ -n "${WAYLAND_DISPLAY-}" ] || fail "keine Wayland-Sitzung (WAYLAND_DISPLAY leer)"
+[ -f "$SCREENSHOT" ] || fail "Programm nicht installiert: $SCREENSHOT"
+[ -x "$SCREENSHOT" ] || fail "Programm nicht ausführbar: $SCREENSHOT"
+
+# Only the documented capture options are passed on; anything else would
+# come from a wrong rc.xml and is refused instead of guessed.
+case $# in
+0) ;;
+1)
+    case $1 in
+    --screen | --window | --area) ;;
+    *) fail "unbekannte Option: $1 (erlaubt: --screen, --window, --area)" ;;
+    esac
+    ;;
+*) fail "zu viele Optionen: $*" ;;
+esac
+
+# Independent of labwc's working directory.
+cd "$HOME" 2>/dev/null || cd /
+
+# Output into the session's state directory next to the panel log, if the
+# session starter provided one; otherwise it stays with labwc's log.
+if [ -n "${QUERENCIA_STATE_DIR-}" ] && [ -d "$QUERENCIA_STATE_DIR" ] &&
+    [ -w "$QUERENCIA_STATE_DIR" ]; then
+    exec "$SCREENSHOT" "$@" </dev/null >>"$QUERENCIA_STATE_DIR/screenshot.log" 2>&1
+fi
+exec "$SCREENSHOT" "$@" </dev/null

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Querencia Desktop labwc configuration (labwc -C, see session/querencia-session).
+
+  Only what Querencia changes is listed; everything else keeps labwc's
+  built-in defaults, as before this file existed. labwc drops its default
+  keybinds as soon as rc.xml has one <keybind> of its own, so <default />
+  loads them again first (labwc-config(5), "<keyboard><default />").
+  Mouse bindings are not touched: without a <mouse> section labwc keeps its
+  default mouse bindings.
+
+  Execute runs the command without a shell and only expands "~", so the
+  launcher is named by its absolute path in the Querencia runtime copy.
+
+  Merged by the Querencia workshop (2026-10-16): QS-0c print key (entwicklungs-vm, unchanged)
+  plus four workspaces as in GNOME 2 / Ubuntu 10.04 (HMP-07 proposal).
+  Querencia-Werkstatt W3 (2026-10-17, QS-1): Print/Alt+Print as in GNOME 2.
+  Querencia-Werkstatt W3 (2026-10-17, QS-0d): Print opens the chooser, Alt+Print frames
+  the window; both continue in the editor.
+-->
+<labwc_config>
+  <!-- Four workspaces like GNOME 2. popupTime="0": no labwc overlay, the
+       panel's workspace switcher (HMP-07) shows the change. -->
+  <desktops number="4" popupTime="0" prefix="Arbeitsfläche" />
+
+  <keyboard>
+    <default />
+    <!-- QS-0d: Print (Druck) opens the Querencia Screenshot chooser
+         (screen, frame a window, select an area), Alt+Print starts the
+         window capture directly (labwc reports no window bounds: the window
+         is framed with the mouse, a fullscreen window is taken exactly).
+         Both open the editor afterwards. -->
+    <keybind key="Print">
+      <action name="Execute"
+              command="~/projects/querencia-runtime/session/querencia/querencia-screenshot-start" />
+    </keybind>
+    <keybind key="A-Print">
+      <action name="Execute"
+              command="~/projects/querencia-runtime/session/querencia/querencia-screenshot-start --window" />
+    </keybind>
+    <!-- GNOME 2 (Metacity) workspace keys: Ctrl+Alt+Left/Right switches,
+         with Shift the active window moves along. No wrap-around, like
+         Metacity and the panel switcher. -->
+    <keybind key="C-A-Left">
+      <action name="GoToDesktop" to="left" wrap="no" />
+    </keybind>
+    <keybind key="C-A-Right">
+      <action name="GoToDesktop" to="right" wrap="no" />
+    </keybind>
+    <keybind key="C-A-S-Left">
+      <action name="SendToDesktop" to="left" follow="yes" wrap="no" />
+    </keybind>
+    <keybind key="C-A-S-Right">
+      <action name="SendToDesktop" to="right" follow="yes" wrap="no" />
+    </keybind>
+  </keyboard>
+  <!-- Querencia-Klassisch (Querencia-Werkstatt W3, Variante B): klassische Fensterknöpfe
+       aus dem labwc-Theme in ~/.local/share/themes/Querencia-Klassisch
+       (Link auf ~/opt/querencia-theme/…). Ohne diesen Block gilt wieder
+       das eingebaute labwc-Theme. -->
+  <theme>
+    <name>Querencia-Klassisch</name>
+  </theme>
+</labwc_config>

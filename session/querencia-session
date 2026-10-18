@@ -1,7 +1,8 @@
 #!/bin/sh
 # Querencia Desktop session starter: runs labwc 0.9.8 with the Querencia
-# configuration from the Querencia runtime copy. labwc starts the panel
-# through its autostart file once the Wayland socket exists.
+# configuration from the Querencia runtime copy. labwc starts the desktop
+# (background and icons) and the panel through its autostart file once the
+# Wayland socket exists.
 #
 #   querencia-session          start the session (from a console login or greetd)
 #   querencia-session --exit   end the running Querencia session (also from SSH)
@@ -18,7 +19,14 @@ QUERENCIA_REPO=~/projects/querencia-runtime
 LABWC=~/opt/labwc-0.9.8/bin/labwc
 LABWC_VERSION=0.9.8
 CONFIG_DIR=$QUERENCIA_REPO/session/querencia/labwc
-PANEL=$QUERENCIA_REPO/target/debug/querencia-panel
+# Installed, checked components (fixed paths, one link per program, see
+# sitzung/installieren.sh); without an installed panel the runtime copy's
+# own panel build stays in use. The desktop is optional.
+COMPONENTS=~/opt/querencia/bin
+PANEL=$COMPONENTS/querencia-panel
+[ -x "$PANEL" ] || PANEL=$QUERENCIA_REPO/target/debug/querencia-panel
+DESKTOP=$COMPONENTS/querencia-desktop
+[ -x "$DESKTOP" ] || DESKTOP=
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/querencia
 
 die() {
@@ -134,7 +142,7 @@ fi
 seat=$(loginctl show-session "$XDG_SESSION_ID" -p Seat --value 2>/dev/null)
 [ -n "$seat" ] ||
     die "logind-Sitzung $XDG_SESSION_ID hat keinen Sitz; nur nach Anmeldung an der Konsole starten"
-for program in labwc querencia-panel classic2-panel; do
+for program in labwc querencia-panel querencia-desktop classic2-panel; do
     if running "$program"; then
         die "es läuft bereits ein $program dieses Benutzers (Classic2- oder Querencia-Sitzung aktiv?)"
     fi
@@ -157,7 +165,7 @@ if [ -z "${DBUS_SESSION_BUS_ADDRESS-}" ] && [ -S "$XDG_RUNTIME_DIR/bus" ]; then
 fi
 
 mkdir -p "$STATE_DIR" || die "kann $STATE_DIR nicht anlegen"
-for log in labwc panel; do
+for log in labwc panel desktop; do
     if [ -f "$STATE_DIR/$log.log" ]; then
         mv -f "$STATE_DIR/$log.log" "$STATE_DIR/$log.log.1"
     fi
@@ -165,12 +173,15 @@ done
 # No labwc or panel of this user runs (checked above), so older records
 # are stale. The panel record is named after this starter's PID, which stays
 # unique while this starter lives; a later session never shares it.
-rm -f "$STATE_DIR/labwc.pid" "$STATE_DIR"/panel.*.pid
+rm -f "$STATE_DIR/labwc.pid" "$STATE_DIR"/panel.*.pid "$STATE_DIR"/desktop.*.pid
 panel_file=$STATE_DIR/panel.$$.pid
+desktop_file=$STATE_DIR/desktop.$$.pid
 
-# Read by the autostart file.
+# Read by the autostart file (QUERENCIA_DESKTOP empty: no desktop).
 export QUERENCIA_PANEL="$PANEL" QUERENCIA_STATE_DIR="$STATE_DIR" \
-    QUERENCIA_PANEL_RECORD="$panel_file"
+    QUERENCIA_PANEL_RECORD="$panel_file" \
+    QUERENCIA_DESKTOP="$DESKTOP" QUERENCIA_DESKTOP_RECORD="$desktop_file"
+echo "querencia-session: Panel $PANEL, Arbeitsfläche ${DESKTOP:-(keine)}"
 
 cd "$HOME" || die "kann nicht nach $HOME wechseln"
 echo "querencia-session: starte labwc $LABWC_VERSION, Log $STATE_DIR/labwc.log"
@@ -193,18 +204,22 @@ done
 trap ':' HUP INT TERM
 remove_record "$STATE_DIR/labwc.pid" "$labwc_record"
 
-# GTK ends the panel when the Wayland connection is lost. Give it a moment,
-# then end the panel of this session only if that very process is still
-# left over.
-panel_record=$(cat "$panel_file" 2>/dev/null)
-if matches "$panel_record" "$PANEL"; then
-    sleep 2
-    if matches "$panel_record" "$PANEL"; then
-        echo "querencia-session: Panel (${panel_record%% *}) läuft nach labwc weiter, sende SIGTERM" >&2
-        kill -TERM "${panel_record%% *}"
+# GTK ends the panel and the desktop when the Wayland connection is lost.
+# Give them a moment, then end a program of this session only if that very
+# process is still left over.
+leftover() {
+    record=$(cat "$1" 2>/dev/null)
+    if [ -n "$2" ] && matches "$record" "$2"; then
+        sleep 2
+        if matches "$record" "$2"; then
+            echo "querencia-session: $3 (${record%% *}) läuft nach labwc weiter, sende SIGTERM" >&2
+            kill -TERM "${record%% *}"
+        fi
     fi
-fi
-rm -f "$panel_file"
+    rm -f "$1"
+}
+leftover "$panel_file" "$PANEL" Panel
+leftover "$desktop_file" "$DESKTOP" Arbeitsfläche
 
 echo "querencia-session: labwc beendet mit Status $status, Logs in $STATE_DIR"
 exit "$status"

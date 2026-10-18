@@ -4,6 +4,17 @@
 : "${QUERENCIA_STATE_DIR:?nur über querencia-session starten}"
 : "${QUERENCIA_PANEL_RECORD:?nur über querencia-session starten}"
 
+# The desktop (background, icons, desktop menu; optional) first, so the
+# panel appears over a finished desktop, as on GNOME 2.
+if [ -n "${QUERENCIA_DESKTOP-}" ] && [ -x "$QUERENCIA_DESKTOP" ]; then
+    "$QUERENCIA_DESKTOP" </dev/null >>"$QUERENCIA_STATE_DIR/desktop.log" 2>&1 &
+    pid=$!
+    if [ -n "${QUERENCIA_DESKTOP_RECORD-}" ] && stat=$(cat "/proc/$pid/stat" 2>/dev/null); then
+        set -- ${stat##*) }
+        echo "$pid ${20}" >"$QUERENCIA_DESKTOP_RECORD"
+    fi
+fi
+
 "$QUERENCIA_PANEL" </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
 
 # Record "PID STARTTIME" for the starter's cleanup (see starttime() there).

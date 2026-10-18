@@ -11,3 +11,6 @@ XDG_CURRENT_DESKTOP=X-Querencia
 XDG_SESSION_DESKTOP=querencia
 LANG=en_US.UTF-8
 LANGUAGE=de
+
+# German keyboard layout
+XKB_DEFAULT_LAYOUT=de
