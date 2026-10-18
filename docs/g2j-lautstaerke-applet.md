@@ -68,6 +68,9 @@ Ströme als Text aus (Diagnose).
 ## Prüfung
 
 - `cargo test`: Panel 180 + 1 ignoriert, Lautstärke 16, Desktop 74.
+- Aufnahme: nennt der Server einen Monitor als Standardquelle (PipeWire ohne
+  Mikrofon: `auto_null.monitor`), zeigt der Regler das erste echte
+  Eingabegerät.
 - Isoliert: `tools/lautstaerke-pruefung/` (eigener headless labwc). Weil auf
   der VM kein Audiodienst installiert ist, spricht `qpulse.py` das native
   PulseAudio-Protokoll; libpulse läuft echt dagegen. `qpactl.py` steuert ihn
@@ -77,9 +80,11 @@ Ströme als Text aus (Diagnose).
 
 ## Grenzen
 
-- Kein echter Audiodienst auf der VM: geprüft gegen den Protokoll-Testserver,
-  nicht gegen PipeWire. Live zeigt das Applet „Kein Audiodienst“, bis
-  PipeWire/pipewire-pulse installiert ist.
+- Kein echter Audiodienst auf der VM: GUI-Prüfung gegen den
+  Protokoll-Testserver; lokal entpacktes PipeWire 1.6.2 nur ohne GUI
+  (Verbindung, Geräte, Test-Sink, Lautstärke stimmen). Live zeigt das Applet
+  „Kein Audiodienst“, bis `pipewire pipewire-pulse wireplumber
+  pipewire-audio` installiert sind.
 - Keine Ports und Profile, keine Pegelanzeige, keine Balance-Regler, keine
   Verstärkung über 100 % (der Wert wird angezeigt, aber nicht gesetzt).
 - Panel und Regler sprechen das Gerät des Servers an; mehrere Ausgaben
