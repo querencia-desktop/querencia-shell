@@ -118,22 +118,22 @@ const PANEL_CSS: &str = "
 .querencia-panel button.querencia-network:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
 .querencia-panel button.querencia-network:active { background-color: #dcd6d0; border-color: #9e9993; }
 .querencia-panel button.querencia-network.unavailable > image { opacity: 0.45; }
-popover.querencia-menu.querencia-network-menu .qnet { min-width: 230px; }
-popover.querencia-menu.querencia-network-menu button.qnet-item { min-height: 20px; padding: 2px 10px 2px 4px; margin: 0; border: 1px solid transparent; border-radius: 0; background: none; box-shadow: none; outline: none; color: #3c3c3c; font-weight: normal; }
-popover.querencia-menu.querencia-network-menu button.qnet-item:hover,
-popover.querencia-menu.querencia-network-menu button.qnet-item.qmenu-active { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); border-color: #b36c4e; box-shadow: inset 0 1px #fd9975; color: #ffffff; }
-popover.querencia-menu.querencia-network-menu button.qnet-item:hover label.qnet-detail,
-popover.querencia-menu.querencia-network-menu button.qnet-item.qmenu-active label.qnet-detail { color: #ffffff; }
-popover.querencia-menu.querencia-network-menu button.qnet-item:disabled { color: @insensitive_fg_color; background: none; border-color: transparent; box-shadow: none; }
-popover.querencia-menu.querencia-network-menu button.qnet-item.qnet-current { color: #3c3c3c; background: none; border-color: transparent; box-shadow: none; }
-popover.querencia-menu.querencia-network-menu .qnet-icon-hell { opacity: 0; }
-popover.querencia-menu.querencia-network-menu button.qnet-item:hover .qnet-icon-hell,
-popover.querencia-menu.querencia-network-menu button.qnet-item.qmenu-active .qnet-icon-hell { opacity: 1; }
-popover.querencia-menu.querencia-network-menu button.qnet-item:hover .qnet-icon-normal,
-popover.querencia-menu.querencia-network-menu button.qnet-item.qmenu-active .qnet-icon-normal { opacity: 0; }
-popover.querencia-menu.querencia-network-menu label.qnet-header { font-weight: bold; padding: 4px 10px 1px 6px; color: #3c3c3c; }
-popover.querencia-menu.querencia-network-menu label.qnet-note { font-style: italic; padding: 1px 10px 2px 26px; color: #7a7671; }
-popover.querencia-menu.querencia-network-menu label.qnet-detail { font-size: smaller; color: #6e6a66; }
+.querencia-panel popover.querencia-network-menu .qnet { min-width: 230px; }
+.querencia-panel popover.querencia-network-menu button.qnet-item { min-height: 20px; padding: 2px 10px 2px 4px; margin: 0; border: 1px solid transparent; border-radius: 0; background: none; box-shadow: none; outline: none; color: #3c3c3c; font-weight: normal; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:hover,
+.querencia-panel popover.querencia-network-menu button.qnet-item.qmenu-active { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); border-color: #b36c4e; box-shadow: inset 0 1px #fd9975; color: #ffffff; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:hover label.qnet-detail,
+.querencia-panel popover.querencia-network-menu button.qnet-item.qmenu-active label.qnet-detail { color: #ffffff; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:disabled { color: @insensitive_fg_color; background: none; border-color: transparent; box-shadow: none; }
+.querencia-panel popover.querencia-network-menu button.qnet-item.qnet-current { color: #3c3c3c; background: none; border-color: transparent; box-shadow: none; }
+.querencia-panel popover.querencia-network-menu .qnet-icon-hell { opacity: 0; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:hover .qnet-icon-hell,
+.querencia-panel popover.querencia-network-menu button.qnet-item.qmenu-active .qnet-icon-hell { opacity: 1; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:hover .qnet-icon-normal,
+.querencia-panel popover.querencia-network-menu button.qnet-item.qmenu-active .qnet-icon-normal { opacity: 0; }
+.querencia-panel popover.querencia-network-menu label.qnet-header { font-weight: bold; padding: 4px 10px 1px 6px; color: #3c3c3c; }
+.querencia-panel popover.querencia-network-menu label.qnet-note { font-style: italic; padding: 1px 10px 2px 26px; color: #7a7671; }
+.querencia-panel popover.querencia-network-menu label.qnet-detail { font-size: smaller; color: #6e6a66; }
 .querencia-panel menubutton.querencia-main-menu > button { border-radius: 0; padding-left: 6px; padding-right: 6px; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; color: #3c3c3c; }
 .querencia-panel menubutton.querencia-main-menu > button:hover,
 .querencia-panel menubutton.querencia-main-menu > button:active,
