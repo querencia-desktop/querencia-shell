@@ -356,6 +356,69 @@ impl Geometry {
         result.into_iter().map(Option::unwrap_or_default).collect()
     }
 
+    /// QE-03: a spot for a newly mounted volume: the first free one below
+    /// `anchor` (the trash) in its column, then in the next columns towards
+    /// the middle, each from the top. Without an anchor or room there, like
+    /// any new icon.
+    pub fn below(&self, anchor: Option<Point>, taken: &[Point]) -> Point {
+        let Some(anchor) = anchor else {
+            return self.new_position(taken);
+        };
+        let found = if self.snap {
+            let (columns, rows) = self.cells();
+            let (column, row) = self.cell_of(anchor);
+            let inward = if column * 2 >= columns - 1 { -1 } else { 1 };
+            ((row + 1)..rows)
+                .map(|r| (column, r))
+                .chain(
+                    (1..columns)
+                        .map(|k| column + inward * k)
+                        .filter(|c| (0..columns).contains(c))
+                        .flat_map(|c| (0..rows).map(move |r| (c, r))),
+                )
+                .map(|cell| self.cell_point(cell))
+                .find(|&p| self.is_free(p, taken))
+        } else {
+            let max_y = self.max().1;
+            (1..)
+                .map(|n| (anchor.0, anchor.1 + n * self.tile.1))
+                .take_while(|p| p.1 <= max_y)
+                .find(|&p| self.is_free(p, taken))
+                .or_else(|| self.nearest_free((anchor.0, anchor.1 + self.tile.1), taken))
+        };
+        found.unwrap_or_else(|| self.new_position(taken))
+    }
+
+    /// QE-03: positions for the icons that are not remembered (volumes),
+    /// after the others took `taken`: a place from this session where it
+    /// is free (else the nearest free spot), the rest `below` the anchor.
+    /// The icons in `taken` never move.
+    pub fn place_transient(
+        &self,
+        taken: &[Point],
+        wanted: &[Option<Place>],
+        anchor: Option<Point>,
+    ) -> Vec<Point> {
+        let mut taken = taken.to_vec();
+        let mut result = vec![(self.margin, self.margin); wanted.len()];
+        for (i, place) in wanted.iter().enumerate() {
+            if let Some(place) = place {
+                let at = self.clamp(self.resolve(*place));
+                let at = self.nearest_free(at, &taken).unwrap_or(at);
+                taken.push(at);
+                result[i] = at;
+            }
+        }
+        for (i, place) in wanted.iter().enumerate() {
+            if place.is_none() {
+                let at = self.below(anchor, &taken);
+                taken.push(at);
+                result[i] = at;
+            }
+        }
+        result
+    }
+
     /// "Nach Namen aufräumen": `count` positions in grid order.
     pub fn arranged(&self, count: usize) -> Vec<Point> {
         let mut taken = Vec::with_capacity(count);
@@ -954,5 +1017,47 @@ mod tests {
             .move_group(&full[..2], 0, (5000, 5000), &others)
             .expect("eigene Plätze");
         assert!(back.iter().all(|p| full[..2].contains(p)), "{back:?}");
+    }
+
+    #[test]
+    fn volumes_appear_below_the_trash_and_move_nobody() {
+        let trash = GRID.cell_point((11, 0));
+        let remembered = [
+            GRID.cell_point((0, 0)),
+            GRID.cell_point((0, 1)),
+            trash,
+            GRID.cell_point((0, 6)),
+        ];
+        assert_eq!(
+            GRID.place_transient(&remembered, &[None, None], Some(trash)),
+            [GRID.cell_point((11, 1)), GRID.cell_point((11, 2))]
+        );
+        let mut taken = remembered.to_vec();
+        taken.push(GRID.cell_point((11, 1)));
+        assert_eq!(GRID.below(Some(trash), &taken), GRID.cell_point((11, 2)));
+        // a full column: the next one towards the middle, from the top
+        let column: Vec<Point> = (0..7).map(|r| GRID.cell_point((11, r))).collect();
+        assert_eq!(GRID.below(Some(trash), &column), GRID.cell_point((10, 0)));
+        let left = GRID.cell_point((0, 2));
+        let first: Vec<Point> = (0..7).map(|r| GRID.cell_point((0, r))).collect();
+        assert_eq!(GRID.below(Some(left), &first), GRID.cell_point((1, 0)));
+        // without a trash icon: like any new icon
+        assert_eq!(GRID.below(None, &remembered), GRID.cell_point((0, 2)));
+        // a place from this session stays, new volumes still go below the trash
+        let moved = GRID.free_place(GRID.cell_point((5, 3)));
+        assert_eq!(
+            GRID.place_transient(&remembered, &[Some(moved), None], Some(trash)),
+            [GRID.cell_point((5, 3)), GRID.cell_point((11, 1))]
+        );
+        // a session place taken by a remembered icon: the volume gives way
+        let on_home = GRID.free_place(GRID.cell_point((0, 1)));
+        let given_way = GRID.place_transient(&remembered, &[Some(on_home)], Some(trash));
+        assert!(GRID.is_free(given_way[0], &remembered), "{given_way:?}");
+        // free placement: straight below, in tile steps
+        assert_eq!(AREA.below(Some((1172, 8)), &[(1172, 8)]), (1172, 96));
+        assert_eq!(
+            AREA.below(Some((1172, 8)), &[(1172, 8), (1172, 96)]),
+            (1172, 184)
+        );
     }
 }
