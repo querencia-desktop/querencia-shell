@@ -1,0 +1,17 @@
+[Desktop Entry]
+# Querencia Screenshot (QS-0b), HMP-04. Desktop-ID = GApplication-ID
+# org.querencia.Screenshot. Startet das Auswahlfenster; die Druck-Taste
+# (QS-0c) ist davon unabhängig und nicht Teil dieser Datei.
+Type=Application
+Version=1.5
+Name=Bildschirmfoto aufnehmen
+GenericName=Bildschirmfoto
+Comment=Ein Bildschirmfoto des Bildschirms, eines Fensters oder eines Bereichs speichern
+Exec=/home/user/projects/querencia-screenshot-dev/target/debug/querencia-screenshot
+TryExec=/home/user/projects/querencia-screenshot-dev/target/debug/querencia-screenshot
+Icon=applets-screenshooter
+Terminal=false
+Categories=GTK;Utility;
+Keywords=Bildschirmfoto;Screenshot;Aufnahme;
+StartupNotify=true
+StartupWMClass=org.querencia.Screenshot

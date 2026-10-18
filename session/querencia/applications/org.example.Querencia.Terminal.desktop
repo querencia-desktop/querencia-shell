@@ -1,0 +1,19 @@
+[Desktop Entry]
+# Querencia Terminal, HMP-04. Desktop-ID = GApplication-ID
+# org.example.Querencia.Terminal (vorläufige ID des Projekts). Binary aus
+# einem isolierten Neubau der unveränderten Quellen von
+# querencia-terminal-dev (mit vendor/vte4), siehe hmp-04-bericht.md.
+# Utility wie gnome-terminal in Ubuntu 10.04 (Zubehör).
+Type=Application
+Version=1.5
+Name=Querencia Terminal
+GenericName=Terminal
+Comment=Die Befehlszeile verwenden
+Exec=/home/user/projects/querencia-panel-werkstatt/hmp-04/apps/querencia-terminal/target/debug/querencia-terminal
+TryExec=/home/user/projects/querencia-panel-werkstatt/hmp-04/apps/querencia-terminal/target/debug/querencia-terminal
+Icon=utilities-terminal
+Terminal=false
+Categories=GTK;Utility;TerminalEmulator;
+Keywords=Shell;Konsole;Befehlszeile;Terminal;
+StartupNotify=true
+StartupWMClass=org.example.Querencia.Terminal
