@@ -1,0 +1,28 @@
+[package]
+name = "querencia-netzwerk"
+version = "0.1.0"
+description = "Querencia Netzwerk: Netzwerkzustand (NetworkManager über D-Bus, sonst nur lesend aus dem Kernel und systemd-networkd) für das Panel-Applet"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "querencia_netzwerk"
+path = "src/lib.rs"
+
+[[bin]]
+name = "querencia-netzwerk"
+path = "src/main.rs"
+
+[dependencies]
+# Same crates and versions as querencia-panel and querencia-lautstaerke:
+# D-Bus (NetworkManager, systemd-networkd, systemd-resolved) through GIO,
+# which gtk4 brings along; libc (already in Cargo.lock) for getifaddrs and
+# the netlink socket that wakes the read-only fallback. No zbus: it would
+# be a new direct dependency with its own executor next to the GTK main
+# loop.
+# glib-unix as in querencia-panel: the netlink descriptor in the main loop.
+glib-unix = "0.22"
+gtk4 = { version = "0.11", features = ["v4_10"] }
+libc = "0.2"
