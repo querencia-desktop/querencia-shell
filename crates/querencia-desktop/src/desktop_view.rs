@@ -1205,7 +1205,7 @@ impl Icons {
         add(
             "change-background",
             None,
-            Box::new(|icons, _| choose_background(icons.background_changed.clone())),
+            Box::new(|icons, _| change_background(icons)),
         );
         self.window.insert_action_group("desktop", Some(&group));
     }
@@ -2193,6 +2193,66 @@ fn new_document(dir: &std::path::Path, template: &str) {
     }
 }
 
+/// QE-01 A3: `querencia-einstellungen`, first on `PATH`, then in
+/// `~/opt/querencia/bin` (where the session installs Querencia programs).
+pub fn settings_program(path_var: Option<&std::ffi::OsStr>, home: &Path) -> Option<PathBuf> {
+    let executable = |p: &Path| {
+        std::fs::metadata(p).is_ok_and(|m| {
+            m.is_file() && std::os::unix::fs::PermissionsExt::mode(&m.permissions()) & 0o111 != 0
+        })
+    };
+    path_var
+        .into_iter()
+        .flat_map(std::env::split_paths)
+        .filter(|dir| dir.is_absolute())
+        .map(|dir| dir.join("querencia-einstellungen"))
+        .chain(std::iter::once(
+            home.join("opt/querencia/bin/querencia-einstellungen"),
+        ))
+        .find(|p| executable(p))
+}
+
+/// "Hintergrund der Arbeitsfläche ändern …" (QE-01 A3): Querencia
+/// Einstellungen' background page when it is installed; it is then the only
+/// writer of `desktop.ini` (the desktop follows the file). Otherwise, or
+/// when it cannot be started, the file dialog of HMP-09.
+fn change_background(icons: &Rc<Icons>) {
+    if let Some(program) = settings_program(std::env::var_os("PATH").as_deref(), &glib::home_dir())
+    {
+        match start_settings(icons, &program) {
+            Ok(()) => {
+                log(&format!(
+                    "Hintergrund-Einstellungen gestartet: {} --hintergrund",
+                    program.display()
+                ));
+                return;
+            }
+            Err(err) => log(&format!(
+                "{} nicht gestartet ({err}): Dateiauswahl",
+                program.display()
+            )),
+        }
+    }
+    choose_background(icons.background_changed.clone());
+}
+
+/// Starts `<program> --hintergrund` in the home folder with an activation
+/// token of the display, so the window may take the focus. Spawned directly
+/// (not through `gio-launch-desktop`): a program that cannot be executed is
+/// reported here, and the file dialog takes over. GIO reaps the child.
+fn start_settings(icons: &Rc<Icons>, program: &Path) -> Result<(), glib::Error> {
+    let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::NONE);
+    launcher.set_cwd(glib::home_dir());
+    let context = WidgetExt::display(&icons.window).app_launch_context();
+    if let Some(token) = context.startup_notify_id(None::<&gio::AppInfo>, &[]) {
+        launcher.setenv("XDG_ACTIVATION_TOKEN", token.as_str(), true);
+        launcher.setenv("DESKTOP_STARTUP_ID", token.as_str(), true);
+    }
+    launcher
+        .spawn(&[program.as_os_str(), std::ffi::OsStr::new("--hintergrund")])
+        .map(drop)
+}
+
 /// "Hintergrund der Arbeitsfläche ändern …": a file dialog for an image;
 /// the choice goes into `desktop.ini` (HMP-08 shows it at once). Mode and
 /// colour stay as they are.
@@ -2219,6 +2279,8 @@ fn choose_background(done: Rc<dyn Fn()>) {
             let text = std::fs::read_to_string(&config_path).unwrap_or_default();
             let (mut background, _) = config::parse(&text);
             background.file = Some(path.clone());
+            // a chosen image is shown, also after the colour only (QE-01)
+            background.kind = config::Kind::Image;
             let written = config_path
                 .parent()
                 .map_or(Ok(()), std::fs::create_dir_all)
@@ -2236,4 +2298,49 @@ fn choose_background(done: Rc<dyn Fn()>) {
             }
         },
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn exe(path: &Path) {
+        std::fs::write(path, "#!/bin/sh\n").expect("fixture");
+        std::fs::set_permissions(path, std::os::unix::fs::PermissionsExt::from_mode(0o755))
+            .expect("fixture");
+    }
+
+    /// QE-01 A3: PATH first, then ~/opt/querencia/bin; nothing else.
+    #[test]
+    fn the_settings_program_is_found_on_path_then_in_opt() {
+        let base = std::env::temp_dir().join(format!("qe01-einstellungen-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let (bin, home) = (base.join("bin"), base.join("home"));
+        std::fs::create_dir_all(&bin).expect("fixture");
+        std::fs::create_dir_all(home.join("opt/querencia/bin")).expect("fixture");
+        let path = std::env::join_paths([bin.clone(), PathBuf::from("/nirgends")]).expect("pfad");
+        // neither: the file dialog stays
+        assert_eq!(settings_program(Some(&path), &home), None);
+        assert_eq!(settings_program(None, &home), None);
+        // only in ~/opt
+        let opt = home.join("opt/querencia/bin/querencia-einstellungen");
+        exe(&opt);
+        assert_eq!(settings_program(Some(&path), &home), Some(opt.clone()));
+        // PATH wins
+        let on_path = bin.join("querencia-einstellungen");
+        exe(&on_path);
+        assert_eq!(settings_program(Some(&path), &home), Some(on_path.clone()));
+        // not executable or relative PATH entries do not count
+        std::fs::set_permissions(
+            &on_path,
+            std::os::unix::fs::PermissionsExt::from_mode(0o644),
+        )
+        .expect("fixture");
+        assert_eq!(settings_program(Some(&path), &home), Some(opt));
+        let relative = std::ffi::OsString::from("bin");
+        std::fs::remove_file(home.join("opt/querencia/bin/querencia-einstellungen"))
+            .expect("cleanup");
+        assert_eq!(settings_program(Some(&relative), &home), None);
+        std::fs::remove_dir_all(&base).expect("cleanup");
+    }
 }

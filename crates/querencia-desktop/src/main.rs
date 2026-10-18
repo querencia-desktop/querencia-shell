@@ -66,7 +66,17 @@ fn icons_enabled(value: Option<&str>) -> bool {
 
 type Shared = Rc<RefCell<Desktop>>;
 
+/// QE-01: what this desktop can show beyond HMP-10a, for Querencia
+/// Einstellungen (`querencia-desktop --faehigkeiten`).
+const CAPABILITIES: &str = "type-color mode-centered mode-tiled";
+
 fn main() -> glib::ExitCode {
+    // answered before GTK or GApplication start: no display needed, no
+    // running instance is activated
+    if std::env::args().skip(1).any(|a| a == "--faehigkeiten") {
+        println!("{CAPABILITIES}");
+        return glib::ExitCode::SUCCESS;
+    }
     let app = Application::builder().application_id(APP_ID).build();
     let desktop: Shared = Rc::default();
     app.connect_activate(move |app| {
@@ -103,24 +113,33 @@ fn load(desktop: &Shared) {
     for problem in problems {
         eprintln!("querencia-desktop: {}: {problem}", path.display());
     }
-    let texture = settings
-        .file
-        .as_ref()
-        .and_then(|file| read_texture(file))
-        .or_else(built_in_texture);
-    eprintln!(
-        "querencia-desktop: Hintergrund {}, Modus {}{}",
-        settings
+    // QE-01: Type=color loads no image at all, not even the built-in one
+    let texture = match settings.kind {
+        config::Kind::Color => None,
+        config::Kind::Image => settings
             .file
             .as_ref()
-            .map_or_else(|| config::BUILT_IN.to_owned(), |f| f.display().to_string()),
-        settings.mode.name(),
-        if texture.is_none() {
-            " – kein Bild lesbar, nur Farbe"
-        } else {
-            ""
-        }
-    );
+            .and_then(|file| read_texture(file))
+            .or_else(built_in_texture),
+    };
+    if settings.kind == config::Kind::Color {
+        let (r, g, b) = settings.color;
+        eprintln!("querencia-desktop: Hintergrund nur Farbe #{r:02x}{g:02x}{b:02x} (Type=color)");
+    } else {
+        eprintln!(
+            "querencia-desktop: Hintergrund {}, Modus {}{}",
+            settings
+                .file
+                .as_ref()
+                .map_or_else(|| config::BUILT_IN.to_owned(), |f| f.display().to_string()),
+            settings.mode.name(),
+            if texture.is_none() {
+                " – kein Bild lesbar, nur Farbe"
+            } else {
+                ""
+            }
+        );
+    }
     let mut desktop = desktop.borrow_mut();
     desktop.settings = settings;
     desktop.texture = texture;
