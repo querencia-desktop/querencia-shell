@@ -12,6 +12,16 @@ if [ -n "${QUERENCIA_POLKIT_AGENT-}" ] && [ -x "$QUERENCIA_POLKIT_AGENT" ]; then
     "$QUERENCIA_POLKIT_AGENT" </dev/null >>"$QUERENCIA_STATE_DIR/polkit-agent.log" 2>&1 &
 fi
 
+# Bildschirm (G2-G): die in ~/.config/querencia/bildschirm.ini gespeicherte
+# Auflösung, Anordnung und Skalierung setzen, bevor Desktop und Panel ihre
+# Flächen anlegen. Läuft synchron (labwc antwortet sofort, Zeitgrenze 5 s im
+# Programm). Ohne Datei, ohne installierte Einstellungen oder bei Fehler
+# bleibt alles wie von labwc eingerichtet; Ausgabe in bildschirm.log.
+if [ -x ~/opt/querencia/bin/querencia-einstellungen ]; then
+    ~/opt/querencia/bin/querencia-einstellungen --bildschirm-anwenden \
+        </dev/null >>"$QUERENCIA_STATE_DIR/bildschirm.log" 2>&1 || true
+fi
+
 # The desktop (background, icons, desktop menu; optional) first, so the
 # panel appears over a finished desktop, as on GNOME 2.
 if [ -n "${QUERENCIA_DESKTOP-}" ] && [ -x "$QUERENCIA_DESKTOP" ]; then
