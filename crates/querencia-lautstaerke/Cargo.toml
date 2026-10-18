@@ -1,0 +1,24 @@
+[package]
+name = "querencia-lautstaerke"
+version = "0.1.0"
+description = "Querencia Lautstärke: Tonsystem (PulseAudio-Protokoll, auch pipewire-pulse) für das Panel-Applet und der Lautstärkeregler"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "querencia_lautstaerke"
+path = "src/lib.rs"
+
+[[bin]]
+name = "querencia-lautstaerke"
+path = "src/main.rs"
+
+[dependencies]
+# Same crates and versions as querencia-panel; libc was already in
+# Cargo.lock (through glib). libpulse is opened at run time with dlopen,
+# so neither a -dev package nor a running audio service is needed to build
+# or to start.
+gtk4 = { version = "0.11", features = ["v4_10"] }
+libc = "0.2"

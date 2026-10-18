@@ -622,6 +622,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "querencia-lautstaerke"
+version = "0.1.0"
+dependencies = [
+ "gtk4",
+ "libc",
+]
+
+[[package]]
 name = "querencia-panel"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,23 @@
+[Desktop Entry]
+# Querencia Lautstärkeregler (G2-J). Desktop-ID = GApplication-ID
+# org.querencia.Lautstaerke, damit labwc und die Fensterliste Symbol und Namen
+# finden. Settings ohne System: das Panel zeigt ihn unter
+# System → Einstellungen; AudioVideo/Mixer für andere Menüs. Exec und TryExec
+# setzt das Integrationsskript auf die versionierte Ablage.
+Type=Application
+Version=1.5
+Name=Lautstärkeregler
+Name[de]=Lautstärkeregler
+GenericName=Volume Control
+GenericName[de]=Lautstärkeregler
+Comment=Lautstärke der Geräte und Anwendungen einstellen
+Comment[de]=Lautstärke der Geräte und Anwendungen einstellen
+Exec=querencia-lautstaerke
+TryExec=querencia-lautstaerke
+Icon=org.querencia.Lautstaerke
+Terminal=false
+Categories=GTK;AudioVideo;Audio;Mixer;Settings;
+Keywords=volume;sound;mixer;audio;
+Keywords[de]=Lautstärke;Ton;Mixer;Audio;Lautsprecher;Mikrofon;
+StartupNotify=true
+StartupWMClass=org.querencia.Lautstaerke
