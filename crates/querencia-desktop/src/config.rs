@@ -3,10 +3,15 @@
 //!
 //! ```ini
 //! [Background]
+//! # QE-01: color = the colour only, no image at all (not even the
+//! # built-in one); missing or image = an image. Written only for color.
+//! Type=color
 //! # image; empty or missing: the built-in "Querencia Blau"
 //! File=/home/user/Bilder/berge.jpg
 //! # zoom (fill the screen, crop, never distort) | scaled (whole image,
 //! # bars in Color) | stretched (fill, distorted, as GNOME 2 offered it)
+//! # | centered (original size in the middle, QE-01) | tiled (original
+//! # size, repeated from the top left, QE-01)
 //! Mode=zoom
 //! # behind the image and while it loads; also the whole desktop if the
 //! # image cannot be read
@@ -28,6 +33,18 @@ pub enum Mode {
     Scaled,
     /// Fill the whole screen, ignore the aspect ratio.
     Stretched,
+    /// QE-01: original size in the middle, the rest in the colour.
+    Centered,
+    /// QE-01: original size, repeated from the top left.
+    Tiled,
+}
+
+/// QE-01: an image or the colour only.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Kind {
+    #[default]
+    Image,
+    Color,
 }
 
 impl Mode {
@@ -36,6 +53,8 @@ impl Mode {
             "zoom" => Some(Self::Zoom),
             "scaled" => Some(Self::Scaled),
             "stretched" => Some(Self::Stretched),
+            "centered" => Some(Self::Centered),
+            "tiled" => Some(Self::Tiled),
             _ => None,
         }
     }
@@ -45,6 +64,8 @@ impl Mode {
             Self::Zoom => "zoom",
             Self::Scaled => "scaled",
             Self::Stretched => "stretched",
+            Self::Centered => "centered",
+            Self::Tiled => "tiled",
         }
     }
 }
@@ -54,6 +75,8 @@ pub const DEFAULT_COLOR: (u8, u8, u8) = (0x1c, 0x4e, 0x96);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Background {
+    /// QE-01: `Color` shows the colour only; `file` is kept, not loaded.
+    pub kind: Kind,
     /// `None`: the built-in image.
     pub file: Option<PathBuf>,
     pub mode: Mode,
@@ -63,6 +86,7 @@ pub struct Background {
 impl Default for Background {
     fn default() -> Self {
         Self {
+            kind: Kind::default(),
             file: None,
             mode: Mode::default(),
             color: DEFAULT_COLOR,
@@ -104,6 +128,11 @@ pub fn parse(text: &str) -> (Background, Vec<String>) {
         };
         let value = value.trim();
         match key.trim() {
+            "Type" => match value.to_ascii_lowercase().as_str() {
+                "image" => background.kind = Kind::Image,
+                "color" => background.kind = Kind::Color,
+                _ => problems.push(format!("unbekannter Typ „{value}“, image")),
+            },
             "File" if value.is_empty() => background.file = None,
             "File" => background.file = Some(expand_home(value)),
             "Mode" => match Mode::parse(value) {
@@ -122,10 +151,17 @@ pub fn parse(text: &str) -> (Background, Vec<String>) {
 
 /// The key file text for `background`. Written by the desktop menu's
 /// "Hintergrund der Arbeitsfläche ändern" (HMP-09).
+/// QE-01: `Type=color` is written only for the colour (an image setting
+/// stays byte for byte as HMP-10a wrote it), in the same order as Querencia
+/// Einstellungen writes the file.
 pub fn render(background: &Background) -> String {
     let (r, g, b) = background.color;
+    let kind = match background.kind {
+        Kind::Color => "Type=color\n",
+        Kind::Image => "",
+    };
     format!(
-        "[Background]\nFile={}\nMode={}\nColor=#{r:02x}{g:02x}{b:02x}\n",
+        "[Background]\n{kind}File={}\nMode={}\nColor=#{r:02x}{g:02x}{b:02x}\n",
         background
             .file
             .as_ref()
@@ -169,18 +205,24 @@ pub fn built_in_candidates(data_dirs: &[PathBuf], source_tree: &Path) -> Vec<Pat
 }
 
 /// Rectangle (x, y, width, height) the image is drawn into on a monitor of
-/// `out` size, for an image of `img` size. Zoom and scaled keep the aspect
-/// ratio (zoom covers and is cropped by the monitor, scaled fits inside,
-/// centred); stretched fills exactly.
+/// `out` size, for an image of `img` size (logical pixels). Zoom and scaled
+/// keep the aspect ratio (zoom covers and is cropped by the monitor, scaled
+/// fits inside, centred); stretched fills exactly; centered (QE-01) keeps
+/// the original size in the middle (cropped when larger); tiled (QE-01):
+/// the first tile at the top left, repeated by the caller.
 pub fn placement(mode: Mode, img: (f64, f64), out: (f64, f64)) -> (f64, f64, f64, f64) {
     let (iw, ih) = img;
     let (ow, oh) = out;
     if iw <= 0.0 || ih <= 0.0 || mode == Mode::Stretched {
         return (0.0, 0.0, ow, oh);
     }
+    if mode == Mode::Tiled {
+        return (0.0, 0.0, iw, ih);
+    }
     let scale = match mode {
         Mode::Zoom => (ow / iw).max(oh / ih),
-        _ => (ow / iw).min(oh / ih),
+        Mode::Scaled => (ow / iw).min(oh / ih),
+        _ => 1.0,
     };
     let (w, h) = (iw * scale, ih * scale);
     ((ow - w) / 2.0, (oh - h) / 2.0, w, h)
@@ -230,6 +272,7 @@ mod tests {
         let (bg, _) = parse("[Background]\nFile=~/Bilder/x.jpg\n");
         assert_eq!(bg.file, Some(gtk4::glib::home_dir().join("Bilder/x.jpg")));
         let original = Background {
+            kind: Kind::Image,
             file: Some(PathBuf::from("/srv/bild.png")),
             mode: Mode::Stretched,
             color: (1, 2, 255),
@@ -308,5 +351,76 @@ mod tests {
                 PathBuf::from("/src/q/data/hintergruende/querencia-blau.png"),
             ]
         );
+    }
+
+    /// QE-01 A1: `Type=color` is read and written; an image setting stays
+    /// byte for byte as HMP-10a (and Querencia Einstellungen) write it.
+    #[test]
+    fn the_colour_only_type_round_trips() {
+        let image = Background {
+            kind: Kind::Image,
+            file: Some(PathBuf::from("/srv/bild.png")),
+            mode: Mode::Zoom,
+            color: (0x20, 0x4a, 0x87),
+        };
+        assert_eq!(
+            render(&image),
+            "[Background]\nFile=/srv/bild.png\nMode=zoom\nColor=#204a87\n",
+            "wie HMP-10a, ohne Type"
+        );
+        let color = Background {
+            kind: Kind::Color,
+            ..image.clone()
+        };
+        assert_eq!(
+            render(&color),
+            "[Background]\nType=color\nFile=/srv/bild.png\nMode=zoom\nColor=#204a87\n",
+            "wie Querencia Einstellungen schreibt"
+        );
+        assert_eq!(parse(&render(&color)), (color, vec![]));
+        let (bg, problems) = parse("[Background]\nType=Color\n");
+        assert_eq!(bg.kind, Kind::Color);
+        assert!(problems.is_empty());
+        let (bg, problems) = parse("[Background]\nType=muster\n");
+        assert_eq!(bg.kind, Kind::Image);
+        assert_eq!(problems, ["unbekannter Typ „muster“, image"]);
+    }
+
+    /// QE-01 A2: centered and tiled, with the values of Querencia
+    /// Einstellungen (`modell.rs`, `platzierung_haelt_proportionen`).
+    #[test]
+    fn centered_and_tiled_keep_the_original_size() {
+        for (text, mode) in [("centered", Mode::Centered), ("tiled", Mode::Tiled)] {
+            let (bg, problems) = parse(&format!("[Background]\nMode={text}\n"));
+            assert_eq!((bg.mode, problems.len()), (mode, 0));
+            assert_eq!(mode.name(), text);
+            let back = Background {
+                mode,
+                ..Background::default()
+            };
+            assert_eq!(parse(&render(&back)).0, back);
+        }
+        let (img, out) = ((1600.0, 1200.0), (1920.0, 1080.0));
+        assert_eq!(
+            placement(Mode::Centered, img, out),
+            (160.0, -60.0, 1600.0, 1200.0)
+        );
+        assert_eq!(
+            placement(Mode::Centered, (200.0, 150.0), (1280.0, 720.0)),
+            (540.0, 285.0, 200.0, 150.0)
+        );
+        assert_eq!(
+            placement(Mode::Tiled, (500.0, 400.0), out),
+            (0.0, 0.0, 500.0, 400.0)
+        );
+        // an unreadable image: the colour everywhere
+        assert_eq!(
+            placement(Mode::Tiled, (0.0, 0.0), out),
+            (0.0, 0.0, 1920.0, 1080.0)
+        );
+        // the old modes are unchanged
+        let (x, y, w, h) = placement(Mode::Scaled, img, out);
+        assert!((h - 1080.0).abs() < 1e-9 && (w - 1440.0).abs() < 1e-9);
+        assert!((x - 240.0).abs() < 1e-9 && y.abs() < 1e-9);
     }
 }

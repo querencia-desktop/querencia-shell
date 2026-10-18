@@ -21,13 +21,21 @@ import sys
 import tempfile
 import time
 
-LABWC = "~/opt/labwc-0.9.8/bin/labwc"
-SESSION_LABWC_PIDS = {
-    int(p) for p in os.listdir("/proc") if p.isdigit()
-    and os.path.exists(f"/proc/{p}/exe")
-    and os.access(f"/proc/{p}/exe", os.R_OK)
-    and os.readlink(f"/proc/{p}/exe") == LABWC
-}
+LABWC = "/home/user/opt/labwc-0.9.8/bin/labwc"
+def _session_labwc(pid: str) -> bool:
+    """The labwc of a real session (runtime dir /run/user/…), not the
+    isolated test compositor of another test (HMP-10: several workers)."""
+    try:
+        if os.readlink(f"/proc/{pid}/exe") != LABWC:
+            return False
+        with open(f"/proc/{pid}/environ", "rb") as f:
+            env = f.read().split(b"\0")
+    except OSError:
+        return False
+    return any(e.startswith(b"XDG_RUNTIME_DIR=/run/user/") for e in env)
+
+
+SESSION_LABWC_PIDS = {int(p) for p in os.listdir("/proc") if p.isdigit() and _session_labwc(p)}
 
 
 def main() -> int:
@@ -43,13 +51,16 @@ def main() -> int:
                     '  <core><decoration>server</decoration></core>\n'
                     '  <theme><name>Clearlooks</name></theme>\n'
                     '</labwc_config>\n')
-    runtime = tempfile.mkdtemp(prefix="hmp05-runtime-", dir="~/.werkstatt/cache/scratch")
+    # HMP-10: the runtime directory's parent can be chosen (each worker its own)
+    runtime_base = os.environ.get("HMP_RUNTIME_BASIS", "/home/user/.werkstatt/cache/scratch")
+    os.makedirs(runtime_base, exist_ok=True)
+    runtime = tempfile.mkdtemp(prefix="hmp05-runtime-", dir=runtime_base)
     os.chmod(runtime, 0o700)
 
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(("WAYLAND", "DBUS", "DISPLAY", "XDG_", "LABWC", "SWAYSOCK"))}
     env.update({
-        "HOME": "~",
+        "HOME": "/home/user",
         "XDG_RUNTIME_DIR": runtime,
         "XDG_CONFIG_HOME": os.path.join(profile, "config"),
         "XDG_DATA_HOME": os.path.join(profile, "data"),
@@ -67,7 +78,7 @@ def main() -> int:
     })
     # User directories as on the VM (the profile has no user-dirs.dirs of
     # its own unless the caller made one).
-    real_dirs = "~/.config/user-dirs.dirs"
+    real_dirs = "/home/user/.config/user-dirs.dirs"
     own_dirs = os.path.join(profile, "config/user-dirs.dirs")
     if os.path.exists(real_dirs) and not os.path.exists(own_dirs):
         shutil.copy2(real_dirs, own_dirs)

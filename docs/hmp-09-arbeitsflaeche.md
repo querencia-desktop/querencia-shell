@@ -41,6 +41,7 @@ Die Ebene liegt nur auf dem ersten Bildschirm, wie bei GNOME 2. Mit `QUERENCIA_D
   - GIO `make_directory`, `create` und `copy` ohne Überschreib-Flag schlagen bei vorhandenem Namen fehl.
   - Den Arbeitsflächenordner legt erst „Ordner anlegen“ bzw. „Dokument anlegen“ an.
 - Bewusst nicht angeboten, weil noch nicht umgesetzt: „Starter anlegen …“, „Anordnung fixieren“ und Ziehen und Ablegen, „Einfügen“. Ebenso Umbenennen, Ausschneiden, Kopieren, „In den Müll verschieben“ und „Eigenschaften“ im Symbolmenü.
+- HMP-10 ergänzt Ziehen und Ablegen, gespeicherte Plätze statt der Reihenfolge und Umbenennen: `hmp-10-symbole-verschieben-umbenennen.md`.
 
 ## Prüfung
 

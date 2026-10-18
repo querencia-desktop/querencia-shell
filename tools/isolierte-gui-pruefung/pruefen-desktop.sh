@@ -17,12 +17,16 @@ mkdir -p "$P/schreibtisch/Apfel" "$P/vorlagen"
 printf 'unverändert\n' > "$P/schreibtisch/Zebra.txt"
 printf 'Vorlage Brief\n' > "$P/vorlagen/Brief.txt"
 printf 'XDG_DESKTOP_DIR="%s"\nXDG_TEMPLATES_DIR="%s"\n' "$P/schreibtisch" "$P/vorlagen" > "$P/config/user-dirs.dirs"
+# HMP-10a: HMP10_RASTER=aus schaltet das Raster vorab aus (HMP-09/10-Pixellagen)
+if [ "${HMP10_RASTER:-}" = aus ]; then
+  mkdir -p "$P/state/querencia"; printf 'version\t1\neinstellung\traster\tnein\n' > "$P/state/querencia/desktop-symbole"
+fi
 # Programme wie in der Live-Sitzung: Querencia Files QF-0f, Querencia Terminal
 cat > "$P/apps/io.github.lgse.Strata.desktop" <<D
 [Desktop Entry]
 Type=Application
 Name=Querencia Files
-Exec=~/projects/querencia-files-werkstatt/qf-0f/live/strata %U
+Exec=/home/user/projects/querencia-files-werkstatt/qf-0f/live/strata %U
 Icon=system-file-manager
 MimeType=inode/directory;
 D

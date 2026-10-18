@@ -25,7 +25,11 @@ testprofil_neu() {
     ~/projects/querencia-panel-werkstatt/gui-test-nacht | \
     ~/projects/querencia-panel-werkstatt/hmp-[0-9][0-9]/gui-test* | \
     ~/projects/querencia-panel-werkstatt/arbeitsflaechen-4/nachweis | \
-    ~/.werkstatt/cache/scratch/?*) ;;
+    ~/.werkstatt/cache/scratch/?* | \
+    ~/projects/querencia-werkstatt-w1-desktop/nachweis/gui-test* | \
+    ~/projects/querencia-werkstatt-w1-desktop/hmp10a/nachweis/gui-test* | \
+    ~/projects/querencia-werkstatt-w1-desktop/hmp10b/nachweis/gui-test* | \
+    ~/projects/querencia-werkstatt-w1-desktop/qe01/nachweis/gui-test*) ;;
     ~/projects/querencia-panel-werkstatt/sitzung)
         case $name in
         test-*) ;;

@@ -57,18 +57,38 @@ mod imp {
                 ),
                 &bounds,
             );
+            // QE-01: the colour only
+            if self.settings.borrow().kind == config::Kind::Color {
+                return;
+            }
             let texture = self.texture.borrow();
             let Some(texture) = texture.as_ref() else {
                 return;
             };
-            let img = (f64::from(texture.width()), f64::from(texture.height()));
-            let (x, y, tw, th) = config::placement(self.settings.borrow().mode, img, (w, h));
-            snapshot.push_clip(&bounds);
-            snapshot.append_scaled_texture(
-                texture,
-                gtk4::gsk::ScalingFilter::Trilinear,
-                &graphene::Rect::new(x as f32, y as f32, tw as f32, th as f32),
+            let mode = self.settings.borrow().mode;
+            // centered and tiled show the image at its original size: one
+            // image pixel per screen pixel (logical size = pixels / scale)
+            let scale = match mode {
+                config::Mode::Centered | config::Mode::Tiled => {
+                    f64::from(widget.scale_factor().max(1))
+                }
+                _ => 1.0,
+            };
+            let img = (
+                f64::from(texture.width()) / scale,
+                f64::from(texture.height()) / scale,
             );
+            let (x, y, tw, th) = config::placement(mode, img, (w, h));
+            let rect = graphene::Rect::new(x as f32, y as f32, tw as f32, th as f32);
+            snapshot.push_clip(&bounds);
+            if mode == config::Mode::Tiled && img.0 > 0.0 && img.1 > 0.0 {
+                // one tile, repeated over the whole monitor from the top left
+                snapshot.push_repeat(&bounds, Some(&rect));
+                snapshot.append_scaled_texture(texture, gtk4::gsk::ScalingFilter::Trilinear, &rect);
+                snapshot.pop();
+            } else {
+                snapshot.append_scaled_texture(texture, gtk4::gsk::ScalingFilter::Trilinear, &rect);
+            }
             snapshot.pop();
         }
     }

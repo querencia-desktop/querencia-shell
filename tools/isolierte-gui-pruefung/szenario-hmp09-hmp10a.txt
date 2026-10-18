@@ -1,0 +1,203 @@
+# HMP-10a: wie szenario-hmp09.txt; „Hintergrund … ändern“ steht zwei Einträge tiefer (+149 statt +101)
+mark H0 Start: Symbole
+run QDESKTOP >SHOT/desktop.log 2>&1
+wait 3000
+shot SHOT/h01-start.png
+mark H1 Einzelklick Rechner: ausgewählt
+move 55 65
+wait 300
+click
+wait 500
+shot SHOT/h02-auswahl-rechner.png
+mark H2 Einzelklick Papierkorb: Auswahl wechselt
+move 55 241
+wait 300
+click
+wait 500
+shot SHOT/h03-auswahl-papierkorb.png
+mark H3 Klick auf freie Fläche: keine Auswahl
+move 640 300
+wait 300
+click
+wait 500
+shot SHOT/h04-keine-auswahl.png
+mark H4 Doppelklick Persönlicher Ordner
+move 55 153
+wait 300
+dclick
+wait 5000
+shot SHOT/h05-persoenlicher-ordner.png
+keydown Alt_L
+keydown F4
+keyup F4
+keyup Alt_L
+wait 1500
+mark H5 Doppelklick Papierkorb
+move 55 241
+wait 300
+dclick
+wait 4000
+shot SHOT/h06-papierkorb.png
+keydown Alt_L
+keydown F4
+keyup F4
+keyup Alt_L
+wait 1500
+mark H6 Doppelklick Rechner
+move 55 65
+wait 300
+dclick
+wait 4000
+shot SHOT/h07-rechner.png
+keydown Alt_L
+keydown F4
+keyup F4
+keyup Alt_L
+wait 1500
+mark H7 Doppelklick Querencia Terminal
+move 55 329
+wait 300
+dclick
+wait 4000
+shot SHOT/h08-terminal.png
+keydown Alt_L
+keydown F4
+keyup F4
+keyup Alt_L
+wait 1500
+mark H8 Doppelklick Ordner Apfel
+move 55 417
+wait 300
+dclick
+wait 4000
+shot SHOT/h09-apfel.png
+keydown Alt_L
+keydown F4
+keyup F4
+keyup Alt_L
+wait 1500
+shot SHOT/h09b-alle-zu.png
+mark H9 Rechtsklick freie Fläche: Arbeitsflächenmenü
+move 640 300
+wait 300
+rclick
+wait 800
+shot SHOT/h10-menue.png
+mark H10 Dokument anlegen: Untermenü
+glide 700 339 300
+wait 900
+shot SHOT/h11-untermenue.png
+key Escape
+wait 300
+key Escape
+wait 500
+mark H11 Ordner anlegen
+move 640 300
+wait 300
+rclick
+wait 800
+move 700 315
+wait 300
+click
+wait 1500
+shot SHOT/h12-neuer-ordner.png
+mark H12 Ordner anlegen, zweites Mal: kein Überschreiben
+move 640 300
+wait 300
+rclick
+wait 800
+move 700 315
+wait 300
+click
+wait 1500
+shot SHOT/h13-neuer-ordner-2.png
+mark H13 Dokument anlegen: Leere Datei
+move 640 300
+wait 300
+rclick
+wait 800
+glide 700 339 300
+wait 900
+glide 1000 339 400
+wait 600
+click
+wait 1500
+shot SHOT/h14-leere-datei.png
+mark H14 Dokument anlegen: Vorlage Brief.txt
+move 640 300
+wait 300
+rclick
+wait 800
+glide 700 339 300
+wait 900
+glide 1000 339 400
+wait 400
+move 1000 363
+wait 600
+click
+wait 1500
+shot SHOT/h15-vorlage.png
+mark H15 Nach Namen aufräumen
+move 640 300
+wait 300
+rclick
+wait 800
+move 700 370
+wait 300
+click
+wait 1500
+shot SHOT/h16-aufgeraeumt.png
+mark H16 Rechtsklick auf Symbol: Öffnen
+move 55 505
+wait 300
+rclick
+wait 800
+shot SHOT/h17-symbolmenue.png
+key Escape
+wait 500
+mark H17 Hintergrund ändern: Dateiauswahl
+move 640 300
+wait 300
+rclick
+wait 800
+move 700 449
+wait 300
+click
+wait 3000
+shot SHOT/h18-dateiauswahl.png
+key Escape
+wait 1000
+shot SHOT/h19-nach-dateiauswahl.png
+mark H17b Hintergrund ändern: Bild wählen (Pfad tippen), desktop.ini, sofort sichtbar
+move 640 300
+wait 300
+rclick
+wait 800
+move 700 449
+wait 300
+click
+wait 3000
+type QBILD
+wait 800
+shot SHOT/h19b-pfad.png
+key Return
+wait 1500
+shot SHOT/h19c-neuer-hintergrund.png
+mark H18 Fenster über den Symbolen (Super+Links: linke Hälfte)
+run foot -a foot -T 'Fenster über den Symbolen' sleep 900
+wait 2000
+keydown Super_L
+keydown Left
+keyup Left
+keyup Super_L
+wait 1000
+shot SHOT/h20-fenster-ueber-symbolen.png
+mark H19 Panel frei: Anwendungen
+move 80 15
+wait 300
+click
+wait 800
+shot SHOT/h21-anwendungen.png
+key Escape
+wait 500
+mark ENDE

@@ -1,7 +1,7 @@
 /* qausgabe: setzt im ISOLIERTEN headless labwc die Auflösung des (ersten)
  * Ausgangs über wlr-output-management (Testwerkzeug HMP-08/09).
  *
- *   qausgabe BREITExHÖHE
+ *   qausgabe BREITExHÖHE [SKALIERUNG]   (Skalierung: HMP-10, z. B. 2 oder 1.5)
  *
  * Verweigert den Dienst in der echten Sitzung (XDG_RUNTIME_DIR der Sitzung
  * oder kein hmp05-runtime-Verzeichnis), genau wie qeingabe.
@@ -63,13 +63,15 @@ static const struct wl_registry_listener registry_listener = { g_add, g_remove }
 int main(int argc, char **argv)
 {
 	int w, h;
+	double scale = 0;
 	const char *rt = getenv("XDG_RUNTIME_DIR");
 	if (!rt || strncmp(rt, "/run/user/", 10) == 0 || !strstr(rt, "hmp05-runtime-")) {
 		fprintf(stderr, "qausgabe: nicht in einer isolierten Testumgebung – verweigert\n");
 		return 2;
 	}
-	if (argc != 2 || sscanf(argv[1], "%dx%d", &w, &h) != 2 || w < 320 || h < 240) {
-		fprintf(stderr, "Aufruf: qausgabe BREITExHÖHE\n");
+	if (argc < 2 || argc > 3 || sscanf(argv[1], "%dx%d", &w, &h) != 2 || w < 320 || h < 240
+	    || (argc == 3 && (sscanf(argv[2], "%lf", &scale) != 1 || scale < 0.5 || scale > 4))) {
+		fprintf(stderr, "Aufruf: qausgabe BREITExHÖHE [SKALIERUNG]\n");
 		return 2;
 	}
 	struct wl_display *display = wl_display_connect(NULL);
@@ -96,10 +98,13 @@ int main(int argc, char **argv)
 	struct zwlr_output_configuration_head_v1 *ch =
 		zwlr_output_configuration_v1_enable_head(config, head);
 	zwlr_output_configuration_head_v1_set_custom_mode(ch, w, h, 0);
+	if (scale > 0)
+		zwlr_output_configuration_head_v1_set_scale(ch, wl_fixed_from_double(scale));
 	zwlr_output_configuration_v1_apply(config);
 	while (!result && wl_display_dispatch(display) != -1)
 		;
-	fprintf(stderr, "qausgabe: %dx%d %s\n", w, h, result == 1 ? "gesetzt" : "ABGELEHNT");
+	fprintf(stderr, "qausgabe: %dx%d Skalierung %.2f %s\n", w, h, scale > 0 ? scale : 1.0,
+		result == 1 ? "gesetzt" : "ABGELEHNT");
 	wl_display_disconnect(display);
 	return result == 1 ? 0 : 1;
 }
