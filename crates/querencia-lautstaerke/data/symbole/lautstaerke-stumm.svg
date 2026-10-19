@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>Lautstärke stumm</title>
+  <desc>Querencia Lautstärke: Lautsprecher grau, Schallwellen in Querencia-Orange #F07746, flächig.</desc>
+  <path d="M2.5 8.5 H7 L12.5 3.5 V20.5 L7 15.5 H2.5 Z" fill="#5a5a5a" stroke="#3c3c3c" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M15.5 8.5 L22 15.5 M22 8.5 L15.5 15.5" fill="none" stroke="#F07746" stroke-width="2.6" stroke-linecap="round"/>
+</svg>

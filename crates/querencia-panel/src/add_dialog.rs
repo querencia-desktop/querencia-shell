@@ -411,10 +411,14 @@ pub(crate) fn stock_button(mnemonic: &str, icon: &str) -> Button {
 }
 
 /// One list row: icon, name in bold, description below. "Anwendungen"
-/// shows the built-in Querencia logo (QREL-04c) at the same size.
+/// shows the built-in Querencia logo (QREL-04c) at the same size,
+/// "Lautstärke" its own icon (G2-J).
 fn row(applet: &AppletType) -> ListBoxRow {
     let image = if applet.icon == logo::ICON_NAME {
         logo::image_of_size(ICON_SIZE)
+    } else if applet.id == crate::applets::VOLUME {
+        // G2-J: the volume applet's own Querencia icon, not a theme icon.
+        crate::volume_applet::image_of_size(ICON_SIZE)
     } else {
         let names = icon_names(applet);
         let names: Vec<&str> = names.iter().map(String::as_str).collect();
@@ -470,6 +474,7 @@ mod tests {
                 "Anwendungsstarter …",
                 "Arbeitsflächenumschalter",
                 "Fensterliste",
+                "Lautstärke",
                 "Orte",
                 "System",
                 "Uhr"

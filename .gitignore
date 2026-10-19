@@ -18,3 +18,11 @@ id_ed25519*
 /nachweis/bin/
 # G2-R: Release-Binary der Vorlage (Prüfsumme in vorschlag/SHA256SUMS)
 /integration/kuerzel/vorschlag/querencia-kuerzel
+# G2-J: Laufzeit, Profile und gebaute Werkzeuge der isolierten Prüfung
+nachweis/gui/
+nachweis/build/querencia-panel
+nachweis/build/querencia-lautstaerke
+integration/vorschlag/querencia-panel
+integration/vorschlag/querencia-lautstaerke
+# G2-J: entpackte PipeWire-Pakete (apt-get download + dpkg -x), nur lokale Probe, nicht im Git
+nachweis/audio-scratch/
