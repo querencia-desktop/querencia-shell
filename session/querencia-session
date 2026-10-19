@@ -6,6 +6,21 @@
 #
 #   querencia-session          start the session (from a console login or greetd)
 #   querencia-session --exit   end the running Querencia session (also from SSH)
+#   querencia-session --labwc-konfig-abgleichen
+#                              only bring the user copy of the labwc
+#                              configuration up to date (see below), e.g.
+#                              after a change of the defaults; inside the
+#                              session labwc --reconfigure then reloads it
+#
+# labwc configuration (QD-046 ②, G2-AG): labwc reads rc.xml, autostart,
+# environment and menu.xml from the user copy ~/.config/querencia/labwc,
+# where Querencia Einstellungen may change them. The files in the runtime
+# copy (session/querencia/labwc) are only the defaults; before each start
+# konfig_abgleichen copies missing ones and updates those the user has not
+# changed (docs/labwc-benutzerkonfiguration.md). The old way, labwc reading
+# the runtime copy directly, comes back with the file
+# ~/.config/querencia/labwc-alter-weg or QUERENCIA_LABWC_KONFIG=repo, and by
+# itself if the user copy cannot be set up.
 #
 # Derived from session/classic2-session (M2.0b). The Classic2 session keeps
 # its own runtime copy, configuration and state; both are never active for
@@ -18,7 +33,13 @@ set -u
 QUERENCIA_REPO=~/projects/querencia-runtime
 LABWC=~/opt/labwc-0.9.8/bin/labwc
 LABWC_VERSION=0.9.8
-CONFIG_DIR=$QUERENCIA_REPO/session/querencia/labwc
+# Defaults (Vorgaben) in the runtime copy, the user copy labwc reads, and
+# the switch back to the old way. CONFIG_DIR is chosen right before labwc
+# starts.
+VORGABE_DIR=$QUERENCIA_REPO/session/querencia/labwc
+BENUTZER_DIR=${XDG_CONFIG_HOME:-$HOME/.config}/querencia/labwc
+ALTER_WEG=${XDG_CONFIG_HOME:-$HOME/.config}/querencia/labwc-alter-weg
+CONFIG_DIR=$VORGABE_DIR
 # Installed, checked components (fixed paths, one link per program, see
 # sitzung/installieren.sh); without an installed panel the runtime copy's
 # own panel build stays in use. The desktop is optional.
@@ -59,9 +80,12 @@ case $boot_id in
 esac
 
 # labwc is the same binary in the Classic2 and the Querencia session; only
-# the configuration directory tells them apart. This is the exact argument
-# list the starter gives labwc, one argument per line.
-labwc_argv=$(printf '%s\n' "$LABWC" -C "$CONFIG_DIR")
+# the configuration directory tells them apart. These are the exact argument
+# lists the starter gives labwc, one argument per line: the user copy, or
+# the runtime copy (old way, fallback, and a labwc started by an older
+# starter before this one was installed).
+labwc_argv_benutzer=$(printf '%s\n' "$LABWC" -C "$BENUTZER_DIR")
+labwc_argv_vorgabe=$(printf '%s\n' "$LABWC" -C "$VORGABE_DIR")
 
 # labwc record, one line: "q2 BOOTID PID STARTTIME".
 labwc_record_for() {
@@ -70,8 +94,8 @@ labwc_record_for() {
 }
 
 # Succeeds while labwc record $1 still describes the very labwc this starter
-# runs: same boot, same user, exactly the arguments "$LABWC -C $CONFIG_DIR"
-# (from the NUL-separated /proc/PID/cmdline, no further arguments, no
+# runs: same boot, same user, exactly the arguments "$LABWC -C <dir>" with
+# the user or the runtime copy as <dir> (from the NUL-separated /proc/PID/cmdline, no further arguments, no
 # newline inside an argument) and the same start time. The start time is
 # compared last, so a PID reused during the other checks is caught as well.
 # Anything else, including malformed or old-format records, is rejected.
@@ -89,7 +113,8 @@ labwc_matches() {
     cmdline=/proc/$pid/cmdline
     [ "$(tr -cd '\000' <"$cmdline" 2>/dev/null | wc -c)" -eq 3 ] || return 1
     [ "$(tr -cd '\n' <"$cmdline" 2>/dev/null | wc -c)" -eq 0 ] || return 1
-    [ "$(tr '\000' '\n' <"$cmdline" 2>/dev/null)" = "$labwc_argv" ] || return 1
+    argv=$(tr '\000' '\n' <"$cmdline" 2>/dev/null)
+    [ "$argv" = "$labwc_argv_benutzer" ] || [ "$argv" = "$labwc_argv_vorgabe" ] || return 1
     [ "$(starttime "$pid")" = "$start" ]
 }
 
@@ -123,6 +148,87 @@ running() {
     pgrep -u "$(id -u)" -f "^([^ ]*/)?$1( |\$)" >/dev/null
 }
 
+# Copies $1 to $2 (mode 0644) through a temporary file in the same
+# directory, so labwc never sees half a file.
+kopieren() {
+    tmp=$(dirname "$2")/.$(basename "$2").neu-$$
+    if cp -- "$1" "$tmp" && chmod 0644 "$tmp" && mv -f -- "$tmp" "$2"; then
+        return 0
+    fi
+    rm -f -- "$tmp"
+    return 1
+}
+
+# Brings the user copy of the labwc configuration up to date with the
+# defaults. .vorgabe/ in the user copy keeps the default each user file was
+# last taken from: a full copy, not only a checksum, because Querencia
+# Einstellungen merges its own settings into a newer rc.xml with it (three
+# versions: last default, user file, new default); .vorgabe/stand lists the
+# checksums, the commit and the time. Per file, as far as the defaults have
+# it:
+#   user file missing                  copy the default
+#   no record yet (e.g. a file of the user or of Querencia Einstellungen
+#   before the first start)            keep the user file, record the default
+#   default unchanged since the record nothing
+#   user file equals the new default   only record it
+#   user file equals the recorded one  the user did not change it: take the
+#                                      new default, old file as FILE.vorher-ZEIT
+#   both changed                       keep the user file (a user change is
+#                                      never overwritten); the new default
+#                                      goes to FILE.vorgabe-neu
+# Prints one line per action; fails if the user copy cannot be written.
+konfig_abgleichen() {
+    basis=$BENUTZER_DIR/.vorgabe
+    mkdir -p -- "$basis" || return 1
+    zeit=$(date +%Y%m%d-%H%M%S)
+    geaendert=
+    for datei in rc.xml autostart environment menu.xml; do
+        v=$VORGABE_DIR/$datei u=$BENUTZER_DIR/$datei b=$basis/$datei
+        [ -f "$v" ] || continue
+        if [ ! -e "$u" ] && [ ! -L "$u" ]; then
+            kopieren "$v" "$u" && kopieren "$v" "$b" || return 1
+            echo "angelegt aus der Vorgabe: $u"
+        elif [ ! -f "$b" ]; then
+            kopieren "$v" "$b" || return 1
+            if cmp -s "$u" "$v"; then
+                echo "gleich der Vorgabe: $u"
+            else
+                echo "eigene Datei behalten: $u (ab jetzt Ausgangspunkt: die aktuelle Vorgabe)"
+            fi
+        elif cmp -s "$v" "$b"; then
+            continue
+        elif cmp -s "$u" "$v"; then
+            kopieren "$v" "$b" || return 1
+            rm -f -- "$u.vorgabe-neu"
+            echo "Vorgabe ist schon übernommen: $u"
+        elif cmp -s "$u" "$b"; then
+            cp -p -- "$u" "$u.vorher-$zeit" && kopieren "$v" "$u" && kopieren "$v" "$b" || return 1
+            rm -f -- "$u.vorgabe-neu"
+            echo "neue Vorgabe übernommen: $u (vorher: $u.vorher-$zeit)"
+        else
+            if ! cmp -s "$v" "$u.vorgabe-neu"; then
+                kopieren "$v" "$u.vorgabe-neu" || return 1
+            fi
+            echo "Vorgabe geändert, eigene Datei behalten: $u (neue Vorgabe: $u.vorgabe-neu)"
+            continue
+        fi
+        geaendert=ja
+    done
+    if [ -n "$geaendert" ] || [ ! -f "$basis/stand" ]; then
+        commit=$(git -C "$QUERENCIA_REPO" rev-parse --short HEAD 2>/dev/null) || commit=unbekannt
+        {
+            echo "# Vorgaben in .vorgabe/, zuletzt übernommen von querencia-session"
+            echo "# (QD-046, docs/labwc-benutzerkonfiguration.md im Runtime-Repo)"
+            echo "zeit $(date '+%F %T')"
+            echo "quelle $VORGABE_DIR (commit $commit)"
+            (cd "$basis" && for datei in rc.xml autostart environment menu.xml; do
+                if [ -f "$datei" ]; then sha256sum "$datei"; fi
+            done)
+        } >"$basis/stand.neu-$$" && mv -f -- "$basis/stand.neu-$$" "$basis/stand" || return 1
+    fi
+    return 0
+}
+
 # labwc --exit needs LABWC_PID, which only exists inside the session; the
 # PID file works from any shell of this user. Only the Querencia state is
 # read, so a Classic2 session is never ended by mistake.
@@ -135,7 +241,13 @@ if [ "${1-}" = --exit ]; then
     echo "querencia-session: labwc ($pid) wird beendet"
     exit 0
 fi
-[ $# -eq 0 ] || die "unbekannte Option: $1 (erlaubt: --exit)"
+# Only the files, no session; labwc --reconfigure reloads them afterwards.
+if [ "${1-}" = --labwc-konfig-abgleichen ]; then
+    konfig_abgleichen || die "Benutzerkopie $BENUTZER_DIR nicht beschreibbar"
+    echo "querencia-session: Benutzerkopie $BENUTZER_DIR abgeglichen"
+    exit 0
+fi
+[ $# -eq 0 ] || die "unbekannte Option: $1 (erlaubt: --exit, --labwc-konfig-abgleichen)"
 
 [ "$(readlink -f "$0")" = "$QUERENCIA_REPO/session/querencia-session" ] ||
     die "nur aus der Querencia-Laufzeitkopie starten: $QUERENCIA_REPO/session/querencia-session"
@@ -162,7 +274,7 @@ version=$("$LABWC" --version 2>/dev/null | cut -d' ' -f2)
 [ "$version" = "$LABWC_VERSION" ] ||
     die "falsche labwc-Version '$version' statt $LABWC_VERSION: $LABWC"
 for file in environment autostart; do
-    [ -r "$CONFIG_DIR/$file" ] || die "fehlt: $CONFIG_DIR/$file"
+    [ -r "$VORGABE_DIR/$file" ] || die "fehlt: $VORGABE_DIR/$file"
 done
 [ -x "$PANEL" ] || die "Panel fehlt: $PANEL (cargo build in der Querencia-Laufzeitkopie)"
 [ -n "$boot_id" ] || die "Boot-ID nicht lesbar: /proc/sys/kernel/random/boot_id"
@@ -174,11 +286,26 @@ if [ -z "${DBUS_SESSION_BUS_ADDRESS-}" ] && [ -S "$XDG_RUNTIME_DIR/bus" ]; then
 fi
 
 mkdir -p "$STATE_DIR" || die "kann $STATE_DIR nicht anlegen"
-for log in labwc panel desktop sitzung polkit-agent; do
+for log in labwc labwc-konfig panel desktop sitzung polkit-agent; do
     if [ -f "$STATE_DIR/$log.log" ]; then
         mv -f "$STATE_DIR/$log.log" "$STATE_DIR/$log.log.1"
     fi
 done
+
+# Which labwc configuration: the user copy, brought up to date first; the
+# runtime copy if the old way is asked for or the user copy is not usable.
+# The session always starts.
+konfig_log=$STATE_DIR/labwc-konfig.log
+if [ "${QUERENCIA_LABWC_KONFIG-}" = repo ] || [ -e "$ALTER_WEG" ]; then
+    echo "alter Weg erzwungen (QUERENCIA_LABWC_KONFIG=repo oder $ALTER_WEG): labwc liest $VORGABE_DIR" >>"$konfig_log"
+elif konfig_abgleichen >>"$konfig_log" 2>&1 &&
+    [ -r "$BENUTZER_DIR/environment" ] && [ -r "$BENUTZER_DIR/autostart" ]; then
+    CONFIG_DIR=$BENUTZER_DIR
+else
+    echo "Benutzerkopie $BENUTZER_DIR nicht nutzbar, labwc liest $VORGABE_DIR" >>"$konfig_log"
+fi
+echo "querencia-session: labwc-Konfiguration $CONFIG_DIR (Protokoll $konfig_log)"
+echo "labwc -C $CONFIG_DIR" >>"$konfig_log"
 # No labwc or panel of this user runs (checked above), so older records
 # are stale. The panel record is named after this starter's PID, which stays
 # unique while this starter lives; a later session never shares it.
