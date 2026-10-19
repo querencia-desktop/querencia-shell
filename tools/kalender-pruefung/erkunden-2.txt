@@ -1,0 +1,20 @@
+mark E10 System
+wait 1500
+move 269 16
+wait 300
+click
+wait 1200
+shot SHOT/e10-system.png
+key Escape
+wait 600
+mark E11 Thema
+run gsettings set org.gnome.desktop.interface icon-theme Adwaita
+wait 3000
+move 195 16
+wait 300
+click
+wait 1200
+shot SHOT/e11-adwaita.png
+key Escape
+wait 600
+mark ENDE
