@@ -33,6 +33,10 @@ impl Edge {
     }
 }
 
+/// Applet types placed right of a neighbour type when added to the end
+/// region (see [`Region::insertion_index_for`]): (type, neighbour).
+pub const RIGHT_OF: &[(&str, &str)] = &[("network", "volume")];
+
 /// The three areas of a panel, from left to right.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Region {
@@ -69,6 +73,21 @@ impl Region {
         }
     }
 
+    /// Like [`Region::insertion_index`] for a new applet of type
+    /// `applet_id` among `items`: in the end region a type listed in
+    /// [`RIGHT_OF`] goes right of the last applet of its neighbour type if
+    /// the region has one (G2-M: the network applet right of the volume
+    /// applet, the order of the GNOME 2 notification area).
+    pub fn insertion_index_for(self, items: &[Instance], applet_id: &str) -> usize {
+        if self == Region::End
+            && let Some((_, left)) = RIGHT_OF.iter().find(|(kind, _)| *kind == applet_id)
+            && let Some(position) = items.iter().rposition(|i| i.applet == *left)
+        {
+            return position + 1;
+        }
+        self.insertion_index(items.len())
+    }
+
     /// Name of the region in messages.
     pub fn label(self) -> &'static str {
         match self {
@@ -85,6 +104,37 @@ impl Region {
             Region::End => 2,
         }
     }
+
+    /// The region left of this one.
+    pub fn before(self) -> Option<Region> {
+        match self {
+            Region::Start => None,
+            Region::Center => Some(Region::Start),
+            Region::End => Some(Region::Center),
+        }
+    }
+
+    /// The region right of this one.
+    pub fn after(self) -> Option<Region> {
+        match self {
+            Region::Start => Some(Region::Center),
+            Region::Center => Some(Region::End),
+            Region::End => None,
+        }
+    }
+}
+
+/// How an applet moves within its panel (`Layout::move_applet`), as with
+/// „Nach links“, „Nach rechts“, „An den linken Rand“, „An den rechten
+/// Rand“, or to a place it was dragged to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Move {
+    Left,
+    Right,
+    StartEdge,
+    EndEdge,
+    /// To `index` of the region, counted without the moving applet.
+    To(Region, usize),
 }
 
 /// Applet type of an application launcher (HMP-11). It is the only type
@@ -161,6 +211,45 @@ impl PanelSpec {
     /// All instances, region by region, each in its order.
     pub fn instances(&self) -> impl Iterator<Item = &Instance> {
         self.regions.iter().flatten()
+    }
+
+    /// Region and index of the instance `instance_id`, if the panel has it.
+    pub fn position(&self, instance_id: &str) -> Option<(Region, usize)> {
+        Region::ALL.into_iter().find_map(|region| {
+            self.region(region)
+                .iter()
+                .position(|i| i.id == instance_id)
+                .map(|index| (region, index))
+        })
+    }
+
+    /// Where `how` moves the instance at `from` (region, index after it was
+    /// taken out of its region), or `None` if it stays where it is.
+    ///
+    /// The applets of a panel stand in one row: start region, center
+    /// region, end region. One step left or right swaps with the
+    /// neighbour; at the border of a region the applet changes into the
+    /// neighbouring region (last of the one before, first of the one
+    /// after), also into an empty center. The edges are the first place of
+    /// the start region and the last of the end region.
+    pub fn move_target(&self, from: (Region, usize), how: Move) -> Option<(Region, usize)> {
+        let (region, index) = from;
+        let len = |r: Region| self.region(r).len();
+        if index >= len(region) {
+            return None;
+        }
+        // lengths with the moving applet taken out
+        let without = |r: Region| len(r) - usize::from(r == region);
+        let target = match how {
+            Move::Left if index > 0 => (region, index - 1),
+            Move::Left => (region.before()?, without(region.before()?)),
+            Move::Right if index + 1 < len(region) => (region, index + 1),
+            Move::Right => (region.after()?, 0),
+            Move::StartEdge => (Region::Start, 0),
+            Move::EndEdge => (Region::End, without(Region::End)),
+            Move::To(region, index) => (region, index.min(without(region))),
+        };
+        (target != from).then_some(target)
     }
 
     /// Removes the instance `instance_id` and returns it; `None` (nothing
@@ -370,6 +459,15 @@ pub struct Added {
     pub index: usize,
 }
 
+/// An applet moved by [`Layout::move_applet`]: from where to where.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Moved {
+    pub instance: Instance,
+    pub panel: String,
+    pub from: (Region, usize),
+    pub to: (Region, usize),
+}
+
 /// Upper bound for the number in generated instance IDs.
 const MAX_INSTANCE_NUMBER: u32 = 9999;
 
@@ -448,7 +546,7 @@ impl Layout {
             .iter_mut()
             .find(|p| p.id == panel_id)
             .expect("checked above");
-        let index = region.insertion_index(panel.region(region).len());
+        let index = region.insertion_index_for(panel.region(region), applet_id);
         let instance = Instance {
             app: app.map(str::to_string),
             ..Instance::new(&id, applet_id)
@@ -468,6 +566,26 @@ impl Layout {
         self.panels
             .iter_mut()
             .find_map(|panel| panel.remove(instance_id))
+    }
+
+    /// Moves the applet instance `instance_id` within its panel as `how`
+    /// says ([`PanelSpec::move_target`]). `None`: no such instance, or it
+    /// is already there (nothing changed).
+    pub fn move_applet(&mut self, instance_id: &str, how: Move) -> Option<Moved> {
+        let panel = self
+            .panels
+            .iter_mut()
+            .find(|p| p.position(instance_id).is_some())?;
+        let from = panel.position(instance_id)?;
+        let to = panel.move_target(from, how)?;
+        let instance = panel.remove(instance_id)?;
+        panel.insert(to.0, to.1, instance.clone());
+        Some(Moved {
+            instance,
+            panel: panel.id.clone(),
+            from,
+            to,
+        })
     }
 
     /// Whether any panel has an instance of the applet type `applet_id`.
@@ -536,6 +654,132 @@ mod tests {
             .iter()
             .map(|i| i.applet.as_str())
             .collect()
+    }
+
+    fn top_with(start: &[&str], center: &[&str], end: &[&str]) -> Layout {
+        let mut top = PanelSpec::new("top", Edge::Top, DEFAULT_HEIGHT);
+        for (region, list) in [
+            (Region::Start, start),
+            (Region::Center, center),
+            (Region::End, end),
+        ] {
+            for id in list {
+                top.push(
+                    region,
+                    Instance::new(id, id.trim_end_matches(char::is_numeric)),
+                );
+            }
+        }
+        Layout { panels: vec![top] }
+    }
+
+    fn rows(layout: &Layout) -> [Vec<&str>; 3] {
+        Region::ALL.map(|r| ids(&layout.panels[0], r))
+    }
+
+    #[test]
+    fn applets_step_left_and_right_through_the_regions() {
+        let mut layout = top_with(&["a1", "b1"], &[], &["c1", "d1"]);
+        // within a region: swap
+        let moved = layout.move_applet("b1", Move::Left).unwrap();
+        assert_eq!(
+            (moved.from, moved.to),
+            ((Region::Start, 1), (Region::Start, 0))
+        );
+        assert_eq!(rows(&layout), [vec!["b1", "a1"], vec![], vec!["c1", "d1"]]);
+        // already at the left edge: nothing
+        assert!(layout.move_applet("b1", Move::Left).is_none());
+        assert!(layout.move_applet("b1", Move::StartEdge).is_none());
+        // first of the end region, left: into the empty center
+        layout.move_applet("c1", Move::Left).unwrap();
+        assert_eq!(rows(&layout), [vec!["b1", "a1"], vec!["c1"], vec!["d1"]]);
+        // and on into the start region, last
+        layout.move_applet("c1", Move::Left).unwrap();
+        assert_eq!(rows(&layout), [vec!["b1", "a1", "c1"], vec![], vec!["d1"]]);
+        // right again: center, then first of the end region
+        layout.move_applet("c1", Move::Right).unwrap();
+        assert_eq!(rows(&layout), [vec!["b1", "a1"], vec!["c1"], vec!["d1"]]);
+        layout.move_applet("c1", Move::Right).unwrap();
+        assert_eq!(rows(&layout), [vec!["b1", "a1"], vec![], vec!["c1", "d1"]]);
+        layout.move_applet("c1", Move::Right).unwrap();
+        assert_eq!(rows(&layout), [vec!["b1", "a1"], vec![], vec!["d1", "c1"]]);
+        assert!(
+            layout.move_applet("c1", Move::Right).is_none(),
+            "rechter Rand"
+        );
+        assert!(layout.move_applet("c1", Move::EndEdge).is_none());
+        // edges
+        layout.move_applet("c1", Move::StartEdge).unwrap();
+        assert_eq!(rows(&layout), [vec!["c1", "b1", "a1"], vec![], vec!["d1"]]);
+        layout.move_applet("b1", Move::EndEdge).unwrap();
+        assert_eq!(rows(&layout), [vec!["c1", "a1"], vec![], vec!["d1", "b1"]]);
+        // to a dragged place, index counted without the applet
+        layout.move_applet("a1", Move::To(Region::End, 1)).unwrap();
+        assert_eq!(rows(&layout), [vec!["c1"], vec![], vec!["d1", "a1", "b1"]]);
+        layout
+            .move_applet("a1", Move::To(Region::Center, 7))
+            .unwrap();
+        assert_eq!(rows(&layout), [vec!["c1"], vec!["a1"], vec!["d1", "b1"]]);
+        assert!(
+            layout
+                .move_applet("a1", Move::To(Region::Center, 0))
+                .is_none()
+        );
+        assert!(layout.move_applet("fehlt-1", Move::Left).is_none());
+        // the moved layout stays valid
+        let checked = layout.clone().validated(|_| Some(true));
+        assert!(checked.problems.is_empty() && !checked.fallback);
+    }
+
+    #[test]
+    fn region_neighbours() {
+        assert_eq!(Region::Start.before(), None);
+        assert_eq!(Region::Center.before(), Some(Region::Start));
+        assert_eq!(Region::End.after(), None);
+        assert_eq!(Region::Center.after(), Some(Region::End));
+    }
+
+    #[test]
+    fn network_goes_right_of_volume_in_the_end_region_only() {
+        let mut layout = Layout::standard();
+        layout
+            .add_applet("top", "volume", Region::End, known)
+            .unwrap();
+        assert_eq!(types(&layout.panels[0], Region::End), ["volume", "clock"]);
+        let added = layout
+            .add_applet("top", "network", Region::End, known)
+            .unwrap();
+        assert_eq!(added.index, 1);
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            ["volume", "network", "clock"]
+        );
+        // without a volume applet: first, as every other applet
+        let mut layout = Layout::standard();
+        layout
+            .add_applet("top", "network", Region::End, known)
+            .unwrap();
+        assert_eq!(types(&layout.panels[0], Region::End), ["network", "clock"]);
+        // the volume applet added later still goes first (left of it)
+        layout
+            .add_applet("top", "volume", Region::End, known)
+            .unwrap();
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            ["volume", "network", "clock"]
+        );
+        // other regions keep their rule
+        let mut layout = Layout::standard();
+        layout
+            .add_applet("top", "volume", Region::Start, known)
+            .unwrap();
+        layout
+            .add_applet("top", "network", Region::Start, known)
+            .unwrap();
+        assert_eq!(
+            types(&layout.panels[0], Region::Start),
+            ["applications", "places", "system", "volume", "network"]
+        );
     }
 
     #[test]

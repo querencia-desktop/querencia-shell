@@ -2,15 +2,19 @@ mod about;
 mod add_dialog;
 mod app_chooser;
 mod app_menu;
+mod applet_move;
 mod applets;
 mod apps;
 mod classic_menu;
 mod clock;
+mod icon_reload;
 mod launcher;
 mod layout;
 mod layout_editor;
 mod layout_store;
 mod logo;
+mod network_applet;
+mod network_dialogs;
 mod panel;
 mod panel_menu;
 mod places_menu;
@@ -55,6 +59,12 @@ pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
 // Volume applet (G2-J): like a launcher, a bare icon with the neutral
 // highlight; greyed out (as a missing launcher) without an audio service.
 // The slider of its popup is filled in the orange of the menu highlight.
+//
+// Network applet (G2-M): the icon as the volume applet (neutral highlight,
+// dimmed without any network data). Its left-click menu has the classic
+// menu look (`querencia-menu`): rows highlighted on hover and keyboard
+// focus in the menu orange, bold group titles, grey notes and second
+// lines (addresses).
 //
 // Application launchers (HMP-11): only the icon, no frame, as in the GNOME 2
 // panel; on hover and while pressed the neutral highlight of the main menu
@@ -106,6 +116,26 @@ const PANEL_CSS: &str = "
 .querencia-panel button.querencia-volume:active { background-color: #dcd6d0; border-color: #9e9993; }
 .querencia-panel button.querencia-volume.unavailable > image { opacity: 0.45; }
 .querencia-panel popover.querencia-volume-popup scale > trough > highlight { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); border-color: #b36c4e; }
+.querencia-panel button.querencia-network { min-width: 0; min-height: 0; padding: 0 2px; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
+.querencia-panel button.querencia-network:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
+.querencia-panel button.querencia-network:active { background-color: #dcd6d0; border-color: #9e9993; }
+.querencia-panel button.querencia-network.unavailable > image { opacity: 0.45; }
+.querencia-panel popover.querencia-network-menu .qnet { min-width: 230px; }
+.querencia-panel popover.querencia-network-menu button.qnet-item { min-height: 20px; padding: 2px 10px 2px 4px; margin: 0; border: 1px solid transparent; border-radius: 0; background: none; box-shadow: none; outline: none; color: #3c3c3c; font-weight: normal; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:hover,
+.querencia-panel popover.querencia-network-menu button.qnet-item.qmenu-active { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); border-color: #b36c4e; box-shadow: inset 0 1px #fd9975; color: #ffffff; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:hover label.qnet-detail,
+.querencia-panel popover.querencia-network-menu button.qnet-item.qmenu-active label.qnet-detail { color: #ffffff; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:disabled { color: @insensitive_fg_color; background: none; border-color: transparent; box-shadow: none; }
+.querencia-panel popover.querencia-network-menu button.qnet-item.qnet-current { color: #3c3c3c; background: none; border-color: transparent; box-shadow: none; }
+.querencia-panel popover.querencia-network-menu .qnet-icon-hell { opacity: 0; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:hover .qnet-icon-hell,
+.querencia-panel popover.querencia-network-menu button.qnet-item.qmenu-active .qnet-icon-hell { opacity: 1; }
+.querencia-panel popover.querencia-network-menu button.qnet-item:hover .qnet-icon-normal,
+.querencia-panel popover.querencia-network-menu button.qnet-item.qmenu-active .qnet-icon-normal { opacity: 0; }
+.querencia-panel popover.querencia-network-menu label.qnet-header { font-weight: bold; padding: 4px 10px 1px 6px; color: #3c3c3c; }
+.querencia-panel popover.querencia-network-menu label.qnet-note { font-style: italic; padding: 1px 10px 2px 26px; color: #7a7671; }
+.querencia-panel popover.querencia-network-menu label.qnet-detail { font-size: smaller; color: #6e6a66; }
 .querencia-panel menubutton.querencia-main-menu > button { border-radius: 0; padding-left: 6px; padding-right: 6px; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; color: #3c3c3c; }
 .querencia-panel menubutton.querencia-main-menu > button:hover,
 .querencia-panel menubutton.querencia-main-menu > button:active,
@@ -202,6 +232,8 @@ fn build_panels(app: &Application) {
     }
 
     install_panel_style();
+    // Teil 6: icons the user gets later appear without a restart.
+    icon_reload::start();
 
     // The panel never writes panel.ini on its own, only when the user
     // changes the layout ("Zum Panel hinzufügen"). Without the file, or if

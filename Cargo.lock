@@ -637,6 +637,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "querencia-netzwerk"
+version = "0.1.0"
+dependencies = [
+ "glib-unix",
+ "gtk4",
+ "libc",
+]
+
+[[package]]
 name = "querencia-panel"
 version = "0.1.0"
 dependencies = [
@@ -645,6 +654,7 @@ dependencies = [
  "gtk4",
  "gtk4-layer-shell",
  "querencia-lautstaerke",
+ "querencia-netzwerk",
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",

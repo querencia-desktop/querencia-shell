@@ -19,6 +19,9 @@ wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 # G2-J: audio service, icons and mixer ID of the volume applet (own crate of
 # the workspace; libpulse is opened at run time, no new external crate).
 querencia-lautstaerke = { path = "../querencia-lautstaerke" }
+# G2-M: network state for the network applet (own crate of the workspace;
+# NetworkManager through GIO's D-Bus, no new external crate).
+querencia-netzwerk = { path = "../querencia-netzwerk" }
 
 [lints.rust]
 # classic_menu.rs is shared with querencia-desktop, which sets this cfg.

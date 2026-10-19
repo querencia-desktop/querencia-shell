@@ -110,14 +110,18 @@ pub fn widget(panel_height: i32) -> Button {
     actions.add_action(&mixer);
     button.insert_action_group(ACTION_GROUP, Some(&actions));
 
-    // Middle click: mute on/off, as in GNOME 2.
+    // Middle click: mute on/off, as in GNOME 2. On release, and not
+    // claimed at the press: dragging with the middle button moves the
+    // applet (applet_move.rs), and a release that ends a drag is no click.
     let middle = GestureClick::new();
     middle.set_button(gdk::BUTTON_MIDDLE);
-    middle.connect_pressed(glib::clone!(
+    middle.connect_released(glib::clone!(
         #[strong]
         service,
-        move |gesture, _, _, _| {
-            gesture.set_state(gtk4::EventSequenceState::Claimed);
+        move |_, _, _, _| {
+            if crate::applet_move::dragged_recently() {
+                return;
+            }
             querencia_lautstaerke::say!(
                 "querencia-panel: Lautstärke: mittlere Taste → stumm umschalten"
             );
