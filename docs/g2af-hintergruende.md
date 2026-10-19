@@ -45,7 +45,7 @@ Licht (weiß, 7 %) 2 px nach oben links, Fläche in `#F07746` mit 10 %.
 ## Größe
 
 16 neue PNG zusammen 20,5 MB; das gepackte Repo wächst von 15 MB auf rund
-36 MB und bleibt unter der Grenze von 40 MB. Die Fassungen ohne Logo sind
+35 MB und bleibt unter der Grenze von 40 MB. Die Fassungen ohne Logo sind
 die gelieferten Dateien (byte-gleich, außer Abend 16:9), die Logo-Fassungen
 mit GdkPixbuf (Kompression 9) neu geschrieben. JPEG war nicht nötig.
 
