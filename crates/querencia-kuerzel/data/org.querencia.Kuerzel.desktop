@@ -1,0 +1,22 @@
+[Desktop Entry]
+# Querencia Tastenkürzel 0.1.0 (G2-R). Desktop-ID = GApplication-ID
+# org.querencia.Kuerzel. Exec/TryExec/Icon werden bei der Integration auf
+# die versionierte, schreibgeschützte Ablage gesetzt
+# (integration/kuerzel-integrieren.sh); Erscheint im Panel unter Zubehör.
+Type=Application
+Version=1.5
+Name=Tastenkürzel
+Name[de]=Tastenkürzel
+GenericName=Keyboard Shortcuts
+GenericName[de]=Übersicht der Tastenkürzel
+Comment=Show the keyboard shortcuts of the desktop and the Querencia programs
+Comment[de]=Tastenkürzel der Arbeitsfläche und der Querencia-Programme anzeigen
+Exec=querencia-kuerzel
+TryExec=querencia-kuerzel
+Icon=org.querencia.Kuerzel
+Terminal=false
+Categories=GTK;Utility;
+Keywords=shortcuts;keyboard;keys;hotkeys;
+Keywords[de]=Tastenkürzel;Tastatur;Kürzel;Tasten;Tastenkombination;
+StartupNotify=true
+StartupWMClass=org.querencia.Kuerzel

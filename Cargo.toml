@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/querencia-panel", "crates/querencia-desktop"]
+members = ["crates/querencia-panel", "crates/querencia-desktop", "crates/querencia-kuerzel"]
 
 [workspace.package]
 edition = "2024"

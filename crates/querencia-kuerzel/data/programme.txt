@@ -1,0 +1,115 @@
+# Querencia Tastenkürzel: feste Kürzel der Querencia-Programme.
+#
+# Aufbau: [Programm] als Überschrift, darunter je Zeile
+#   Kürzel = Beschreibung
+# Kürzel werden mit „+“ verbunden, mehrere Kürzel für dasselbe mit „ / “.
+# Zeilen mit „#“ sind Kommentare. Die Reihenfolge bleibt erhalten.
+#
+# Quellen (G2-R, 18.10.2026), jeweils die im Programm fest eingebauten
+# Kürzel des Live-Stands:
+#   Arbeitsfläche   querencia-runtime crates/querencia-desktop (QE-02)
+#   Files           querencia-files-dev src/ui/keys/bindings (QF-0l)
+#   Terminal        querencia-terminal-dev src/clipboard.rs
+#   Editor, Bilder  querencia-werkstatt-g2e-apps prototyp-*/src (live 19:36)
+#   Bildschirmfoto  querencia-screenshot-dev src/editor.rs (0.2.4)
+#   Taschenrechner  querencia-rechner src/fenster.rs (0.1.0)
+#   Dateisuche      querencia-dateisuche src/fenster.rs (0.1.0)
+# Ändert ein Programm seine Kürzel, muss diese Datei mitgezogen werden.
+
+[Arbeitsfläche]
+F2 = Ausgewähltes Symbol umbenennen
+Strg+A = Alle Symbole auswählen
+Esc = Auswahl aufheben
+Strg+Klick = Symbol zur Auswahl hinzufügen oder entfernen
+Umschalt+Klick = Symbole bis hierher auswählen
+
+[Querencia Files]
+Strg+N = Neues Fenster
+Strg+T = Neuer Reiter
+Strg+W = Reiter schließen
+Strg+Umschalt+N = Neuer Ordner
+Strg+X = Ausschneiden
+Strg+C = Kopieren
+Strg+V = Einfügen
+Strg+D = Duplizieren
+Strg+A = Alles auswählen
+Strg+Z = Rückgängig
+Strg+Umschalt+Z = Wiederholen
+F2 = Umbenennen
+Alt+Eingabe = Eigenschaften
+Umschalt+Entf = Endgültig löschen
+Strg+K = Suchen
+Strg+L = Ort eingeben
+Strg+R = Neu laden
+Strg+B = Seitenleiste ein oder aus
+Strg+, = Einstellungen
+Alt+← = Zurück
+Alt+→ = Vor
+Alt+↑ = Übergeordneter Ordner
+Alt+Pos1 = Persönlicher Ordner
+
+[Querencia Terminal]
+Strg+Umschalt+C = Kopieren
+Strg+Umschalt+V / Umschalt+Einfg = Einfügen
+Menü / Umschalt+F10 = Kontextmenü
+
+[Texteditor]
+Strg+N = Neues Dokument
+Strg+O = Öffnen
+Strg+S = Speichern
+Strg+Umschalt+S = Speichern unter
+Strg+W = Dokument schließen
+Strg+Q = Beenden
+Strg+Z = Rückgängig
+Strg+Umschalt+Z = Wiederholen
+Strg+A = Alles auswählen
+Strg+F = Suchen
+Strg+G / Strg+Umschalt+G = Weitersuchen / Rückwärts suchen
+Strg+H = Ersetzen
+Strg+I = Gehe zu Zeile
+Strg+Alt+Bild↑ / Strg+Alt+Bild↓ = Voriges / nächstes Dokument
+
+[Bildbetrachter]
+Strg+O = Öffnen
+Alt+Eingabe = Bildeigenschaften
+Strg+W = Schließen
+Strg+Q = Beenden
+Strg+R / Strg+Umschalt+R = Nach rechts / links drehen
++ / - = Vergrößern / Verkleinern
+Strg+0 / 1 = Originalgröße
+F = An Fenster anpassen
+F11 = Vollbild
+F5 = Diaschau
+← / → = Voriges / nächstes Bild
+Pos1 / Ende = Erstes / letztes Bild
+
+[Bildschirmfoto]
+Druck = Bildschirmfoto aufnehmen (Bildschirm, Fenster oder Bereich)
+Alt+Druck = Bildschirmfoto eines Fensters
+Strg+N = Neues Bildschirmfoto (im Bearbeitungsfenster)
+Strg+S = Speichern
+Strg+C = In die Zwischenablage kopieren
+Strg+W = Schließen
+Strg+Z = Rückgängig
+Strg+Umschalt+Z / Strg+Y = Wiederholen
+Esc = Aufnahme oder Werkzeug abbrechen
+
+[Taschenrechner]
+0 … 9 / , = Ziffern und Komma
++ - * / % = Rechenzeichen und Prozent
+Eingabe / = = Ergebnis
+Rücktaste = Letzte Ziffer löschen
+Entf = Eingabe löschen (C)
+Esc = Alles löschen (AC)
+S / Q / R / V = Wurzel / Quadrat / Kehrwert / Vorzeichen
+Strg+C / Strg+V = Kopieren / Einfügen
+Strg+Q = Beenden
+
+[Nach Dateien suchen]
+Entf = Fundstelle in den Papierkorb
+Strg+C = Pfad kopieren
+Menü / Umschalt+F10 = Kontextmenü
+Esc = Suche abbrechen
+
+[Tastenkürzel (dieses Fenster)]
+Esc / Strg+W = Schließen

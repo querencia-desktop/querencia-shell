@@ -1,0 +1,13 @@
+[package]
+name = "querencia-kuerzel"
+version = "0.1.0"
+description = "Querencia Tastenkürzel: Übersicht der aktiven labwc-Kürzel und der Kürzel der Querencia-Programme"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+# Dieselbe Version wie querencia-panel und querencia-desktop: kein neues
+# Paket in Cargo.lock, der Offline-Bau bleibt möglich. rc.xml liest ein
+# kleiner eigener Leser (xml.rs), keine XML-Bibliothek.
+gtk4 = { version = "0.11", features = ["v4_10"] }

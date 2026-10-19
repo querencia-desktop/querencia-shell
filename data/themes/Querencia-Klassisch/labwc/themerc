@@ -41,3 +41,36 @@ window.active.shadow.size: 60
 window.inactive.shadow.size: 40
 window.active.shadow.color: #00000060
 window.inactive.shadow.color: #00000040
+
+# Fensterwechsler Alt+Tab (G2-R, nach G2-Q): heller Kasten wie die Menüs
+# des Panels (#f5f4f2), dünner grauer Rahmen wie die Fensterrahmen
+# (#7a7570, 1 px), Schrift #3c3c3c wie im Panel (Schriftart und -größe in
+# rc.xml: <font place="OnScreenDisplay">), Auswahl orange wie die
+# Auswahl auf der Arbeitsfläche (#F07746: Rahmen 2 px, Fläche hell).
+# Ohne diese Einträge erbt der Wechsler die Titelleistenfarben.
+osd.bg.color: #f5f4f2
+osd.border.color: #7a7570
+osd.border.width: 1
+osd.label.text.color: #3c3c3c
+# Stil „classic“ (Liste): Symbol, Titel, Arbeitsfläche
+osd.window-switcher.style-classic.width: 600
+osd.window-switcher.style-classic.padding: 6
+osd.window-switcher.style-classic.item.padding.x: 8
+osd.window-switcher.style-classic.item.padding.y: 4
+osd.window-switcher.style-classic.item.active.border.width: 2
+osd.window-switcher.style-classic.item.active.border.color: #F07746
+osd.window-switcher.style-classic.item.active.bg.color: #F0774633
+osd.window-switcher.style-classic.item.icon.size: 24
+# Stil „thumbnail“ (Miniaturen), nur falls rc.xml ihn wählt
+osd.window-switcher.style-thumbnail.width.max: 80%
+osd.window-switcher.style-thumbnail.padding: 6
+osd.window-switcher.style-thumbnail.item.width: 220
+osd.window-switcher.style-thumbnail.item.height: 170
+osd.window-switcher.style-thumbnail.item.padding: 6
+osd.window-switcher.style-thumbnail.item.active.border.width: 2
+osd.window-switcher.style-thumbnail.item.active.border.color: #F07746
+osd.window-switcher.style-thumbnail.item.active.bg.color: #F0774633
+osd.window-switcher.style-thumbnail.item.icon.size: 32
+# Umriss des gewählten Fensters: orange, weiß, orange (je 1 px)
+osd.window-switcher.preview.border.width: 1
+osd.window-switcher.preview.border.color: #F07746,#ffffff,#F07746

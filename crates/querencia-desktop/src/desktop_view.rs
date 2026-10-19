@@ -135,6 +135,12 @@ pub struct Icons {
     /// A refresh that waits for the end of a drag or rename.
     reload_waiting: Cell<bool>,
     reload_timer: RefCell<Option<glib::SourceId>>,
+    /// QE-02: what the trash icon shows (`Some(true)`: full); `None` before
+    /// the first count or without a trash icon.
+    trash_full: Cell<Option<bool>>,
+    /// QE-02: a recount shortly after trash monitor events (they come in
+    /// bursts while a folder is thrown away or the trash is emptied).
+    trash_timer: RefCell<Option<glib::SourceId>>,
     last_logged: RefCell<String>,
     last_selection: RefCell<String>,
     check_tiles: Cell<bool>,
@@ -255,6 +261,8 @@ impl Icons {
             editing: RefCell::default(),
             reload_waiting: Cell::new(false),
             reload_timer: RefCell::default(),
+            trash_full: Cell::new(None),
+            trash_timer: RefCell::default(),
             last_logged: RefCell::default(),
             last_selection: RefCell::default(),
             check_tiles: Cell::new(false),
@@ -341,6 +349,56 @@ impl Icons {
         *self.reload_timer.borrow_mut() = Some(id);
     }
 
+    /// QE-02: a recount of the trash shortly after its monitor's events.
+    fn update_trash_soon(self: &Rc<Self>) {
+        if let Some(id) = self.trash_timer.take() {
+            id.remove();
+        }
+        let weak = Rc::downgrade(self);
+        let id = glib::timeout_add_local_once(Duration::from_millis(120), move || {
+            if let Some(icons) = weak.upgrade() {
+                icons.trash_timer.take();
+                icons.update_trash_icon();
+            }
+        });
+        *self.trash_timer.borrow_mut() = Some(id);
+    }
+
+    /// QE-02: counts the trash and shows "user-trash" or "user-trash-full".
+    fn update_trash_icon(&self) {
+        if self.trash_full.get().is_none() {
+            return; // no trash icon (Querencia Files missing)
+        }
+        self.show_trash_state(trash_count());
+    }
+
+    /// QE-02: swaps the picture of the trash icon (and of nothing else)
+    /// when the trash changed between empty and full.
+    fn show_trash_state(&self, count: Option<u32>) {
+        let full = count.unwrap_or(0) > 0;
+        if self.trash_full.get().is_none_or(|shown| shown == full) {
+            return;
+        }
+        self.trash_full.set(Some(full));
+        let index = self
+            .items
+            .borrow()
+            .iter()
+            .position(|item| item.kind == Kind::Trash);
+        let image = index
+            .and_then(|i| self.widgets.borrow().get(i).cloned())
+            .and_then(|tile| tile.first_child())
+            .and_then(|child| child.downcast::<Image>().ok());
+        if let Some(image) = image {
+            image.set_from_gicon(&trash_icon(full));
+        }
+        log(&format!(
+            "Papierkorb jetzt {}",
+            if full { "voll" } else { "leer" }
+        ));
+        log_trash_icon(full, count);
+    }
+
     fn set_items(self: &Rc<Self>, items: Vec<Item>) {
         let selected_key = self
             .selected
@@ -362,7 +420,21 @@ impl Icons {
         for widget in self.widgets.borrow_mut().drain(..) {
             self.fixed.remove(&widget);
         }
-        let widgets: Vec<gtk4::Box> = items.iter().map(icon_widget).collect();
+        // QE-02: the trash is counted once per rebuild; afterwards its
+        // monitor keeps the icon up to date (`update_trash_icon`).
+        let trash_full = if items.iter().any(|item| item.kind == Kind::Trash) {
+            let count = trash_count();
+            let full = count.unwrap_or(0) > 0;
+            log_trash_icon(full, count);
+            Some(full)
+        } else {
+            None
+        };
+        self.trash_full.set(trash_full);
+        let widgets: Vec<gtk4::Box> = items
+            .iter()
+            .map(|item| icon_widget(item, trash_full.unwrap_or(false)))
+            .collect();
         for widget in &widgets {
             // shown once placed (`layout`), never first at the top left
             widget.set_visible(false);
@@ -770,7 +842,7 @@ impl Icons {
                             let Some(item) = icons.items.borrow().get(m).cloned() else {
                                 continue;
                             };
-                            let ghost = icon_widget(&item);
+                            let ghost = icon_widget(&item, icons.trash_full.get().unwrap_or(false));
                             ghost.add_css_class("dragging");
                             ghost.add_css_class("selected");
                             ghost.set_can_target(false);
@@ -1020,7 +1092,11 @@ impl Icons {
                     .append(Some("Papierkorb öffnen"), Some("desktop.open"));
                 let empty = gio::Menu::new();
                 // insensitive while the trash is empty (or unreachable)
-                let full = trash_count().unwrap_or(0) > 0;
+                let count = trash_count();
+                let full = count.unwrap_or(0) > 0;
+                // QE-02: the icon follows the same count (also without a
+                // working trash monitor)
+                self.show_trash_state(count);
                 empty.append(
                     Some("Papierkorb leeren…"),
                     full.then_some("desktop.empty-trash"),
@@ -1392,6 +1468,7 @@ impl Icons {
             targets.push(gio::File::for_path(dir));
         }
         for target in targets {
+            let is_trash = target.uri_scheme().as_deref() == Some("trash");
             // WATCH_MOVES: a rename inside the folder comes as one event with
             // the old and the new name (HMP-10), not as delete and create.
             match target
@@ -1401,6 +1478,15 @@ impl Icons {
                     let weak = Rc::downgrade(self);
                     monitor.connect_changed(move |_, file, other, event| {
                         let Some(icons) = weak.upgrade() else { return };
+                        // QE-02: the trash only changes the trash icon; no
+                        // rebuild of all icons, no polling (GVfs reports
+                        // every change of every trash location)
+                        if is_trash {
+                            if !matches!(event, gio::FileMonitorEvent::PreUnmount) {
+                                icons.update_trash_soon();
+                            }
+                            return;
+                        }
                         // renamed elsewhere (a file manager): keep the place
                         if event == gio::FileMonitorEvent::Renamed
                             && let (Some(old), Some(new)) =
@@ -1670,14 +1756,41 @@ fn debugging() -> bool {
 /// Objects in the trash (GVfs `trash:///`); `None` when it is not
 /// reachable.
 fn trash_count() -> Option<u32> {
-    gio::File::for_uri("trash:///")
+    let count = gio::File::for_uri("trash:///")
         .query_info(
             "trash::item-count",
             gio::FileQueryInfoFlags::NONE,
             gio::Cancellable::NONE,
         )
         .ok()
-        .map(|info| info.attribute_uint32("trash::item-count"))
+        .map(|info| info.attribute_uint32("trash::item-count"));
+    if debugging() {
+        // QE-02: every count is logged, so a test can show that nothing
+        // counts while the trash is left alone (no polling)
+        log(&format!("Papierkorb gezählt: {count:?}"));
+    }
+    count
+}
+
+/// The trash icon of the theme: empty or full (GNOME 2's names).
+fn trash_icon(full: bool) -> gio::Icon {
+    gio::ThemedIcon::new(if full {
+        "user-trash-full"
+    } else {
+        "user-trash"
+    })
+    .upcast()
+}
+
+/// `QUERENCIA_DESKTOP_DEBUG=1`: the state the trash icon shows (HMP-10b
+/// tests read the last line).
+fn log_trash_icon(full: bool, count: Option<u32>) {
+    if debugging() {
+        log(&format!(
+            "Papierkorb-Symbol: {} ({count:?} Objekte)",
+            if full { "voll" } else { "leer" }
+        ));
+    }
 }
 
 /// One "Papierkorb leeren": what is left to delete and what failed.
@@ -1700,8 +1813,10 @@ fn delete_next(icons: std::rc::Weak<Icons>, run: Rc<RefCell<TrashRun>>) {
             run.total,
             run.failed.len()
         ));
+        // QE-02: only the trash icon changes; it shows the result at once
+        // (the trash monitor's events follow and find nothing new).
         if let Some(icons) = icons.upgrade() {
-            icons.reload();
+            icons.update_trash_icon();
         }
         if !run.failed.is_empty() {
             let (verb, rest) = if run.failed.len() == 1 {
@@ -1932,26 +2047,12 @@ fn load_items() -> (Vec<Item>, bool) {
     (items, listed)
 }
 
-fn icon_for(item: &Item) -> gio::Icon {
+fn icon_for(item: &Item, trash_full: bool) -> gio::Icon {
     let themed = |name: &str| gio::ThemedIcon::new(name).upcast::<gio::Icon>();
     match &item.kind {
         Kind::Computer => themed("computer"),
         Kind::Home => themed("user-home"),
-        Kind::Trash => {
-            let count = trash_count();
-            let full = count.unwrap_or(0) > 0;
-            if debugging() {
-                log(&format!(
-                    "Papierkorb-Symbol: {} ({count:?} Objekte)",
-                    if full { "voll" } else { "leer" }
-                ));
-            }
-            themed(if full {
-                "user-trash-full"
-            } else {
-                "user-trash"
-            })
-        }
+        Kind::Trash => trash_icon(trash_full),
         Kind::App(id) => DesktopAppInfo::new(id)
             .and_then(|app| app.icon())
             .unwrap_or_else(|| themed("application-x-executable")),
@@ -2010,7 +2111,7 @@ fn label_lines(label: &Label) -> Vec<String> {
     lines
 }
 
-fn icon_widget(item: &Item) -> gtk4::Box {
+fn icon_widget(item: &Item, trash_full: bool) -> gtk4::Box {
     let tile = gtk4::Box::new(Orientation::Vertical, 2);
     tile.add_css_class("desktop-icon");
     // HMP-10b: the tile spans the whole cell width (cells never overlap,
@@ -2018,7 +2119,7 @@ fn icon_widget(item: &Item) -> gtk4::Box {
     // "Persönlicher" (89 px in DejaVu/Adwaita Sans 11) missed the 88 px
     // left for the text by one pixel and was split ("Persönliche" / "r").
     tile.set_size_request(CELL.0, CELL.1 - 6);
-    let image = Image::from_gicon(&icon_for(item));
+    let image = Image::from_gicon(&icon_for(item, trash_full));
     image.set_pixel_size(ICON_PX);
     image.set_halign(Align::Center);
     let label = Label::new(Some(&item.name));
