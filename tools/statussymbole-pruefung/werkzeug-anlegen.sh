@@ -11,7 +11,7 @@
 # längere Worktree-Name brächte sonst …/w2reg/rt/w2-xxxxxxxx/wayland-0 und
 # …/rt/g2j-xxxxxxxx/pulse/native über die 107 Zeichen eines Unix-Sockets.
 set -euo pipefail
-WT=~/projects/querencia-runtime-wt-statussymbole
+WT=/home/user/projects/querencia-runtime-wt-statussymbole
 G=$WT/nachweis/gui
 weg() { # nur die eigenen Kopien unter nachweis/gui
   case "$1" in "$G"/gm-werkzeug|"$G"/gj-werkzeug) ;; *) exit 2 ;; esac
@@ -33,6 +33,14 @@ rm -f "$M/symbole-machen.py"                             # schriebe in crates/, 
 # die Kopie liegt zwei Ebenen tiefer.
 sed -i 's#^SYMBOLE = Path(__file__).resolve().parent.parent.parent / #SYMBOLE = Path("'"$WT"'") / #' "$M/auswerten.py"
 grep -q "^SYMBOLE = Path(\"$WT\") / \"crates/querencia-netzwerk/data/symbole\"" "$M/auswerten.py"
+# Zweitauswertung G2-Y (auswerten-g2y.py): gleiche Bilder, Hintergrund des
+# Symbols bei NX - 9 statt NX - 13. NX - 13 lag im G2-M-Knopf (28 px) noch im
+# Hover-/Druck-Rahmen, im 24-px-Statusknopf liegt er außerhalb; dann wird ein
+# hervorgehobenes Symbol gegen den Panelgrund verglichen (Abweichung ~9 statt
+# ~0, Symbol trotzdem richtig erkannt). NX - 9 liegt in beiden Rahmen.
+sed -e 's#^    bg = pixel(pb, NX - 13, 2)$#    bg = pixel(pb, NX - 9, 2)   \# G2-Y: im 24-px-Statusknopf#' "$M/auswerten.py" >"$M/auswerten-g2y.py"
+grep -q 'NX - 9, 2)   # G2-Y' "$M/auswerten-g2y.py"
+[ "$(diff "$M/auswerten.py" "$M/auswerten-g2y.py" | grep -c '^[<>]')" = 2 ]
 sed -i -e '/g2jreg-anlegen.sh\|g2jreg\/werkzeug/d' "$M/endlaeufe.sh"
 
 # G2-J (mit W2)

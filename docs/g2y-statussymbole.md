@@ -58,6 +58,32 @@ nicht zum Knopf, und ist unverändert.
 - Regression G2-M (rueckfall, attrappe, spaet, verschieben) und G2-J
   (haupt, ohne-dienst, darin W2) über umgelenkte Kopien der Werkzeuge.
 
+Ergebnisse (Release-Bau `97461a61eed7ab6b`, Auswertungen in
+`nachweis/ergebnisse/g2y/`):
+
+| Lauf | 1024×768 | 1920×1080 |
+|---|---|---|
+| G2-Y vorher (G2-M `c3cda503`) | 8/8 | 8/8 |
+| G2-Y statussymbole | 45/45 | 45/45 |
+| G2-M rueckfall | 22/22 | 22/22 |
+| G2-M attrappe | 69/74 (Zweitauswertung 74/74) | 69/74 (Zweitauswertung 74/74) |
+| G2-M spaet | 18/18 | 18/18 |
+| G2-M verschieben | 30/30 | 30/30 |
+| G2-J haupt | 56/56 | 56/56 |
+| G2-J ohne-dienst | 17/17 | 17/17 |
+
+W2: Umschalter 56/56, Logo 21/21, Branding 34/35 (dieselbe Zeile wie beim
+Ausgang G2-M, bekannt), Starter 19/19, Menü 3/3, Fensterliste 10/10.
+Integrationsprobe 28/28.
+
+G2-M attrappe: Die fünf Abweichungen sind Bilder, in denen der
+Netzwerk-Knopf hervorgehoben ist (nach dem Menü). Der G2-M-Auswerter misst
+den Hintergrund bei `NX − 13`; das lag im 28-px-Knopf im Rahmen, im
+24-px-Knopf daneben. Das Symbol wird in allen fünf richtig erkannt, nur die
+Abweichung steigt auf 8–10 (Schwelle 8). `auswerten-g2y.py` (eine Zeile:
+`NX − 9`, von `werkzeug-anlegen.sh` erzeugt) wertet dieselben Bilder mit
+74/74 aus; alle anderen Zeilen sind gleich.
+
 Werkzeuge:
 
 ```bash
