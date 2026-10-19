@@ -17,7 +17,7 @@ Sitzungsstarter (`session/querencia-session`) und Querencia Einstellungen
 | `…/labwc/.vorgabe/stand` | Starter | Zeit, Quelle (Commit), SHA256 je Datei in `.vorgabe/` – zum Lesen für Menschen |
 | `…/labwc/<datei>.vorgabe-neu` | Starter | neuere Vorgabe, die wegen eigener Änderungen **nicht** übernommen wurde |
 | `…/labwc/<datei>.vorher-<JJJJMMTT-HHMMSS>` | Starter, Einstellungen | Sicherung vor jedem Ersetzen |
-| `…/labwc/environment.d/querencia-einstellungen.env` | Einstellungen | eigene Umgebungswerte (Tastaturbelegung, Zeiger); labwc liest sie **nach** `environment`, sie haben Vorrang |
+| `…/labwc/environment.d/zz-querencia-einstellungen.env` | Einstellungen | eigene Umgebungswerte (Tastaturbelegung, Zeiger); labwc liest sie **nach** `environment`, sie haben Vorrang |
 | `~/.config/querencia/labwc-alter-weg` | Benutzer | erzwingt den alten Weg (§4) |
 | `~/.local/state/querencia/labwc-konfig.log` | Starter | was der Abgleich beim letzten Start getan hat, und welcher Ordner galt |
 
@@ -44,11 +44,16 @@ Vorgabe übernehmen“). Alle Schreibvorgänge gehen über eine temporäre Datei
 im selben Ordner und `rename`.
 
 Die Umgebung schreibt Einstellungen bewusst **nicht** in `environment`,
-sondern in `environment.d/querencia-einstellungen.env`: So bleibt
+sondern in `environment.d/zz-querencia-einstellungen.env`: So bleibt
 `environment` unverändert, und Vorgabenänderungen daran (z. B. `LANG`,
 QD-056) kommen weiter an. labwc liest im `-C`-Ordner erst `environment`, dann
-`environment.d/*.env` (alphabetisch), jeweils mit Überschreiben (labwc
-0.9.8 `src/config/session.c`; Probe S2).
+`environment.d/*.env` in alphabetischer Reihenfolge (`scandir` mit
+`alphasort`, also `strcoll`), jeweils mit Überschreiben; die letzte Angabe
+gilt (labwc 0.9.8 `src/config/session.c`; Probe S2). Deshalb heißt die Datei
+der Einstellungen `zz-…`: Sie kommt nach den Dateien anderer Querencia-Teile
+(z. B. `querencia-erscheinungsbild.env` von Thema-3), die Wahl des Benutzers
+gewinnt. Bis 20.10. 01:30 hieß sie `querencia-einstellungen.env` – die
+sortierte vor `querencia-erscheinungsbild.env` und hätte verloren.
 
 Von Hand nach einer Vorgabenänderung, ohne neue Anmeldung:
 
