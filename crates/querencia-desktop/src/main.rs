@@ -69,14 +69,48 @@ fn icons_enabled(value: Option<&str>) -> bool {
 type Shared = Rc<RefCell<Desktop>>;
 
 /// QE-01: what this desktop can show beyond HMP-10a, for Querencia
-/// Einstellungen (`querencia-desktop --faehigkeiten`).
-const CAPABILITIES: &str = "type-color mode-centered mode-tiled";
+/// Einstellungen (`querencia-desktop --faehigkeiten`); QE-04: it reads
+/// `desktop.ini` `[Volumes]` (volume types), `[Icons]` (the three special
+/// icons) and the icon size.
+const CAPABILITIES: &str =
+    "type-color mode-centered mode-tiled volumes-types icons-visible icon-size";
 
 fn main() -> glib::ExitCode {
     // answered before GTK or GApplication start: no display needed, no
     // running instance is activated
     if std::env::args().skip(1).any(|a| a == "--faehigkeiten") {
         println!("{CAPABILITIES}");
+        return glib::ExitCode::SUCCESS;
+    }
+    // QE-04: which mounts the icon layer would show with the current
+    // desktop.ini, read only (GIO's volume monitor, no window, no GTK)
+    if std::env::args()
+        .skip(1)
+        .any(|a| a == "--datentraeger-zeigen")
+    {
+        let text = std::fs::read_to_string(config::config_path()).unwrap_or_default();
+        let (settings, problems) = config::parse_icons(&text);
+        for problem in problems {
+            println!("desktop.ini: {problem}");
+        }
+        println!(
+            "Laufwerke: Wechsel={} Optisch={} Netz={} Eingebaut={}",
+            settings.removable, settings.optical, settings.network, settings.internal
+        );
+        for mount in gio::VolumeMonitor::get().mounts() {
+            let facts = volumes::facts(&mount);
+            println!(
+                "{}\t{}\t{}\t{}",
+                facts.name,
+                facts.root_uri,
+                volumes::classify(&facts).map_or("nie", volumes::VolumeType::name),
+                if volumes::shown(&facts, &settings) {
+                    "Symbol"
+                } else {
+                    "kein Symbol"
+                }
+            );
+        }
         return glib::ExitCode::SUCCESS;
     }
     let app = Application::builder().application_id(APP_ID).build();
@@ -142,11 +176,21 @@ fn load(desktop: &Shared) {
             }
         );
     }
-    let mut desktop = desktop.borrow_mut();
-    desktop.settings = settings;
-    desktop.texture = texture;
-    for (_, _, wallpaper) in &desktop.windows {
-        wallpaper.show(&desktop.settings, desktop.texture.as_ref());
+    // QE-04: [Icons]/[Volumes] go to the icon layer (applied only when changed)
+    let (icon_settings, problems) = config::parse_icons(&text);
+    for problem in problems {
+        eprintln!("querencia-desktop: {}: {problem}", path.display());
+    }
+    let mut state = desktop.borrow_mut();
+    state.settings = settings;
+    state.texture = texture;
+    for (_, _, wallpaper) in &state.windows {
+        wallpaper.show(&state.settings, state.texture.as_ref());
+    }
+    let icons = state.icons.as_ref().map(|(_, icons)| icons.clone());
+    drop(state);
+    if let Some(icons) = icons {
+        icons.apply_settings(icon_settings);
     }
 }
 

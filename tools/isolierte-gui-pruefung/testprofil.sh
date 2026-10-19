@@ -22,17 +22,18 @@ testprofil_neu() {
         echo "testprofil: unzulässiger Profilname: '$name'" >&2; exit 2 ;;
     esac
     case $basis in
-    ~/projects/querencia-panel-werkstatt/gui-test-nacht | \
-    ~/projects/querencia-panel-werkstatt/hmp-[0-9][0-9]/gui-test* | \
-    ~/projects/querencia-panel-werkstatt/arbeitsflaechen-4/nachweis | \
-    ~/.werkstatt/cache/scratch/?* | \
-    ~/projects/querencia-werkstatt-w1-desktop/nachweis/gui-test* | \
-    ~/projects/querencia-werkstatt-w1-desktop/hmp10a/nachweis/gui-test* | \
-    ~/projects/querencia-werkstatt-w1-desktop/hmp10b/nachweis/gui-test* | \
-    ~/projects/querencia-werkstatt-w1-desktop/qe01/nachweis/gui-test* | \
-    ~/.cache/g2r/gui-test* | \
-    ~/.cache/g2n/gui-test*) ;;
-    ~/projects/querencia-panel-werkstatt/sitzung)
+    /home/user/projects/querencia-panel-werkstatt/gui-test-nacht | \
+    /home/user/projects/querencia-panel-werkstatt/hmp-[0-9][0-9]/gui-test* | \
+    /home/user/projects/querencia-panel-werkstatt/arbeitsflaechen-4/nachweis | \
+    /home/user/.werkstatt/cache/scratch/?* | \
+    /home/user/projects/querencia-werkstatt-w1-desktop/nachweis/gui-test* | \
+    /home/user/projects/querencia-werkstatt-w1-desktop/hmp10a/nachweis/gui-test* | \
+    /home/user/projects/querencia-werkstatt-w1-desktop/hmp10b/nachweis/gui-test* | \
+    /home/user/projects/querencia-werkstatt-w1-desktop/qe01/nachweis/gui-test* | \
+    /home/user/.cache/g2r/gui-test* | \
+    /home/user/.cache/g2n/gui-test* | \
+    /home/user/.cache/g2x/gui-test*) ;;
+    /home/user/projects/querencia-panel-werkstatt/sitzung)
         case $name in
         test-*) ;;
         *) echo "testprofil: in sitzung/ nur test-*: '$name'" >&2; exit 2 ;;
