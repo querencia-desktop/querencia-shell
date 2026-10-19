@@ -7,7 +7,7 @@
 //! refer to them.
 
 use gtk4::prelude::*;
-use gtk4::{Label, Widget, gio};
+use gtk4::{Widget, gio};
 
 use crate::layout::{Instance, LAUNCHER};
 use crate::{
@@ -155,11 +155,7 @@ pub const APPLETS: &[AppletType] = &[
         chooses_application: false,
         menu: None,
         status: false,
-        factory: |_, _| {
-            let label = Label::new(None);
-            clock::attach(&label);
-            label.upcast()
-        },
+        factory: |_, _| clock::widget().upcast(),
     },
     AppletType {
         id: LAUNCHER,
