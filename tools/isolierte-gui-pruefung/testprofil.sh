@@ -30,7 +30,8 @@ testprofil_neu() {
     ~/projects/querencia-werkstatt-w1-desktop/hmp10a/nachweis/gui-test* | \
     ~/projects/querencia-werkstatt-w1-desktop/hmp10b/nachweis/gui-test* | \
     ~/projects/querencia-werkstatt-w1-desktop/qe01/nachweis/gui-test* | \
-    ~/.cache/g2r/gui-test*) ;;
+    ~/.cache/g2r/gui-test* | \
+    ~/.cache/g2n/gui-test*) ;;
     ~/projects/querencia-panel-werkstatt/sitzung)
         case $name in
         test-*) ;;

@@ -29,6 +29,7 @@ mod icons;
 mod layout;
 mod rename;
 mod store;
+mod volumes;
 mod wallpaper;
 
 use std::cell::RefCell;
@@ -59,7 +60,8 @@ struct Desktop {
 }
 
 /// Desktop icons and menu are on unless `QUERENCIA_DESKTOP_ICONS=0`
-/// (background only, the HMP-08 behaviour).
+/// (background only, the HMP-08 behaviour); the same rule for
+/// `QUERENCIA_DESKTOP_VOLUMES` (QE-03).
 fn icons_enabled(value: Option<&str>) -> bool {
     value.map(str::trim) != Some("0")
 }

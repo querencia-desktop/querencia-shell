@@ -5,7 +5,8 @@
 //! - Rechner, Persönlicher Ordner, Papierkorb: only when Querencia Files
 //!   (or, for the home folder, any folder program) can open them;
 //! - Querencia Terminal: only when its desktop entry is installed;
-//! - every file and folder in the XDG desktop directory.
+//! - every file and folder in the XDG desktop directory;
+//! - QE-03: every mounted removable volume (`volumes.rs`), never remembered.
 //!
 //! Where the icons are is `layout.rs` and `store.rs` (HMP-10); here is
 //! the order in which icons without a place get one: the order of the
@@ -17,6 +18,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::store::{self, Art};
+use crate::volumes::Volume;
 
 /// What an icon stands for.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,6 +34,8 @@ pub enum Kind {
     File(PathBuf),
     /// A folder in the desktop directory (HMP-10).
     Folder(PathBuf),
+    /// QE-03: a mounted volume, by the URI of its root.
+    Volume(Volume),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -66,12 +70,18 @@ impl Item {
         ident(&self.kind)
     }
 
+    /// QE-03: an icon whose place is kept for this session only.
+    pub fn is_transient(&self) -> bool {
+        matches!(self.kind, Kind::Volume(_))
+    }
+
     fn fixed_rank(&self) -> Option<usize> {
         match self.kind {
             Kind::Computer => Some(0),
             Kind::Home => Some(1),
             Kind::Trash => Some(2),
             Kind::App(_) => Some(3),
+            Kind::Volume(_) => Some(4),
             Kind::Launcher(_) | Kind::File(_) | Kind::Folder(_) => None,
         }
     }
@@ -84,6 +94,7 @@ fn art(kind: &Kind) -> Art {
         Kind::Launcher(_) => Art::Launcher,
         Kind::File(_) => Art::File,
         Kind::Folder(_) => Art::Folder,
+        Kind::Volume(_) => Art::Volume,
     }
 }
 
@@ -93,6 +104,7 @@ fn ident(kind: &Kind) -> String {
         Kind::Home => "home".to_owned(),
         Kind::Trash => "trash".to_owned(),
         Kind::App(id) => id.clone(),
+        Kind::Volume(volume) => volume.uri.clone(),
         Kind::Launcher(path) | Kind::File(path) | Kind::Folder(path) => path
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
@@ -200,6 +212,17 @@ mod tests {
         Item::new(Kind::File(PathBuf::from("/d").join(name)), name)
     }
 
+    fn volume(name: &str) -> Item {
+        Item::new(
+            Kind::Volume(Volume {
+                uri: format!("file:///run/media/u/{name}"),
+                picture: crate::volumes::Picture::Removable,
+                removal: Some(crate::volumes::Removal::Unmount),
+            }),
+            name,
+        )
+    }
+
     #[test]
     fn new_names_never_overwrite() {
         let taken = ["Neuer Ordner", "Neuer Ordner 2", "Notiz.txt", ".hidden"];
@@ -259,6 +282,8 @@ mod tests {
             Item::new(Kind::Computer, "Rechner"),
             file("birne"),
             Item::new(Kind::Home, "Persönlicher Ordner"),
+            volume("cidata"),
+            volume("QDTEST"),
         ];
         let names: Vec<_> = by_name(items).into_iter().map(|i| i.name).collect();
         assert_eq!(
@@ -268,6 +293,8 @@ mod tests {
                 "Persönlicher Ordner",
                 "Papierkorb",
                 "Terminal",
+                "QDTEST",
+                "cidata",
                 "Apfel",
                 "birne",
                 "zebra"
@@ -311,5 +338,9 @@ mod tests {
         assert_eq!(launcher.key, "flaeche:b.desktop");
         assert_eq!(launcher.name, "Mein Browser");
         assert_eq!(Item::new(Kind::Home, "H").ident(), "home");
+        let stick = volume("QDTEST");
+        assert_eq!(stick.key, "laufwerk:file:///run/media/u/QDTEST");
+        assert_eq!(stick.art(), Art::Volume);
+        assert!(stick.is_transient() && !folder.is_transient());
     }
 }
