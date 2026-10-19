@@ -149,6 +149,187 @@ pub fn parse(text: &str) -> (Background, Vec<String>) {
     (background, problems)
 }
 
+/// QE-04 (QD-042): which icons the desktop shows and how large; groups
+/// `[Icons]` and `[Volumes]` of `desktop.ini`, written by Querencia
+/// Einstellungen ("Symbole der Arbeitsfläche"). Format and the rule that
+/// sorts a mount into a type: `docs/qe-04-symbole-der-arbeitsflaeche.md`
+/// (copy of the Einstellungen specification `desktop-ini-arbeitsflaeche.md`).
+///
+/// ```ini
+/// [Icons]
+/// Computer=true
+/// Home=true
+/// Trash=true
+/// # 32 | 48 | 72 | 96
+/// Size=48
+///
+/// [Volumes]
+/// Removable=true
+/// Optical=true
+/// Network=true
+/// Internal=false
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct IconSettings {
+    pub computer: bool,
+    pub home: bool,
+    pub trash: bool,
+    /// Icon size in pixels, one of [`ICON_SIZES`].
+    pub size: i32,
+    pub removable: bool,
+    pub optical: bool,
+    pub network: bool,
+    pub internal: bool,
+}
+
+/// The sizes Querencia Einstellungen offers (Nautilus' 66/100/150/200 %).
+pub const ICON_SIZES: [i32; 4] = [32, 48, 72, 96];
+
+impl Default for IconSettings {
+    /// Without `desktop.ini` – the **only** place of these values on the
+    /// desktop side; the same as `Arbeitsflaeche::default()` in Querencia
+    /// Einstellungen (decided 19.10.2026, as on GNOME 2): the three special
+    /// icons, 48 px, removable, optical and network volumes, no internal ones.
+    fn default() -> Self {
+        Self {
+            computer: true,
+            home: true,
+            trash: true,
+            size: 48,
+            removable: true,
+            optical: true,
+            network: true,
+            internal: false,
+        }
+    }
+}
+
+/// `true`/`false`, `1`/`0`, `yes`/`no`, in any case.
+fn parse_bool(value: &str) -> Option<bool> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "true" | "1" | "yes" => Some(true),
+        "false" | "0" | "no" => Some(false),
+        _ => None,
+    }
+}
+
+/// The `[Icons]` and `[Volumes]` groups; like [`parse`], bad or unknown
+/// values fall back to the default and are listed in `problems`.
+pub fn parse_icons(text: &str) -> (IconSettings, Vec<String>) {
+    let mut settings = IconSettings::default();
+    let mut problems = Vec::new();
+    let mut group: Option<&str> = None;
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some(name) = line.strip_prefix('[').and_then(|l| l.strip_suffix(']')) {
+            group = match name {
+                "Icons" => Some("Icons"),
+                "Volumes" => Some("Volumes"),
+                _ => None,
+            };
+            continue;
+        }
+        let Some(group) = group else { continue };
+        let Some((key, value)) = line.split_once('=') else {
+            problems.push(format!("[{group}] Zeile ohne „=“: {line}"));
+            continue;
+        };
+        let (key, value) = (key.trim(), value.trim());
+        if group == "Icons" && key == "Size" {
+            match value.parse::<i32>().ok().filter(|v| ICON_SIZES.contains(v)) {
+                Some(size) => settings.size = size,
+                None => problems.push(format!("[Icons] ungültige Größe „{value}“, 48")),
+            }
+            continue;
+        }
+        let target = match (group, key) {
+            ("Icons", "Computer") => &mut settings.computer,
+            ("Icons", "Home") => &mut settings.home,
+            ("Icons", "Trash") => &mut settings.trash,
+            ("Volumes", "Removable") => &mut settings.removable,
+            ("Volumes", "Optical") => &mut settings.optical,
+            ("Volumes", "Network") => &mut settings.network,
+            ("Volumes", "Internal") => &mut settings.internal,
+            _ => {
+                problems.push(format!("[{group}] unbekannter Schlüssel „{key}“"));
+                continue;
+            }
+        };
+        match parse_bool(value) {
+            Some(b) => *target = b,
+            None => problems.push(format!("[{group}] ungültiger Wert „{value}“ für {key}")),
+        }
+    }
+    (settings, problems)
+}
+
+/// QE-04: `text` with the group `name` replaced by `block` (which starts
+/// with `[name]` and ends with a newline); everything else stays byte for
+/// byte. A group's block runs from its header to its last key line, so
+/// comments right before the next header stay with that one. Several
+/// blocks of the group become one, at the first; a missing group is
+/// appended after an empty line. The same rule as `ini.rs` in Querencia
+/// Einstellungen.
+pub fn replace_group(text: &str, name: &str, block: &str) -> String {
+    let lines: Vec<&str> = text.split_inclusive('\n').collect();
+    let header = |line: &str| {
+        let line = line.trim();
+        line.strip_prefix('[')
+            .and_then(|l| l.strip_suffix(']'))
+            .map(str::to_owned)
+    };
+    let mut blocks = Vec::new();
+    let mut i = 0;
+    while i < lines.len() {
+        if header(lines[i]).as_deref() == Some(name) {
+            let (start, mut end) = (i, i + 1);
+            i += 1;
+            while i < lines.len() && header(lines[i]).is_none() {
+                let line = lines[i].trim();
+                if !line.is_empty() && !line.starts_with('#') {
+                    end = i + 1;
+                }
+                i += 1;
+            }
+            blocks.push((start, end));
+        } else {
+            i += 1;
+        }
+    }
+    let Some(&(first, _)) = blocks.first() else {
+        if text.trim().is_empty() {
+            return block.to_owned();
+        }
+        let mut out = text.to_owned();
+        if !out.ends_with('\n') {
+            out.push('\n');
+        }
+        if !out.ends_with("\n\n") {
+            out.push('\n');
+        }
+        out.push_str(block);
+        return out;
+    };
+    let mut out = String::with_capacity(text.len() + block.len());
+    let mut at = 0;
+    for &(start, end) in &blocks {
+        out.push_str(&lines[at..start].concat());
+        if start == first {
+            out.push_str(block);
+        }
+        at = end;
+    }
+    let rest = lines[at..].concat();
+    if !rest.is_empty() && !out.ends_with('\n') {
+        out.push('\n');
+    }
+    out.push_str(&rest);
+    out
+}
+
 /// The key file text for `background`. Written by the desktop menu's
 /// "Hintergrund der Arbeitsfläche ändern" (HMP-09).
 /// QE-01: `Type=color` is written only for the colour (an image setting
@@ -384,6 +565,72 @@ mod tests {
         let (bg, problems) = parse("[Background]\nType=muster\n");
         assert_eq!(bg.kind, Kind::Image);
         assert_eq!(problems, ["unbekannter Typ „muster“, image"]);
+    }
+
+    /// QE-04: defaults as decided, values read, bad ones reported.
+    #[test]
+    fn icon_settings_are_read_with_defaults() {
+        let (settings, problems) = parse_icons("");
+        assert_eq!(settings, IconSettings::default());
+        assert!(problems.is_empty());
+        let d = IconSettings::default();
+        assert!(d.computer && d.home && d.trash && d.size == 48);
+        assert!(d.removable && d.optical && d.network && !d.internal);
+        let (settings, problems) = parse_icons(
+            "[Background]\nTrash=false\n[Icons]\nComputer=false\nTrash=0\nSize=72\n\n\
+             [Volumes]\nNetwork=NO\nInternal=yes\n",
+        );
+        assert!(problems.is_empty(), "{problems:?}");
+        assert_eq!(
+            settings,
+            IconSettings {
+                computer: false,
+                trash: false,
+                size: 72,
+                network: false,
+                internal: true,
+                ..IconSettings::default()
+            }
+        );
+        let (settings, problems) =
+            parse_icons("[Icons]\nSize=50\nHome=vielleicht\nFoo=1\n[Volumes]\nkaputt\n");
+        assert_eq!(settings, IconSettings::default());
+        assert_eq!(problems.len(), 4, "{problems:?}");
+        // the background parser does not see the new groups
+        let (background, problems) =
+            parse("[Background]\nMode=scaled\n[Icons]\nSize=96\n[Volumes]\nNetwork=false\n");
+        assert_eq!(background.mode, Mode::Scaled);
+        assert!(problems.is_empty());
+    }
+
+    /// QE-04: the HMP-09 fallback writes only `[Background]`.
+    #[test]
+    fn replacing_a_group_keeps_the_others() {
+        let other = "# Hand\n[Background]\nFile=\nMode=zoom\nColor=#1c4e96\n\n[Icons]\nSize=96\n\n[Volumes]\nNetwork=false\n";
+        let new = replace_group(
+            other,
+            "Background",
+            &render(&Background {
+                file: Some(PathBuf::from("/srv/b.png")),
+                ..Background::default()
+            }),
+        );
+        assert_eq!(
+            new,
+            "# Hand\n[Background]\nFile=/srv/b.png\nMode=zoom\nColor=#1c4e96\n\n[Icons]\nSize=96\n\n[Volumes]\nNetwork=false\n"
+        );
+        assert_eq!(
+            replace_group("", "Background", "[Background]\nFile=\n"),
+            "[Background]\nFile=\n"
+        );
+        assert_eq!(
+            replace_group("[Icons]\nSize=32", "Volumes", "[Volumes]\nNetwork=true\n"),
+            "[Icons]\nSize=32\n\n[Volumes]\nNetwork=true\n"
+        );
+        assert_eq!(
+            replace_group("[A]\nx=1\n[A]\ny=2\n[B]\nz=3\n", "A", "[A]\nn=0\n"),
+            "[A]\nn=0\n[B]\nz=3\n"
+        );
     }
 
     /// QE-01 A2: centered and tiled, with the values of Querencia
