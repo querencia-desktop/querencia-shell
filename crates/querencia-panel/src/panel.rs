@@ -15,7 +15,7 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 use crate::layout::{self, Instance, PanelSpec, Region};
 use crate::layout_editor::Editor;
-use crate::{applets, launcher, panel_menu};
+use crate::{applet_move, applets, launcher, panel_menu};
 
 const NAMESPACE: &str = "querencia-panel";
 /// Space between applets of one region (the former menu row).
@@ -61,7 +61,8 @@ pub fn build(
         window.set_anchor(anchor, true);
     }
     window.auto_exclusive_zone_enable();
-    panel_menu::attach(app, &window, &bar, spec, editor);
+    let mover = applet_move::attach(&window, &bar, editor);
+    panel_menu::attach(app, &window, &bar, spec, editor, &mover);
     window
 }
 
@@ -96,6 +97,13 @@ pub fn insert_applet(
     let Some(widget) = applet_widget(instance, panel_height) else {
         return false;
     };
+    place(bar, region, index, &widget);
+    true
+}
+
+/// Puts `widget` at `index` of `region` in `bar`; a region that had no
+/// applets gets its row now.
+fn place(bar: &CenterBox, region: Region, index: usize, widget: &Widget) {
     let row = region_row(bar, region).unwrap_or_else(|| {
         let row = new_row();
         match region {
@@ -113,15 +121,60 @@ pub fn insert_applet(
         next = child.next_sibling();
         previous = Some(child);
     }
-    row.insert_child_after(&widget, previous.as_ref());
+    row.insert_child_after(widget, previous.as_ref());
     space_out(&row);
-    true
 }
 
 /// Takes the widget of the applet instance `instance_id` out of the panel
 /// bar `bar`. Returns whether there was one. A region left without applets
 /// loses its row, as a region that never had any.
 pub fn remove_applet(bar: &CenterBox, instance_id: &str) -> bool {
+    take(bar, instance_id).is_some()
+}
+
+/// Moves the shown applet `instance_id` to `index` of `region` (counted
+/// without it), keeping its widget and everything it holds (popups,
+/// connections), as [`crate::layout::Layout::move_applet`] moved it.
+pub fn move_applet(bar: &CenterBox, instance_id: &str, region: Region, index: usize) -> bool {
+    let Some(widget) = take(bar, instance_id) else {
+        return false;
+    };
+    place(bar, region, index, &widget);
+    true
+}
+
+/// Where the applet `instance_id` stands in `bar`: region and index.
+pub fn shown_position(bar: &CenterBox, instance_id: &str) -> Option<(Region, usize)> {
+    Region::ALL.into_iter().find_map(|region| {
+        let row = region_row(bar, region)?;
+        let mut child = row.first_child();
+        let mut index = 0;
+        while let Some(widget) = child {
+            if widget.widget_name() == instance_id {
+                return Some((region, index));
+            }
+            index += 1;
+            child = widget.next_sibling();
+        }
+        None
+    })
+}
+
+/// The applet widgets of `region` in `bar`, left to right.
+pub fn region_applets(bar: &CenterBox, region: Region) -> Vec<Widget> {
+    let mut list = Vec::new();
+    if let Some(row) = region_row(bar, region) {
+        let mut child = row.first_child();
+        while let Some(widget) = child {
+            child = widget.next_sibling();
+            list.push(widget);
+        }
+    }
+    list
+}
+
+/// Takes the applet widget `instance_id` out of its row and returns it.
+fn take(bar: &CenterBox, instance_id: &str) -> Option<Widget> {
     for region in Region::ALL {
         let Some(row) = region_row(bar, region) else {
             continue;
@@ -139,12 +192,12 @@ pub fn remove_applet(bar: &CenterBox, instance_id: &str) -> bool {
                 } else {
                     space_out(&row);
                 }
-                return true;
+                return Some(widget);
             }
             child = widget.next_sibling();
         }
     }
-    false
+    None
 }
 
 fn region_row(bar: &CenterBox, region: Region) -> Option<GtkBox> {

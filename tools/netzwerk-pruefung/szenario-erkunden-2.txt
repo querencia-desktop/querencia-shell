@@ -1,0 +1,83 @@
+mark E10 Ausgang
+wait 1200
+mark E11 Menü, Nachbar per Tastatur
+move 853 16
+wait 300
+click
+wait 1200
+key Down
+wait 200
+key Down
+wait 200
+key Down
+wait 200
+key Down
+wait 600
+shot SHOT/e11-nachbar.png
+key Return
+wait 1500
+shot SHOT/e11-passwort.png
+type kurz
+wait 600
+shot SHOT/e11-passwort-kurz.png
+key Escape
+wait 1000
+mark E12 Info-Dialog
+move 853 16
+wait 300
+rclick
+wait 1000
+move 874 111
+wait 300
+click
+wait 1500
+shot SHOT/e12-info.png
+key Escape
+wait 800
+mark E13 verborgen
+move 853 16
+wait 300
+click
+wait 1200
+key Down
+wait 200
+key Down
+wait 200
+key Down
+wait 200
+key Down
+wait 200
+key Down
+wait 300
+key Return
+wait 1500
+shot SHOT/e13-verborgen.png
+key Escape
+wait 800
+mark E14 Hinzufügen-Dialog
+move 774 16
+wait 300
+rclick
+wait 900
+move 834 50
+wait 300
+click
+wait 1500
+type Netz
+wait 800
+shot SHOT/e14-dialog.png
+key Escape
+wait 800
+mark E15 Kabel ab, Menü
+run QNMCTL kabel ab
+wait 1500
+move 600 400
+wait 800
+shot SHOT/e15-kabel-ab.png
+move 853 16
+wait 300
+click
+wait 1200
+shot SHOT/e15-menue.png
+key Escape
+mark ENDE

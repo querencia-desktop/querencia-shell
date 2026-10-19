@@ -1,0 +1,78 @@
+mark V0 Ausgang
+wait 1200
+shot SHOT/v00.png
+mark V1 Rechtsklick Uhr
+move 948 16
+wait 300
+rclick
+wait 1000
+shot SHOT/v01-uhr-menue.png
+mark V2 Nach links
+move 1000 85
+wait 300
+click
+wait 1200
+move 600 400
+wait 600
+shot SHOT/v02-uhr-links.png
+mark V3 Rechtsklick Orte
+move 195 16
+wait 300
+rclick
+wait 1000
+shot SHOT/v03-orte-menue.png
+key Escape
+wait 600
+mark V4 mittlere Taste ziehen Lautstärke zur Mitte
+move 809 16
+wait 300
+down middle
+wait 100
+glide 700 16 300
+wait 200
+shot SHOT/v04-unterwegs.png
+glide 512 16 400
+wait 300
+up middle
+wait 1000
+shot SHOT/v04-mitte.png
+mark V5 Alt links ziehen Netzwerk
+move 853 16
+wait 300
+keydown Alt_L
+wait 100
+down left
+wait 100
+glide 300 16 500
+wait 200
+up left
+wait 100
+keyup Alt_L
+wait 1000
+shot SHOT/v05-alt.png
+mark V6 mittlerer Klick Lautstärke
+move 512 16
+wait 300
+mclick
+wait 1000
+mark V7 Dialog
+move 400 16
+wait 300
+rclick
+wait 900
+move 460 50
+wait 300
+click
+wait 1500
+shot SHOT/v07-dialog.png
+key Escape
+wait 600
+mark V8 unten Arbeitsflächen
+move 1000 752
+wait 300
+rclick
+wait 1000
+shot SHOT/v08-unten-menue.png
+key Escape
+wait 600
+mark ENDE

@@ -11,8 +11,8 @@ use gtk4::{Label, Widget, gio};
 
 use crate::layout::{Instance, LAUNCHER};
 use crate::{
-    app_menu, clock, launcher, logo, places_menu, system_menu, volume_applet, window_list,
-    workspace_switcher,
+    app_menu, clock, launcher, logo, network_applet, places_menu, system_menu, volume_applet,
+    window_list, workspace_switcher,
 };
 
 /// One applet type.
@@ -185,10 +185,31 @@ pub const APPLETS: &[AppletType] = &[
         menu: Some(volume_applet::menu),
         factory: |_, height| volume_applet::widget(height).upcast(),
     },
+    // G2-M: network connections (NetworkManager, else read only from the
+    // kernel and systemd-networkd). Single: one connection to the network
+    // service per panel. Not in the standard layout; `panel.ini` for the
+    // GNOME 2 place right of the volume applet: `End=volume-1;network-1;clock-1`
+    // with `[Applet network-1]` `Type=network`.
+    AppletType {
+        id: NETWORK,
+        name: "Netzwerk",
+        description: "Netzwerkverbindungen anzeigen und wählen",
+        // The dialog draws the applet's own icon (`add_dialog.rs`).
+        icon: "network-wired",
+        classic_icon: None,
+        multiple: false,
+        once: false,
+        removable: true,
+        chooses_application: false,
+        menu: Some(network_applet::menu),
+        factory: |_, height| network_applet::widget(height).upcast(),
+    },
 ];
 
 /// Type ID of the volume applet (G2-J).
 pub const VOLUME: &str = "volume";
+/// Type ID of the network applet (G2-M).
+pub const NETWORK: &str = "network";
 
 /// The applet type with `id`, if there is one.
 pub fn find(id: &str) -> Option<&'static AppletType> {
@@ -213,7 +234,8 @@ mod tests {
                 "workspace-switcher",
                 "clock",
                 "launcher",
-                "volume"
+                "volume",
+                "network"
             ]
         );
         assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len());
@@ -268,17 +290,27 @@ mod tests {
             .filter(|a| a.removable)
             .map(|a| a.id)
             .collect();
-        assert_eq!(removable, ["clock", LAUNCHER, VOLUME]);
+        assert_eq!(removable, ["clock", LAUNCHER, VOLUME, NETWORK]);
     }
 
     #[test]
-    fn only_the_volume_applet_has_a_menu_of_its_own_and_it_is_single() {
+    fn only_volume_and_network_have_a_menu_of_their_own_and_are_single() {
         let with_menu: Vec<_> = APPLETS
             .iter()
             .filter(|a| a.menu.is_some())
             .map(|a| a.id)
             .collect();
-        assert_eq!(with_menu, [VOLUME]);
+        assert_eq!(with_menu, [VOLUME, NETWORK]);
+        let network = find(NETWORK).unwrap();
+        assert!(!network.multiple && network.removable && !network.once);
+        assert!(!network.chooses_application);
+        assert_eq!(network.name, "Netzwerk");
+        let menu = (network.menu.unwrap())();
+        let section = menu.item_link(3, "section").expect("Abschnitt");
+        let action = section
+            .item_attribute_value(0, "action", Some(gtk4::glib::VariantTy::STRING))
+            .and_then(|v| v.get::<String>());
+        assert_eq!(action.as_deref(), Some(crate::panel_menu::REMOVE_ACTION));
         let volume = find(VOLUME).unwrap();
         assert!(!volume.multiple && volume.removable && !volume.chooses_application);
         assert_eq!(volume.name, "Lautstärke");
@@ -292,9 +324,20 @@ mod tests {
     }
 
     #[test]
+    fn placement_neighbours_are_known_types() {
+        for (kind, left) in crate::layout::RIGHT_OF {
+            assert!(
+                find(kind).is_some() && find(left).is_some(),
+                "{kind} {left}"
+            );
+        }
+    }
+
+    #[test]
     fn wayland_applets_are_single() {
         assert!(!find("window-list").unwrap().multiple);
         assert!(!find("workspace-switcher").unwrap().multiple);
         assert!(!find(VOLUME).unwrap().multiple);
+        assert!(!find(NETWORK).unwrap().multiple);
     }
 }

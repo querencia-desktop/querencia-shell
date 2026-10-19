@@ -26,3 +26,7 @@ integration/vorschlag/querencia-panel
 integration/vorschlag/querencia-lautstaerke
 # G2-J: entpackte PipeWire-Pakete (apt-get download + dpkg -x), nur lokale Probe, nicht im Git
 nachweis/audio-scratch/
+# G2-M: gebaute Binaries der Vorlage und des Nachweises (Summen in SHA256SUMS)
+nachweis/build/querencia-netzwerk
+integration/vorschlag-netzwerk/querencia-panel
+integration/vorschlag-netzwerk/querencia-netzwerk
