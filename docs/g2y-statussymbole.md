@@ -117,3 +117,19 @@ Muster `netzwerk-integrieren.sh`. Ausgang und Rückfall: G2-M
   Netzwerks um 2 px. Fremde Prüfskripte mit festen Klickkoordinaten auf die
   Lautstärke neben dem Netzwerk müssen das berücksichtigen (die G2-M- und
   G2-J-Szenarien treffen weiterhin, siehe Bericht).
+
+## Live (19.10.2026 13:01)
+
+Aktiviert von der Status-Session: Panel `97461a61eed7ab6b`, `.vorher` G2-M
+`c3cda503421d7e9f`. Rückfall in dieser Reihenfolge:
+`statussymbole-integrieren.sh zurueck`, `panel-neustart-zurueck`; erst
+danach `netzwerk-integrieren.sh` (verweigert sonst mit `P=fremd`).
+
+Der erste Tausch (11:33) scheiterte an `querencia-panel-werkstatt/live/tausch.py`:
+Es startete das neue Panel, sobald der Hauptthread des alten Zombie war;
+der Busname `org.example.Querencia.Panel` blieb aber noch bis 66 ms
+vergeben, das neue Panel wurde Zweitinstanz („Failed to register …
+NoReply“). Nachstellung: `tools/statussymbole-pruefung/wettlauf/`
+(ohne Warten 0/40, mit Patch 40/40). Seit 13:01 wartet tausch.py dauerhaft
+auf `NameHasOwner = false` und liest Logs nach Bytes
+(`nachweis/g2y/tausch-namenswarten.patch`).
