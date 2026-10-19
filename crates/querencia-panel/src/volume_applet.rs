@@ -34,7 +34,8 @@ use querencia_lautstaerke::{MIXER_APP_ID, MIXER_PROGRAM, icons};
 
 use crate::{app_menu, logo};
 
-/// CSS class of the applet's button (style in `main.rs`).
+/// CSS class of the applet's button. Its look is the one of all status
+/// applets (`panel::STATUS_CLASS`, style in `main.rs`).
 pub const CLASS: &str = "querencia-volume";
 /// CSS class while there is no audio service or no output device.
 pub const UNAVAILABLE_CLASS: &str = "unavailable";

@@ -23,6 +23,14 @@ const SPACING: i32 = 16;
 /// Space between two launchers next to each other (HMP-11): as in the GNOME
 /// 2 panel, launchers stand in a close row, not 16 px apart.
 const LAUNCHER_SPACING: i32 = 2;
+/// Space between two status icons next to each other (QD-045): as in the
+/// GNOME 2 notification area. Status buttons have no padding, only their
+/// 1 px hover border, so the icons themselves stand 4 px apart.
+const STATUS_SPACING: i32 = 2;
+/// Style class of the status applets (volume, network and later ones,
+/// [`crate::applets::AppletType::status`]); `main.rs` gives them one inner
+/// border and [`space_out`] the close gap.
+pub const STATUS_CLASS: &str = "querencia-status";
 
 /// Builds the window for `spec`, one of the panels of `editor`'s layout.
 /// The layout has been validated, so every applet type is known.
@@ -216,31 +224,65 @@ fn new_row() -> GtkBox {
 }
 
 /// Gives every applet of `row` but the first its gap to the one before:
-/// [`SPACING`], as the row spacing was before HMP-11, and
-/// [`LAUNCHER_SPACING`] between two launchers. Run after every change of
-/// the row.
+/// [`SPACING`], as the row spacing was before HMP-11, [`LAUNCHER_SPACING`]
+/// between two launchers and [`STATUS_SPACING`] between two status icons.
+/// Run after every change of the row (adding, moving, removing).
 fn space_out(row: &GtkBox) {
-    let mut previous: Option<Widget> = None;
+    let mut widgets = Vec::new();
     let mut child = row.first_child();
     while let Some(widget) = child {
-        let gap = previous.as_ref().map_or(0, |previous| {
-            gap(
-                previous.has_css_class(launcher::LAUNCHER_CLASS),
-                widget.has_css_class(launcher::LAUNCHER_CLASS),
-            )
-        });
-        widget.set_margin_start(gap);
         child = widget.next_sibling();
-        previous = Some(widget);
+        widgets.push(widget);
+    }
+    let kinds: Vec<Kind> = widgets.iter().map(Kind::of).collect();
+    for (widget, margin) in widgets.iter().zip(margins(&kinds)) {
+        widget.set_margin_start(margin);
     }
 }
 
-/// Gap between two neighbouring applets, given whether each is a launcher.
-fn gap(left_is_launcher: bool, right_is_launcher: bool) -> i32 {
-    if left_is_launcher && right_is_launcher {
-        LAUNCHER_SPACING
-    } else {
-        SPACING
+/// The start margins of a row of applets of the given kinds, left to
+/// right: none for the first, for every other one its gap to the left
+/// neighbour.
+fn margins(kinds: &[Kind]) -> Vec<i32> {
+    let mut previous = None;
+    kinds
+        .iter()
+        .map(|&kind| {
+            let margin = previous.map_or(0, |previous| gap(previous, kind));
+            previous = Some(kind);
+            margin
+        })
+        .collect()
+}
+
+/// What decides the gap between two neighbouring applets.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Kind {
+    Launcher,
+    Status,
+    Other,
+}
+
+impl Kind {
+    fn of(widget: &Widget) -> Kind {
+        if widget.has_css_class(launcher::LAUNCHER_CLASS) {
+            Kind::Launcher
+        } else if widget.has_css_class(STATUS_CLASS) {
+            Kind::Status
+        } else {
+            Kind::Other
+        }
+    }
+}
+
+/// Gap between two neighbouring applets: close within a row of launchers
+/// and within a group of status icons, the normal one everywhere else (a
+/// status icon next to the clock or a launcher, for example).
+fn gap(left: Kind, right: Kind) -> i32 {
+    match (left, right) {
+        (Kind::Launcher, Kind::Launcher) => LAUNCHER_SPACING,
+        (Kind::Status, Kind::Status) => STATUS_SPACING,
+        _ => SPACING,
     }
 }
 
@@ -261,6 +303,10 @@ fn applet_widget(instance: &Instance, panel_height: i32) -> Option<Widget> {
     // Marks the applet's area: a right click there is not one on free
     // panel space. No style rule uses the class.
     widget.add_css_class(panel_menu::APPLET_CLASS);
+    // Before the widget gets into a row, so that space_out sees it.
+    if applet.status {
+        widget.add_css_class(STATUS_CLASS);
+    }
     Some(widget)
 }
 
@@ -277,9 +323,44 @@ mod tests {
 
     #[test]
     fn launchers_stand_close_and_other_applets_keep_their_gap() {
-        assert_eq!(gap(false, false), 16);
-        assert_eq!(gap(true, false), 16);
-        assert_eq!(gap(false, true), 16);
-        assert_eq!(gap(true, true), 2);
+        assert_eq!(gap(Kind::Other, Kind::Other), 16);
+        assert_eq!(gap(Kind::Launcher, Kind::Other), 16);
+        assert_eq!(gap(Kind::Other, Kind::Launcher), 16);
+        assert_eq!(gap(Kind::Launcher, Kind::Launcher), 2);
+    }
+
+    /// QD-045: volume and network stand close as in the GNOME 2
+    /// notification area; to the clock, launchers and menus the gap stays.
+    #[test]
+    fn status_icons_stand_close_and_keep_the_gap_to_everything_else() {
+        assert_eq!(gap(Kind::Status, Kind::Status), 2);
+        for other in [Kind::Other, Kind::Launcher] {
+            assert_eq!(gap(Kind::Status, other), 16, "{other:?}");
+            assert_eq!(gap(other, Kind::Status), 16, "{other:?}");
+        }
+        assert!((2..=4).contains(&STATUS_SPACING));
+    }
+
+    /// The margins space_out sets after adding, moving or removing an
+    /// applet: it always works out the whole row again.
+    #[test]
+    fn every_row_gets_its_margins_from_its_order() {
+        use Kind::{Launcher as L, Other as O, Status as S};
+        assert_eq!(margins(&[]), Vec::<i32>::new());
+        assert_eq!(margins(&[S]), [0]);
+        // End=volume-1;network-1;clock-1
+        assert_eq!(margins(&[S, S, O]), [0, 2, 16]);
+        // the clock moved between the two status icons ("Nach links")
+        assert_eq!(margins(&[S, O, S]), [0, 16, 16]);
+        // and the network moved to the left edge
+        assert_eq!(margins(&[S, S, O]), [0, 2, 16]);
+        // the volume removed: the network is first and loses its gap
+        assert_eq!(margins(&[S, O]), [0, 16]);
+        // a later third status icon added before the clock
+        assert_eq!(margins(&[S, S, S, O]), [0, 2, 2, 16]);
+        // launchers next to status icons keep the normal gap
+        assert_eq!(margins(&[L, L, S, S]), [0, 2, 16, 2]);
+        // Start=applications-1;places-1;system-1
+        assert_eq!(margins(&[O, O, O]), [0, 16, 16]);
     }
 }

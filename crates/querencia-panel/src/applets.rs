@@ -51,6 +51,11 @@ pub struct AppletType {
     /// launchers and removable applets get the panel's menus, the others
     /// none.
     pub menu: Option<fn() -> gio::Menu>,
+    /// A status icon of the notification area (QD-045: volume, network and
+    /// later ones): the panel gives its widget [`crate::panel::STATUS_CLASS`],
+    /// so neighbouring status icons stand close together as in the GNOME 2
+    /// notification area, with the same inner border.
+    pub status: bool,
     /// Builds the widget for a layout instance on a panel of the given
     /// height (only "Anwendungen" uses the height, for its logo).
     factory: fn(&Instance, i32) -> Widget,
@@ -79,6 +84,7 @@ pub const APPLETS: &[AppletType] = &[
         removable: false,
         chooses_application: false,
         menu: None,
+        status: false,
         factory: |_, height| app_menu::button(height).upcast(),
     },
     AppletType {
@@ -92,6 +98,7 @@ pub const APPLETS: &[AppletType] = &[
         removable: false,
         chooses_application: false,
         menu: None,
+        status: false,
         factory: |_, _| places_menu::button().upcast(),
     },
     AppletType {
@@ -105,6 +112,7 @@ pub const APPLETS: &[AppletType] = &[
         removable: false,
         chooses_application: false,
         menu: None,
+        status: false,
         factory: |_, _| system_menu::button().upcast(),
     },
     AppletType {
@@ -118,6 +126,7 @@ pub const APPLETS: &[AppletType] = &[
         removable: false,
         chooses_application: false,
         menu: None,
+        status: false,
         factory: |_, _| window_list::widget().upcast(),
     },
     AppletType {
@@ -131,6 +140,7 @@ pub const APPLETS: &[AppletType] = &[
         removable: false,
         chooses_application: false,
         menu: None,
+        status: false,
         factory: |_, _| workspace_switcher::widget().upcast(),
     },
     AppletType {
@@ -144,6 +154,7 @@ pub const APPLETS: &[AppletType] = &[
         removable: true,
         chooses_application: false,
         menu: None,
+        status: false,
         factory: |_, _| {
             let label = Label::new(None);
             clock::attach(&label);
@@ -161,6 +172,7 @@ pub const APPLETS: &[AppletType] = &[
         removable: true,
         chooses_application: true,
         menu: None,
+        status: false,
         factory: |instance, _| {
             launcher::button(instance.app.as_deref().unwrap_or_default()).upcast()
         },
@@ -183,6 +195,7 @@ pub const APPLETS: &[AppletType] = &[
         removable: true,
         chooses_application: false,
         menu: Some(volume_applet::menu),
+        status: true,
         factory: |_, height| volume_applet::widget(height).upcast(),
     },
     // G2-M: network connections (NetworkManager, else read only from the
@@ -202,6 +215,7 @@ pub const APPLETS: &[AppletType] = &[
         removable: true,
         chooses_application: false,
         menu: Some(network_applet::menu),
+        status: true,
         factory: |_, height| network_applet::widget(height).upcast(),
     },
 ];
@@ -321,6 +335,12 @@ mod tests {
             .item_attribute_value(0, "action", Some(gtk4::glib::VariantTy::STRING))
             .and_then(|v| v.get::<String>());
         assert_eq!(action.as_deref(), Some(crate::panel_menu::REMOVE_ACTION));
+    }
+
+    #[test]
+    fn only_volume_and_network_are_status_icons() {
+        let status: Vec<_> = APPLETS.iter().filter(|a| a.status).map(|a| a.id).collect();
+        assert_eq!(status, [VOLUME, NETWORK]);
     }
 
     #[test]
