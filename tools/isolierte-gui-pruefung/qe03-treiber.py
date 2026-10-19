@@ -30,7 +30,7 @@ t = a.t
 P, LOGS = t.P, t.LOGS
 d, pruefe, bild, lage, warte = t.d, t.pruefe, t.bild, t.lage, t.warte
 ABBILDER = os.path.join(P, "abbilder")
-ECHTER_ZUSTAND = "~/.local/state/querencia/desktop-symbole"
+ECHTER_ZUSTAND = "/home/user/.local/state/querencia/desktop-symbole"
 ZEITEN = []
 ABBILD_LISTE = []
 MENUE_AUSHAENGEN_DY = 46   # „Öffnen“ +15, Trennlinie, „Aushängen“ +46
@@ -581,6 +581,11 @@ def main():
                test_d13_verschluesselt, test_d14_fremd_optisch]
     # G2-X: ohne eigene Loop-Abbilder (sie erscheinen systemweit, auch auf dem
     # Live-Desktop): nur cidata, Neustart, Zustandsdatei; mit QE-04 dazu der Filter
+    # G2-X QE-04a: nur der LUKS-Fall (ein einziges Abbild, QDGEHEIM, ≈14 s)
+    if os.environ.get("QE03_NUR_D13") == "1":
+        tests = [test_d0_schutz, test_d1_start]
+        weitere = [test_d13_verschluesselt]
+        t.protokoll("nur D13 (QE03_NUR_D13=1)")
     if os.environ.get("QE03_OHNE_LUKS") == "1":
         weitere.remove(test_d13_verschluesselt)
         t.protokoll("ohne LUKS-Fall (QE03_OHNE_LUKS=1)")
