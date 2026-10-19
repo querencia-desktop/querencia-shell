@@ -30,6 +30,10 @@
 //! - Unknown or broken lines are skipped and reported, never fatal. A file
 //!   of a newer version is read as far as understood but not overwritten.
 //!
+//! - QE-03: mounted volumes (`Art::Volume`, namespace `laufwerk`) are
+//!   never written: `set_place` and `set_alias` ignore them, and a
+//!   `laufwerk` line is not understood.
+//!
 //! The identity of an icon is its namespace and name: `sonder:computer`,
 //! `programm:<id>`, `flaeche:<file name>`; `starter`, `datei` and `ordner`
 //! share the namespace `flaeche`, so a file that became a folder keeps its
@@ -47,6 +51,8 @@ pub enum Art {
     Launcher,
     File,
     Folder,
+    /// QE-03: a mounted volume; only ever in memory.
+    Volume,
 }
 
 impl Art {
@@ -57,6 +63,7 @@ impl Art {
             Art::Launcher => "starter",
             Art::File => "datei",
             Art::Folder => "ordner",
+            Art::Volume => "laufwerk",
         }
     }
 
@@ -77,6 +84,7 @@ impl Art {
             Art::Special => "sonder",
             Art::Program => "programm",
             Art::Launcher | Art::File | Art::Folder => "flaeche",
+            Art::Volume => "laufwerk",
         }
     }
 }
@@ -266,8 +274,11 @@ impl Store {
     }
 
     /// Sets the place of an icon; the kind is updated too (a file that
-    /// became a folder).
+    /// became a folder). Volumes are never remembered.
     pub fn set_place(&mut self, art: Art, name: &str, place: Place) {
+        if art == Art::Volume {
+            return;
+        }
         let k = key(art, name);
         match self.entries.iter_mut().find(|e| e.key() == k) {
             Some(entry) => {
@@ -289,8 +300,12 @@ impl Store {
             .map(|a| a.label.as_str())
     }
 
-    /// The user's own name for an icon; `None` removes it.
+    /// The user's own name for an icon; `None` removes it. Volumes keep
+    /// their own name.
     pub fn set_alias(&mut self, art: Art, name: &str, label: Option<&str>) {
+        if art == Art::Volume {
+            return;
+        }
         let k = key(art, name);
         self.aliases.retain(|a| key(a.art, &a.name) != k);
         if let Some(label) = label {
@@ -692,6 +707,27 @@ mod tests {
         assert_eq!(back, store);
         let (_, problems) = Store::parse("version\t1\neinstellung\traster\tvielleicht\n");
         assert_eq!(problems.len(), 1);
+    }
+
+    #[test]
+    fn volumes_are_never_remembered() {
+        let text = "version\t1\nsonder\ttrash\trechts 8\toben 8\n";
+        let (mut store, _) = Store::parse(text);
+        let before = store.render();
+        let uri = "file:///run/media/u/QDTEST";
+        let corner = place((Anchor::End, 8), (Anchor::Start, 99));
+        store.set_place(Art::Volume, uri, corner);
+        store.set_alias(Art::Volume, uri, Some("Mein Stick"));
+        assert_eq!(store.place(&key(Art::Volume, uri)), None);
+        assert_eq!(store.alias(&key(Art::Volume, uri)), None);
+        assert_eq!(store.render(), before);
+        assert!(!store.forget_missing(|_| false));
+        assert_eq!(key(Art::Volume, uri), "laufwerk:file:///run/media/u/QDTEST");
+        assert_eq!(hmp09_order_key(&key(Art::Volume, uri)), None);
+        let (read, problems) =
+            Store::parse("version\t1\nlaufwerk\tfile:///run/media/u/X\trechts 8\toben 8\n");
+        assert!(read.entries.is_empty());
+        assert_eq!(problems.len(), 1, "{problems:?}");
     }
 
     fn temp_dir(name: &str) -> std::path::PathBuf {

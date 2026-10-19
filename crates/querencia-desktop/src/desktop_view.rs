@@ -32,6 +32,11 @@
 //!   existing name, after [`icons::unique_name`] picked a free one: nothing
 //!   is ever overwritten. The desktop directory itself is created only by
 //!   such a user action.
+//! - QE-03: mounted removable volumes (`volumes.rs`) appear below the trash
+//!   while they are mounted (GIO's volume monitor), open in Querencia Files
+//!   and offer "Auswerfen" or "Aushängen". They can be moved like any icon,
+//!   but their places are kept in memory only, never in `desktop-symbole`
+//!   (`QUERENCIA_DESKTOP_VOLUMES=0` leaves them out).
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
@@ -55,6 +60,7 @@ use crate::icons::{self, Item, Kind};
 use crate::layout::{self, Geometry, Point};
 use crate::rename;
 use crate::store::{self, Store};
+use crate::volumes::{self, Picture, Removal, Volume};
 
 pub const FILES_APP: &str = "io.github.lgse.Strata.desktop";
 pub const TERMINAL_APP: &str = "org.example.Querencia.Terminal.desktop";
@@ -141,6 +147,11 @@ pub struct Icons {
     /// QE-02: a recount shortly after trash monitor events (they come in
     /// bursts while a folder is thrown away or the trash is emptied).
     trash_timer: RefCell<Option<glib::SourceId>>,
+    /// QE-03: `None` when volume icons are switched off.
+    volume_monitor: Option<gio::VolumeMonitor>,
+    /// QE-03: places of volume icons, for this session only.
+    volume_places: RefCell<volumes::Places>,
+    volume_timer: RefCell<Option<glib::SourceId>>,
     last_logged: RefCell<String>,
     last_selection: RefCell<String>,
     check_tiles: Cell<bool>,
@@ -263,6 +274,12 @@ impl Icons {
             reload_timer: RefCell::default(),
             trash_full: Cell::new(None),
             trash_timer: RefCell::default(),
+            volume_monitor: crate::icons_enabled(
+                std::env::var("QUERENCIA_DESKTOP_VOLUMES").ok().as_deref(),
+            )
+            .then(gio::VolumeMonitor::get),
+            volume_places: RefCell::default(),
+            volume_timer: RefCell::default(),
             last_logged: RefCell::default(),
             last_selection: RefCell::default(),
             check_tiles: Cell::new(false),
@@ -292,7 +309,11 @@ impl Icons {
             glib::ControlFlow::Continue
         });
         icons.watch();
+        icons.watch_volumes();
         icons.reload();
+        for item in icons.items.borrow().iter() {
+            log_volume(item);
+        }
         icons.window.present();
         icons
     }
@@ -305,6 +326,15 @@ impl Icons {
         }
         self.reload_waiting.set(false);
         let (mut items, listed) = load_items();
+        if let Some(monitor) = &self.volume_monitor {
+            items.extend(volume_items(monitor));
+        }
+        let present: Vec<&str> = items
+            .iter()
+            .filter(|item| item.is_transient())
+            .map(|item| item.key.as_str())
+            .collect();
+        self.volume_places.borrow_mut().keep_only(&present);
         {
             let mut store = self.store.borrow_mut();
             for item in &mut items {
@@ -469,8 +499,9 @@ impl Icons {
         }
         let items = self.items.borrow();
         // Priority: the order of the state file (the last moved icon is
-        // first), then the icons without a place.
-        let mut order: Vec<usize> = (0..items.len()).collect();
+        // first), then the icons without a place; volumes after all of them.
+        let (mut order, transient): (Vec<usize>, Vec<usize>) =
+            (0..items.len()).partition(|&i| !items[i].is_transient());
         {
             let store = self.store.borrow();
             let rank = |i: &usize| {
@@ -500,6 +531,17 @@ impl Icons {
                 new_places = true;
             }
         }
+        for (&i, (wanted, at)) in transient
+            .iter()
+            .zip(self.place_volumes(&geometry, &items, &positions, &transient))
+        {
+            positions[i] = at;
+            if wanted.is_none() {
+                self.volume_places
+                    .borrow_mut()
+                    .set(&items[i].key, geometry.free_place(at));
+            }
+        }
         for (widget, &(x, y)) in self.widgets.borrow().iter().zip(&positions) {
             self.fixed.move_(widget, f64::from(x), f64::from(y));
             widget.set_visible(true);
@@ -522,6 +564,32 @@ impl Icons {
         if new_places {
             self.save();
         }
+    }
+
+    /// QE-03: where the volumes `transient` go, after every other icon took
+    /// its place in `positions`: (place from this session, position).
+    fn place_volumes(
+        &self,
+        geometry: &Geometry,
+        items: &[Item],
+        positions: &[Point],
+        transient: &[usize],
+    ) -> Vec<(Option<layout::Place>, Point)> {
+        let taken: Vec<Point> = (0..items.len())
+            .filter(|i| !transient.contains(i))
+            .map(|i| positions[i])
+            .collect();
+        let anchor = items
+            .iter()
+            .position(|item| item.kind == Kind::Trash)
+            .map(|i| positions[i]);
+        let places = self.volume_places.borrow();
+        let wanted: Vec<_> = transient
+            .iter()
+            .map(|&i| places.get(&items[i].key))
+            .collect();
+        let at = geometry.place_transient(&taken, &wanted, anchor);
+        wanted.into_iter().zip(at).collect()
     }
 
     /// Writes the state file (and HMP-09's order file).
@@ -1020,7 +1088,8 @@ impl Icons {
         let shown = self.positions.borrow().clone();
         let mut store = self.store.borrow_mut();
         let mut any = false;
-        for (n, &(index, at)) in moved.iter().enumerate() {
+        let mut front = 0;
+        for &(index, at) in moved {
             let Some(item) = items.get(index) else {
                 continue;
             };
@@ -1028,10 +1097,17 @@ impl Icons {
                 continue;
             }
             any = true;
+            if item.is_transient() {
+                self.volume_places
+                    .borrow_mut()
+                    .set(&item.key, geometry.free_place(at));
+                continue;
+            }
             store.set_place(item.art(), &item.ident(), geometry.free_place(at));
             if let Some(i) = store.entries.iter().position(|e| e.key() == item.key) {
                 let entry = store.entries.remove(i);
-                store.entries.insert(n, entry);
+                store.entries.insert(front, entry);
+                front += 1;
             }
         }
         any
@@ -1080,7 +1156,29 @@ impl Icons {
 
     fn popup_menu(&self, index: Option<usize>, x: f64, y: f64) {
         self.menu.remove_all();
-        if let Some(index) = index {
+        let volume = index
+            .and_then(|i| self.items.borrow().get(i).cloned())
+            .and_then(|item| match item.kind {
+                Kind::Volume(volume) => Some(volume),
+                _ => None,
+            });
+        if let Some(volume) = volume {
+            // QE-03: GNOME 2's volume menu, without what Querencia lacks
+            self.menu.append(Some("Öffnen"), Some("desktop.open"));
+            if let Some(removal) = volume.removal {
+                let section = gio::Menu::new();
+                section.append(Some(removal.label()), Some(removal.action()));
+                self.menu.append_section(None, &section);
+            }
+            if debugging() {
+                log(&format!(
+                    "Menü Datenträger: Öffnen{}",
+                    volume
+                        .removal
+                        .map_or(String::new(), |r| format!(", {}", r.label()))
+                ));
+            }
+        } else if let Some(index) = index {
             let is_trash = self
                 .items
                 .borrow()
@@ -1222,6 +1320,16 @@ impl Icons {
             Box::new(|icons, _| icons.confirm_empty_trash()),
         );
         add(
+            "unmount",
+            None,
+            Box::new(|icons, _| icons.remove_volume(Removal::Unmount)),
+        );
+        add(
+            "eject",
+            None,
+            Box::new(|icons, _| icons.remove_volume(Removal::Eject)),
+        );
+        add(
             "rename",
             None,
             Box::new(|icons, _| {
@@ -1299,10 +1407,18 @@ impl Icons {
             let mut store = self.store.borrow_mut();
             let keys: Vec<&str> = sorted.iter().map(|i| i.key.as_str()).collect();
             store.entries.retain(|e| !keys.contains(&e.key().as_str()));
-            for (n, (item, at)) in sorted.iter().zip(&positions).enumerate() {
+            let mut n = 0;
+            for (item, at) in sorted.iter().zip(&positions) {
+                if item.is_transient() {
+                    self.volume_places
+                        .borrow_mut()
+                        .set(&item.key, geometry.top_left_place(*at));
+                    continue;
+                }
                 store.set_place(item.art(), &item.ident(), geometry.top_left_place(*at));
                 let entry = store.entries.pop().expect("eben eingefügt");
                 store.entries.insert(n, entry);
+                n += 1;
             }
         }
         log("nach Namen aufgeräumt");
@@ -1396,7 +1512,8 @@ impl Icons {
         }
         geometry.snap = true;
         let items = self.items.borrow().clone();
-        let mut order: Vec<usize> = (0..items.len()).collect();
+        let (mut order, transient): (Vec<usize>, Vec<usize>) =
+            (0..items.len()).partition(|&i| !items[i].is_transient());
         {
             let store = self.store.borrow();
             let rank = |i: &usize| {
@@ -1422,6 +1539,20 @@ impl Icons {
                 };
                 store.set_place(items[i].art(), &items[i].ident(), place);
             }
+        }
+        let mut positions = vec![(0, 0); items.len()];
+        for (n, &i) in order.iter().enumerate() {
+            positions[i] = placed[n];
+        }
+        for (&i, (wanted, at)) in transient
+            .iter()
+            .zip(self.place_volumes(&geometry, &items, &positions, &transient))
+        {
+            let place = match wanted {
+                Some(old) => geometry.place_like(old, at),
+                None => geometry.free_place(at),
+            };
+            self.volume_places.borrow_mut().set(&items[i].key, place);
         }
         log("Symbole am Raster ausgerichtet");
         self.layout();
@@ -1529,6 +1660,132 @@ impl Icons {
         *self.watches.borrow_mut() = watches;
     }
 
+    /// QE-03: follows mounts coming and going (and changing).
+    fn watch_volumes(self: &Rc<Self>) {
+        let Some(monitor) = &self.volume_monitor else {
+            log("Datenträger-Symbole aus (QUERENCIA_DESKTOP_VOLUMES=0)");
+            return;
+        };
+        let soon = |icons: &std::rc::Weak<Self>| {
+            let weak = icons.clone();
+            move |_: &gio::VolumeMonitor, _: &gio::Mount| {
+                if let Some(icons) = weak.upgrade() {
+                    icons.update_volumes_soon();
+                }
+            }
+        };
+        let weak = Rc::downgrade(self);
+        monitor.connect_mount_added(soon(&weak));
+        monitor.connect_mount_removed(soon(&weak));
+        monitor.connect_mount_changed(soon(&weak));
+    }
+
+    /// QE-03: a look at the volumes shortly after monitor events (they
+    /// come in bursts while a volume is mounted or taken away).
+    fn update_volumes_soon(self: &Rc<Self>) {
+        if let Some(id) = self.volume_timer.take() {
+            id.remove();
+        }
+        let weak = Rc::downgrade(self);
+        let id = glib::timeout_add_local_once(Duration::from_millis(120), move || {
+            if let Some(icons) = weak.upgrade() {
+                icons.volume_timer.take();
+                icons.update_volumes();
+            }
+        });
+        *self.volume_timer.borrow_mut() = Some(id);
+    }
+
+    /// QE-03: rebuilds the icons only when the volume icons changed; other
+    /// mounts (network shares, portals of other sessions) change nothing.
+    fn update_volumes(self: &Rc<Self>) {
+        let Some(monitor) = &self.volume_monitor else {
+            return;
+        };
+        let now = volume_items(monitor);
+        let shown: Vec<Item> = self
+            .items
+            .borrow()
+            .iter()
+            .filter(|item| item.is_transient())
+            .cloned()
+            .collect();
+        let mut changed = false;
+        for item in now.iter().filter(|item| !shown.contains(item)) {
+            log_volume(item);
+            changed = true;
+        }
+        for item in shown.iter().filter(|item| !now.contains(item)) {
+            log(&format!("Datenträger weg: {}", item.name));
+            changed = true;
+        }
+        if changed {
+            self.reload();
+        }
+    }
+
+    /// QE-03 "Aushängen" or "Auswerfen" through GIO with a GTK mount
+    /// operation (programs still using the volume: `ask_when_busy`); the
+    /// icon goes when the volume monitor reports the mount gone.
+    fn remove_volume(self: &Rc<Self>, removal: Removal) {
+        let Some(item) = self
+            .selected
+            .get()
+            .and_then(|i| self.items.borrow().get(i).cloned())
+        else {
+            return;
+        };
+        let (Kind::Volume(volume), Some(monitor)) = (&item.kind, &self.volume_monitor) else {
+            return;
+        };
+        let Some(mount) = volumes::find_mount(monitor, &volume.uri) else {
+            log(&format!("{} ist nicht mehr eingehängt", item.name));
+            return;
+        };
+        let operation = gtk4::MountOperation::new(Some(&self.window));
+        let question = ask_when_busy(&operation, removal, &item.name, mount.root().path());
+        let name = item.name.clone();
+        log(&format!("{}: {name}", removal.label()));
+        let done = move |result: Result<(), glib::Error>| match finish_question(&question, result) {
+            Ok(()) => log(&format!(
+                "{}: {name}",
+                match removal {
+                    Removal::Eject => "ausgeworfen",
+                    Removal::Unmount => "ausgehängt",
+                }
+            )),
+            Err(err) => match volumes::failure(
+                err.kind::<gio::IOErrorEnum>(),
+                removal,
+                &name,
+                err.message(),
+            ) {
+                None => log(&format!("{} abgebrochen: {name} ({err})", removal.label())),
+                Some((title, detail)) => {
+                    log(&format!(
+                        "{} fehlgeschlagen: {name}: {err}",
+                        removal.label()
+                    ));
+                    show_error(&title, &detail);
+                }
+            },
+        };
+        match removal {
+            Removal::Eject => mount.eject_with_operation(
+                gio::MountUnmountFlags::NONE,
+                Some(&operation),
+                gio::Cancellable::NONE,
+                done,
+            ),
+            Removal::Unmount => mount.unmount_with_operation(
+                gio::MountUnmountFlags::NONE,
+                Some(&operation),
+                gio::Cancellable::NONE,
+                done,
+            ),
+        }
+    }
+
     /// Edits the label of icon `index` in place (F2, "Umbenennen …").
     fn start_rename(self: &Rc<Self>, index: usize) {
         if self.editing.borrow().is_some() || self.drag.borrow().is_some() {
@@ -1537,6 +1794,13 @@ impl Icons {
         let Some(item) = self.items.borrow().get(index).cloned() else {
             return;
         };
+        if item.is_transient() {
+            log(&format!(
+                "Datenträger werden nicht umbenannt: {}",
+                item.name
+            ));
+            return;
+        }
         if let Err(reason) = renamable(&item) {
             log(&format!(
                 "Umbenennen nicht möglich: {}: {reason}",
@@ -1729,6 +1993,7 @@ impl Icons {
                 self.set_alias(item, new);
                 Ok(())
             }
+            Kind::Volume(_) => Err(failed(VOLUME_NAME.to_owned())),
         }
     }
 
@@ -1967,6 +2232,8 @@ fn set_launcher_name(path: &Path, new: &str) -> Result<(), String> {
     Ok(())
 }
 
+const VOLUME_NAME: &str = "Datenträger behalten ihren eigenen Namen.";
+
 /// Whether `item` can get a new name; Err: why not (for the user).
 fn renamable(item: &Item) -> Result<(), String> {
     match &item.kind {
@@ -1987,6 +2254,7 @@ fn renamable(item: &Item) -> Result<(), String> {
         }
         // a name of the user's own, kept in the state file
         Kind::Launcher(_) | Kind::Computer | Kind::Home | Kind::Trash | Kind::App(_) => Ok(()),
+        Kind::Volume(_) => Err(VOLUME_NAME.to_owned()),
     }
 }
 
@@ -2053,6 +2321,7 @@ fn icon_for(item: &Item, trash_full: bool) -> gio::Icon {
         Kind::Computer => themed("computer"),
         Kind::Home => themed("user-home"),
         Kind::Trash => trash_icon(trash_full),
+        Kind::Volume(volume) => volume_icon(volume.picture),
         Kind::App(id) => DesktopAppInfo::new(id)
             .and_then(|app| app.icon())
             .unwrap_or_else(|| themed("application-x-executable")),
@@ -2077,6 +2346,128 @@ fn icon_for(item: &Item, trash_full: bool) -> gio::Icon {
             })
             .unwrap_or_else(|| themed("text-x-generic")),
     }
+}
+
+/// QE-03: Querencia's own device icons, built in (no icon theme has them).
+fn volume_icon(picture: Picture) -> gio::Icon {
+    let svg: &'static [u8] = match picture {
+        Picture::Removable => include_bytes!("../data/icons/strata-querencia-drive-removable.svg"),
+        Picture::Harddisk => include_bytes!("../data/icons/strata-querencia-drive-harddisk.svg"),
+        Picture::Optical => include_bytes!("../data/icons/strata-querencia-media-optical.svg"),
+        Picture::Encrypted => include_bytes!("../data/icons/strata-querencia-drive-encrypted.svg"),
+    };
+    gio::BytesIcon::new(&glib::Bytes::from_static(svg)).upcast()
+}
+
+/// QE-03: an open busy question closes when the operation ends (GVfs does
+/// not always abort it when the programs end).
+fn finish_question(
+    question: &Rc<RefCell<Option<gio::Cancellable>>>,
+    result: Result<(), glib::Error>,
+) -> Result<(), glib::Error> {
+    if let Some(cancellable) = question.borrow_mut().take() {
+        cancellable.cancel();
+    }
+    result
+}
+
+/// QE-03: GVfs asks the mount operation what to do while programs still
+/// use the volume ("show-processes", again every few seconds). GTK's own
+/// dialog for it is English without GTK's translations, so the desktop asks
+/// in German instead: "Abbrechen" aborts (GIO then reports it as handled),
+/// "Trotzdem …" picks GVfs' first choice ("Unmount Anyway"). When the
+/// programs end, GVfs takes the volume away by itself and the question
+/// closes. Returns the open question's cancellable.
+fn ask_when_busy(
+    operation: &gtk4::MountOperation,
+    removal: Removal,
+    name: &str,
+    root: Option<PathBuf>,
+) -> Rc<RefCell<Option<gio::Cancellable>>> {
+    let asking: Rc<RefCell<Option<gio::Cancellable>>> = Rc::default();
+    let name = name.to_owned();
+    let open = asking.clone();
+    operation.connect_local("show-processes", false, move |values| {
+        let operation = values.first()?.get::<gio::MountOperation>().ok()?;
+        operation.stop_signal_emission_by_name("show-processes");
+        if open.borrow().is_some() {
+            return None;
+        }
+        let users = root
+            .as_deref()
+            .map(|root| volumes::users_of(Path::new("/proc"), root))
+            .unwrap_or_default();
+        log(&format!(
+            "Datenträger {name} wird noch benutzt: {}",
+            users
+                .iter()
+                .map(|(pid, program)| format!("{program} ({pid})"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let (message, detail, buttons) = volumes::busy_question(removal, &name, &users);
+        let dialog = gtk4::AlertDialog::builder()
+            .message(message)
+            .detail(detail)
+            .buttons(buttons)
+            .cancel_button(0)
+            .default_button(0)
+            .modal(false)
+            .build();
+        let cancellable = gio::Cancellable::new();
+        *open.borrow_mut() = Some(cancellable.clone());
+        let (open, name) = (open.clone(), name.clone());
+        dialog.choose(None::<&gtk4::Window>, Some(&cancellable), move |answer| {
+            open.borrow_mut().take();
+            match answer {
+                Ok(1) => {
+                    log(&format!("{}: trotzdem: {name}", removal.label()));
+                    operation.set_choice(0);
+                    operation.reply(gio::MountOperationResult::Handled);
+                }
+                Err(err)
+                    if err.matches(gtk4::DialogError::Cancelled)
+                        || err.matches(gio::IOErrorEnum::Cancelled) =>
+                {
+                    log(&format!("Datenträger {name} ist nicht mehr belegt"));
+                }
+                other => {
+                    if debugging() {
+                        log(&format!("Frage zu {name}: {other:?}"));
+                    }
+                    operation.reply(gio::MountOperationResult::Aborted);
+                }
+            }
+        });
+        None
+    });
+    let aborted = asking.clone();
+    operation.connect_aborted(move |_| {
+        if let Some(cancellable) = aborted.borrow_mut().take() {
+            cancellable.cancel();
+        }
+    });
+    asking
+}
+
+fn log_volume(item: &Item) {
+    if let Kind::Volume(volume) = &item.kind {
+        log(&format!(
+            "Datenträger da: {} ({}, {}, {})",
+            item.name,
+            volume.picture.name(),
+            volume.removal.map_or("nicht aushängbar", Removal::label),
+            volume.uri
+        ));
+    }
+}
+
+/// QE-03: the icons of the volumes that are mounted now.
+fn volume_items(monitor: &gio::VolumeMonitor) -> Vec<Item> {
+    volumes::mounted(monitor)
+        .iter()
+        .map(|facts| Item::new(Kind::Volume(Volume::from_facts(facts)), &facts.name))
+        .collect()
 }
 
 /// The lines a label shows right now (`QUERENCIA_DESKTOP_DEBUG=1`, for the
@@ -2177,6 +2568,11 @@ fn open(item: &Item, window: &ApplicationWindow) {
         Kind::File(path) | Kind::Folder(path) => {
             gio::AppInfo::launch_default_for_uri(&gio::File::for_path(path).uri(), Some(&context))
         }
+        // QE-03: in Querencia Files, as GNOME 2 opened volumes in Nautilus
+        Kind::Volume(volume) => match DesktopAppInfo::new(FILES_APP) {
+            Some(_) => with_files(&volume.uri),
+            None => gio::AppInfo::launch_default_for_uri(&volume.uri, Some(&context)),
+        },
     };
     match result {
         Ok(()) => log(&format!("geöffnet: {}", item.name)),
