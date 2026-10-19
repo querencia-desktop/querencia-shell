@@ -1,12 +1,14 @@
-//! Mounted removable media on the desktop (QE-03), as on GNOME 2.
+//! Mounted volumes on the desktop (QE-03, QE-04), as on GNOME 2.
 //!
-//! Source is GIO's volume monitor. A mount gets an icon when it is a
-//! physical volume the user can take away or unmount (`shown`): not
-//! shadowed, with a GIO volume that is not of class `network`, rooted at a
-//! local `file://` path outside the system tree, and either on a removable
-//! drive or ejectable or unmountable by the user. Mounts without a volume
-//! (GVfs network shares, the document portal, archives) and system mounts
-//! never appear.
+//! Source is GIO's volume monitor. QE-04 (QD-042) sorts every mount into
+//! one of four types (`classify`, in this order): network shares (`smb:`,
+//! `sftp:` … – GVfs mounts without a GIO volume, too), optical media,
+//! removable volumes (a removable or ejectable drive, phones and cameras)
+//! and internal volumes the user mounted and may unmount. Which types get
+//! an icon is the user's choice in `desktop.ini` `[Volumes]`
+//! (`config::IconSettings`, Querencia Einstellungen „Symbole der
+//! Arbeitsfläche“). Shadowed mounts, system paths, the document portal,
+//! GVfs' FUSE directories, archives and other virtual places never appear.
 //!
 //! Volume icons are never remembered: their places live only in memory
 //! (`Places`), are forgotten when the volume goes away, and never reach
@@ -17,6 +19,7 @@ use std::path::{Path, PathBuf};
 use gtk4::prelude::*;
 use gtk4::{gio, glib};
 
+use crate::config::IconSettings;
 use crate::layout::Place;
 
 /// What GIO tells about a mount, without GIO.
@@ -50,6 +53,8 @@ pub enum Picture {
     Harddisk,
     Optical,
     Encrypted,
+    /// QE-04: a network share (the theme's `folder-remote`).
+    Network,
 }
 
 /// What the icon menu offers to take the volume away.
@@ -97,26 +102,92 @@ fn local_path(uri: &str) -> Option<PathBuf> {
     glib::Uri::unescape_string(path, None::<&str>).map(|p| PathBuf::from(p.as_str()))
 }
 
-/// Whether the mount gets a desktop icon (see the module documentation).
-pub fn shown(facts: &Facts) -> bool {
-    if facts.shadowed || !facts.has_volume || facts.volume_class.as_deref() == Some("network") {
-        return false;
+/// QE-04: the four types of `desktop.ini` `[Volumes]`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VolumeType {
+    Removable,
+    Optical,
+    Network,
+    Internal,
+}
+
+impl VolumeType {
+    /// For the log, with the key of `desktop.ini`.
+    pub fn name(self) -> &'static str {
+        match self {
+            VolumeType::Removable => "Wechseldatenträger (Removable)",
+            VolumeType::Optical => "optisches Medium (Optical)",
+            VolumeType::Network => "Netzlaufwerk (Network)",
+            VolumeType::Internal => "eingebautes Laufwerk (Internal)",
+        }
     }
-    let Some(path) = local_path(&facts.root_uri) else {
-        return false;
-    };
-    if is_system_path(&path) {
-        return false;
+}
+
+/// Network shares by their URI scheme (GVfs backends).
+const NETWORK_SCHEMES: [&str; 9] = [
+    "smb", "sftp", "ssh", "ftp", "ftps", "dav", "davs", "nfs", "afp",
+];
+/// Phones, cameras and players GVfs mounts without a local path.
+const DEVICE_SCHEMES: [&str; 3] = ["mtp", "gphoto2", "afc"];
+
+fn scheme(uri: &str) -> &str {
+    uri.split_once(':').map_or("", |(scheme, _)| scheme)
+}
+
+fn is_network(facts: &Facts) -> bool {
+    NETWORK_SCHEMES.contains(&scheme(&facts.root_uri))
+        || facts.volume_class.as_deref() == Some("network")
+}
+
+/// QE-04: the type of a mount, `None` for mounts that never get an icon
+/// (rules in this order: network, optical, removable, internal).
+pub fn classify(facts: &Facts) -> Option<VolumeType> {
+    if facts.shadowed {
+        return None;
+    }
+    if is_network(facts) {
+        return Some(VolumeType::Network);
+    }
+    if DEVICE_SCHEMES.contains(&scheme(&facts.root_uri)) {
+        return Some(VolumeType::Removable);
+    }
+    // archives, trash:, recent:, burn:, computer:, network:, admin: …
+    let path = local_path(&facts.root_uri)?;
+    // the document portal and GVfs' FUSE directory have no volume and lie
+    // below /run/user; neither do other FUSE mounts of programs
+    if is_system_path(&path) || !facts.has_volume {
+        return None;
+    }
+    let picture = picture(facts);
+    if picture == Picture::Optical {
+        return Some(VolumeType::Optical);
     }
     let removable_drive = facts
         .drive
         .is_some_and(|d| d.removable || d.media_removable || d.can_eject);
-    removable_drive || facts.can_eject || facts.can_unmount
+    if removable_drive || facts.can_eject || picture == Picture::Removable {
+        return Some(VolumeType::Removable);
+    }
+    facts.can_unmount.then_some(VolumeType::Internal)
 }
 
-/// Encrypted (a device-mapper volume or GIO's lock emblem), optical,
-/// removable (by icon name or drive), else a hard disk.
+/// Whether the mount gets a desktop icon with these settings.
+pub fn shown(facts: &Facts, settings: &IconSettings) -> bool {
+    match classify(facts) {
+        Some(VolumeType::Removable) => settings.removable,
+        Some(VolumeType::Optical) => settings.optical,
+        Some(VolumeType::Network) => settings.network,
+        Some(VolumeType::Internal) => settings.internal,
+        None => false,
+    }
+}
+
+/// A network share (QE-04), encrypted (a device-mapper volume or GIO's
+/// lock emblem), optical, removable (by icon name or drive), else a hard disk.
 pub fn picture(facts: &Facts) -> Picture {
+    if is_network(facts) {
+        return Picture::Network;
+    }
     let has = |part: &str| facts.icon_names.iter().any(|n| n.contains(part));
     let mapped = facts
         .unix_device
@@ -167,6 +238,7 @@ impl Picture {
             Picture::Harddisk => "Festplatte",
             Picture::Optical => "optisches Medium",
             Picture::Encrypted => "verschlüsselt",
+            Picture::Network => "Netzlaufwerk",
         }
     }
 }
@@ -348,9 +420,14 @@ pub fn facts(mount: &gio::Mount) -> Facts {
     }
 }
 
-/// The mounts that get an icon, by name.
-pub fn mounted(monitor: &gio::VolumeMonitor) -> Vec<Facts> {
-    let mut list: Vec<Facts> = monitor.mounts().iter().map(facts).filter(shown).collect();
+/// The mounts that get an icon with these settings, by name.
+pub fn mounted(monitor: &gio::VolumeMonitor, settings: &IconSettings) -> Vec<Facts> {
+    let mut list: Vec<Facts> = monitor
+        .mounts()
+        .iter()
+        .map(facts)
+        .filter(|f| shown(f, settings))
+        .collect();
     list.sort_by(|a, b| {
         a.name
             .cmp(&b.name)
@@ -401,43 +478,69 @@ mod tests {
         }
     }
 
+    fn everything() -> IconSettings {
+        IconSettings {
+            internal: true,
+            ..IconSettings::default()
+        }
+    }
+
+    /// QE-03's rules still hold with every type switched on.
     #[test]
     fn removable_and_user_unmountable_volumes_are_shown() {
-        assert!(shown(&usb_stick()));
-        assert!(shown(&loop_image()));
+        let all = everything();
+        assert!(shown(&usb_stick(), &all));
+        assert!(shown(&loop_image(), &all));
         let mut card = usb_stick();
         card.can_eject = false;
         card.can_unmount = false;
-        assert!(shown(&card), "a removable drive alone is enough");
+        assert!(shown(&card, &all), "a removable drive alone is enough");
         let mut internal = loop_image();
         internal.volume_class = Some("device".into());
         internal.root_uri = "file:///media/u/Daten".into();
-        assert!(shown(&internal), "a disk the user mounted and may unmount");
+        internal.icon_names = vec!["drive-harddisk".into()];
+        assert!(
+            shown(&internal, &all),
+            "a disk the user mounted and may unmount"
+        );
         internal.can_unmount = false;
-        assert!(!shown(&internal), "neither removable nor unmountable");
+        assert!(!shown(&internal, &all), "neither removable nor unmountable");
         let mut escaped = usb_stick();
         escaped.root_uri = "file:///run/media/u/Mein%20Stick".into();
-        assert!(shown(&escaped));
+        assert!(shown(&escaped, &all));
     }
 
     #[test]
-    fn network_portal_shadowed_and_system_mounts_are_not_shown() {
-        let mut share = loop_image();
-        share.volume_class = Some("network".into());
-        assert!(!shown(&share));
-        let mut sftp = usb_stick();
-        sftp.root_uri = "sftp://server/home".into();
-        assert!(!shown(&sftp));
+    fn portal_shadowed_virtual_and_system_mounts_are_never_shown() {
+        let all = everything();
         let mut portal = loop_image();
         portal.has_volume = false;
         portal.root_uri = "file:///run/user/1001/doc".into();
-        assert!(!shown(&portal));
+        assert_eq!(classify(&portal), None);
         let mut fuse = usb_stick();
         fuse.root_uri = "file:///run/user/1001/gvfs/smb-share:server=s,share=x".into();
-        assert!(!shown(&fuse));
+        assert_eq!(classify(&fuse), None);
         let mut shadowed = usb_stick();
         shadowed.shadowed = true;
-        assert!(!shown(&shadowed));
+        assert_eq!(classify(&shadowed), None);
+        let mut shadowed_share = nas_test();
+        shadowed_share.shadowed = true;
+        assert_eq!(classify(&shadowed_share), None);
+        for root in [
+            "archive://x",
+            "trash:///",
+            "recent:///",
+            "burn:///",
+            "computer:///",
+        ] {
+            let mut f = loop_image();
+            f.root_uri = root.into();
+            assert_eq!(classify(&f), None, "{root}");
+        }
+        let mut fuse_in_home = loop_image();
+        fuse_in_home.has_volume = false;
+        fuse_in_home.root_uri = "file:///home/u/projekt/gvfs".into();
+        assert_eq!(classify(&fuse_in_home), None, "FUSE mounts of programs");
         for root in [
             "file:///",
             "file:///boot/efi",
@@ -446,14 +549,127 @@ mod tests {
         ] {
             let mut system = usb_stick();
             system.root_uri = root.into();
-            assert!(!shown(&system), "{root}");
+            assert!(!shown(&system, &all), "{root}");
         }
         let mut in_home = loop_image();
         in_home.root_uri = "file:///home/u/mnt/karte".into();
         assert!(
-            shown(&in_home),
+            shown(&in_home, &all),
             "a mount below the home folder is the user's"
         );
+    }
+
+    /// The mounts of the VM entwicklungs-vm on 19.10.2026 (`gio mount -li`).
+    fn cidata() -> Facts {
+        Facts {
+            name: "cidata".into(),
+            root_uri: "file:///run/media/user/cidata".into(),
+            has_volume: true,
+            volume_class: Some("device".into()),
+            unix_device: Some("/dev/sr0".into()),
+            drive: Some(DriveFacts {
+                removable: true,
+                media_removable: true,
+                can_eject: true,
+            }),
+            can_unmount: true,
+            can_eject: true,
+            icon_names: vec![
+                "media-optical-cd-rom".into(),
+                "media-optical".into(),
+                "drive-optical".into(),
+            ],
+            ..Facts::default()
+        }
+    }
+
+    fn nas_test() -> Facts {
+        Facts {
+            name: "user on nas-test.local".into(),
+            root_uri: "smb://nas-test.local/user/".into(),
+            can_unmount: true,
+            icon_names: vec!["folder-remote".into(), "folder".into()],
+            ..Facts::default()
+        }
+    }
+
+    #[test]
+    fn the_four_types() {
+        assert_eq!(classify(&usb_stick()), Some(VolumeType::Removable));
+        assert_eq!(classify(&loop_image()), Some(VolumeType::Removable));
+        assert_eq!(classify(&cidata()), Some(VolumeType::Optical));
+        assert_eq!(classify(&nas_test()), Some(VolumeType::Network));
+        let mut sftp = nas_test();
+        sftp.root_uri = "sftp://server/home".into();
+        assert_eq!(classify(&sftp), Some(VolumeType::Network));
+        let mut nfs_volume = loop_image();
+        nfs_volume.volume_class = Some("network".into());
+        assert_eq!(classify(&nfs_volume), Some(VolumeType::Network));
+        let mut phone = nas_test();
+        phone.root_uri = "mtp://Telefon/".into();
+        assert_eq!(classify(&phone), Some(VolumeType::Removable));
+        let mut disk = loop_image();
+        disk.volume_class = Some("device".into());
+        disk.unix_device = Some("/dev/sda3".into());
+        disk.drive = Some(DriveFacts::default());
+        disk.icon_names = vec!["drive-harddisk".into()];
+        disk.root_uri = "file:///run/media/u/Daten".into();
+        assert_eq!(classify(&disk), Some(VolumeType::Internal));
+        // encrypted: by its drive
+        let mut luks_disk = disk.clone();
+        luks_disk.unix_device = Some("/dev/dm-0".into());
+        assert_eq!(classify(&luks_disk), Some(VolumeType::Internal));
+        let mut luks_stick = usb_stick();
+        luks_stick.unix_device = Some("/dev/dm-1".into());
+        assert_eq!(classify(&luks_stick), Some(VolumeType::Removable));
+        assert_eq!(picture(&nas_test()), Picture::Network);
+        assert_eq!(removal(&nas_test()), Some(Removal::Unmount));
+    }
+
+    /// QE-04 with the decided defaults on the VM: cidata stays, the share
+    /// appears, an internal partition would go; each switch works alone.
+    #[test]
+    fn the_settings_choose_the_types() {
+        let defaults = IconSettings::default();
+        let mut disk = loop_image();
+        disk.icon_names = vec!["drive-harddisk".into()];
+        disk.drive = Some(DriveFacts::default());
+        assert!(shown(&cidata(), &defaults));
+        assert!(shown(&nas_test(), &defaults));
+        assert!(shown(&usb_stick(), &defaults));
+        assert!(!shown(&disk, &defaults));
+        for (f, off) in [
+            (
+                usb_stick(),
+                IconSettings {
+                    removable: false,
+                    ..defaults
+                },
+            ),
+            (
+                cidata(),
+                IconSettings {
+                    optical: false,
+                    ..defaults
+                },
+            ),
+            (
+                nas_test(),
+                IconSettings {
+                    network: false,
+                    ..defaults
+                },
+            ),
+        ] {
+            assert!(!shown(&f, &off), "{}", f.name);
+        }
+        assert!(shown(
+            &disk,
+            &IconSettings {
+                internal: true,
+                ..defaults
+            }
+        ));
     }
 
     #[test]

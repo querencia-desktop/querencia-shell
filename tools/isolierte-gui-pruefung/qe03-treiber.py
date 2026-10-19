@@ -438,6 +438,130 @@ def test_d14_fremd_optisch():
            eingehaengt("/run/media/user/cidata") and "cidata" in lage())
 
 
+# ------------------------------------------------------------------ ohne Loop (G2-X)
+
+def test_d12_ohne_loop():
+    """Neustart mit dem eingehängten cidata der VM (kein eigenes Abbild)."""
+    if "cidata" not in lage():
+        t.protokoll("D12o cidata nicht eingehängt – übersprungen")
+        return
+    vorher = lage()
+    d.stop()
+    d.start(lambda l: "cidata" in l)
+    l = lage()
+    pruefe("D12o Neustart: cidata wieder da, in der Spalte des Papierkorbs",
+           "cidata" in l and l["cidata"][0] == l["Papierkorb"][0], (l.get("cidata"), l.get("Papierkorb")))
+    pruefe("D12o Neustart: feste Symbole an denselben Plätzen",
+           all(l.get(n) == vorher.get(n) for n in ("Rechner", "Persönlicher Ordner", "Papierkorb")),
+           {n: (vorher.get(n), l.get(n)) for n in ("Rechner", "Persönlicher Ordner", "Papierkorb")})
+    pruefe("D12o desktop-symbole unverändert (cidata nie gespeichert)",
+           sha(t.ZUSTAND) == STAND["zustand"] and "cidata" not in open(t.ZUSTAND, errors="replace").read())
+
+
+# ------------------------------------------------------------------ QE-04 (G2-X): [Icons]/[Volumes]
+
+INI = os.path.join(P, "config", "querencia", "desktop.ini")
+
+
+def kann_qe04():
+    r = subprocess.run([t.DESKTOP, "--faehigkeiten"], capture_output=True, text=True, timeout=10)
+    return "volumes-types" in r.stdout.split()
+
+
+def ini_setzen(gruppen):
+    """desktop.ini = [Background] des Testprofils + gruppen (atomar wie die Einstellungen)."""
+    text = STAND["ini0"] + ("\n" + gruppen if gruppen else "")
+    neu = INI + ".neu"
+    with open(neu, "w") as f:
+        f.write(text)
+    os.rename(neu, INI)
+
+
+def geaendert_zahl():
+    return d.text().count("Einstellungen geändert: ")
+
+
+# Zelle je Symbolgröße wie desktop_view.rs cell_for
+ZELLE = {32: (100, 72), 48: (100, 88), 72: (110, 112), 96: (130, 136)}
+
+
+def ohne_ueberlappung(l, zelle):
+    werte = list(l.items())
+    return all(abs(pa[0] - pb[0]) >= zelle[0] or abs(pa[1] - pb[1]) >= zelle[1]
+               for i, (_, pa) in enumerate(werte) for _, pb in werte[i + 1:])
+
+
+def test_q04_filter():
+    """Je Kästchen an/aus mit dem echten cidata der VM und den festen Symbolen."""
+    STAND["ini0"] = open(INI).read()
+    if not STAND["ini0"].endswith("\n"):
+        STAND["ini0"] += "\n"
+    fest = ("Rechner", "Persönlicher Ordner", "Papierkorb")
+    lage0 = lage()
+    cidata = "cidata" in lage0
+    t.protokoll(f"Q04 Ausgang: {sorted(lage0)}; cidata {'da' if cidata else 'nicht eingehängt'}")
+    alle = "Removable=true\nOptical=true\nNetwork=true\nInternal=true\n"
+    faelle = [
+        # (Nr, Text, Gruppen, erwartet da, erwartet weg)
+        ("Q1", "Optical=false: cidata weg, feste Symbole bleiben", "[Volumes]\nOptical=false\n",
+         fest, ("cidata",)),
+        ("Q2", "Optical=true, alle anderen Laufwerkstypen aus: cidata da",
+         "[Volumes]\nRemovable=false\nOptical=true\nNetwork=false\nInternal=false\n", fest + ("cidata",), ()),
+        ("Q3", "Removable=false allein: cidata bleibt (optisch, nicht Wechsel)", "[Volumes]\nRemovable=false\n",
+         fest + ("cidata",), ()),
+        ("Q4", "Network=false allein: cidata bleibt", "[Volumes]\nNetwork=false\n", fest + ("cidata",), ()),
+        ("Q5", "Internal=true allein: cidata bleibt", "[Volumes]\nInternal=true\n", fest + ("cidata",), ()),
+        ("Q6", "alle vier aus: cidata weg", "[Volumes]\nRemovable=false\nOptical=false\nNetwork=false\nInternal=false\n",
+         fest, ("cidata",)),
+        ("Q7", "alle vier an: cidata da", "[Volumes]\n" + alle, fest + ("cidata",), ()),
+        ("Q8", "Computer=false: Rechner weg", "[Icons]\nComputer=false\n", ("Persönlicher Ordner", "Papierkorb"), ("Rechner",)),
+        ("Q9", "Home=false: Persönlicher Ordner weg", "[Icons]\nHome=false\n", ("Rechner", "Papierkorb"), ("Persönlicher Ordner",)),
+        ("Q10", "Trash=false: Papierkorb weg", "[Icons]\nTrash=false\n", ("Rechner", "Persönlicher Ordner"), ("Papierkorb",)),
+        ("Q11", "alle drei aus", "[Icons]\nComputer=false\nHome=false\nTrash=false\n", (), fest),
+    ]
+    for nr, text, gruppen, da, weg in faelle:
+        if not cidata:
+            da = tuple(n for n in da if n != "cidata")
+            weg = tuple(n for n in weg if n != "cidata")
+        n0 = geaendert_zahl()
+        t0 = time.time()
+        ini_setzen(gruppen)
+        ok = warte(lambda: geaendert_zahl() > n0 and all(n in lage() for n in da)
+                   and not any(n in lage() for n in weg), 6, nr)
+        ZEITEN.append((f"{nr} bis zur neuen Lage", time.time() - t0 if ok else None))
+        l = lage()
+        pruefe(f"{nr} {text}", bool(ok), sorted(l))
+        bleiben = [n for n in da if n in fest and lage0.get(n) != l.get(n)]
+        pruefe(f"{nr} feste Symbole an ihren Plätzen", not bleiben, {n: (lage0.get(n), l.get(n)) for n in bleiben})
+        if nr in ("Q1", "Q11"):
+            bild(f"desktop-qe04-{nr.lower()}")
+    # Größe: die Zelle wächst, die Plätze rasten neu ein, nichts überlappt
+    for groesse in (32, 72, 96):
+        n0 = geaendert_zahl()
+        ini_setzen(f"[Icons]\nSize={groesse}\n")
+        ok = warte(lambda: geaendert_zahl() > n0 and f"Größe {groesse}" in d.text().split("Einstellungen geändert: ")[-1], 6, f"Größe {groesse}")
+        time.sleep(1.5)
+        l = lage()
+        pruefe(f"Q12 Size={groesse}: übernommen, alle Symbole da, keine Überlappung, keine zu große Kachel",
+               bool(ok) and all(n in l for n in fest) and ohne_ueberlappung(l, ZELLE[groesse])
+               and "Kachel größer als die Zelle" not in d.text(), sorted(l.items()))
+        bild(f"desktop-qe04-groesse-{groesse}")
+    # zurück zum Standard (Gruppen weg): alles wie am Anfang
+    n0 = geaendert_zahl()
+    ini_setzen("")
+    ok = warte(lambda: geaendert_zahl() > n0 and all(n in lage() for n in lage0), 6, "Standard")
+    time.sleep(1.5)
+    l = lage()
+    pruefe("Q13 ohne Gruppen wieder Standard: alle Symbole an den Plätzen vom Anfang",
+           bool(ok) and all(l.get(n) == lage0.get(n) for n in lage0), {n: (lage0.get(n), l.get(n)) for n in lage0})
+    pruefe("Q14 desktop-symbole nach allen Umschaltungen unverändert", sha(t.ZUSTAND) == STAND["zustand"])
+    pruefe("Q15 Hintergrund unberührt: keine Problemzeile zu desktop.ini",
+           "desktop.ini: " not in d.text().replace("desktop.ini: keine", ""),
+           [z for z in d.text().splitlines() if "desktop.ini: " in z][:3])
+    with open(INI, "w") as f:
+        f.write(STAND["ini0"])
+
+
 def main():
     os.makedirs(t.BILDER, exist_ok=True)
     os.environ["QUERENCIA_DESKTOP_DEBUG"] = "1"
@@ -455,6 +579,15 @@ def main():
     weitere = [test_d5_zweiter, test_d6_menue_oeffnen, test_d7_doppelklick, test_d8_verschieben,
                test_d9_belegt_abbrechen, test_d9b_trotzdem, test_d9c_frei_geworden, test_d10_aushaengen, test_d11_wieder, test_d12_neustart,
                test_d13_verschluesselt, test_d14_fremd_optisch]
+    # G2-X: ohne eigene Loop-Abbilder (sie erscheinen systemweit, auch auf dem
+    # Live-Desktop): nur cidata, Neustart, Zustandsdatei; mit QE-04 dazu der Filter
+    if os.environ.get("QE03_OHNE_LUKS") == "1":
+        weitere.remove(test_d13_verschluesselt)
+        t.protokoll("ohne LUKS-Fall (QE03_OHNE_LUKS=1)")
+    if os.environ.get("QE03_OHNE_LOOP") == "1":
+        tests = [test_d0_schutz, test_d1_start, test_d14_fremd_optisch, test_d12_ohne_loop]
+        weitere = [test_q04_filter] if kann_qe04() else []
+        t.protokoll(f"ohne Loop-Abbilder; QE-04-Filter: {'ja' if weitere else 'nein (Desktop kann es nicht)'}")
     try:
         for test in tests + weitere:
             name = getattr(test, "__name__", "test")
