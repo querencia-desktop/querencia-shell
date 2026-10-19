@@ -165,7 +165,10 @@ pub fn classify(facts: &Facts) -> Option<VolumeType> {
     let removable_drive = facts
         .drive
         .is_some_and(|d| d.removable || d.media_removable || d.can_eject);
-    if removable_drive || facts.can_eject || picture == Picture::Removable {
+    // QE-04a: an encrypted volume counts by its device, and that includes
+    // the icon names of a drive-less device (a LUKS loop image is removable
+    // like the same image without encryption)
+    if removable_drive || facts.can_eject || removable_by_name(facts) {
         return Some(VolumeType::Removable);
     }
     facts.can_unmount.then_some(VolumeType::Internal)
@@ -180,6 +183,24 @@ pub fn shown(facts: &Facts, settings: &IconSettings) -> bool {
         Some(VolumeType::Internal) => settings.internal,
         None => false,
     }
+}
+
+/// GIO's icon names say the medium can be taken away (stick, card,
+/// player, phone, removable drive).
+fn removable_by_name(facts: &Facts) -> bool {
+    const PARTS: [&str; 7] = [
+        "removable",
+        "usb",
+        "flash",
+        "media-memory",
+        "floppy",
+        "multimedia-player",
+        "phone",
+    ];
+    facts
+        .icon_names
+        .iter()
+        .any(|name| PARTS.iter().any(|part| name.contains(part)))
 }
 
 /// A network share (QE-04), encrypted (a device-mapper volume or GIO's
@@ -197,17 +218,7 @@ pub fn picture(facts: &Facts) -> Picture {
         Picture::Encrypted
     } else if has("optical") || has("cdrom") {
         Picture::Optical
-    } else if [
-        "removable",
-        "usb",
-        "flash",
-        "media-memory",
-        "floppy",
-        "multimedia-player",
-        "phone",
-    ]
-    .iter()
-    .any(|part| has(part))
+    } else if removable_by_name(facts)
         || facts
             .drive
             .is_some_and(|d| d.removable || d.media_removable)
@@ -624,6 +635,31 @@ mod tests {
         assert_eq!(classify(&luks_stick), Some(VolumeType::Removable));
         assert_eq!(picture(&nas_test()), Picture::Network);
         assert_eq!(removal(&nas_test()), Some(Removal::Unmount));
+    }
+
+    /// QE-04a (G2-X, QE-03 D13 with QE-04): an unlocked LUKS loop image has
+    /// no drive and the picture "encrypted"; its icon names make it removable,
+    /// as the same image without encryption, and it shows with the defaults.
+    #[test]
+    fn an_encrypted_loop_image_is_removable_like_a_plain_one() {
+        let mut geheim = loop_image();
+        geheim.name = "QDGEHEIM".into();
+        geheim.root_uri = "file:///run/media/u/QDGEHEIM".into();
+        geheim.unix_device = Some("/dev/dm-0".into());
+        geheim.volume_class = Some("device".into());
+        geheim.icon_names = vec![
+            "drive-removable-media".into(),
+            "changes-allow-symbolic".into(),
+        ];
+        assert_eq!(picture(&geheim), Picture::Encrypted);
+        assert_eq!(classify(&geheim), Some(VolumeType::Removable));
+        assert!(shown(&geheim, &IconSettings::default()));
+        // an internal encrypted partition stays internal (hidden by default)
+        let mut intern = geheim.clone();
+        intern.icon_names = vec!["drive-harddisk".into(), "changes-allow-symbolic".into()];
+        intern.drive = Some(DriveFacts::default());
+        assert_eq!(classify(&intern), Some(VolumeType::Internal));
+        assert!(!shown(&intern, &IconSettings::default()));
     }
 
     /// QE-04 with the decided defaults on the VM: cidata stays, the share
