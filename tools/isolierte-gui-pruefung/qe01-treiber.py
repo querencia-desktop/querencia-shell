@@ -371,7 +371,9 @@ def test_q10_faehigkeiten():
     r = subprocess.run([t.DESKTOP, "--faehigkeiten"], capture_output=True, text=True, timeout=10, env=env)
     dauer = time.time() - start
     pruefe("Q10 --faehigkeiten ohne Display: eine Zeile, Exit 0",
-           r.returncode == 0 and r.stdout == "type-color mode-centered mode-tiled\n" and not r.stderr,
+           # QE-04 (G2-X) hängt Wörter an; die drei von QE-01 stehen vorn
+           r.returncode == 0 and r.stdout.count("\n") == 1
+           and r.stdout.split()[:3] == ["type-color", "mode-centered", "mode-tiled"] and not r.stderr,
            (r.returncode, r.stdout, r.stderr, f"{dauer:.2f} s"))
     r2 = subprocess.run([t.DESKTOP, "--faehigkeiten"], capture_output=True, text=True, timeout=10)
     time.sleep(1)

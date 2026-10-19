@@ -37,6 +37,10 @@
 //!   and offer "Auswerfen" or "Aushängen". They can be moved like any icon,
 //!   but their places are kept in memory only, never in `desktop-symbole`
 //!   (`QUERENCIA_DESKTOP_VOLUMES=0` leaves them out).
+//! - QE-04 (QD-042): `desktop.ini` `[Icons]` hides Rechner, Persönlicher
+//!   Ordner or Papierkorb and sets the icon size (32/48/72/96, the cell
+//!   grows with it); `[Volumes]` chooses the volume types (removable,
+//!   optical, network shares, internal). Changes apply at once.
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
@@ -69,7 +73,19 @@ pub const TERMINAL_APP: &str = "org.example.Querencia.Terminal.desktop";
 // takes one cell; cells never overlap.
 const CELL: (i32, i32) = (100, 88);
 const MARGIN: i32 = 8;
-const ICON_PX: i32 = 48;
+
+/// QE-04: the grid cell for an icon size of `desktop.ini` `[Icons] Size`.
+/// 48 px is the cell of HMP-10b; the width never drops below it, so
+/// "Persönlicher" still fits on one line, the height is the icon plus two
+/// label lines.
+fn cell_for(icon_px: i32) -> (i32, i32) {
+    match icon_px {
+        32 => (CELL.0, 72),
+        72 => (110, 112),
+        96 => (130, 136),
+        _ => CELL,
+    }
+}
 // The rename box is a little wider than a cell, as Nautilus' was.
 const RENAME_WIDTH: i32 = 150;
 
@@ -152,6 +168,9 @@ pub struct Icons {
     /// QE-03: places of volume icons, for this session only.
     volume_places: RefCell<volumes::Places>,
     volume_timer: RefCell<Option<glib::SourceId>>,
+    /// QE-04: `desktop.ini` `[Icons]`/`[Volumes]` (main.rs `load` passes
+    /// changes on, see `apply_settings`).
+    settings: Cell<config::IconSettings>,
     last_logged: RefCell<String>,
     last_selection: RefCell<String>,
     check_tiles: Cell<bool>,
@@ -240,6 +259,11 @@ impl Icons {
         classic_menu::attach(&anchor, menu.upcast_ref());
 
         let (store, migrated_order) = load_store();
+        let settings = config::parse_icons(
+            &std::fs::read_to_string(config::config_path()).unwrap_or_default(),
+        )
+        .0;
+        log(&settings_text(&settings));
         let icons = Rc::new(Self {
             window,
             fixed,
@@ -254,7 +278,7 @@ impl Icons {
             geometry: Cell::new(Geometry {
                 width: 0,
                 height: 0,
-                tile: CELL,
+                tile: cell_for(settings.size),
                 margin: MARGIN,
                 // "Am Raster ausrichten": on unless switched off
                 snap: store.snap.unwrap_or(true),
@@ -280,6 +304,7 @@ impl Icons {
             .then(gio::VolumeMonitor::get),
             volume_places: RefCell::default(),
             volume_timer: RefCell::default(),
+            settings: Cell::new(settings),
             last_logged: RefCell::default(),
             last_selection: RefCell::default(),
             check_tiles: Cell::new(false),
@@ -325,9 +350,10 @@ impl Icons {
             return;
         }
         self.reload_waiting.set(false);
-        let (mut items, listed) = load_items();
+        let settings = self.settings.get();
+        let (mut items, listed) = load_items(&settings);
         if let Some(monitor) = &self.volume_monitor {
-            items.extend(volume_items(monitor));
+            items.extend(volume_items(monitor, &settings));
         }
         let present: Vec<&str> = items
             .iter()
@@ -362,6 +388,25 @@ impl Icons {
         saved.extend(self.migrated_order.iter().cloned());
         let items = icons::ordered(&saved, items);
         self.set_items(items);
+    }
+
+    /// QE-04: new `[Icons]`/`[Volumes]` from `desktop.ini`: the icons and
+    /// their size change at once, without a restart. Places are kept (the
+    /// grid of the new size snaps them, `layout.rs`).
+    pub fn apply_settings(self: &Rc<Self>, settings: config::IconSettings) {
+        if settings == self.settings.get() {
+            return;
+        }
+        log(&format!(
+            "Einstellungen geändert: {}",
+            settings_text(&settings)
+        ));
+        self.settings.set(settings);
+        let mut geometry = self.geometry.get();
+        geometry.tile = cell_for(settings.size);
+        self.geometry.set(geometry);
+        self.reload();
+        self.check_tiles.set(true);
     }
 
     /// A refresh shortly after file monitor events (they come in bursts).
@@ -463,7 +508,7 @@ impl Icons {
         self.trash_full.set(trash_full);
         let widgets: Vec<gtk4::Box> = items
             .iter()
-            .map(|item| icon_widget(item, trash_full.unwrap_or(false)))
+            .map(|item| icon_widget(item, trash_full.unwrap_or(false), self.settings.get().size))
             .collect();
         for widget in &widgets {
             // shown once placed (`layout`), never first at the top left
@@ -691,7 +736,8 @@ impl Icons {
                     label_lines(&label).join(" | "),
                 ));
             }
-            if w > CELL.0 || h > CELL.1 {
+            let tile = self.geometry.get().tile;
+            if w > tile.0 || h > tile.1 {
                 log(&format!(
                     "Kachel größer als die Zelle: {} {w}x{h}",
                     item.name
@@ -910,7 +956,11 @@ impl Icons {
                             let Some(item) = icons.items.borrow().get(m).cloned() else {
                                 continue;
                             };
-                            let ghost = icon_widget(&item, icons.trash_full.get().unwrap_or(false));
+                            let ghost = icon_widget(
+                                &item,
+                                icons.trash_full.get().unwrap_or(false),
+                                icons.settings.get().size,
+                            );
                             ghost.add_css_class("dragging");
                             ghost.add_css_class("selected");
                             ghost.set_can_target(false);
@@ -1702,7 +1752,7 @@ impl Icons {
         let Some(monitor) = &self.volume_monitor else {
             return;
         };
-        let now = volume_items(monitor);
+        let now = volume_items(monitor, &self.settings.get());
         let shown: Vec<Item> = self
             .items
             .borrow()
@@ -1821,10 +1871,13 @@ impl Icons {
         entry.set_size_request(RENAME_WIDTH, -1);
         EditableExt::set_alignment(&entry, 0.5);
         let geometry = self.geometry.get();
-        let left =
-            (x + (CELL.0 - RENAME_WIDTH) / 2).clamp(0, (geometry.width - RENAME_WIDTH).max(0));
-        self.fixed
-            .put(&entry, f64::from(left), f64::from(y + ICON_PX + 3));
+        let left = (x + (geometry.tile.0 - RENAME_WIDTH) / 2)
+            .clamp(0, (geometry.width - RENAME_WIDTH).max(0));
+        self.fixed.put(
+            &entry,
+            f64::from(left),
+            f64::from(y + self.settings.get().size + 3),
+        );
         if let Some(label) = self.label_of(index) {
             label.set_opacity(0.0);
         }
@@ -2273,16 +2326,18 @@ fn show_error(title: &str, detail: &str) {
 
 /// Which icons there are right now (see `icons.rs`), and whether the
 /// desktop directory could be read.
-fn load_items() -> (Vec<Item>, bool) {
+/// QE-04: Rechner, Persönlicher Ordner and Papierkorb only when
+/// `desktop.ini` `[Icons]` keeps them (they keep their places when hidden).
+fn load_items(settings: &config::IconSettings) -> (Vec<Item>, bool) {
     let mut items = Vec::new();
     let files = DesktopAppInfo::new(FILES_APP);
-    if files.is_some() {
+    if files.is_some() && settings.computer {
         items.push(Item::new(Kind::Computer, "Rechner"));
     }
-    if gio::AppInfo::default_for_type("inode/directory", false).is_some() {
+    if settings.home && gio::AppInfo::default_for_type("inode/directory", false).is_some() {
         items.push(Item::new(Kind::Home, "Persönlicher Ordner"));
     }
-    if files.is_some() {
+    if files.is_some() && settings.trash {
         items.push(Item::new(Kind::Trash, "Papierkorb"));
     }
     if let Some(terminal) = DesktopAppInfo::new(TERMINAL_APP) {
@@ -2348,9 +2403,14 @@ fn icon_for(item: &Item, trash_full: bool) -> gio::Icon {
     }
 }
 
-/// QE-03: Querencia's own device icons, built in (no icon theme has them).
+/// QE-03: Querencia's own device icons, built in (no icon theme has them);
+/// QE-04: network shares with the theme's remote folder, as Nautilus 2.30.
 fn volume_icon(picture: Picture) -> gio::Icon {
     let svg: &'static [u8] = match picture {
+        Picture::Network => {
+            return gio::ThemedIcon::from_names(&["folder-remote", "network-server", "folder"])
+                .upcast();
+        }
         Picture::Removable => include_bytes!("../data/icons/strata-querencia-drive-removable.svg"),
         Picture::Harddisk => include_bytes!("../data/icons/strata-querencia-drive-harddisk.svg"),
         Picture::Optical => include_bytes!("../data/icons/strata-querencia-media-optical.svg"),
@@ -2450,6 +2510,22 @@ fn ask_when_busy(
     asking
 }
 
+/// QE-04: the settings in one log line (also read by the isolated test).
+fn settings_text(s: &config::IconSettings) -> String {
+    let on = |b: bool| if b { "an" } else { "aus" };
+    format!(
+        "Symbole: Rechner {} Persönlicher Ordner {} Papierkorb {} Größe {} | Laufwerke: Wechsel {} Optisch {} Netz {} Eingebaut {}",
+        on(s.computer),
+        on(s.home),
+        on(s.trash),
+        s.size,
+        on(s.removable),
+        on(s.optical),
+        on(s.network),
+        on(s.internal)
+    )
+}
+
 fn log_volume(item: &Item) {
     if let Kind::Volume(volume) = &item.kind {
         log(&format!(
@@ -2462,9 +2538,10 @@ fn log_volume(item: &Item) {
     }
 }
 
-/// QE-03: the icons of the volumes that are mounted now.
-fn volume_items(monitor: &gio::VolumeMonitor) -> Vec<Item> {
-    volumes::mounted(monitor)
+/// QE-03: the icons of the volumes that are mounted now; QE-04: of the
+/// types `desktop.ini` `[Volumes]` asks for.
+fn volume_items(monitor: &gio::VolumeMonitor, settings: &config::IconSettings) -> Vec<Item> {
+    volumes::mounted(monitor, settings)
         .iter()
         .map(|facts| Item::new(Kind::Volume(Volume::from_facts(facts)), &facts.name))
         .collect()
@@ -2502,16 +2579,17 @@ fn label_lines(label: &Label) -> Vec<String> {
     lines
 }
 
-fn icon_widget(item: &Item, trash_full: bool) -> gtk4::Box {
+fn icon_widget(item: &Item, trash_full: bool, icon_px: i32) -> gtk4::Box {
     let tile = gtk4::Box::new(Orientation::Vertical, 2);
     tile.add_css_class("desktop-icon");
     // HMP-10b: the tile spans the whole cell width (cells never overlap,
     // every grid keeps at least a cell between columns). With 6 px less,
     // "Persönlicher" (89 px in DejaVu/Adwaita Sans 11) missed the 88 px
     // left for the text by one pixel and was split ("Persönliche" / "r").
-    tile.set_size_request(CELL.0, CELL.1 - 6);
+    let cell = cell_for(icon_px);
+    tile.set_size_request(cell.0, cell.1 - 6);
     let image = Image::from_gicon(&icon_for(item, trash_full));
-    image.set_pixel_size(ICON_PX);
+    image.set_pixel_size(icon_px);
     image.set_halign(Align::Center);
     let label = Label::new(Some(&item.name));
     label.set_wrap(true);
@@ -2783,7 +2861,10 @@ fn choose_background(done: Rc<dyn Fn()>) {
                 .map_or(Ok(()), std::fs::create_dir_all)
                 .and_then(|()| {
                     let temporary = config_path.with_extension("ini.neu");
-                    std::fs::write(&temporary, config::render(&background))?;
+                    // QE-04: only [Background]; [Icons]/[Volumes] stay
+                    let new =
+                        config::replace_group(&text, "Background", &config::render(&background));
+                    std::fs::write(&temporary, new)?;
                     std::fs::rename(&temporary, &config_path)
                 });
             match written {
