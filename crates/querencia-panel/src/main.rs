@@ -56,8 +56,13 @@ pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
 // inset shadow); a minimized window's button is flat and its icon and
 // title dimmed. Dark text always, no orange (the orange belongs to menus).
 //
-// Volume applet (G2-J): like a launcher, a bare icon with the neutral
-// highlight; greyed out (as a missing launcher) without an audio service.
+// Status applets (QD-045; volume G2-J, network G2-M and later ones, class
+// panel::STATUS_CLASS): like a launcher a bare icon with the neutral
+// highlight, greyed out (as a missing launcher) without their service. As
+// in the GNOME 2 notification area they stand close: no padding, only the
+// 1 px hover border, and panel::STATUS_SPACING (2 px) between two of them,
+// so neighbouring icons are 4 px apart. One rule for all of them, so every
+// status icon has the same inner border.
 // The slider of its popup is filled in the orange of the menu highlight.
 //
 // Network applet (G2-M): the icon as the volume applet (neutral highlight,
@@ -111,15 +116,11 @@ const PANEL_CSS: &str = "
 .querencia-panel button.querencia-launcher:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
 .querencia-panel button.querencia-launcher:active { background-color: #dcd6d0; border-color: #9e9993; }
 .querencia-panel button.querencia-launcher.missing > image { opacity: 0.45; }
-.querencia-panel button.querencia-volume { min-width: 0; min-height: 0; padding: 0 2px; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
-.querencia-panel button.querencia-volume:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
-.querencia-panel button.querencia-volume:active { background-color: #dcd6d0; border-color: #9e9993; }
-.querencia-panel button.querencia-volume.unavailable > image { opacity: 0.45; }
+.querencia-panel button.querencia-status { min-width: 0; min-height: 0; padding: 0; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
+.querencia-panel button.querencia-status:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
+.querencia-panel button.querencia-status:active { background-color: #dcd6d0; border-color: #9e9993; }
+.querencia-panel button.querencia-status.unavailable > image { opacity: 0.45; }
 .querencia-panel popover.querencia-volume-popup scale > trough > highlight { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); border-color: #b36c4e; }
-.querencia-panel button.querencia-network { min-width: 0; min-height: 0; padding: 0 2px; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
-.querencia-panel button.querencia-network:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
-.querencia-panel button.querencia-network:active { background-color: #dcd6d0; border-color: #9e9993; }
-.querencia-panel button.querencia-network.unavailable > image { opacity: 0.45; }
 .querencia-panel popover.querencia-network-menu .qnet { min-width: 230px; }
 .querencia-panel popover.querencia-network-menu button.qnet-item { min-height: 20px; padding: 2px 10px 2px 4px; margin: 0; border: 1px solid transparent; border-radius: 0; background: none; box-shadow: none; outline: none; color: #3c3c3c; font-weight: normal; }
 .querencia-panel popover.querencia-network-menu button.qnet-item:hover,
@@ -480,6 +481,53 @@ mod tests {
             if rule.contains("background") {
                 assert!(rule.contains("color: #3c3c3c"), "dunkle Schrift: {rule}");
             }
+        }
+    }
+
+    /// QD-045: one rule set for all status applets (no padding, 1 px hover
+    /// border, neutral highlight, dimmed without service), none of their
+    /// own per applet any more, so volume and network look alike.
+    #[test]
+    fn status_applets_share_one_compact_look() {
+        let class = crate::panel::STATUS_CLASS;
+        let rules: Vec<&str> = PANEL_CSS.lines().filter(|l| l.contains(class)).collect();
+        let base = rules
+            .iter()
+            .find(|r| r.starts_with(&format!(".querencia-panel button.{class} {{")))
+            .expect("Grundregel");
+        for part in [
+            "padding: 0;",
+            "margin: 0;",
+            "border: 1px solid transparent",
+            "background-image: none",
+            "outline: none",
+        ] {
+            assert!(base.contains(part), "{part}: {base}");
+        }
+        assert!(
+            rules
+                .iter()
+                .any(|r| r.contains(":hover") && r.contains("#ebe7e3"))
+        );
+        assert!(
+            rules
+                .iter()
+                .any(|r| r.contains(".unavailable") && r.contains("opacity"))
+        );
+        for rule in &rules {
+            assert!(
+                rule.starts_with(".querencia-panel "),
+                "nicht begrenzt: {rule}"
+            );
+            for orange in ["#f07746", "#f8875d", "#ea703d", "orange"] {
+                assert!(!rule.contains(orange), "{rule}");
+            }
+        }
+        for own in [crate::volume_applet::CLASS, crate::network_applet::CLASS] {
+            assert!(
+                !PANEL_CSS.contains(&format!("button.{own}")),
+                "eigene Knopfregel für {own}"
+            );
         }
     }
 

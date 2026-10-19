@@ -38,7 +38,8 @@ use querencia_netzwerk::service::{self, Service};
 
 use crate::{logo, network_dialogs};
 
-/// CSS class of the applet's button (style in `main.rs`).
+/// CSS class of the applet's button. Its look is the one of all status
+/// applets (`panel::STATUS_CLASS`, style in `main.rs`).
 pub const CLASS: &str = "querencia-network";
 /// CSS class while there is no network data at all.
 pub const UNAVAILABLE_CLASS: &str = "unavailable";

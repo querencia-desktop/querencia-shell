@@ -30,3 +30,6 @@ nachweis/audio-scratch/
 nachweis/build/querencia-netzwerk
 integration/vorschlag-netzwerk/querencia-panel
 integration/vorschlag-netzwerk/querencia-netzwerk
+# G2-Y: Release-Bau der Vorlage und des Nachweises (Summen in SHA256SUMS)
+integration/vorschlag-statussymbole/querencia-panel
+nachweis/g2y/querencia-panel
