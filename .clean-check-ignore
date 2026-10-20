@@ -1,16 +1,19 @@
-# Ausnahmen für ai-clean/clean_check.py (G2-AD, 20.10.2026).
-# Bewusst KEINE Pfadeinträge: ein Pfad schaltet für ihn alle Prüfungen ab,
-# auch security. Die begründeten Ausnahmen stehen nur als Kommentar hier:
+# Ausnahmen für ai-clean/clean_check.py (G2-AG und G2-AD, 20.10.2026, „ok“ der
+# Status-Session). Bewusst KEINE Pfadeinträge: ein Pfad schaltet für ihn alle
+# Prüfungen ab, auch security. Die begründeten Ausnahmen stehen nur als
+# Kommentar hier (gleich wie G2-AD im Zweig kalender):
 #
 # P002 Co-Authored-By in den Commit-Texten: bleibt im Arbeitsrepo; beim
 #      Veröffentlichungsklon entfernt git filter-repo --replace-message alle
 #      Co-Authored-By-Zeilen (ENTSCHEIDUNGEN Nr. 10).
-# S004 Typografie (Anführungszeichen „“, Gedankenstrich –, Ellipse …, Pfeil →)
-#      in crates/, integration/ und tools/: deutsche Oberflächentexte wie
-#      „Abmelden …“ sind Daten und werden in Kommentaren wörtlich genannt;
-#      die Kommentare folgen derselben Typografie (Projektstil, nicht global
-#      ersetzen).
+# S004 Typografie („“, –, …, →) in crates/, integration/ und tools/: deutsche
+#      Oberflächentexte sind Daten und werden in Kommentaren wörtlich genannt
+#      (Projektstil, nicht global ersetzen).
 # S005 Deutsche Kommentare in integration/ und tools/: Projektregel, alle
 #      Integrations- und Prüfskripte sind deutsch kommentiert, der Rust-Code
-#      englisch.
-# S003 Backticks um Bezeichner in Kommentaren: Projektstil.
+#      und session/ englisch.
+# H001 Logs unter nachweis/ (z. B. nachweis/labwc-benutzer/, labwc-vorgabe/):
+#      Prüfbelege, auf die sich die Freigaben stützen.
+# H005 Lizenzdatei: Entscheidung des Besitzers (ENTSCHEIDUNGEN), kommt mit
+#      der Veröffentlichung.
+# S003 Backticks um Bezeichner in Kommentaren: Projektstil (G2-AD).
