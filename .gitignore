@@ -46,3 +46,6 @@ nachweis/g2ad/querencia-desktop
 nachweis/g2ak/querencia-panel
 integration/g2ak/vorschlag-panel/querencia-panel
 nachweis/g2ak-g2ai/querencia-panel
+# G2-AL: Release-Binary des Nachweises und der Vorlage (Summen in SHA256SUMS)
+nachweis/g2al/querencia-panel
+integration/g2al/vorschlag-panel/querencia-panel
