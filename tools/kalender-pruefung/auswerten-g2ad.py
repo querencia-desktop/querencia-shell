@@ -97,9 +97,9 @@ def load(path):
     return GdkPixbuf.Pixbuf.new_from_file(str(path))
 
 
-def differing(a, b, box):
-    """Anteil der Pixel im Ausschnitt, die sich um mehr als 24 (Summe RGB)
-    unterscheiden."""
+def differing(a, b, box, count=False):
+    """Anteil (mit count: Anzahl) der Pixel im Ausschnitt, die sich um mehr
+    als 24 (Summe RGB) unterscheiden."""
     pa, pb = load(a), load(b)
     n, sa, sb = pa.get_n_channels(), pa.get_rowstride(), pb.get_rowstride()
     da, db = pa.get_pixels(), pb.get_pixels()
@@ -112,6 +112,8 @@ def differing(a, b, box):
             total += 1
             if sum(abs(da[i + c] - db[j + c]) for c in range(3)) > 24:
                 diff += 1
+    if count:
+        return diff
     return diff / total if total else 0.0
 
 
@@ -171,7 +173,10 @@ elif ART == "system":
         check(f"{key} Dialog beendet (Esc)", found(key, rf"{sitz} {arg}( beendet|: )"))
         check(f"{key} kein Abmelden/Ausschalten nach Esc", not found(key, r"TROCKENLAUF"))
     unlike("s01-abmelden", "s01-abgebrochen", FLAECHE, "S01 Dialog sichtbar", 0.01)
-    unlike("s01-abmelden", "s01-abmelden-3s", FLAECHE, "S01 Countdown läuft (Text ändert sich)", 0.00005)
+    # Nur die Zahl im Countdown ändert sich: wenige Dutzend Pixel, bei jeder
+    # Auflösung gleich viele, deshalb eine absolute Schwelle.
+    n = differing(shot("s01-abmelden"), shot("s01-abmelden-3s"), FLAECHE, count=True)
+    check("S01 Countdown läuft (Text ändert sich)", n >= 20, f"{n} Pixel abweichend")
     unlike("s02-ausschalten", "s02-abgebrochen", FLAECHE, "S02 Dialog sichtbar", 0.01)
     check("S03 Countdown Abmelden bis 0: labwc --exit (Trockenlauf)",
           found("S03", r"TROCKENLAUF: \S*labwc\S* --exit"))
@@ -193,11 +198,14 @@ elif ART == "thema":
     for prog, lines in (("Panel", panel), ("Desktop", desktop)):
         check(f"{prog} startet mit GNOME Human (keine Benutzereinstellung)",
               before_first_mark(r"Symbolthema gnome-human \(keine Benutzereinstellung\)", lines))
-        for key, pattern in (("T01", r"Symbolthema Adwaita \(Benutzereinstellung „Adwaita“\)"),
-                             ("T02", r"Symbolthema Humanity \(Benutzereinstellung „Humanity“\)"),
-                             ("T03", r"Symbolthema gnome-human \(Benutzereinstellung „Gibtsnicht“\)"),
-                             ("T04", r"Symbolthema gnome-human \(keine Benutzereinstellung\)")):
-            check(f"{key} {prog}: {pattern.split(' (')[0].split()[-1]}", found(key, pattern, lines))
+        for key, text, pattern in (
+                ("T01", "Adwaita", r"Symbolthema Adwaita \(Benutzereinstellung „Adwaita“\)"),
+                ("T02", "Humanity", r"Symbolthema Humanity \(Benutzereinstellung „Humanity“\)"),
+                ("T03", "nicht installiert → GNOME Human",
+                 r"Symbolthema gnome-human \(Benutzereinstellung „Gibtsnicht“\)"),
+                ("T04", "zurückgesetzt → GNOME Human",
+                 r"Symbolthema gnome-human \(keine Benutzereinstellung\)")):
+            check(f"{key} {prog}: {text}", found(key, pattern, lines))
     unlike("t01-adwaita", "t00-ausgang", RECHNER, "T01 Desktop-Symbol Rechner gewechselt", 0.1)
     unlike("t01-orte", "t00-orte", ORTE_SYMBOLE, "T01 Symbole im Orte-Menü gewechselt", 0.1)
     unlike("t02-humanity", "t01-adwaita", RECHNER, "T02 Rechner wieder anders als Adwaita", 0.1)

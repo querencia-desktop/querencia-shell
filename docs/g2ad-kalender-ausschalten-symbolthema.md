@@ -102,7 +102,14 @@ an `session/` und eine Entscheidung für den Besitzer.
 - Regression über `tools/kalender-pruefung/regression.sh` (G2-M, G2-J,
   W2) und `laeufe.sh` (G2-Y), Desktop über `nachweis/regression.sh`
   (QE-04a).
-- Ergebnisse: `nachweis/ergebnisse/g2ad/`.
+- Ergebnisse (`nachweis/ergebnisse/g2ad/`, Release-Bauten Panel
+  `5e4eaa0b5306a6db`, Desktop `9d622162efd66f93`): kalender 20/20, system
+  18/18, thema 17/17, thema-start 9/9, je bei 1024×768 und 1920×1080;
+  G2-Y 45/45 ×2; G2-M wie Ausgang (attrappe 74/74 in der Zweitauswertung);
+  G2-J 146/146; W2-Branding 31/35 (drei Zeilen zur alten Abmeldefrage, die
+  jetzt der Dialog von querencia-sitzung ersetzt, siehe Anmerkung in
+  `g2j-reg/ergebnis-w2-branding.txt`); Desktop-Regression wie QE-04a;
+  Integrationsprobe 43/43.
 
 ## Grenzen
 
