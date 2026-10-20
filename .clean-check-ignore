@@ -17,3 +17,7 @@
 # H005 Lizenzdatei: Entscheidung des Besitzers (ENTSCHEIDUNGEN), kommt mit
 #      der Veröffentlichung.
 # S003 Backticks um Bezeichner in Kommentaren: Projektstil (G2-AD).
+#
+# G2-AK (20.10.2026): neu nur S004 und S005 in crates/querencia-panel,
+#      integration/g2ak und tools/g2ak-pruefung; sie fallen unter die
+#      Ausnahmen oben (Vergleich mit 64f587a, ).
