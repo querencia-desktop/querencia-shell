@@ -252,6 +252,9 @@ fn open_item(label: &str, uri: &str) -> gio::MenuItem {
 fn open_uri(uri: &str) {
     // The display's context passes the Wayland activation token on.
     let context = gdk::Display::default().map(|display| display.app_launch_context());
+    if let Some(context) = &context {
+        crate::portal::for_children(context);
+    }
     let result = match installed_directory_handler() {
         Some(handler) if !handler.from_gio => handler
             .app

@@ -1,4 +1,4 @@
-# Ausnahmen für ai-clean/clean_check.py (G2-AG, 20.10.2026, „ok“ der
+# Ausnahmen für ai-clean/clean_check.py (G2-AG und G2-AD, 20.10.2026, „ok“ der
 # Status-Session). Bewusst KEINE Pfadeinträge: ein Pfad schaltet für ihn alle
 # Prüfungen ab, auch security. Die begründeten Ausnahmen stehen nur als
 # Kommentar hier (gleich wie G2-AD im Zweig kalender):
@@ -16,3 +16,8 @@
 #      Prüfbelege, auf die sich die Freigaben stützen.
 # H005 Lizenzdatei: Entscheidung des Besitzers (ENTSCHEIDUNGEN), kommt mit
 #      der Veröffentlichung.
+# S003 Backticks um Bezeichner in Kommentaren: Projektstil (G2-AD).
+#
+# G2-AK (20.10.2026): neu nur S004 und S005 in crates/querencia-panel,
+#      integration/g2ak und tools/g2ak-pruefung; sie fallen unter die
+#      Ausnahmen oben (Vergleich mit 64f587a, ).
