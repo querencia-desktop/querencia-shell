@@ -49,3 +49,5 @@ nachweis/g2ak-g2ai/querencia-panel
 # G2-AL: Release-Binary des Nachweises und der Vorlage (Summen in SHA256SUMS)
 nachweis/g2al/querencia-panel
 integration/g2al/vorschlag-panel/querencia-panel
+# kuerzel-reiter: Release-Binary der Vorlage 0.2.0 (Summe in integration/kuerzel-020/integration/vorlage/SHA256SUMS)
+/integration/kuerzel-020/integration/vorlage/querencia-kuerzel
