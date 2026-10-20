@@ -1,0 +1,23 @@
+mark E00 Ausgang
+wait 1500
+move 512 500
+wait 500
+shot SHOT/e00.png
+mark E01 Uhr
+move 948 16
+wait 300
+click
+wait 1200
+shot SHOT/e01-kalender.png
+key Escape
+wait 800
+shot SHOT/e02-zu.png
+mark E03 System
+move 200 16
+wait 300
+click
+wait 1200
+shot SHOT/e03-system.png
+key Escape
+wait 800
+mark ENDE

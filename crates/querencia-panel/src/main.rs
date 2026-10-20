@@ -8,6 +8,7 @@ mod apps;
 mod classic_menu;
 mod clock;
 mod icon_reload;
+mod icon_theme;
 mod launcher;
 mod layout;
 mod layout_editor;
@@ -65,6 +66,10 @@ pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
 // status icon has the same inner border.
 // The slider of its popup is filled in the orange of the menu highlight.
 //
+// Clock calendar (G2-AD): GTK's calendar in the popover; the selected day in
+// the orange of the menu highlight with white text instead of the theme's
+// blue, today in bold and, while another day is selected, framed in orange.
+//
 // Network applet (G2-M): the icon as the volume applet (neutral highlight,
 // dimmed without any network data). Its left-click menu has the classic
 // menu look (`querencia-menu`): rows highlighted on hover and keyboard
@@ -121,6 +126,9 @@ const PANEL_CSS: &str = "
 .querencia-panel button.querencia-status:active { background-color: #dcd6d0; border-color: #9e9993; }
 .querencia-panel button.querencia-status.unavailable > image { opacity: 0.45; }
 .querencia-panel popover.querencia-volume-popup scale > trough > highlight { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); border-color: #b36c4e; }
+.querencia-panel popover.querencia-calendar calendar > grid > label.day-number:selected { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); box-shadow: inset 0 0 0 1px #b36c4e; color: #ffffff; }
+.querencia-panel popover.querencia-calendar calendar > grid > label.today { font-weight: bold; }
+.querencia-panel popover.querencia-calendar calendar > grid > label.today:not(:selected) { box-shadow: inset 0 0 0 1px #f07746; }
 .querencia-panel popover.querencia-network-menu .qnet { min-width: 230px; }
 .querencia-panel popover.querencia-network-menu button.qnet-item { min-height: 20px; padding: 2px 10px 2px 4px; margin: 0; border: 1px solid transparent; border-radius: 0; background: none; box-shadow: none; outline: none; color: #3c3c3c; font-weight: normal; }
 .querencia-panel popover.querencia-network-menu button.qnet-item:hover,
@@ -173,50 +181,10 @@ fn main() -> glib::ExitCode {
     app.run()
 }
 
-/// Icon theme of the GNOME 2 look, used by the panel process only.
-const CLASSIC_ICON_THEME: &str = "gnome-human";
-
-/// The icon theme the panel should switch to: GNOME Human if it is
-/// installed and the current theme is only GTK's built-in default (no
-/// theme chosen by the user). The setting lives in this process; no file
-/// and no other application changes.
-fn classic_icon_theme(current: &str, installed: impl Fn(&str) -> bool) -> Option<&'static str> {
-    let built_in_default = matches!(current, "" | "Adwaita" | "hicolor");
-    (built_in_default && installed(CLASSIC_ICON_THEME)).then_some(CLASSIC_ICON_THEME)
-}
-
-/// Whether one of `data_dirs` has `icons/<name>/index.theme`.
-fn theme_installed(name: &str, data_dirs: &[std::path::PathBuf]) -> bool {
-    data_dirs
-        .iter()
-        .any(|dir| dir.join("icons").join(name).join("index.theme").is_file())
-}
-
-/// Switches the panel to [`CLASSIC_ICON_THEME`] where [`classic_icon_theme`]
-/// says so.
-fn use_classic_icon_theme() {
-    let Some(settings) = gtk4::Settings::default() else {
-        return;
-    };
-    let current = settings
-        .gtk_icon_theme_name()
-        .map(|name| name.to_string())
-        .unwrap_or_default();
-    let mut data_dirs = vec![glib::user_data_dir()];
-    data_dirs.extend(glib::system_data_dirs());
-    match classic_icon_theme(&current, |name| theme_installed(name, &data_dirs)) {
-        Some(theme) => {
-            settings.set_gtk_icon_theme_name(Some(theme));
-            eprintln!("querencia-panel: Symbolthema {theme} (statt „{current}“)");
-        }
-        None => eprintln!("querencia-panel: Symbolthema „{current}“ bleibt"),
-    }
-}
-
 /// The panel's icon theme and style sheet for the whole display; also used
 /// by the isolated GUI test (`classic_menu/gui_test.rs`).
 fn install_panel_style() {
-    use_classic_icon_theme();
+    icon_theme::follow("querencia-panel");
     let css = gtk4::CssProvider::new();
     css.load_from_data(PANEL_CSS);
     gtk4::style_context_add_provider_for_display(
@@ -259,42 +227,24 @@ fn build_panels(app: &Application) {
 mod tests {
     use super::*;
 
+    /// G2-AD: the calendar's rules address the class the clock sets, and
+    /// the selected day sets its text colour with its background (HMP-04).
     #[test]
-    fn gnome_human_replaces_only_the_built_in_default() {
-        let installed = |name: &str| name == "gnome-human";
-        for default in ["Adwaita", "hicolor", ""] {
-            assert_eq!(
-                classic_icon_theme(default, installed),
-                Some("gnome-human"),
-                "{default:?}"
-            );
-        }
-        // a theme the user chose stays
-        assert_eq!(classic_icon_theme("Humanity", installed), None);
-        assert_eq!(classic_icon_theme("gnome-human", installed), None);
-        // not installed: nothing changes
-        assert_eq!(classic_icon_theme("Adwaita", |_| false), None);
-    }
-
-    #[test]
-    fn icon_theme_is_installed_if_a_data_dir_has_its_index() {
-        let root = std::env::temp_dir().join(format!("querencia-icons-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
-        let with = root.join("mit");
-        let without = root.join("ohne");
-        std::fs::create_dir_all(with.join("icons/gnome-human")).unwrap();
-        std::fs::write(with.join("icons/gnome-human/index.theme"), "[Icon Theme]\n").unwrap();
-        std::fs::create_dir_all(without.join("icons/gnome-human")).unwrap();
-        assert!(theme_installed(
-            "gnome-human",
-            &[without.clone(), with.clone()]
-        ));
-        assert!(!theme_installed(
-            "gnome-human",
-            std::slice::from_ref(&without)
-        ));
-        assert!(!theme_installed("humanity", &[with]));
-        let _ = std::fs::remove_dir_all(&root);
+    fn calendar_style_matches_the_clock_popover() {
+        let selector = format!(
+            ".querencia-panel popover.{} calendar",
+            clock::CALENDAR_CLASS
+        );
+        let rules: Vec<_> = PANEL_CSS
+            .lines()
+            .filter(|l| l.starts_with(&selector))
+            .collect();
+        assert_eq!(rules.len(), 3, "{rules:?}");
+        assert!(
+            rules
+                .iter()
+                .any(|r| r.contains(":selected") && r.contains("color: #ffffff"))
+        );
     }
 
     /// HMP-04: submenu text was white on white because the menu text colour
