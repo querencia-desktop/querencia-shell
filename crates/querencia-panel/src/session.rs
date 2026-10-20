@@ -88,10 +88,9 @@ pub fn sitzung_command() -> Option<PathBuf> {
 /// exit status is logged.
 pub fn run_sitzung(sitzung: &Path, arg: &str) {
     let command = format!("{} {arg}", sitzung.display());
-    let started = gio::Subprocess::newv(
-        &[sitzung.as_os_str(), std::ffi::OsStr::new(arg)],
-        gio::SubprocessFlags::STDIN_INHERIT,
-    );
+    let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::STDIN_INHERIT);
+    crate::portal::launcher_for_children(&launcher);
+    let started = launcher.spawn(&[sitzung.as_os_str(), std::ffi::OsStr::new(arg)]);
     match started {
         Ok(child) => {
             eprintln!("querencia-panel: {command} gestartet");

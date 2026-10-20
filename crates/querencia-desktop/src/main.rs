@@ -30,6 +30,9 @@ mod desktop_view;
 mod icon_theme;
 mod icons;
 mod layout;
+// The settings portal check of the panel (QD-062), shared source.
+#[path = "../../querencia-panel/src/portal.rs"]
+mod portal;
 mod rename;
 mod store;
 mod volumes;
@@ -116,6 +119,13 @@ fn main() -> glib::ExitCode {
         }
         return glib::ExitCode::SUCCESS;
     }
+    // before GTK and any thread (QD-062): no long wait for a stale portal
+    let portal_mode = portal::prepare("querencia-desktop");
+    if let Err(err) = gtk4::init() {
+        eprintln!("querencia-desktop: GTK konnte nicht initialisiert werden: {err}");
+        return glib::ExitCode::FAILURE;
+    }
+    portal::follow_gsettings("querencia-desktop", portal_mode);
     let app = Application::builder().application_id(APP_ID).build();
     let desktop: Shared = Rc::default();
     app.connect_activate(move |app| {

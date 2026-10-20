@@ -19,6 +19,7 @@ mod network_dialogs;
 mod panel;
 mod panel_menu;
 mod places_menu;
+mod portal;
 mod session;
 mod system_menu;
 mod volume_applet;
@@ -161,10 +162,13 @@ popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-
 ";
 
 fn main() -> glib::ExitCode {
+    // before GTK and any thread (QD-062): no long wait for a stale portal
+    let portal_mode = portal::prepare("querencia-panel");
     if let Err(err) = gtk4::init() {
         eprintln!("querencia-panel: GTK konnte nicht initialisiert werden: {err}");
         return glib::ExitCode::FAILURE;
     }
+    portal::follow_gsettings("querencia-panel", portal_mode);
     if !gtk4_layer_shell::is_supported() {
         eprintln!(
             "querencia-panel: Der Compositor bietet kein wlr-layer-shell an. \

@@ -640,6 +640,9 @@ fn open_settings() {
         return;
     }
     let context = gdk::Display::default().map(|display| display.app_launch_context());
+    if let Some(context) = &context {
+        crate::portal::for_children(context);
+    }
     querencia_netzwerk::say!(
         "querencia-panel: Netzwerk: Netzwerkeinstellungen über {SETTINGS_APP}"
     );
