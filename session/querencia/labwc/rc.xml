@@ -85,6 +85,16 @@
     <windowRule identifier="org.querencia.PolkitAgent*" skipTaskbar="yes" skipWindowSwitcher="yes">
       <action name="AutoPlace" policy="center" />
     </windowRule>
+    <!-- G2-AA/G2-AG (20.10.2026): Programme mit eingebettetem Fenstersymbol
+         (xdg-toplevel-icon); ohne Regel nimmt labwc 0.9.8 zuerst das Symbol
+         des Starters. Das Attribut heißt iconPriority (iconPreferClient
+         ignoriert labwc stillschweigend). Je App-ID und Programmname. -->
+    <windowRule identifier="org.querencia.Einstellungen" iconPriority="client" />
+    <windowRule identifier="querencia-einstellungen" iconPriority="client" />
+    <windowRule identifier="org.querencia.Editor" iconPriority="client" />
+    <windowRule identifier="querencia-editor" iconPriority="client" />
+    <windowRule identifier="org.querencia.Systemmonitor" iconPriority="client" />
+    <windowRule identifier="querencia-systemmonitor" iconPriority="client" />
   </windowRules>
   <!-- Alt+Tab (G2-R, 2026-10-18): Liste („classic“) mit Symbol, Titel und
        Arbeitsfläche, nur auf dem Bildschirm mit dem Tastaturfokus. Farben
@@ -107,13 +117,37 @@
        (PNG wie GNOME 2, orange Ordner): labwc 0.9.8 ist ohne librsvg
        gebaut und zeigt keine SVG-Symbole, ohne <icon> sucht es im
        (nicht vorhandenen) Symbolthema „Querencia-Klassisch“ und zeigt im
-       Fensterwechsler und in der Titelleiste kaum Symbole. -->
+       Fensterwechsler und in der Titelleiste kaum Symbole.
+       QD-046 ④ (20.10.2026, Variante A wie Ubuntu 10.04, G2-AG): Schriften
+       DejaVu Sans 10, Fenstertitel und Menüüberschrift fett; ersetzt die
+       Fensterwechsler-Schrift Adwaita Sans 11 (nicht mehr installiert).
+       Der Starter verteilt die Vorgabe in jede unveränderte Benutzerkopie
+       (docs/labwc-benutzerkonfiguration.md). -->
   <theme>
     <name>Querencia-Klassisch</name>
     <icon>gnome-human</icon>
+    <font place="ActiveWindow">
+      <name>DejaVu Sans</name>
+      <size>10</size>
+      <weight>bold</weight>
+    </font>
+    <font place="InactiveWindow">
+      <name>DejaVu Sans</name>
+      <size>10</size>
+      <weight>bold</weight>
+    </font>
+    <font place="MenuHeader">
+      <name>DejaVu Sans</name>
+      <size>10</size>
+      <weight>bold</weight>
+    </font>
+    <font place="MenuItem">
+      <name>DejaVu Sans</name>
+      <size>10</size>
+    </font>
     <font place="OnScreenDisplay">
-      <name>Adwaita Sans</name>
-      <size>11</size>
+      <name>DejaVu Sans</name>
+      <size>10</size>
     </font>
   </theme>
 </labwc_config>
