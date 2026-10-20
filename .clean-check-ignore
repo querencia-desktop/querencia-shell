@@ -21,3 +21,7 @@
 # G2-AK (20.10.2026): neu nur S004 und S005 in crates/querencia-panel,
 #      integration/g2ak und tools/g2ak-pruefung; sie fallen unter die
 #      Ausnahmen oben (Vergleich mit 64f587a, ).
+# G2-AL (20.10.2026): neu nur S004/S005/S003 in crates/querencia-panel,
+#      crates/querencia-kuerzel, integration/g2al und tools/g2al-pruefung
+#      sowie die höhere Zählung bei P002; sie fallen unter die Ausnahmen
+#      oben (Vergleich mit main 548483c,  §4).
