@@ -1,15 +1,15 @@
 //! The "System" menu as in GNOME 2: the settings from the application
 //! catalog, split into "Einstellungen" and "Systemverwaltung" (see
 //! [`AppEntry::system_section`]); then "Informationen über Querencia"; then
-//! "Abmelden …" if the session can be ended safely (`session.rs`). GTK draws
+//! "Abmelden …" in a labwc session and "Ausschalten …" with Querencia
+//! Sitzung installed (`session.rs`, [`SessionEntries`]). GTK draws
 //! separators between these sections. Settings launch through GIO by
 //! desktop ID, and the menu follows changed applications, both exactly like
 //! the applications menu, whose code it shares.
 //!
-//! GNOME 2 also had "Hilfe und Support", "Bildschirm sperren" and
-//! "Ausschalten …". They are left out until something real stands behind
-//! them: no help browser and no screen locker are installed, and Querencia
-//! has no shutdown mechanism yet.
+//! GNOME 2 also had "Hilfe und Support" and "Bildschirm sperren". They are
+//! left out: no help browser is installed, and locking was not asked for
+//! here (Strg+Alt+L locks through Querencia Sitzung).
 
 use gtk4::prelude::*;
 use gtk4::{MenuButton, Window, gio, glib};
@@ -21,6 +21,7 @@ const ACTION_GROUP: &str = "system";
 const SESSION_GROUP: &str = "session";
 const ABOUT: &str = "about";
 const LOGOUT: &str = "logout";
+const SHUTDOWN: &str = "shutdown";
 const NAME: &str = "Systemmenü";
 
 /// Menu button with the installed settings and the session entries, kept
@@ -38,13 +39,29 @@ pub fn button() -> MenuButton {
     about.connect_activate(move |_, _| about::present(&about_window));
     let question = glib::WeakRef::<Window>::new();
     let logout = gio::SimpleAction::new(LOGOUT, None);
-    logout.connect_activate(move |_, _| match session::logout_command() {
-        Some(labwc) => session::confirm_logout(&question, labwc),
-        None => eprintln!("querencia-panel: Abmelden nicht möglich: kein labwc (LABWC_PID)"),
+    // Looked up again on every activation: the session program may have
+    // come or gone since the menu was filled.
+    logout.connect_activate(move |_, _| {
+        match (session::sitzung_command(), session::logout_command()) {
+            (_, None) => {
+                eprintln!("querencia-panel: Abmelden nicht möglich: kein labwc (LABWC_PID)")
+            }
+            (Some(sitzung), Some(_)) => session::run_sitzung(&sitzung, "--abmelden"),
+            (None, Some(labwc)) => session::confirm_logout(&question, labwc),
+        }
+    });
+    let shutdown = gio::SimpleAction::new(SHUTDOWN, None);
+    shutdown.connect_activate(|_, _| match session::sitzung_command() {
+        Some(sitzung) => session::run_sitzung(&sitzung, "--herunterfahren"),
+        None => eprintln!(
+            "querencia-panel: Ausschalten nicht möglich: {} fehlt",
+            session::SITZUNG_PROGRAM
+        ),
     });
     let actions = gio::SimpleActionGroup::new();
     actions.add_action(&about);
     actions.add_action(&logout);
+    actions.add_action(&shutdown);
     button.insert_action_group(SESSION_GROUP, Some(&actions));
 
     app_menu::follow_changes(&button, &menu, NAME, rebuild);
@@ -55,7 +72,12 @@ pub fn button() -> MenuButton {
 fn rebuild(menu: &gio::Menu) {
     let catalog = Catalog::load();
     let sections = catalog.system_sections();
-    let logout = session::logout_command();
+    let labwc = session::logout_command();
+    let sitzung = session::sitzung_command();
+    let entries = SessionEntries {
+        logout: labwc.is_some(),
+        shutdown: sitzung.is_some(),
+    };
     let mut summary: Vec<_> = sections
         .iter()
         .map(|(section, entries)| format!("{} {}", section.label(), entries.len()))
@@ -63,20 +85,35 @@ fn rebuild(menu: &gio::Menu) {
     if summary.is_empty() {
         summary.push("keine Einstellungen".to_string());
     }
-    summary.push(match &logout {
-        Some(labwc) => format!("Abmelden über {} --exit", labwc.display()),
-        None => "kein Abmelden (kein labwc in LABWC_PID)".to_string(),
+    summary.push(match (&sitzung, &labwc) {
+        (_, None) => "kein Abmelden (kein labwc in LABWC_PID)".to_string(),
+        (Some(sitzung), Some(_)) => format!("Abmelden über {} --abmelden", sitzung.display()),
+        (None, Some(labwc)) => format!("Abmelden über {} --exit", labwc.display()),
+    });
+    summary.push(match &sitzung {
+        Some(sitzung) => format!("Ausschalten über {} --herunterfahren", sitzung.display()),
+        None => format!("kein Ausschalten ({} fehlt)", session::SITZUNG_PROGRAM),
     });
     eprintln!("querencia-panel: {NAME}: {}", summary.join(", "));
-    fill(menu, &sections, logout.is_some());
+    fill(menu, &sections, entries);
+}
+
+/// Which session entries the menu offers: "Abmelden …" in a labwc session
+/// (through Querencia Sitzung or, without it, the panel's own question),
+/// "Ausschalten …" only with Querencia Sitzung.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct SessionEntries {
+    logout: bool,
+    shutdown: bool,
 }
 
 /// Replaces the contents of `menu` in place: a section with one submenu
 /// per settings section, as [`Catalog::system_sections`] lists them (none
-/// without settings), then "Informationen über Querencia", then
-/// "Abmelden …" if `logout`. The menu object itself, and with it the
-/// button's popover and actions, stays the same.
-fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], logout: bool) {
+/// without settings), then "Informationen über Querencia", then the
+/// `session` entries "Abmelden …" and "Ausschalten …", in the GNOME 2
+/// order. The menu object itself, and with it the button's popover and
+/// actions, stays the same.
+fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], session: SessionEntries) {
     menu.remove_all();
     if !sections.is_empty() {
         let settings = gio::Menu::new();
@@ -100,10 +137,15 @@ fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], logout: 
         "help-about",
     ));
     menu.append_section(None, &information);
-    if logout {
-        let session = gio::Menu::new();
-        session.append_item(&action_item("Abmelden …", LOGOUT, "system-log-out"));
-        menu.append_section(None, &session);
+    if session.logout || session.shutdown {
+        let entries = gio::Menu::new();
+        if session.logout {
+            entries.append_item(&action_item("Abmelden …", LOGOUT, "system-log-out"));
+        }
+        if session.shutdown {
+            entries.append_item(&action_item("Ausschalten …", SHUTDOWN, "system-shutdown"));
+        }
+        menu.append_section(None, &entries);
     }
 }
 
@@ -125,6 +167,20 @@ mod tests {
     use super::*;
     use crate::app_menu::tests::{entry, group, label, structure};
 
+    /// Without Querencia Sitzung, in a labwc session (as before G2-AD).
+    const LOGOUT_ONLY: SessionEntries = SessionEntries {
+        logout: true,
+        shutdown: false,
+    };
+    const NONE: SessionEntries = SessionEntries {
+        logout: false,
+        shutdown: false,
+    };
+    const BOTH: SessionEntries = SessionEntries {
+        logout: true,
+        shutdown: true,
+    };
+
     fn catalog(entries: Vec<AppEntry>) -> Catalog {
         Catalog {
             entries,
@@ -142,7 +198,7 @@ mod tests {
     /// The submenus of the settings section, the first one.
     fn model(catalog: &Catalog) -> gio::Menu {
         let menu = gio::Menu::new();
-        fill(&menu, &catalog.system_sections(), true);
+        fill(&menu, &catalog.system_sections(), LOGOUT_ONLY);
         section(&menu, 0)
     }
 
@@ -251,7 +307,7 @@ mod tests {
     fn gnome2_order_settings_then_information_then_session() {
         let catalog = catalog(vec![entry("w.desktop", "Wlan", &["Settings"])]);
         let menu = gio::Menu::new();
-        fill(&menu, &catalog.system_sections(), true);
+        fill(&menu, &catalog.system_sections(), LOGOUT_ONLY);
         assert_eq!(menu.n_items(), 3);
         assert_eq!(
             actions(&section(&menu, 1)),
@@ -271,7 +327,7 @@ mod tests {
             entry("p.desktop", "Partitionen", &["Settings", "System"]),
         ]);
         let menu = gio::Menu::new();
-        fill(&menu, &catalog.system_sections(), true);
+        fill(&menu, &catalog.system_sections(), LOGOUT_ONLY);
         let settings = section(&menu, 0);
         assert_eq!(
             (
@@ -296,11 +352,55 @@ mod tests {
     #[test]
     fn logout_only_with_a_session_to_end() {
         let menu = gio::Menu::new();
-        fill(&menu, &[], false);
+        fill(&menu, &[], NONE);
         assert_eq!(menu.n_items(), 1);
         assert_eq!(
             actions(&section(&menu, 0)),
             ["Informationen über Querencia -> session.about"]
+        );
+    }
+
+    #[test]
+    fn with_querencia_sitzung_logout_then_shutdown_as_in_gnome2() {
+        use crate::app_menu::tests::icon;
+        let catalog = catalog(vec![entry("w.desktop", "Wlan", &["Settings"])]);
+        let menu = gio::Menu::new();
+        fill(&menu, &catalog.system_sections(), BOTH);
+        assert_eq!(menu.n_items(), 3);
+        let session = section(&menu, 2);
+        assert_eq!(
+            actions(&session),
+            [
+                "Abmelden … -> session.logout",
+                "Ausschalten … -> session.shutdown"
+            ]
+        );
+        assert_eq!(
+            (
+                icon(session.upcast_ref(), 0).as_deref(),
+                icon(session.upcast_ref(), 1).as_deref()
+            ),
+            (Some("system-log-out"), Some("system-shutdown"))
+        );
+    }
+
+    #[test]
+    fn shutdown_without_a_labwc_session_stands_alone() {
+        // Querencia Sitzung shuts down through logind, which needs no
+        // labwc; logging out does.
+        let menu = gio::Menu::new();
+        fill(
+            &menu,
+            &[],
+            SessionEntries {
+                logout: false,
+                shutdown: true,
+            },
+        );
+        assert_eq!(menu.n_items(), 2);
+        assert_eq!(
+            actions(&section(&menu, 1)),
+            ["Ausschalten … -> session.shutdown"]
         );
     }
 
@@ -314,7 +414,7 @@ mod tests {
         ]);
         for catalog in [Catalog::default(), no_settings] {
             let menu = gio::Menu::new();
-            fill(&menu, &catalog.system_sections(), true);
+            fill(&menu, &catalog.system_sections(), LOGOUT_ONLY);
             assert_eq!(menu.n_items(), 2);
             assert_eq!(
                 actions(&section(&menu, 0)),
@@ -339,7 +439,7 @@ mod tests {
             entry("d.desktop", "Drucker", &["Settings", "System"]),
         ]);
         let menu = gio::Menu::new();
-        fill(&menu, &before.system_sections(), true);
+        fill(&menu, &before.system_sections(), LOGOUT_ONLY);
         let changes = Rc::new(Cell::new(0));
         menu.connect_items_changed(glib::clone!(
             #[strong]
@@ -347,7 +447,7 @@ mod tests {
             move |_, _, _, _| changes.set(changes.get() + 1)
         ));
 
-        fill(&menu, &after.system_sections(), true);
+        fill(&menu, &after.system_sections(), LOGOUT_ONLY);
         assert!(changes.get() > 0);
         assert_eq!(
             structure(&section(&menu, 0)),
@@ -360,9 +460,9 @@ mod tests {
             ]
         );
 
-        fill(&menu, &[], true);
+        fill(&menu, &[], LOGOUT_ONLY);
         assert_eq!(menu.n_items(), 2);
-        fill(&menu, &before.system_sections(), true);
+        fill(&menu, &before.system_sections(), LOGOUT_ONLY);
         assert_eq!(menu.n_items(), 3);
         assert_eq!(structure(&section(&menu, 0)), structure(&model(&before)));
     }

@@ -374,22 +374,14 @@ fn open_mixer() {
     }
 }
 
-/// Where the mixer program is: the first `PATH` entry holding it, else
-/// `<home>/opt/querencia/bin/querencia-lautstaerke`; `exists` tells whether
-/// a file is there.
+/// Where the mixer program is ([`crate::session::querencia_program`]);
+/// `exists` tells whether a file is there.
 fn mixer_program(
     path: Option<&std::ffi::OsStr>,
     home: &std::path::Path,
     exists: impl Fn(&std::path::Path) -> bool,
 ) -> Option<std::path::PathBuf> {
-    path.into_iter()
-        .flat_map(std::env::split_paths)
-        .filter(|dir| dir.is_absolute())
-        .map(|dir| dir.join(MIXER_PROGRAM))
-        .chain(std::iter::once(
-            home.join("opt/querencia/bin").join(MIXER_PROGRAM),
-        ))
-        .find(|candidate| exists(candidate))
+    crate::session::querencia_program(MIXER_PROGRAM, path, home, exists)
 }
 
 #[cfg(test)]

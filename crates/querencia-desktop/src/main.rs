@@ -25,6 +25,9 @@
 mod classic_menu;
 mod config;
 mod desktop_view;
+// The icon theme rule of the panel (G2-AD), shared source.
+#[path = "../../querencia-panel/src/icon_theme.rs"]
+mod icon_theme;
 mod icons;
 mod layout;
 mod rename;
@@ -126,7 +129,7 @@ fn main() -> glib::ExitCode {
         }
         // keep running without visible windows while monitors change
         std::mem::forget(app.hold());
-        use_classic_icon_theme();
+        icon_theme::follow("querencia-desktop");
         install_style();
         load(&desktop);
         watch_config(&desktop);
@@ -299,34 +302,6 @@ fn rebuild(app: &Application, desktop: &Shared) {
     }
 }
 
-/// GNOME 2's icon theme where the user kept GTK's built-in default, the
-/// same rule as the panel (HMP-04) and Querencia Files (QF-0f).
-const CLASSIC_ICON_THEME: &str = "gnome-human";
-
-fn classic_icon_theme(current: &str, installed: impl Fn(&str) -> bool) -> Option<&'static str> {
-    let built_in_default = matches!(current, "" | "Adwaita" | "hicolor");
-    (built_in_default && installed(CLASSIC_ICON_THEME)).then_some(CLASSIC_ICON_THEME)
-}
-
-fn use_classic_icon_theme() {
-    let Some(settings) = gtk4::Settings::default() else {
-        return;
-    };
-    let current = settings
-        .gtk_icon_theme_name()
-        .map(|name| name.to_string())
-        .unwrap_or_default();
-    let mut dirs = vec![glib::user_data_dir()];
-    dirs.extend(glib::system_data_dirs());
-    let installed = |name: &str| {
-        dirs.iter()
-            .any(|dir| dir.join("icons").join(name).join("index.theme").is_file())
-    };
-    if let Some(theme) = classic_icon_theme(&current, installed) {
-        settings.set_gtk_icon_theme_name(Some(theme));
-    }
-}
-
 /// The panel's menu rules, line for line (a test compares them with the
 /// panel's source), plus the icon layer's own rules, all scoped to the
 /// desktop's windows and menus.
@@ -427,14 +402,5 @@ mod tests {
         assert!(icons_enabled(Some("1")));
         assert!(!icons_enabled(Some("0")));
         assert!(!icons_enabled(Some(" 0 ")));
-    }
-
-    #[test]
-    fn the_classic_icon_theme_replaces_only_gtks_default() {
-        let yes = |n: &str| n == CLASSIC_ICON_THEME;
-        assert_eq!(classic_icon_theme("Adwaita", yes), Some("gnome-human"));
-        assert_eq!(classic_icon_theme("", yes), Some("gnome-human"));
-        assert_eq!(classic_icon_theme("Papirus", yes), None);
-        assert_eq!(classic_icon_theme("Adwaita", |_| false), None);
     }
 }

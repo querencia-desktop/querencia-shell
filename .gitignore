@@ -33,3 +33,8 @@ integration/vorschlag-netzwerk/querencia-netzwerk
 # G2-Y: Release-Bau der Vorlage und des Nachweises (Summen in SHA256SUMS)
 integration/vorschlag-statussymbole/querencia-panel
 nachweis/g2y/querencia-panel
+# G2-AD: Release-Binaries der Vorlage und des Nachweises (Summen in SHA256SUMS)
+integration/vorschlag-kalender/querencia-panel
+integration/vorschlag-kalender/querencia-desktop
+nachweis/g2ad/querencia-panel
+nachweis/g2ad/querencia-desktop
