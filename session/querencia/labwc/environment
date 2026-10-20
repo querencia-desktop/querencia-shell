@@ -14,3 +14,9 @@ LANGUAGE=de
 
 # German keyboard layout
 XKB_DEFAULT_LAYOUT=de
+
+# Mauszeiger (QD-046 ④, 20.10.2026, Variante A wie Ubuntu 10.04): gilt für
+# labwc (Fensterrahmen, Arbeitsfläche) und die aus der Sitzung gestarteten
+# Programme; fehlt das Thema, nimmt labwc den Standardzeiger.
+XCURSOR_THEME=DMZ-White
+XCURSOR_SIZE=24
