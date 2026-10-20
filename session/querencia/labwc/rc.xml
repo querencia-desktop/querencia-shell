@@ -53,6 +53,20 @@
     <keybind key="C-A-S-Right">
       <action name="SendToDesktop" to="right" follow="yes" wrap="no" />
     </keybind>
+    <!-- QD-065 (G2-AK, 2026-10-20): Vollbild ein/aus für das aktive Fenster,
+         auch für Programme ohne eigenes Vollbild-Kürzel, etwa Xwayland-
+         Programme, die nur ein bildschirmgroßes Fenster zeichnen (Horizon
+         Client): im Vollbild blendet labwc die Panels aus. Super+F und
+         Alt+F11 statt F11, weil labwc-Kürzel jedem Programm vorgehen: F11
+         gehörte sonst nicht mehr Firefox, Files oder einer entfernten
+         Sitzung (Horizon, VNC), die es selbst nutzen. Metacity hatte für
+         Vollbild kein Standardkürzel; beide sind in labwc und GTK frei. -->
+    <keybind key="W-f">
+      <action name="ToggleFullscreen" />
+    </keybind>
+    <keybind key="A-F11">
+      <action name="ToggleFullscreen" />
+    </keybind>
     <!-- Querencia Sitzung (Querencia-Werkstatt G2-K, 2026-10-18): Ctrl+Alt+L locks the
          screen at once (ext-session-lock, as GNOME 2), Ctrl+Alt+Delete
          opens the session dialog (Abmelden, Bildschirm sperren, Neu
