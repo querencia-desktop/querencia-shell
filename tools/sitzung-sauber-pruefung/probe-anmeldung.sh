@@ -25,7 +25,7 @@ HIER=$(cd "$(dirname "$0")" && pwd)
 WT=$(cd "$HIER/../.." && pwd)
 P_PANEL=$(realpath "$1"); P_DESKTOP=$(realpath "$2"); P_SITZUNG=$(realpath "$3"); P_NOTIF=$(realpath "$4")
 AUS=$(realpath -m "$5"); rm -rf "$AUS"; mkdir -p "$AUS"
-LABWC=~/opt/labwc-0.9.8/bin/labwc
+LABWC=/home/user/opt/labwc-0.9.8/bin/labwc
 QE=${QE:-$HOME/projects/querencia-sitzung-wt-welle/werkzeug/bin/qeingabe}
 T=$(mktemp -d /tmp/qed-runtime-XXXXXX); chmod 700 "$T"
 RT=$T/rt; mkdir -m 0700 "$RT"
@@ -79,17 +79,49 @@ is-active) for u; do [ -n "$(pids "$(prog "$u")")" ] && echo active || echo inac
 stop)
     [ -e "$PROBE_AUS/systemctl-taub" ] && exit 1
     for u; do for p in $(pids "$(prog "$u")"); do kill -CONT "$p"; kill -KILL "$p"; done; done ;;
+show-environment) cat "$PROBE_AUS/systemd-umgebung.txt" 2>/dev/null ;;
+set-environment)
+    for kv; do
+        grep -v "^${kv%%=*}=" "$PROBE_AUS/systemd-umgebung.txt" >"$PROBE_AUS/.su" 2>/dev/null
+        echo "$kv" >>"$PROBE_AUS/.su"; mv "$PROBE_AUS/.su" "$PROBE_AUS/systemd-umgebung.txt"
+    done ;;
+unset-environment)
+    for v; do
+        grep -v "^$v=" "$PROBE_AUS/systemd-umgebung.txt" >"$PROBE_AUS/.su" 2>/dev/null
+        mv "$PROBE_AUS/.su" "$PROBE_AUS/systemd-umgebung.txt"
+    done ;;
 *) exit 0 ;;
 esac
 EOF
 chmod 0755 "$FAKE"/*
 
 # --- Prüfbus (lebt über alle Anmeldungen, wie der User-Manager)
-GRUND=(HOME="$HOME" USER="$USER" LOGNAME="$USER" PATH="$FAKE:/usr/bin:/bin" LANG=en_US.UTF-8 LANGUAGE=de
+# Wie live: User-Manager und D-Bus haben LANG=C.UTF-8 und kein LANGUAGE
+# (/etc/default/locale); die Sitzungswerte stehen nur in labwcs environment.
+echo "LANG=C.UTF-8" >"$AUS/systemd-umgebung.txt"
+GRUND=(HOME="$HOME" USER="$USER" LOGNAME="$USER" PATH="$FAKE:/usr/bin:/bin" LANG=C.UTF-8
     XDG_RUNTIME_DIR="$RT" XDG_CONFIG_HOME="$X/config" XDG_DATA_HOME="$X/data" XDG_STATE_HOME="$X/state"
     XDG_DATA_DIRS=/usr/share PROBE_AUS="$AUS")
-BUS=$(env -i "${GRUND[@]}" dbus-daemon --session --fork --print-address=1 --print-pid=3 3>"$T/bus.pid")
-BUSPID=$(cat "$T/bus.pid")
+# Portal-Konfiguration wie nach der Integration (~/.config/xdg-desktop-portal/)
+mkdir -p "$X/config/xdg-desktop-portal"
+cp "$WT/session/querencia/xdg-desktop-portal/x-querencia-portals.conf" "$X/config/xdg-desktop-portal/"
+# Testdienst, den D-Bus aktiviert: schreibt seine Umgebung auf (QD-064)
+mkdir -p "$X/data/dbus-1/services"
+printf '#!/bin/sh\nenv | sort >"%s/aktiviert-$(date +%%s%%N).txt"\n' "$AUS" >"$BIN/umgebung-zeigen"
+chmod 0755 "$BIN/umgebung-zeigen"
+printf '[D-BUS Service]\nName=org.querencia.ProbeUmgebung\nExec=%s\n' "$BIN/umgebung-zeigen" \
+    >"$X/data/dbus-1/services/org.querencia.ProbeUmgebung.service"
+aktiviert_env() {   # aktiviert den Testdienst, gibt dessen Umgebung aus
+    rm -f "$AUS"/aktiviert-*.txt
+    env -i "${GRUND[@]}" busctl --user --timeout=2 call org.querencia.ProbeUmgebung / org.freedesktop.DBus.Peer Ping >/dev/null 2>&1
+    sleep 0.5; cat "$AUS"/aktiviert-*.txt 2>/dev/null
+}
+# ohne --fork, damit die Ausgabe der aktivierten Dienste (xdg-desktop-portal)
+# in bus.log landet (--fork lenkt sie nach /dev/null)
+env -i "${GRUND[@]}" dbus-daemon --session --nofork --print-address=4 4>"$T/bus.addr" 2>"$AUS/bus.log" &
+BUSPID=$!
+for _ in $(seq 1 50); do [ -s "$T/bus.addr" ] && break; sleep 0.1; done
+BUS=$(head -n 1 "$T/bus.addr")
 GRUND+=(DBUS_SESSION_BUS_ADDRESS="$BUS")
 env -i "${GRUND[@]}" gsettings set org.gnome.desktop.interface gtk-theme 'Querencia-Klassisch'
 env -i "${GRUND[@]}" gsettings set org.gnome.desktop.interface font-name 'DejaVu Sans 10'
@@ -172,11 +204,25 @@ echo "probe1 panel=$PANEL_MS desktop=$DESKTOP_MS" >>"$AUS/zeiten.txt"
 sitzungsprozesse >"$AUS/v1-prozesse-vorher.txt"
 PORT=$(portal_pids); echo "Portale probe1: $PORT" >>"$AUS/zeiten.txt"
 [ -n "$PORT" ] && ok "V1b Portale im Prüfbus aktiv ($PORT)" || nok "V1b keine Portale im Prüfbus"
+aktiviert_env >"$AUS/v6-aktiviert-waehrend.txt"
+grep -qx 'LANG=en_US.UTF-8' "$AUS/systemd-umgebung.txt" && grep -qx 'LANGUAGE=de' "$AUS/systemd-umgebung.txt" &&
+    grep -qx 'LANG=en_US.UTF-8' "$AUS/v6-aktiviert-waehrend.txt" && grep -qx 'LANGUAGE=de' "$AUS/v6-aktiviert-waehrend.txt" &&
+    ok "V6a Sitzungs-Locale im User-Manager und in der D-Bus-Aktivierung (aktivierter Testdienst sieht LANG=en_US.UTF-8, LANGUAGE=de)" ||
+    nok "V6a systemd: $(tr '\n' ' ' <"$AUS/systemd-umgebung.txt") / aktiviert: $(grep -E '^(LANG|LANGUAGE)=' "$AUS/v6-aktiviert-waehrend.txt" | tr '\n' ' ')"
+na=$(grep -n 'Aktivierungsumgebung gesetzt' "$AUS/sitzung-start-probe1.log" | cut -d: -f1); np=$(grep -n 'Portale .*(vor dem Start' "$AUS/sitzung-start-probe1.log" | cut -d: -f1)
+[ -n "$na" ] && [ -n "$np" ] && [ "$na" -lt "$np" ] && ok "V6b Reihenfolge beim Start: Locale-Export (Zeile $na) vor Portal-Reset (Zeile $np) vor labwc" || nok "V6b na=$na np=$np"
+[ "$(grep -c 'last-resort' "$AUS/bus.log")" = 0 ] && grep -q 'xdg-desktop-portal' "$AUS/bus.log" &&
+    ok "V8 x-querencia-portals.conf: xdg-desktop-portal ohne „last-resort fallback“" || nok "V8 $(grep -c 'last-resort' "$AUS/bus.log") Fallback-Zeilen"
 EINFRIEREN=1 abmelden probe1
+grep -qx 'LANG=C.UTF-8' "$AUS/systemd-umgebung.txt" && ! grep -q '^LANGUAGE=' "$AUS/systemd-umgebung.txt" &&
+    ok "V6c nach dem Abmelden: User-Manager wieder LANG=C.UTF-8, LANGUAGE entfernt" || nok "V6c $(tr '\n' ' ' <"$AUS/systemd-umgebung.txt")"
+grep -q 'Abmelden: Portale vor labwc --exit gestoppt' "$AUS/abmelden-probe1.log" &&
+    ok "V1c Dialog stoppt die Portale vor labwc --exit ($(grep -o 'gestoppt (.*' "$AUS/abmelden-probe1.log" | cut -c1-120))" || nok "V1c $(grep Portale "$AUS/abmelden-probe1.log")"
 sitzungsprozesse >"$AUS/v1-prozesse-nachher.txt"
 [ ! -s "$AUS/v1-prozesse-nachher.txt" ] && ok "V1d Abmelden: Prozessliste nachher leer (vorher: $(awk '{print $2}' "$AUS/v1-prozesse-vorher.txt" | sort | uniq -c | awk '{printf "%s×%s ",$1,$2}'))" || nok "V1d nach dem Abmelden noch: $(tr '\n' ';' <"$AUS/v1-prozesse-nachher.txt")"
-grep -q 'Abmelden: SIGTERM an' "$AUS/abmelden-probe1.log" && grep -q 'Portale gestoppt (nach dem Ende' "$AUS/sitzung-start-probe1-ende.log" &&
-    ok "V1e Dialog beendet die Sitzungsprogramme, Starter stoppt danach die eingefrorenen Portale ($EINGEFROREN)" || nok "V1e $(grep -h 'Abmelden\|Portale' "$AUS/abmelden-probe1.log" "$AUS/sitzung-start-probe1-ende.log" | tr '\n' ';')"
+grep -q 'Abmelden: SIGTERM an' "$AUS/abmelden-probe1.log" && grep -q 'Portale vor labwc --exit gestoppt.*stop ok' "$AUS/abmelden-probe1.log" &&
+    grep -q 'Portale .*(nach dem Ende' "$AUS/sitzung-start-probe1-ende.log" && [ -z "$(portal_pids)" ] &&
+    ok "V1e Dialog beendet die Sitzungsprogramme und stoppt die eingefrorenen Portale ($EINGEFROREN) vor labwc --exit; Starter prüft danach erneut ($(grep -o 'Portale [a-z ]*(nach dem Ende[^)]*)' "$AUS/sitzung-start-probe1-ende.log"))" || nok "V1e $(grep -h 'Abmelden\|Portale' "$AUS/abmelden-probe1.log" "$AUS/sitzung-start-probe1-ende.log" | tr '\n' ';')"
 anmelden probe2
 echo "probe2 panel=$PANEL_MS desktop=$DESKTOP_MS" >>"$AUS/zeiten.txt"
 [ "$PANEL_MS" != nie ] && [ "$PANEL_MS" -le 5000 ] && [ "$DESKTOP_MS" != nie ] && [ "$DESKTOP_MS" -le 5000 ] &&
@@ -184,15 +230,22 @@ echo "probe2 panel=$PANEL_MS desktop=$DESKTOP_MS" >>"$AUS/zeiten.txt"
     nok "V1f Panel $PANEL_MS, Arbeitsfläche $DESKTOP_MS"
 grep -q 'Settings-Portal antwortet (' "$AUS/panel-probe2.log" && ok "V1g frisches Portal: Panel nutzt es ($(grep -o 'antwortet ([0-9]* ms)' "$AUS/panel-probe2.log"))" || nok "V1g $(grep -h Portal "$AUS/panel-probe2.log" | tr '\n' ';')"
 grep -q 'bereit' "$AUS/benachrichtigungen-probe2.log" && ok "V1h Benachrichtigungen bereit nach der Neuanmeldung" || nok "V1h $(tail -3 "$AUS/benachrichtigungen-probe2.log" | tr '\n' ';')"
+# V1i wie in der Pflichtprobe (B1): zweite Anmeldung 5 s nach dem Abmelden
+EINFRIEREN=1 abmelden probe2
+sleep 5
+anmelden probe2b
+echo "probe2b panel=$PANEL_MS desktop=$DESKTOP_MS (5 s nach dem Abmelden)" >>"$AUS/zeiten.txt"
+[ "$PANEL_MS" != nie ] && [ "$PANEL_MS" -le 5000 ] && [ "$DESKTOP_MS" != nie ] && [ "$DESKTOP_MS" -le 5000 ] && grep -q 'Settings-Portal antwortet (' "$AUS/panel-probe2b.log" &&
+    ok "V1i Anmeldung 5 s nach dem Abmelden: Panel nach $PANEL_MS ms, Arbeitsfläche nach $DESKTOP_MS ms, frisches Portal" || nok "V1i Panel $PANEL_MS, Arbeitsfläche $DESKTOP_MS"
 
 # ------------------------------------------------------------------ V2
 # Ab hier ist die Attrappe „taub“ (Datei systemctl-taub): stop scheitert,
 # wie wenn der User-Manager das Portal nicht beenden kann.
 touch "$AUS/systemctl-taub"
-EINFRIEREN=1 abmelden probe2
+EINFRIEREN=1 abmelden probe2b
 timeout 3 env -i "${GRUND[@]}" busctl --user --timeout=1 call org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop org.freedesktop.portal.Settings ReadOne ss org.gnome.desktop.interface gtk-theme >"$AUS/v2-portal-steht.txt" 2>&1
 [ -n "$(portal_pids)" ] && grep -qi 'timed out\|Zeitüberschreitung' "$AUS/v2-portal-steht.txt" &&
-    ok "V2a Portal steht vor der Anmeldung ($EINGEFROREN; Aufruf läuft in die Zeitüberschreitung)" || nok "V2a $(grep -h Portale "$AUS/sitzung-start-probe2-ende.log" | tr '\n' ';') / $(portal_pids)"
+    ok "V2a Portal steht vor der Anmeldung ($EINGEFROREN; Aufruf läuft in die Zeitüberschreitung)" || nok "V2a $(grep -h Portale "$AUS/sitzung-start-probe2b-ende.log" | tr '\n' ';') / $(portal_pids)"
 anmelden probe3
 echo "probe3 panel=$PANEL_MS desktop=$DESKTOP_MS (Portal steht)" >>"$AUS/zeiten.txt"
 [ "$PANEL_MS" != nie ] && [ "$PANEL_MS" -le 5000 ] && [ "$DESKTOP_MS" != nie ] && [ "$DESKTOP_MS" -le 5000 ] &&
