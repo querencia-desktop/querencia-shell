@@ -6,7 +6,9 @@
 //! This module draws the menus itself from the same `gio::Menu` models:
 //!
 //! - each row: 16 px icon, label, ▸ for a submenu; sections become
-//!   separator lines;
+//!   separator lines; an item's `accel` attribute (GTK notation, e.g.
+//!   `<Control><Alt>l`) is shown on the right as GTK 2 did, in German
+//!   ([`accel_label`]), only shown: the compositor binds the key;
 //! - submenus open beside their row, in their own popover (`position`
 //!   right, `valign` start, no arrow: as GTK's own nested menus), after
 //!   [`SUBMENU_DELAY_MS`] on hover or at once on click or keyboard;
@@ -60,6 +62,8 @@ pub enum Row {
         /// Detailed action name; `None` shows the entry insensitive.
         action: Option<String>,
         target: Option<glib::Variant>,
+        /// Shortcut shown next to the label ([`accel_label`]).
+        accel: Option<String>,
     },
     Submenu {
         label: String,
@@ -112,6 +116,9 @@ pub fn rows(model: &gio::MenuModel) -> Vec<Row> {
                 icon,
                 action: string_attribute(model, i, "action"),
                 target: model.item_attribute_value(i, "target", None),
+                accel: string_attribute(model, i, "accel")
+                    .as_deref()
+                    .and_then(accel_label),
             });
         }
     }
@@ -126,6 +133,42 @@ pub fn rows(model: &gio::MenuModel) -> Vec<Row> {
         rows.extend(group);
     }
     rows
+}
+
+/// A GTK accelerator (`<Control><Alt>l`) as GTK 2's German menus showed
+/// it (`Strg+Alt+L`); `None` for an empty or unreadable one. Parsed here,
+/// not by GTK, so the text does not depend on GTK's translations.
+pub fn accel_label(accel: &str) -> Option<String> {
+    let mut parts = Vec::new();
+    let mut rest = accel.trim();
+    while let Some(after) = rest.strip_prefix('<') {
+        let (modifier, tail) = after.split_once('>')?;
+        parts.push(match modifier.to_ascii_lowercase().as_str() {
+            "control" | "ctrl" | "ctl" | "primary" => "Strg",
+            "alt" | "mod1" => "Alt",
+            "shift" => "Umschalt",
+            "super" | "mod4" | "meta" => "Super",
+            _ => return None,
+        });
+        rest = tail;
+    }
+    if rest.is_empty() || rest.contains(['<', '>', ' ']) {
+        return None;
+    }
+    let key = match rest {
+        "Delete" => "Entf".to_owned(),
+        "Escape" => "Esc".to_owned(),
+        "Return" => "Eingabe".to_owned(),
+        "Print" => "Druck".to_owned(),
+        key if key.chars().count() == 1 => key.to_uppercase(),
+        key => key.to_owned(),
+    };
+    let mut text = parts.join("+");
+    if !text.is_empty() {
+        text.push('+');
+    }
+    text.push_str(&key);
+    Some(text)
 }
 
 fn string_attribute(model: &gio::MenuModel, index: i32, name: &str) -> Option<String> {
@@ -257,6 +300,8 @@ pub const MENU_CLASS: &str = "querencia-menu";
 pub const ITEM_CLASS: &str = "qmenu-item";
 pub const ACTIVE_CLASS: &str = "qmenu-active";
 const ARROW_CLASS: &str = "qmenu-arrow";
+/// Style class of a row's shortcut text ([`accel_label`]).
+pub const ACCEL_CLASS: &str = "qmenu-accel";
 const ICON_SIZE: i32 = 16;
 /// Icon of an entry whose icon the theme does not have.
 const MISSING_ICON: &str = "application-x-executable";
@@ -1100,12 +1145,14 @@ fn cancel(timer: &RefCell<Option<glib::SourceId>>) {
 /// The widget for one row: icon column, label, ▸ for a submenu; a line for
 /// a separator. Rows that cannot be chosen are insensitive.
 fn row_widget(row: &Row) -> Widget {
-    let (label, icon, submenu) = match row {
+    let (label, icon, submenu, accel) = match row {
         Row::Separator => {
             return Separator::new(Orientation::Horizontal).upcast();
         }
-        Row::Entry { label, icon, .. } => (label, icon, false),
-        Row::Submenu { label, icon, .. } => (label, icon, true),
+        Row::Entry {
+            label, icon, accel, ..
+        } => (label, icon, false, accel.as_deref()),
+        Row::Submenu { label, icon, .. } => (label, icon, true, None),
     };
     let line = GtkBox::builder()
         .orientation(Orientation::Horizontal)
@@ -1128,6 +1175,13 @@ fn row_widget(row: &Row) -> Widget {
             .hexpand(true)
             .build(),
     );
+    if let Some(accel) = accel {
+        let shortcut = Label::builder().label(accel).xalign(1.0).build();
+        shortcut.add_css_class(ACCEL_CLASS);
+        // GTK 2 kept the shortcut column apart from the label
+        shortcut.set_margin_start(18);
+        line.append(&shortcut);
+    }
     if submenu {
         let arrow = Image::from_icon_name("pan-end-symbolic");
         arrow.set_pixel_size(ICON_SIZE);
@@ -1177,13 +1231,18 @@ mod tests {
                     icon,
                     action,
                     target,
+                    accel,
                 } => format!(
-                    "{label} [{}] -> {}{}",
+                    "{label} [{}] -> {}{}{}",
                     icon_name(icon),
                     action.as_deref().unwrap_or("-"),
                     target
                         .as_ref()
                         .and_then(|t| t.str().map(|s| format!("({s})")))
+                        .unwrap_or_default(),
+                    accel
+                        .as_ref()
+                        .map(|a| format!(" {{{a}}}"))
                         .unwrap_or_default()
                 ),
                 Row::Submenu { label, icon, model } => format!(
@@ -1229,6 +1288,40 @@ mod tests {
                 "Platzhalter [] -> -",
             ]
         );
+    }
+
+    /// G2-AK: "Bildschirm sperren" shows Strg+Alt+L as GTK 2 menus did.
+    #[test]
+    fn shortcuts_are_shown_in_german() {
+        let menu = gio::Menu::new();
+        let lock = entry("Bildschirm sperren", "system-lock-screen", Some("x.lock"), None);
+        lock.set_attribute_value("accel", Some(&"<Control><Alt>l".to_variant()));
+        menu.append_item(&lock);
+        let broken = entry("Kaputt", "", Some("x.b"), None);
+        broken.set_attribute_value("accel", Some(&"<Hyper>".to_variant()));
+        menu.append_item(&broken);
+        assert_eq!(
+            summary(&rows(menu.upcast_ref())),
+            [
+                "Bildschirm sperren [system-lock-screen] -> x.lock {Strg+Alt+L}",
+                "Kaputt [] -> x.b",
+            ]
+        );
+        for (accel, text) in [
+            ("<Control><Alt>l", Some("Strg+Alt+L")),
+            ("<Primary><Shift>Delete", Some("Strg+Umschalt+Entf")),
+            ("<Super>f", Some("Super+F")),
+            ("<Alt>F11", Some("Alt+F11")),
+            ("F11", Some("F11")),
+            ("<Alt>Print", Some("Alt+Druck")),
+            ("", None),
+            ("<Control>", None),
+            ("<Hyper>x", None),
+            ("<Control", None),
+            ("a b", None),
+        ] {
+            assert_eq!(accel_label(accel).as_deref(), text, "{accel:?}");
+        }
     }
 
     #[test]
