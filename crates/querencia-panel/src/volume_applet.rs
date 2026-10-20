@@ -360,8 +360,9 @@ fn open_mixer() {
                 "querencia-panel: Lautstärke: Lautstärkeregler {}",
                 program.display()
             );
-            let launched =
-                gio::Subprocess::newv(&[program.as_os_str()], gio::SubprocessFlags::STDIN_INHERIT);
+            let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::STDIN_INHERIT);
+            crate::portal::launcher_for_children(&launcher);
+            let launched = launcher.spawn(&[program.as_os_str()]);
             if let Err(err) = launched {
                 querencia_lautstaerke::say!(
                     "querencia-panel: Lautstärkeregler nicht gestartet: {err}"
