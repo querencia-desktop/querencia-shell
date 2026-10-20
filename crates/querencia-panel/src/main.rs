@@ -20,6 +20,7 @@ mod panel;
 mod panel_menu;
 mod places_menu;
 mod session;
+mod sitzung_start;
 mod system_menu;
 mod volume_applet;
 mod window_icons;
@@ -91,7 +92,9 @@ pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
 //   white text and arrow. Its middle is Ambiance's selected_bg_color
 //   #f07746, which HMP-03/04 used flat and which looked too heavy;
 // - every row has a 1 px transparent frame, so highlighting moves nothing;
-// - submenu arrows grey #686463 (white when highlighted);
+// - submenu arrows grey #686463 (white when highlighted); a shortcut
+//   (G2-AK, "Bildschirm sperren") lighter grey #7a7671, white when
+//   highlighted;
 // - the three main menu buttons stay neutral (no orange): dark text, on
 //   hover or while their menu is open only a slightly darker panel colour
 //   #ebe7e3 with a 1 px frame #c4bdb7, as the open "Applications" button in
@@ -156,6 +159,8 @@ popover.querencia-menu .qmenu-item { min-height: 20px; padding: 1px 10px 1px 4px
 popover.querencia-menu .qmenu-item .qmenu-arrow { color: #686463; }
 popover.querencia-menu .qmenu-item.qmenu-active { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); border-color: #b36c4e; box-shadow: inset 0 1px #fd9975; color: #ffffff; }
 popover.querencia-menu .qmenu-item.qmenu-active .qmenu-arrow { color: #ffffff; }
+popover.querencia-menu .qmenu-item .qmenu-accel { color: #7a7671; }
+popover.querencia-menu .qmenu-item.qmenu-active .qmenu-accel { color: #ffffff; }
 popover.querencia-menu .qmenu-item:disabled { color: @insensitive_fg_color; }
 popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-color: #dcd8d3; }
 ";

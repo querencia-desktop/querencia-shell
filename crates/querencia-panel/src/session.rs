@@ -54,32 +54,23 @@ pub fn logout_command() -> Option<PathBuf> {
 /// File name of the session program (G2-K), found by [`querencia_program`].
 pub const SITZUNG_PROGRAM: &str = "querencia-sitzung";
 
-/// Where the Querencia program `name` is: the first absolute `PATH` entry
-/// holding it, else `<home>/opt/querencia/bin/<name>` (where the
-/// integration scripts link Querencia programs); `exists` tells whether a
-/// file is there.
+/// Where the Querencia program `name` is, by the order of
+/// [`crate::sitzung_start`] (its variable, `PATH`, `~/opt/querencia/bin`,
+/// `/usr/bin`); `named` is the variable's value, `usable` tells whether a
+/// file is an executable program.
 pub fn querencia_program(
     name: &str,
+    named: Option<&std::ffi::OsStr>,
     path: Option<&std::ffi::OsStr>,
     home: &Path,
-    exists: impl Fn(&Path) -> bool,
+    usable: impl Fn(&Path) -> bool,
 ) -> Option<PathBuf> {
-    path.into_iter()
-        .flat_map(std::env::split_paths)
-        .filter(|dir| dir.is_absolute())
-        .map(|dir| dir.join(name))
-        .chain(std::iter::once(home.join("opt/querencia/bin").join(name)))
-        .find(|candidate| exists(candidate))
+    crate::sitzung_start::programm(name, named, path, home, usable).ok()
 }
 
 /// Querencia Sitzung, if installed ([`querencia_program`]).
 pub fn sitzung_command() -> Option<PathBuf> {
-    querencia_program(
-        SITZUNG_PROGRAM,
-        std::env::var_os("PATH").as_deref(),
-        &glib::home_dir(),
-        |path| path.is_file(),
-    )
+    crate::sitzung_start::suchen(SITZUNG_PROGRAM).ok()
 }
 
 /// Starts `sitzung` with `arg` (`--abmelden`, `--herunterfahren`); its
@@ -277,7 +268,7 @@ mod tests {
         let path = std::ffi::OsString::from("relative/bin:/usr/local/bin:/usr/bin");
         let opt = Path::new("/home/x/opt/querencia/bin/querencia-sitzung");
         let find = |exists: &dyn Fn(&Path) -> bool| {
-            querencia_program(SITZUNG_PROGRAM, Some(&path), home, exists)
+            querencia_program(SITZUNG_PROGRAM, None, Some(&path), home, exists)
         };
         assert_eq!(find(&|p| p == opt).as_deref(), Some(opt));
         assert_eq!(
@@ -291,8 +282,20 @@ mod tests {
         );
         assert_eq!(find(&|_| false), None);
         assert_eq!(
-            querencia_program(SITZUNG_PROGRAM, None, home, |p| p == opt).as_deref(),
+            querencia_program(SITZUNG_PROGRAM, None, None, home, |p| p == opt).as_deref(),
             Some(opt)
+        );
+        // QD-069: the package's /usr/bin without PATH, the variable first
+        let usr = Path::new("/usr/bin/querencia-sitzung");
+        assert_eq!(
+            querencia_program(SITZUNG_PROGRAM, None, None, home, |p| p == usr).as_deref(),
+            Some(usr)
+        );
+        let test = std::ffi::OsString::from("/tmp/t/querencia-sitzung");
+        assert_eq!(
+            querencia_program(SITZUNG_PROGRAM, Some(&test), Some(&path), home, |_| true)
+                .as_deref(),
+            Some(Path::new("/tmp/t/querencia-sitzung"))
         );
     }
 
