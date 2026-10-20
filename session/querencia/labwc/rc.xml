@@ -122,10 +122,17 @@
        DejaVu Sans 10, Fenstertitel und Menüüberschrift fett; ersetzt die
        Fensterwechsler-Schrift Adwaita Sans 11 (nicht mehr installiert).
        Der Starter verteilt die Vorgabe in jede unveränderte Benutzerkopie
-       (docs/labwc-benutzerkonfiguration.md). -->
+       (docs/labwc-benutzerkonfiguration.md).
+       Symbolthema „Querencia“ (Thema-2, ~/.local/share/icons/Querencia,
+       PNG-Stufen 16/22/24, Inherits=gnome-human,hicolor): fehlt ein Symbol,
+       kommt es über die Vererbung aus gnome-human bzw. hicolor. Fehlt das
+       ganze Thema, gibt es KEINEN Rückfall (labwc 0.9.8 kennt die Vererbung
+       nur aus dessen index.theme) und die Titelleisten bleiben ohne Symbol:
+       das Thema muss installiert sein (integration/labwc-vorgabe/
+       probe-symbolthema.sh, Fall O1). -->
   <theme>
     <name>Querencia-Klassisch</name>
-    <icon>gnome-human</icon>
+    <icon>Querencia</icon>
     <font place="ActiveWindow">
       <name>DejaVu Sans</name>
       <size>10</size>
