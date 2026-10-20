@@ -115,7 +115,7 @@ def window_buttons(name):
     y = H - 16
     bg = pixel(pb, W // 2, H - 2)
     right = 0
-    for x in range(4, W - 160):
+    for x in range(4, W - 220):  # vor dem Arbeitsflächenumschalter
         if sum(abs(a - b) for a, b in zip(pixel(pb, x, y), bg)) > 24:
             right = x
     return round((right - 6) / 202) if right else 0
@@ -240,8 +240,10 @@ elif ART == "neuladen":
           read("dbus-geloescht.txt") == "(true, 'panel.ini unverändert')", read("dbus-geloescht.txt"))
     # Bilder: N02 ohne Umschalter (Zelle 1 = Panelgrund), N05 mit „Orte“ in der Mitte oben
     def umschalter(name):
+        """Die aktive (orange) erste Zelle des Umschalters."""
         pb = load(name)
-        return sum(abs(a - b) for a, b in zip(pixel(pb, W - 113, H - 16), pixel(pb, W // 2, H - 2))) > 40
+        x = round(W - 12 - 3.5 * 22 * W / H)
+        return sum(abs(a - b) for a, b in zip(pixel(pb, x, H - 16), pixel(pb, W // 2, H - 2))) > 40
     check("N01 Umschalter da", umschalter("n01-start"))
     check("N02 Umschalter weg", not umschalter("n02-ohne-umschalter"))
     check("N03 unverändert (kein Umschalter)", not umschalter("n03-kaputt"))
@@ -298,6 +300,12 @@ elif ART == "vollbild":
     check("X08 Wayland-Fenster: Panels da", panel_da("x08-wayland"))
     check("X08 Super+F: Panels weg (Fenster vollbild)", not panel_da("x08-wayland-super-f"))
     check("X08 Alt+F11: Panels wieder da", panel_da("x08-wayland-alt-f11"))
+elif ART == "vollbild-erst":
+    for nr in ("1", "2"):
+        voll = "FULLSCREEN" in read(f"xprop-{nr}.txt")
+        oben = red_share(f"e0{nr}-vorher", 2, 8)
+        check(f"E0{nr} X11-Fenster {nr}: Vollbild, Panels ausgeblendet", voll and oben > 0.95,
+              f"{read(f'xprop-{nr}.txt')}; oben {oben:.2f}")
 else:
     sys.exit(f"unbekannte Art {ART}")
 

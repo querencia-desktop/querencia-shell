@@ -38,3 +38,7 @@ integration/vorschlag-kalender/querencia-panel
 integration/vorschlag-kalender/querencia-desktop
 nachweis/g2ad/querencia-panel
 nachweis/g2ad/querencia-desktop
+# G2-AK: Release-Binary des Nachweises und der Vorlage (Summen in SHA256SUMS)
+nachweis/g2ak/querencia-panel
+integration/vorschlag-g2ak/querencia-panel
+nachweis/g2ak-g2ai/querencia-panel
