@@ -35,7 +35,7 @@
 #     closed display (gvfs with its network mounts and the document portal
 #     stay),
 #   - keeps five generations of every log (NAME.log.1 … NAME.log.5) and
-#     writes its own lines to sitzung-start.log.
+#     writes its own lines, each with the time, to sitzung-start.log.
 # Isolated test sessions (their own XDG_RUNTIME_DIR) are never touched and
 # no longer block a login.
 #
@@ -77,7 +77,7 @@ POLKIT_AGENT=$COMPONENTS/querencia-polkit-agent
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/querencia
 
 die() {
-    echo "querencia-session: $*" >&2
+    echo "$(date +%T.%3N) querencia-session: $*" >&2
     exit 1
 }
 
@@ -205,7 +205,7 @@ end_processes() {
     while read -r p name; do
         start=$(starttime "$p") || continue
         list="$list $p:$start:$name"
-        echo "querencia-session: beende $name ($p), SIGTERM"
+        echo "$(date +%T.%3N) querencia-session: beende $name ($p), SIGTERM"
         kill -TERM "$p" 2>/dev/null
     done
     [ -n "$list" ] || return 0
@@ -221,7 +221,7 @@ end_processes() {
     for e in $list; do
         p=${e%%:*} rest=${e#*:}
         if [ "$(starttime "$p")" = "${rest%%:*}" ]; then
-            echo "querencia-session: ${rest#*:} ($p) reagiert nicht, SIGKILL"
+            echo "$(date +%T.%3N) querencia-session: ${rest#*:} ($p) reagiert nicht, SIGKILL"
             kill -KILL "$p" 2>/dev/null
         fi
     done
@@ -236,12 +236,12 @@ portals_reset() {
     case " $active" in
     *" active "* | *" activating "* | *" deactivating "* | *" reloading "*)
         if systemctl --user stop $PORTAL_UNITS 2>&1; then
-            echo "querencia-session: Portale gestoppt ($1; vorher: $active)"
+            echo "$(date +%T.%3N) querencia-session: Portale gestoppt ($1; vorher: $active)"
         else
-            echo "querencia-session: Portale ließen sich nicht stoppen ($1)"
+            echo "$(date +%T.%3N) querencia-session: Portale ließen sich nicht stoppen ($1)"
         fi
         ;;
-    *) echo "querencia-session: Portale laufen nicht ($1; $active)" ;;
+    *) echo "$(date +%T.%3N) querencia-session: Portale laufen nicht ($1; $active)" ;;
     esac
     systemctl --user reset-failed $PORTAL_UNITS 2>/dev/null
 }
@@ -366,13 +366,13 @@ if [ "${1-}" = --exit ]; then
         die "keine laufende Querencia-Sitzung gefunden ($STATE_DIR/labwc.pid)"
     # labwc_matches set pid to the checked labwc.
     kill -TERM "$pid" || die "labwc ($pid) konnte nicht beendet werden"
-    echo "querencia-session: labwc ($pid) wird beendet"
+    echo "$(date +%T.%3N) querencia-session: labwc ($pid) wird beendet"
     exit 0
 fi
 # Only the files, no session; labwc --reconfigure reloads them afterwards.
 if [ "${1-}" = --labwc-konfig-abgleichen ]; then
     konfig_abgleichen || die "Benutzerkopie $BENUTZER_DIR nicht beschreibbar"
-    echo "querencia-session: Benutzerkopie $BENUTZER_DIR abgeglichen"
+    echo "$(date +%T.%3N) querencia-session: Benutzerkopie $BENUTZER_DIR abgeglichen"
     exit 0
 fi
 [ $# -eq 0 ] || die "unbekannte Option: $1 (erlaubt: --exit, --labwc-konfig-abgleichen)"
@@ -415,14 +415,14 @@ for p in $(pids_here labwc); do
         die "es läuft bereits ein labwc dieses Benutzers ($p, logind-Sitzung $sid $state; Classic2- oder Querencia-Sitzung aktiv?)"
         ;;
     esac
-    echo "querencia-session: labwc $p gehört zu keiner laufenden Sitzung (logind-Sitzung ${sid:-?}: ${state:-weg}), Rest einer früheren Sitzung"
+    echo "$(date +%T.%3N) querencia-session: labwc $p gehört zu keiner laufenden Sitzung (logind-Sitzung ${sid:-?}: ${state:-weg}), Rest einer früheren Sitzung"
     echo "$p labwc" | end_processes
 done
 # Without a labwc, every session program here is left over from an earlier
 # session (it outlived its labwc or started in a session that broke).
 leftovers=$(session_leftovers)
 if [ -n "$leftovers" ]; then
-    echo "querencia-session: Reste einer früheren Sitzung: $(echo "$leftovers" | tr '\n' ' ')"
+    echo "$(date +%T.%3N) querencia-session: Reste einer früheren Sitzung: $(echo "$leftovers" | tr '\n' ' ')"
     echo "$leftovers" | end_processes
 fi
 for program in $SESSION_PROGRAMS; do
@@ -430,7 +430,7 @@ for program in $SESSION_PROGRAMS; do
         die "es läuft noch ein $program dieses Benutzers, das sich nicht beenden ließ"
     fi
 done
-echo "querencia-session: org.freedesktop.Notifications: $(notifications_owner)"
+echo "$(date +%T.%3N) querencia-session: org.freedesktop.Notifications: $(notifications_owner)"
 
 [ -x "$LABWC" ] || die "labwc fehlt: $LABWC"
 version=$("$LABWC" --version 2>/dev/null | cut -d' ' -f2)
@@ -463,7 +463,7 @@ elif konfig_abgleichen >>"$konfig_log" 2>&1 &&
 else
     echo "Benutzerkopie $BENUTZER_DIR nicht nutzbar, labwc liest $VORGABE_DIR" >>"$konfig_log"
 fi
-echo "querencia-session: labwc-Konfiguration $CONFIG_DIR (Protokoll $konfig_log)"
+echo "$(date +%T.%3N) querencia-session: labwc-Konfiguration $CONFIG_DIR (Protokoll $konfig_log)"
 echo "labwc -C $CONFIG_DIR" >>"$konfig_log"
 # No labwc or panel of this user runs (checked above), so older records
 # are stale. The panel record is named after this starter's PID, which stays
@@ -478,10 +478,10 @@ export QUERENCIA_PANEL="$PANEL" QUERENCIA_STATE_DIR="$STATE_DIR" \
     QUERENCIA_DESKTOP="$DESKTOP" QUERENCIA_DESKTOP_RECORD="$desktop_file" \
     QUERENCIA_SITZUNG="$SITZUNG" QUERENCIA_LEERLAUF_MINUTEN="$LEERLAUF_MINUTEN" \
     QUERENCIA_POLKIT_AGENT="$POLKIT_AGENT"
-echo "querencia-session: Panel $PANEL, Arbeitsfläche ${DESKTOP:-(keine)}, Leerlaufsperre ${SITZUNG:-(keine)}, polkit-Agent ${POLKIT_AGENT:-(keiner)}"
+echo "$(date +%T.%3N) querencia-session: Panel $PANEL, Arbeitsfläche ${DESKTOP:-(keine)}, Leerlaufsperre ${SITZUNG:-(keine)}, polkit-Agent ${POLKIT_AGENT:-(keiner)}"
 
 cd "$HOME" || die "kann nicht nach $HOME wechseln"
-echo "querencia-session: starte labwc $LABWC_VERSION, Log $STATE_DIR/labwc.log"
+echo "$(date +%T.%3N) querencia-session: starte labwc $LABWC_VERSION, Log $STATE_DIR/labwc.log"
 "$LABWC" -C "$CONFIG_DIR" </dev/null >>"$STATE_DIR/labwc.log" 2>&1 &
 labwc_pid=$!
 labwc_record=$(labwc_record_for "$labwc_pid")
@@ -509,7 +509,7 @@ leftover() {
     if [ -n "$2" ] && matches "$record" "$2"; then
         sleep 2
         if matches "$record" "$2"; then
-            echo "querencia-session: $3 (${record%% *}) läuft nach labwc weiter, sende SIGTERM" >&2
+            echo "$(date +%T.%3N) querencia-session: $3 (${record%% *}) läuft nach labwc weiter, sende SIGTERM" >&2
             kill -TERM "${record%% *}"
         fi
     fi
@@ -521,10 +521,10 @@ leftover "$desktop_file" "$DESKTOP" Arbeitsfläche
 # ended by querencia-sitzung --abmelden).
 leftovers=$(session_leftovers "$labwc_pid")
 if [ -n "$leftovers" ]; then
-    echo "querencia-session: nach labwc noch da: $(echo "$leftovers" | tr '\n' ' ')"
+    echo "$(date +%T.%3N) querencia-session: nach labwc noch da: $(echo "$leftovers" | tr '\n' ' ')"
     echo "$leftovers" | end_processes
 fi
 portals_reset "nach dem Ende"
 
-echo "querencia-session: labwc beendet mit Status $status, Logs in $STATE_DIR"
+echo "$(date +%T.%3N) querencia-session: labwc beendet mit Status $status, Logs in $STATE_DIR"
 exit "$status"

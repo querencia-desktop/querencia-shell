@@ -67,10 +67,9 @@ cat >"$FAKE/systemctl" <<'EOF'
 echo "$(date +%T.%N | cut -c1-12) systemctl $*" >>"$PROBE_AUS/systemctl.log"
 [ "${1-}" = --user ] || exit 1
 shift; cmd=$1; shift
-pids() {   # $1: Programm (über /proc/PID/exe; pgrep -x kennt nur 15 Zeichen)
-    for d in /proc/[0-9]*; do
-        p=${d#/proc/}
-        [ "$(readlink "$d/exe" 2>/dev/null)" = "$1" ] || continue
+pids() {   # $1: Programm (pgrep -f auf den vollen Pfad; -x kennt nur 15 Zeichen)
+    for p in $(pgrep -u "$(id -u)" -f "^$1( |\$)"); do
+        [ "$(readlink "/proc/$p/exe" 2>/dev/null)" = "$1" ] || continue
         tr '\0' '\n' 2>/dev/null <"/proc/$p/environ" | grep -qx "DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS" && echo "$p"
     done
 }
@@ -198,7 +197,7 @@ anmelden probe3
 echo "probe3 panel=$PANEL_MS desktop=$DESKTOP_MS (Portal steht)" >>"$AUS/zeiten.txt"
 [ "$PANEL_MS" != nie ] && [ "$PANEL_MS" -le 5000 ] && [ "$DESKTOP_MS" != nie ] && [ "$DESKTOP_MS" -le 5000 ] &&
     ok "V2b mit stehendem Portal: Panel nach $PANEL_MS ms, Arbeitsfläche nach $DESKTOP_MS ms (≤ 5 s)" || nok "V2b Panel $PANEL_MS, Arbeitsfläche $DESKTOP_MS"
-grep -q 'GDK_DEBUG=no-portals' "$AUS/sitzung-start-probe3.log" && grep -q 'ohne Portal aus gsettings: Thema Querencia-Klassisch, Schrift DejaVu Sans 10' "$AUS/panel-probe3.log" &&
+grep -q 'GDK_DEBUG=no-portals' "$AUS/sitzung-start-probe3.log" && grep -q 'ohne Portal aus gsettings.*: Thema Querencia-Klassisch, Schrift DejaVu Sans 10' "$AUS/panel-probe3.log" &&
     ok "V2c Wächter-Rückfall: ohne Portal, Thema und Schrift aus gsettings ($(grep -h 'autostart' "$AUS/sitzung-start-probe3.log" | cut -d' ' -f3- | tr '\n' ';'))" ||
     nok "V2c $(grep -h 'autostart\|Portal' "$AUS/sitzung-start-probe3.log" "$AUS/panel-probe3.log" | tr '\n' ';')"
 rm -f "$AUS/systemctl-taub"
