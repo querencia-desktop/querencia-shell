@@ -128,6 +128,12 @@ struct Panels {
 
 type Shared = Rc<RefCell<Panels>>;
 
+thread_local! {
+    /// The panels for as long as the panel runs; the monitor, the timer
+    /// and the D-Bus method only hold weak references.
+    static PANELS: RefCell<Option<Shared>> = const { RefCell::new(None) };
+}
+
 /// Shows the panels of `editor`'s layout and from now on follows changes
 /// of `panel.ini` (file monitor and D-Bus).
 pub fn start(app: &Application, editor: Rc<RefCell<Editor>>) {
@@ -149,6 +155,7 @@ pub fn start(app: &Application, editor: Rc<RefCell<Editor>>) {
     }));
     watch(&panels, &path);
     export(app, &panels);
+    PANELS.with(|p| p.replace(Some(panels)));
 }
 
 /// Reloads [`ENTPRELLEN_MS`] after the last change of `path`.
