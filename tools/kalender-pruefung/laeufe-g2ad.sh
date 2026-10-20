@@ -9,7 +9,7 @@
 # Profile nachweis/gui/ad-<art>-<breite>; Auswertungen
 # nachweis/gui/ergebnis-ad-*.txt, Zusammenfassung nachweis/gui/ergebnis-g2ad.txt.
 set -uo pipefail
-WT=~/projects/querencia-runtime-wt-kalender
+WT=/home/user/projects/querencia-runtime-wt-g2ai
 T=$WT/tools/kalender-pruefung; G=$WT/nachweis/gui; M=$G/gm-werkzeug
 PANEL=$(realpath -e "${1:?Panel}"); DESKTOP=$(realpath -e "${2:?Desktop}"); shift 2
 AUFL=("$@"); [ ${#AUFL[@]} -eq 0 ] && AUFL=(1024x768 1920x1080)

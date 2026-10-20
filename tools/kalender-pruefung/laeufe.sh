@@ -8,10 +8,10 @@
 # Profile nachweis/gui/yv<breite> und y<breite>; Auswertungen
 # nachweis/gui/ergebnis-y*.txt, Zusammenfassung nachweis/gui/ergebnis-g2y.txt.
 set -uo pipefail
-WT=~/projects/querencia-runtime-wt-kalender
+WT=/home/user/projects/querencia-runtime-wt-g2ai
 T=$WT/tools/kalender-pruefung; G=$WT/nachweis/gui; M=$G/gm-werkzeug
 NEU=$(realpath -e "${1:?Panel neu}"); shift
-ALT=~/opt/querencia/panel/c3cda503421d7e9f/querencia-panel
+ALT=/home/user/opt/querencia/panel/c3cda503421d7e9f/querencia-panel
 if [ $# -gt 0 ] && [ -f "$1" ]; then ALT=$(realpath -e "$1"); shift; fi
 AUFL=("$@"); [ ${#AUFL[@]} -eq 0 ] && AUFL=(1024x768 1920x1080)
 [ -x "$M/pruefen.sh" ] || bash "$T/werkzeug-anlegen.sh"

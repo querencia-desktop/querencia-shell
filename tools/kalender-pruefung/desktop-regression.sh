@@ -6,12 +6,12 @@
 #   bash tools/kalender-pruefung/desktop-regression.sh <desktop-binary> [suite …]
 # Standard-Suiten wie bei QE-04a: qe02 qe01 qe03-ohne-loop hmp10a-voll hmp09-raster-aus.
 set -uo pipefail
-WT=~/projects/querencia-runtime-wt-kalender
+WT=/home/user/projects/querencia-runtime-wt-g2ai
 B=$(realpath -e "${1:?Desktop-Binary}"); shift
 SUITEN=("$@"); [ ${#SUITEN[@]} -eq 0 ] && SUITEN=(qe02 qe01 qe03-ohne-loop hmp10a-voll hmp09-raster-aus)
 AUS=$WT/nachweis/gui/desktop-regression; mkdir -p "$AUS"
-export G2R_GUI_TEST=~/.cache/g2x/gui-test-g2ad G2R_RT=~/.cache/g2x/rt-g2ad
-export G2R_PANEL=~/opt/querencia/panel/97461a61eed7ab6b/querencia-panel QE02_BIN=$B
+export G2R_GUI_TEST=/home/user/.cache/g2x/gui-test-g2ad G2R_RT=/home/user/.cache/g2x/rt-g2ad
+export G2R_PANEL=/home/user/opt/querencia/panel/97461a61eed7ab6b/querencia-panel QE02_BIN=$B
 for s in "${SUITEN[@]}"; do
   echo "== $(date '+%F %T') $s mit $(sha256sum "$B" | cut -c1-16)"
   bash "$WT/nachweis/regression.sh" "$s" >"$AUS/$s.log" 2>&1

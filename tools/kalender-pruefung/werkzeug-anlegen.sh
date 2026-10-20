@@ -11,7 +11,7 @@
 # längere Worktree-Name brächte sonst …/w2reg/rt/w2-xxxxxxxx/wayland-0 und
 # …/rt/g2j-xxxxxxxx/pulse/native über die 107 Zeichen eines Unix-Sockets.
 set -euo pipefail
-WT=~/projects/querencia-runtime-wt-kalender
+WT=/home/user/projects/querencia-runtime-wt-g2ai
 G=$WT/nachweis/gui
 weg() { # nur die eigenen Kopien unter nachweis/gui
   case "$1" in "$G"/gm-werkzeug|"$G"/gj-werkzeug) ;; *) exit 2 ;; esac
@@ -25,7 +25,7 @@ M=$G/gm-werkzeug
 cp -a "$WT/tools/netzwerk-pruefung" "$M"
 grep -rl 'querencia-runtime-wt-netzwerk\|\$WT/tools/netzwerk-pruefung' "$M" | while read -r f; do
   sed -i -e 's#\$WT/tools/netzwerk-pruefung#'"$M"'#g' \
-         -e 's#querencia-runtime-wt-netzwerk#querencia-runtime-wt-kalender#g' "$f"
+         -e 's#querencia-runtime-wt-netzwerk#querencia-runtime-wt-g2ai#g' "$f"
 done
 rm -f "$M/integration-probe.sh" "$M/g2jreg-anlegen.sh"   # gehören zu G2-M, hier nicht gebraucht
 rm -f "$M/symbole-machen.py"                             # schriebe in crates/, hier nicht gebraucht
@@ -47,11 +47,11 @@ sed -i -e '/g2jreg-anlegen.sh\|g2jreg\/werkzeug/d' "$M/endlaeufe.sh"
 J=$G/gj-werkzeug
 cp -a "$WT/tools/lautstaerke-pruefung" "$J"
 grep -rl 'querencia-runtime-wt-lautstaerke\|\$WT/nachweis/gui\|\$WT/tools/lautstaerke-pruefung' "$J" | while read -r f; do
-  sed -i -e "s#/querencia-runtime-wt-lautstaerke/nachweis/gui#/querencia-runtime-wt-kalender/nachweis/gui/gj#g" \
+  sed -i -e "s#/querencia-runtime-wt-lautstaerke/nachweis/gui#/querencia-runtime-wt-g2ai/nachweis/gui/gj#g" \
          -e 's#\$WT/tools/lautstaerke-pruefung#'"$J"'#g' \
          -e 's#"\$WT"/nachweis/gui#"$WT"/nachweis/gui/gj#g' \
          -e 's#\$WT/nachweis/gui#$WT/nachweis/gui/gj#g' \
-         -e "s#querencia-runtime-wt-lautstaerke#querencia-runtime-wt-kalender#g" "$f"
+         -e "s#querencia-runtime-wt-lautstaerke#querencia-runtime-wt-g2ai#g" "$f"
 done
 
 # Kontrolle: kein Pfad in fremde Worktrees, Laufzeitordner im Kopieziel

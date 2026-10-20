@@ -9,10 +9,10 @@
 # Zusammenfassungen: nachweis/gui/ergebnis.txt (G2-M),
 # nachweis/gui/gj/ergebnis.txt (G2-J, W2).
 set -uo pipefail
-WT=~/projects/querencia-runtime-wt-kalender
+WT=/home/user/projects/querencia-runtime-wt-g2ai
 G=$WT/nachweis/gui
 PANEL=$(realpath -e "${1:?Panel}")
-MIXER=$(realpath -e "${2:-~/opt/querencia/lautstaerke/17c128da9c5d7304/querencia-lautstaerke}")
+MIXER=$(realpath -e "${2:-/home/user/opt/querencia/lautstaerke/17c128da9c5d7304/querencia-lautstaerke}")
 NUR=${3:-}
 bash "$WT/tools/kalender-pruefung/werkzeug-anlegen.sh"
 if [ "$NUR" != nur-g2j ]; then
