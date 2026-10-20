@@ -50,8 +50,8 @@ set -u
 
 # Fixed on purpose: the session only ever uses the Querencia runtime copy,
 # never a development copy, and never the labwc found in PATH.
-QUERENCIA_REPO=~/projects/querencia-runtime
-LABWC=~/opt/labwc-0.9.8/bin/labwc
+QUERENCIA_REPO=/home/user/projects/querencia-runtime
+LABWC=/home/user/opt/labwc-0.9.8/bin/labwc
 LABWC_VERSION=0.9.8
 # Defaults (Vorgaben) in the runtime copy, the user copy labwc reads, and
 # the switch back to the old way. CONFIG_DIR is chosen right before labwc
@@ -63,7 +63,7 @@ CONFIG_DIR=$VORGABE_DIR
 # Installed, checked components (fixed paths, one link per program, see
 # sitzung/installieren.sh); without an installed panel the runtime copy's
 # own panel build stays in use. The desktop is optional.
-COMPONENTS=~/opt/querencia/bin
+COMPONENTS=/home/user/opt/querencia/bin
 PANEL=$COMPONENTS/querencia-panel
 [ -x "$PANEL" ] || PANEL=$QUERENCIA_REPO/target/debug/querencia-panel
 DESKTOP=$COMPONENTS/querencia-desktop
@@ -462,14 +462,17 @@ fi
     die "läuft bereits in einer Wayland-Sitzung (WAYLAND_DISPLAY=$WAYLAND_DISPLAY)"
 [ -n "${XDG_RUNTIME_DIR-}" ] || die "XDG_RUNTIME_DIR fehlt"
 
-# Logs first, so that even a refused start leaves a trace: greetd discards
-# the starter's own output. From a terminal the lines stay visible there.
+# Logs first, so that even a refused start leaves a trace. greetd connects
+# the starter's output to the session's VT (/dev/tty7), where nobody reads it
+# once labwc runs; so everything goes to sitzung-start.log, and a start from
+# a terminal only says where.
 mkdir -p "$STATE_DIR" || die "kann $STATE_DIR nicht anlegen"
 rotate_logs
 start_log=$STATE_DIR/sitzung-start.log
-if [ ! -t 2 ]; then
-    exec >>"$start_log" 2>&1
+if [ -t 2 ]; then
+    echo "querencia-session: Protokoll in $start_log" >&2
 fi
+exec >>"$start_log" 2>&1
 for log in $LOGS; do
     echo "# Querencia-Sitzung $(date '+%F %T'), querencia-session PID $$" >>"$STATE_DIR/$log.log"
 done
