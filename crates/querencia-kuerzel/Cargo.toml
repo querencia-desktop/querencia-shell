@@ -1,6 +1,6 @@
 [package]
 name = "querencia-kuerzel"
-version = "0.1.0"
+version = "0.2.0"
 description = "Querencia Tastenkürzel: Übersicht der aktiven labwc-Kürzel und der Kürzel der Querencia-Programme"
 edition.workspace = true
 rust-version.workspace = true

@@ -874,6 +874,16 @@ mod tests {
                 "Arbeitsfläche anzeigen: alle Fenster minimieren oder wiederherstellen"
             )
         );
+        // QD-065 (G2-AK): fullscreen on Super+F and Alt+F11, not on F11
+        for keys in ["Super+F", "Alt+F11"] {
+            let full = find(&list, keys).unwrap();
+            assert_eq!(
+                (full.group(), full.description().as_str()),
+                (Group::Windows, "Vollbild ein oder aus"),
+                "{keys}"
+            );
+        }
+        assert!(find(&list, "F11").is_none());
         // another gdbus call is just a program
         assert_eq!(
             describe_command("gdbus call --session --dest x --method y.Z"),

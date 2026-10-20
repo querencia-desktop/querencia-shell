@@ -100,6 +100,25 @@ mod tests {
                 "Tastenkürzel (dieses Fenster)"
             ]
         );
+        // Terminal 0.3.0: the tab keys come first, as in its Help → Shortcuts
+        let terminal = &programs[2];
+        let keys: Vec<&str> = terminal.entries.iter().map(|(k, _)| k.as_str()).collect();
+        assert_eq!(
+            keys[..6],
+            [
+                "Strg+Umschalt+T",
+                "Strg+Umschalt+W",
+                "Strg+Umschalt+Q",
+                "Strg+Bild↑ / Strg+Bild↓",
+                "Strg+Umschalt+Bild↑ / Strg+Umschalt+Bild↓",
+                "Alt+1 … Alt+9"
+            ]
+        );
+        assert!(
+            terminal
+                .entries
+                .contains(&("Strg+Umschalt+C".to_owned(), "Kopieren".to_owned()))
+        );
         let calc = &programs[6];
         assert!(
             calc.entries
