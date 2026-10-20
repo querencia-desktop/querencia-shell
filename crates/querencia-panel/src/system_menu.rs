@@ -1,25 +1,28 @@
 //! The "System" menu as in GNOME 2: the settings from the application
 //! catalog, split into "Einstellungen" and "Systemverwaltung" (see
 //! [`AppEntry::system_section`]); then "Informationen über Querencia"; then
-//! "Abmelden …" in a labwc session and "Ausschalten …" with Querencia
-//! Sitzung installed (`session.rs`, [`SessionEntries`]). GTK draws
+//! "Bildschirm sperren" (G2-AK) and "Ausschalten …" with Querencia Sitzung
+//! installed and "Abmelden …" in a labwc session, in the GNOME 2 order
+//! Sperren, Abmelden, Ausschalten (`session.rs`, `sitzung_start.rs`,
+//! [`SessionEntries`]). GTK draws
 //! separators between these sections. Settings launch through GIO by
 //! desktop ID, and the menu follows changed applications, both exactly like
 //! the applications menu, whose code it shares.
 //!
-//! GNOME 2 also had "Hilfe und Support" and "Bildschirm sperren". They are
-//! left out: no help browser is installed, and locking was not asked for
-//! here (Strg+Alt+L locks through Querencia Sitzung).
+//! GNOME 2 also had "Hilfe und Support"; it is left out, no help browser
+//! is installed. "Bildschirm sperren" shows its shortcut Strg+Alt+L, which
+//! labwc binds to the same command.
 
 use gtk4::prelude::*;
 use gtk4::{MenuButton, Window, gio, glib};
 
 use crate::apps::{AppEntry, Catalog, SystemSection};
-use crate::{about, app_menu, session};
+use crate::{about, app_menu, session, sitzung_start};
 
 const ACTION_GROUP: &str = "system";
 const SESSION_GROUP: &str = "session";
 const ABOUT: &str = "about";
+const LOCK: &str = "lock";
 const LOGOUT: &str = "logout";
 const SHUTDOWN: &str = "shutdown";
 const NAME: &str = "Systemmenü";
@@ -37,6 +40,9 @@ pub fn button() -> MenuButton {
     let about_window = glib::WeakRef::<Window>::new();
     let about = gio::SimpleAction::new(ABOUT, None);
     about.connect_activate(move |_, _| about::present(&about_window));
+    // Looked up when chosen, like the other session entries.
+    let lock = gio::SimpleAction::new(LOCK, None);
+    lock.connect_activate(|_, _| sitzung_start::sperren());
     let question = glib::WeakRef::<Window>::new();
     let logout = gio::SimpleAction::new(LOGOUT, None);
     // Looked up again on every activation: the session program may have
@@ -60,6 +66,7 @@ pub fn button() -> MenuButton {
     });
     let actions = gio::SimpleActionGroup::new();
     actions.add_action(&about);
+    actions.add_action(&lock);
     actions.add_action(&logout);
     actions.add_action(&shutdown);
     button.insert_action_group(SESSION_GROUP, Some(&actions));
@@ -73,8 +80,10 @@ fn rebuild(menu: &gio::Menu) {
     let catalog = Catalog::load();
     let sections = catalog.system_sections();
     let labwc = session::logout_command();
-    let sitzung = session::sitzung_command();
+    let found = sitzung_start::suchen(session::SITZUNG_PROGRAM);
+    let sitzung = found.as_ref().ok().cloned();
     let entries = SessionEntries {
+        lock: sitzung.is_some(),
         logout: labwc.is_some(),
         shutdown: sitzung.is_some(),
     };
@@ -85,6 +94,14 @@ fn rebuild(menu: &gio::Menu) {
     if summary.is_empty() {
         summary.push("keine Einstellungen".to_string());
     }
+    summary.push(match &found {
+        Ok(sitzung) => format!(
+            "Sperren über {} {}",
+            sitzung.display(),
+            sitzung_start::SPERREN.join(" ")
+        ),
+        Err(err) => format!("kein Sperren ({err})"),
+    });
     summary.push(match (&sitzung, &labwc) {
         (_, None) => "kein Abmelden (kein labwc in LABWC_PID)".to_string(),
         (Some(sitzung), Some(_)) => format!("Abmelden über {} --abmelden", sitzung.display()),
@@ -100,9 +117,10 @@ fn rebuild(menu: &gio::Menu) {
 
 /// Which session entries the menu offers: "Abmelden …" in a labwc session
 /// (through Querencia Sitzung or, without it, the panel's own question),
-/// "Ausschalten …" only with Querencia Sitzung.
+/// "Bildschirm sperren" and "Ausschalten …" only with Querencia Sitzung.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct SessionEntries {
+    lock: bool,
     logout: bool,
     shutdown: bool,
 }
@@ -110,9 +128,9 @@ struct SessionEntries {
 /// Replaces the contents of `menu` in place: a section with one submenu
 /// per settings section, as [`Catalog::system_sections`] lists them (none
 /// without settings), then "Informationen über Querencia", then the
-/// `session` entries "Abmelden …" and "Ausschalten …", in the GNOME 2
-/// order. The menu object itself, and with it the button's popover and
-/// actions, stays the same.
+/// `session` entries "Bildschirm sperren", "Abmelden …" and
+/// "Ausschalten …", in the GNOME 2 order. The menu object itself, and with
+/// it the button's popover and actions, stays the same.
 fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], session: SessionEntries) {
     menu.remove_all();
     if !sections.is_empty() {
@@ -137,8 +155,13 @@ fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], session:
         "help-about",
     ));
     menu.append_section(None, &information);
-    if session.logout || session.shutdown {
+    if session.lock || session.logout || session.shutdown {
         let entries = gio::Menu::new();
+        if session.lock {
+            let lock = action_item("Bildschirm sperren", LOCK, "system-lock-screen");
+            lock.set_attribute_value("accel", Some(&sitzung_start::SPERREN_KUERZEL.to_variant()));
+            entries.append_item(&lock);
+        }
         if session.logout {
             entries.append_item(&action_item("Abmelden …", LOGOUT, "system-log-out"));
         }
@@ -169,14 +192,18 @@ mod tests {
 
     /// Without Querencia Sitzung, in a labwc session (as before G2-AD).
     const LOGOUT_ONLY: SessionEntries = SessionEntries {
+        lock: false,
         logout: true,
         shutdown: false,
     };
     const NONE: SessionEntries = SessionEntries {
+        lock: false,
         logout: false,
         shutdown: false,
     };
-    const BOTH: SessionEntries = SessionEntries {
+    /// With Querencia Sitzung in a labwc session.
+    const ALL: SessionEntries = SessionEntries {
+        lock: true,
         logout: true,
         shutdown: true,
     };
@@ -361,26 +388,54 @@ mod tests {
     }
 
     #[test]
-    fn with_querencia_sitzung_logout_then_shutdown_as_in_gnome2() {
+    fn with_querencia_sitzung_lock_logout_then_shutdown_as_in_gnome2() {
         use crate::app_menu::tests::icon;
         let catalog = catalog(vec![entry("w.desktop", "Wlan", &["Settings"])]);
         let menu = gio::Menu::new();
-        fill(&menu, &catalog.system_sections(), BOTH);
+        fill(&menu, &catalog.system_sections(), ALL);
         assert_eq!(menu.n_items(), 3);
         let session = section(&menu, 2);
         assert_eq!(
             actions(&session),
             [
+                "Bildschirm sperren -> session.lock",
                 "Abmelden … -> session.logout",
                 "Ausschalten … -> session.shutdown"
             ]
         );
         assert_eq!(
-            (
-                icon(session.upcast_ref(), 0).as_deref(),
-                icon(session.upcast_ref(), 1).as_deref()
-            ),
-            (Some("system-log-out"), Some("system-shutdown"))
+            (0..3)
+                .map(|i| icon(session.upcast_ref(), i))
+                .collect::<Vec<_>>(),
+            [
+                Some("system-lock-screen".to_string()),
+                Some("system-log-out".to_string()),
+                Some("system-shutdown".to_string())
+            ]
+        );
+        // the shortcut labwc binds, shown by the classic menu as Strg+Alt+L
+        let accel = session
+            .item_attribute_value(0, "accel", Some(glib::VariantTy::STRING))
+            .and_then(|v| v.get::<String>());
+        assert_eq!(accel.as_deref(), Some("<Control><Alt>l"));
+        let rows = crate::classic_menu::rows(session.upcast_ref());
+        assert!(matches!(
+            &rows[0],
+            crate::classic_menu::Row::Entry { accel: Some(a), .. } if a == "Strg+Alt+L"
+        ));
+        for i in 1..3 {
+            assert!(session.item_attribute_value(i, "accel", None).is_none());
+        }
+    }
+
+    #[test]
+    fn without_querencia_sitzung_no_lock() {
+        // the fallback: only the panel's own logout question
+        let menu = gio::Menu::new();
+        fill(&menu, &[], LOGOUT_ONLY);
+        assert_eq!(
+            actions(&section(&menu, 1)),
+            ["Abmelden … -> session.logout"]
         );
     }
 
@@ -393,6 +448,7 @@ mod tests {
             &menu,
             &[],
             SessionEntries {
+                lock: true,
                 logout: false,
                 shutdown: true,
             },
@@ -400,7 +456,10 @@ mod tests {
         assert_eq!(menu.n_items(), 2);
         assert_eq!(
             actions(&section(&menu, 1)),
-            ["Ausschalten … -> session.shutdown"]
+            [
+                "Bildschirm sperren -> session.lock",
+                "Ausschalten … -> session.shutdown"
+            ]
         );
     }
 

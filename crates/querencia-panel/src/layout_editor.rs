@@ -52,6 +52,12 @@ impl Editor {
         &self.path
     }
 
+    /// What `panel.ini` held when it was last read or written (G2-AK:
+    /// reloading compares it with the file on disk).
+    pub fn disk(&self) -> &Disk {
+        &self.disk
+    }
+
     /// Whether one more instance of `applet_id` may be added: by the rules
     /// of the layout, and not a second one of a type offered only once
     /// ([`crate::applets::AppletType::once`], the clock) on any panel.

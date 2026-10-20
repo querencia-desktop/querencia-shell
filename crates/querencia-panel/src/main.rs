@@ -7,6 +7,7 @@ mod applets;
 mod apps;
 mod classic_menu;
 mod clock;
+mod fensterliste;
 mod icon_reload;
 mod icon_theme;
 mod launcher;
@@ -16,11 +17,13 @@ mod layout_store;
 mod logo;
 mod network_applet;
 mod network_dialogs;
+mod neuladen;
 mod panel;
 mod panel_menu;
 mod places_menu;
 mod portal;
 mod session;
+mod sitzung_start;
 mod system_menu;
 mod volume_applet;
 mod window_icons;
@@ -92,7 +95,10 @@ pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
 //   white text and arrow. Its middle is Ambiance's selected_bg_color
 //   #f07746, which HMP-03/04 used flat and which looked too heavy;
 // - every row has a 1 px transparent frame, so highlighting moves nothing;
-// - submenu arrows grey #686463 (white when highlighted);
+// - submenu arrows grey #686463 (white when highlighted); a shortcut
+//   (G2-AK, "Bildschirm sperren") lighter grey #7a7671, white when
+//   highlighted; only the panel's menus show shortcuts, so these two rules
+//   are scoped to the panel and not part of the desktop's copy;
 // - the three main menu buttons stay neutral (no orange): dark text, on
 //   hover or while their menu is open only a slightly darker panel colour
 //   #ebe7e3 with a 1 px frame #c4bdb7, as the open "Applications" button in
@@ -159,6 +165,8 @@ popover.querencia-menu .qmenu-item.qmenu-active { background-color: #f07746; bac
 popover.querencia-menu .qmenu-item.qmenu-active .qmenu-arrow { color: #ffffff; }
 popover.querencia-menu .qmenu-item:disabled { color: @insensitive_fg_color; }
 popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-color: #dcd8d3; }
+.querencia-panel popover.querencia-menu .qmenu-item .qmenu-accel { color: #7a7671; }
+.querencia-panel popover.querencia-menu .qmenu-item.qmenu-active .qmenu-accel { color: #ffffff; }
 ";
 
 fn main() -> glib::ExitCode {
@@ -221,10 +229,8 @@ fn build_panels(app: &Application) {
         "querencia-panel: Layout {source}, {} Panel(s)",
         layout.panels.len()
     );
-    let editor = Rc::new(RefCell::new(editor));
-    for spec in &layout.panels {
-        panel::build(app, spec, &editor).present();
-    }
+    // G2-AK: builds the panels and follows later changes of panel.ini
+    neuladen::start(app, Rc::new(RefCell::new(editor)));
 }
 
 #[cfg(test)]
