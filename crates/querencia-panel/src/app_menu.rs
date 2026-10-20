@@ -238,6 +238,9 @@ pub(crate) fn launch_app(id: &str) {
     // The display's context passes the Wayland activation token on, so the
     // compositor may focus the new window.
     let context = gdk::Display::default().map(|display| display.app_launch_context());
+    if let Some(context) = &context {
+        crate::portal::for_children(context);
+    }
     let pid = Rc::new(Cell::new(None));
     if let Some(context) = &context {
         let pid = pid.clone();

@@ -2614,6 +2614,7 @@ fn icon_widget(item: &Item, trash_full: bool, icon_px: i32) -> gtk4::Box {
 
 fn open(item: &Item, window: &ApplicationWindow) {
     let context = WidgetExt::display(window).app_launch_context();
+    crate::portal::for_children(&context);
     let with_files = |uri: &str| match DesktopAppInfo::new(FILES_APP) {
         Some(app) => app.launch_uris(&[uri], Some(&context)),
         None => Err(glib::Error::new(
@@ -2818,6 +2819,7 @@ fn change_background(icons: &Rc<Icons>) {
 fn start_settings(icons: &Rc<Icons>, program: &Path) -> Result<(), glib::Error> {
     let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::NONE);
     launcher.set_cwd(glib::home_dir());
+    crate::portal::launcher_for_children(&launcher);
     let context = WidgetExt::display(&icons.window).app_launch_context();
     if let Some(token) = context.startup_notify_id(None::<&gio::AppInfo>, &[]) {
         launcher.setenv("XDG_ACTIVATION_TOKEN", token.as_str(), true);

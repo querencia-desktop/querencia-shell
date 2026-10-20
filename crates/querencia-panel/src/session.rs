@@ -1,14 +1,18 @@
-//! Session actions of the "System" menu. Only "Abmelden …" is offered, and
-//! only through a mechanism the Querencia session already has: labwc's own
-//! `--exit`, which sends SIGTERM to `$LABWC_PID`. `querencia-session` waits
-//! for labwc and cleans up after it (panel, records), and greetd returns to
-//! the login screen; `querencia-session --exit` ends a session the same way.
-//! The labwc binary is the one that runs the session (`/proc/<pid>/exe`),
-//! never whatever `labwc` the `PATH` finds.
+//! Session actions of the "System" menu, as in GNOME 2 "Abmelden …" and
+//! "Ausschalten …" (G2-AD, QD-053/QD-054).
 //!
-//! Not offered, because no safe mechanism exists yet: locking the screen (no
-//! locker is installed), shutting down and restarting (no Querencia
-//! mechanism; nothing is improvised here).
+//! With Querencia Sitzung installed ([`sitzung_command`]), both open its
+//! question with the 60-second countdown (`querencia-sitzung --abmelden`,
+//! `--herunterfahren`): "Abbrechen" stops it, otherwise the session ends or
+//! the computer shuts down by itself when the countdown runs out. The
+//! program decides and acts; the panel only starts it.
+//!
+//! Without Querencia Sitzung, "Abmelden …" falls back to the panel's own
+//! question (without countdown) and labwc's `--exit`, which sends SIGTERM
+//! to `$LABWC_PID`; `querencia-session` waits for labwc and cleans up after
+//! it, and greetd returns to the login screen. The labwc binary is the one
+//! that runs the session (`/proc/<pid>/exe`), never whatever `labwc` the
+//! `PATH` finds. "Ausschalten …" has no fallback and is not offered then.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -45,6 +49,49 @@ pub fn logout_command() -> Option<PathBuf> {
     labwc_exit_command(std::env::var("LABWC_PID").ok().as_deref(), |pid| {
         std::fs::read_link(format!("/proc/{pid}/exe")).ok()
     })
+}
+
+/// File name of the session program (G2-K), found by [`querencia_program`].
+pub const SITZUNG_PROGRAM: &str = "querencia-sitzung";
+
+/// Where the Querencia program `name` is, by the order of
+/// [`crate::sitzung_start`] (its variable, `PATH`, `~/opt/querencia/bin`,
+/// `/usr/bin`); `named` is the variable's value, `usable` tells whether a
+/// file is an executable program.
+pub fn querencia_program(
+    name: &str,
+    named: Option<&std::ffi::OsStr>,
+    path: Option<&std::ffi::OsStr>,
+    home: &Path,
+    usable: impl Fn(&Path) -> bool,
+) -> Option<PathBuf> {
+    crate::sitzung_start::programm(name, named, path, home, usable).ok()
+}
+
+/// Querencia Sitzung, if installed ([`querencia_program`]).
+pub fn sitzung_command() -> Option<PathBuf> {
+    crate::sitzung_start::suchen(SITZUNG_PROGRAM).ok()
+}
+
+/// Starts `sitzung` with `arg` (`--abmelden`, `--herunterfahren`); its
+/// question and countdown run in its own process, which inherits
+/// `LABWC_PID` (and `QS_TROCKENLAUF` in the tests). GIO reaps it and the
+/// exit status is logged.
+pub fn run_sitzung(sitzung: &Path, arg: &str) {
+    let command = format!("{} {arg}", sitzung.display());
+    let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::STDIN_INHERIT);
+    crate::portal::launcher_for_children(&launcher);
+    let started = launcher.spawn(&[sitzung.as_os_str(), std::ffi::OsStr::new(arg)]);
+    match started {
+        Ok(child) => {
+            eprintln!("querencia-panel: {command} gestartet");
+            child.wait_check_async(gio::Cancellable::NONE, move |result| match result {
+                Ok(()) => eprintln!("querencia-panel: {command} beendet"),
+                Err(err) => eprintln!("querencia-panel: {command}: {err}"),
+            });
+        }
+        Err(err) => eprintln!("querencia-panel: {command} fehlgeschlagen: {err}"),
+    }
 }
 
 /// The running panel application, for the panel's own windows: belonging
@@ -176,7 +223,7 @@ mod tests {
 
     fn exe_of(pid: u32) -> Option<PathBuf> {
         match pid {
-            1816 => Some(PathBuf::from("~/opt/labwc-0.9.8/bin/labwc")),
+            1816 => Some(PathBuf::from("/home/user/opt/labwc-0.9.8/bin/labwc")),
             42 => Some(PathBuf::from("/usr/bin/labwc")),
             7 => Some(PathBuf::from("/usr/bin/bash")),
             _ => None,
@@ -187,7 +234,7 @@ mod tests {
     fn the_running_labwc_ends_the_session() {
         assert_eq!(
             labwc_exit_command(Some("1816"), exe_of).as_deref(),
-            Some(Path::new("~/opt/labwc-0.9.8/bin/labwc"))
+            Some(Path::new("/home/user/opt/labwc-0.9.8/bin/labwc"))
         );
         assert_eq!(
             labwc_exit_command(Some("42"), exe_of).as_deref(),
@@ -212,6 +259,42 @@ mod tests {
         let any_labwc = |_| Some(PathBuf::from("/usr/bin/labwc"));
         assert_eq!(labwc_exit_command(Some("0"), any_labwc), None);
         assert!(labwc_exit_command(Some("5"), any_labwc).is_some());
+    }
+
+    #[test]
+    fn querencia_programs_from_path_then_opt_querencia() {
+        let home = Path::new("/home/x");
+        let path = std::ffi::OsString::from("relative/bin:/usr/local/bin:/usr/bin");
+        let opt = Path::new("/home/x/opt/querencia/bin/querencia-sitzung");
+        let find = |exists: &dyn Fn(&Path) -> bool| {
+            querencia_program(SITZUNG_PROGRAM, None, Some(&path), home, exists)
+        };
+        assert_eq!(find(&|p| p == opt).as_deref(), Some(opt));
+        assert_eq!(
+            find(&|p| p == opt || p == Path::new("/usr/bin/querencia-sitzung")).as_deref(),
+            Some(Path::new("/usr/bin/querencia-sitzung"))
+        );
+        // Relative PATH entries are never used.
+        assert_eq!(
+            find(&|p| p == Path::new("relative/bin/querencia-sitzung")),
+            None
+        );
+        assert_eq!(find(&|_| false), None);
+        assert_eq!(
+            querencia_program(SITZUNG_PROGRAM, None, None, home, |p| p == opt).as_deref(),
+            Some(opt)
+        );
+        // QD-069: the package's /usr/bin without PATH, the variable first
+        let usr = Path::new("/usr/bin/querencia-sitzung");
+        assert_eq!(
+            querencia_program(SITZUNG_PROGRAM, None, None, home, |p| p == usr).as_deref(),
+            Some(usr)
+        );
+        let test = std::ffi::OsString::from("/tmp/t/querencia-sitzung");
+        assert_eq!(
+            querencia_program(SITZUNG_PROGRAM, Some(&test), Some(&path), home, |_| true).as_deref(),
+            Some(Path::new("/tmp/t/querencia-sitzung"))
+        );
     }
 
     #[test]

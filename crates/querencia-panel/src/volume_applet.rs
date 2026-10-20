@@ -360,8 +360,9 @@ fn open_mixer() {
                 "querencia-panel: Lautstärke: Lautstärkeregler {}",
                 program.display()
             );
-            let launched =
-                gio::Subprocess::newv(&[program.as_os_str()], gio::SubprocessFlags::STDIN_INHERIT);
+            let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::STDIN_INHERIT);
+            crate::portal::launcher_for_children(&launcher);
+            let launched = launcher.spawn(&[program.as_os_str()]);
             if let Err(err) = launched {
                 querencia_lautstaerke::say!(
                     "querencia-panel: Lautstärkeregler nicht gestartet: {err}"
@@ -374,22 +375,26 @@ fn open_mixer() {
     }
 }
 
-/// Where the mixer program is: the first `PATH` entry holding it, else
-/// `<home>/opt/querencia/bin/querencia-lautstaerke`; `exists` tells whether
-/// a file is there.
+/// Where the mixer program is ([`crate::session::querencia_program`], its
+/// variable `QUERENCIA_LAUTSTAERKE` first); `exists` tells whether a file
+/// is there.
 fn mixer_program(
     path: Option<&std::ffi::OsStr>,
     home: &std::path::Path,
     exists: impl Fn(&std::path::Path) -> bool,
 ) -> Option<std::path::PathBuf> {
-    path.into_iter()
-        .flat_map(std::env::split_paths)
-        .filter(|dir| dir.is_absolute())
-        .map(|dir| dir.join(MIXER_PROGRAM))
-        .chain(std::iter::once(
-            home.join("opt/querencia/bin").join(MIXER_PROGRAM),
-        ))
-        .find(|candidate| exists(candidate))
+    let named = std::env::var_os(crate::sitzung_start::variable(MIXER_PROGRAM));
+    named_mixer_program(named.as_deref(), path, home, exists)
+}
+
+/// [`mixer_program`] with the variable's value `named`.
+fn named_mixer_program(
+    named: Option<&std::ffi::OsStr>,
+    path: Option<&std::ffi::OsStr>,
+    home: &std::path::Path,
+    exists: impl Fn(&std::path::Path) -> bool,
+) -> Option<std::path::PathBuf> {
+    crate::session::querencia_program(MIXER_PROGRAM, named, path, home, exists)
 }
 
 #[cfg(test)]
@@ -445,6 +450,17 @@ mod tests {
         // a relative PATH entry is never used
         let relative = |p: &Path| p == Path::new("relativ/querencia-lautstaerke");
         assert_eq!(mixer_program(Some(&path), home, relative), None);
+        // QD-069: the package's /usr/bin, and the variable before PATH
+        let usr = PathBuf::from("/usr/bin/querencia-lautstaerke");
+        assert_eq!(
+            named_mixer_program(None, None, home, |p| p == usr),
+            Some(usr.clone())
+        );
+        let named = std::ffi::OsString::from("/tmp/t/querencia-lautstaerke");
+        assert_eq!(
+            named_mixer_program(Some(&named), Some(&path), home, |_| true),
+            Some(PathBuf::from("/tmp/t/querencia-lautstaerke"))
+        );
     }
 
     #[test]
