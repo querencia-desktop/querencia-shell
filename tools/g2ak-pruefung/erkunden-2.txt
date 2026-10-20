@@ -1,0 +1,9 @@
+mark E01 Uhr-Rechtsklick
+move 948 16
+wait 250
+rclick
+wait 1200
+shot SHOT/e11-uhr-rechts.png
+key Escape
+wait 600
+mark E02 Ende
