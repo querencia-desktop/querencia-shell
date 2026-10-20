@@ -34,8 +34,18 @@ impl Edge {
 }
 
 /// Applet types placed right of a neighbour type when added to the end
-/// region (see [`Region::insertion_index_for`]): (type, neighbour).
-pub const RIGHT_OF: &[(&str, &str)] = &[("network", "volume")];
+/// region (see [`Region::insertion_index_for`]): (type, neighbour). G2-AL:
+/// the bell right of the network applet, or of the volume applet without
+/// one (the first neighbour the region has counts).
+pub const RIGHT_OF: &[(&str, &str)] = &[
+    ("network", "volume"),
+    ("benachrichtigungen", "network"),
+    ("benachrichtigungen", "volume"),
+];
+
+/// Applet types that go first when added to the start region (G2-AL:
+/// „Arbeitsfläche anzeigen“ at the left end, as in GNOME 2).
+pub const FIRST_IN_START: &[&str] = &["show-desktop"];
 
 /// The three areas of a panel, from left to right.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,10 +90,15 @@ impl Region {
     /// applet, the order of the GNOME 2 notification area).
     pub fn insertion_index_for(self, items: &[Instance], applet_id: &str) -> usize {
         if self == Region::End
-            && let Some((_, left)) = RIGHT_OF.iter().find(|(kind, _)| *kind == applet_id)
-            && let Some(position) = items.iter().rposition(|i| i.applet == *left)
+            && let Some(position) = RIGHT_OF
+                .iter()
+                .filter(|(kind, _)| *kind == applet_id)
+                .find_map(|(_, left)| items.iter().rposition(|i| i.applet == *left))
         {
             return position + 1;
+        }
+        if self == Region::Start && FIRST_IN_START.contains(&applet_id) {
+            return 0;
         }
         self.insertion_index(items.len())
     }
@@ -301,7 +316,8 @@ pub struct Validated {
 impl Layout {
     /// The layout the panel had before it became configurable: Anwendungen,
     /// Orte, System and the clock on top; window list and workspace switcher
-    /// at the bottom.
+    /// at the bottom. G2-AL: the bell left of the clock and „Arbeitsfläche
+    /// anzeigen“ left of the window list.
     pub fn standard() -> Layout {
         let mut top = PanelSpec::new("top", Edge::Top, DEFAULT_HEIGHT);
         top.push(
@@ -310,9 +326,17 @@ impl Layout {
         );
         top.push(Region::Start, Instance::new("places-1", "places"));
         top.push(Region::Start, Instance::new("system-1", "system"));
+        top.push(
+            Region::End,
+            Instance::new("benachrichtigungen-1", "benachrichtigungen"),
+        );
         top.push(Region::End, Instance::new("clock-1", "clock"));
 
         let mut bottom = PanelSpec::new("bottom", Edge::Bottom, DEFAULT_HEIGHT);
+        bottom.push(
+            Region::Start,
+            Instance::new("show-desktop-1", "show-desktop"),
+        );
         bottom.push(Region::Start, Instance::new("window-list-1", "window-list"));
         bottom.push(
             Region::End,
@@ -772,7 +796,7 @@ mod tests {
 
     #[test]
     fn network_goes_right_of_volume_in_the_end_region_only() {
-        let mut layout = Layout::standard();
+        let mut layout = ohne_glocke();
         layout
             .add_applet("top", "volume", Region::End, known)
             .unwrap();
@@ -786,7 +810,7 @@ mod tests {
             ["volume", "network", "clock"]
         );
         // without a volume applet: first, as every other applet
-        let mut layout = Layout::standard();
+        let mut layout = ohne_glocke();
         layout
             .add_applet("top", "network", Region::End, known)
             .unwrap();
@@ -800,7 +824,7 @@ mod tests {
             ["volume", "network", "clock"]
         );
         // other regions keep their rule
-        let mut layout = Layout::standard();
+        let mut layout = ohne_glocke();
         layout
             .add_applet("top", "volume", Region::Start, known)
             .unwrap();
@@ -811,6 +835,74 @@ mod tests {
             types(&layout.panels[0], Region::Start),
             ["applications", "places", "system", "volume", "network"]
         );
+    }
+
+    /// The standard layout as before G2-AL (no bell, no show-desktop), for
+    /// the rules that are about other applets.
+    fn ohne_glocke() -> Layout {
+        let mut layout = Layout::standard();
+        layout
+            .remove_applet("benachrichtigungen-1")
+            .expect("Glocke");
+        layout.remove_applet("show-desktop-1").expect("Knopf");
+        layout
+    }
+
+    /// G2-AL: the bell right of the network applet (else of the volume
+    /// applet, else first); „Arbeitsfläche anzeigen“ first in the start
+    /// region.
+    #[test]
+    fn bell_goes_right_of_network_and_show_desktop_first() {
+        let mut layout = ohne_glocke();
+        for applet in ["volume", "network"] {
+            layout
+                .add_applet("top", applet, Region::End, known)
+                .unwrap();
+        }
+        let added = layout
+            .add_applet("top", "benachrichtigungen", Region::End, known)
+            .unwrap();
+        assert_eq!(added.index, 2);
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            ["volume", "network", "benachrichtigungen", "clock"]
+        );
+        let mut layout = ohne_glocke();
+        layout
+            .add_applet("top", "volume", Region::End, known)
+            .unwrap();
+        layout
+            .add_applet("top", "benachrichtigungen", Region::End, known)
+            .unwrap();
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            ["volume", "benachrichtigungen", "clock"]
+        );
+        let mut layout = ohne_glocke();
+        layout
+            .add_applet("top", "benachrichtigungen", Region::End, known)
+            .unwrap();
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            ["benachrichtigungen", "clock"]
+        );
+        let added = layout
+            .add_applet("bottom", "show-desktop", Region::Start, known)
+            .unwrap();
+        assert_eq!(added.index, 0);
+        assert_eq!(
+            types(&layout.panels[1], Region::Start),
+            ["show-desktop", "window-list"]
+        );
+        // elsewhere the usual rule
+        let added = ohne_glocke()
+            .add_applet("bottom", "show-desktop", Region::End, known)
+            .unwrap();
+        assert_eq!(added.index, 0);
+        let added = ohne_glocke()
+            .add_applet("bottom", "show-desktop", Region::Center, known)
+            .unwrap();
+        assert_eq!(added.index, 0);
     }
 
     #[test]
@@ -829,12 +921,15 @@ mod tests {
             ["applications", "places", "system"]
         );
         assert!(top.region(Region::Center).is_empty());
-        assert_eq!(types(top, Region::End), ["clock"]);
+        assert_eq!(types(top, Region::End), ["benachrichtigungen", "clock"]);
         assert_eq!(
             (bottom.id.as_str(), bottom.edge, bottom.height),
             ("bottom", Edge::Bottom, 32)
         );
-        assert_eq!(types(bottom, Region::Start), ["window-list"]);
+        assert_eq!(
+            types(bottom, Region::Start),
+            ["show-desktop", "window-list"]
+        );
         assert!(bottom.region(Region::Center).is_empty());
         assert_eq!(types(bottom, Region::End), ["workspace-switcher"]);
     }
@@ -863,7 +958,9 @@ mod tests {
                 "applications-1",
                 "places-1",
                 "system-1",
+                "benachrichtigungen-1",
                 "clock-1",
+                "show-desktop-1",
                 "window-list-1",
                 "workspace-switcher-1"
             ]
@@ -1002,7 +1099,10 @@ mod tests {
         );
         // the other panel and the other regions are untouched
         assert_eq!(panel(&layout, "bottom"), &Layout::standard().panels[1]);
-        assert_eq!(ids(panel(&layout, "top"), Region::End), ["clock-1"]);
+        assert_eq!(
+            ids(panel(&layout, "top"), Region::End),
+            ["benachrichtigungen-1", "clock-1"]
+        );
     }
 
     #[test]
@@ -1026,7 +1126,7 @@ mod tests {
         assert_eq!((added.region, added.index), (Region::End, 0));
         assert_eq!(
             ids(panel(&layout, "top"), Region::End),
-            ["system-2", "clock-1"]
+            ["system-2", "benachrichtigungen-1", "clock-1"]
         );
     }
 
@@ -1046,7 +1146,13 @@ mod tests {
         assert_eq!(new_ids, ["clock-2", "clock-3", "clock-4"]);
         assert_eq!(
             ids(panel(&layout, "bottom"), Region::Start),
-            ["window-list-1", "clock-2", "clock-3", "clock-4"]
+            [
+                "show-desktop-1",
+                "window-list-1",
+                "clock-2",
+                "clock-3",
+                "clock-4"
+            ]
         );
         let validated = layout.clone().validated(known);
         assert!(validated.problems.is_empty(), "{:?}", validated.problems);
@@ -1093,7 +1199,9 @@ mod tests {
                 "applications-1",
                 "places-1",
                 "system-1",
+                "benachrichtigungen-1",
                 "clock-1",
+                "show-desktop-1",
                 "window-list-1",
                 "workspace-switcher-1"
             ]
@@ -1336,7 +1444,7 @@ mod tests {
         assert_eq!(removed, Instance::launcher("launcher-1", "a.desktop"));
         assert_eq!(
             ids(&layout.panels[1], Region::Start),
-            ["window-list-1", "launcher-2"]
+            ["show-desktop-1", "window-list-1", "launcher-2"]
         );
         assert_eq!(layout.remove_applet("launcher-1"), None);
         assert_eq!(layout.remove_applet("unbekannt"), None);

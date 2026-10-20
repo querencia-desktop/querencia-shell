@@ -5,9 +5,12 @@ mod app_menu;
 mod applet_move;
 mod applets;
 mod apps;
+mod arbeitsflaeche_zeigen;
 mod classic_menu;
 mod clock;
+mod ergaenzung;
 mod fensterliste;
+mod glocke;
 mod icon_reload;
 mod icon_theme;
 mod launcher;
@@ -80,6 +83,15 @@ pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
 // focus in the menu orange, bold group titles, grey notes and second
 // lines (addresses).
 //
+// Notification bell (G2-AL): a status applet; its count stands right of the
+// bell in the dark panel text, bold; greyed out without the notification
+// centre, dimmed while „Nicht stören“ is on (the whole content, as the
+// count is part of it).
+//
+// „Arbeitsfläche anzeigen“ (G2-AL): a bare icon like a launcher, neutral
+// highlight; while the windows of the last click are minimized it stays
+// pressed (GTK's toggle button `:checked`), as the GNOME 2 button.
+//
 // Application launchers (HMP-11): only the icon, no frame, as in the GNOME 2
 // panel; on hover and while pressed the neutral highlight of the main menu
 // buttons (never orange); a launcher whose application is missing has a
@@ -132,6 +144,13 @@ const PANEL_CSS: &str = "
 .querencia-panel button.querencia-status:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
 .querencia-panel button.querencia-status:active { background-color: #dcd6d0; border-color: #9e9993; }
 .querencia-panel button.querencia-status.unavailable > image { opacity: 0.45; }
+.querencia-panel button.querencia-status.unavailable > box { opacity: 0.45; }
+.querencia-panel button.querencia-status.gedaempft > box { opacity: 0.7; }
+.querencia-panel button.querencia-status label.querencia-zahl { padding: 0 1px; font-weight: bold; color: #3c3c3c; }
+.querencia-panel button.querencia-show-desktop { min-width: 0; min-height: 0; padding: 0 2px; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
+.querencia-panel button.querencia-show-desktop:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
+.querencia-panel button.querencia-show-desktop:active,
+.querencia-panel button.querencia-show-desktop:checked { background-color: #dcd6d0; background-image: none; border-color: #9e9993; box-shadow: inset 0 1px 2px alpha(#000000, 0.15); }
 .querencia-panel popover.querencia-volume-popup scale > trough > highlight { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); border-color: #b36c4e; }
 .querencia-panel popover.querencia-calendar calendar > grid > label.day-number:selected { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); box-shadow: inset 0 0 0 1px #b36c4e; color: #ffffff; }
 .querencia-panel popover.querencia-calendar calendar > grid > label.today { font-weight: bold; }
@@ -170,6 +189,11 @@ popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-
 ";
 
 fn main() -> glib::ExitCode {
+    // G2-AL: the integration's panel.ini step, without GTK or a display
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("--panel-ini") {
+        return glib::ExitCode::from(ergaenzung::kommandozeile(&args[1..]));
+    }
     // before GTK and any thread (QD-062): no long wait for a stale portal
     let portal_mode = portal::prepare("querencia-panel");
     if let Err(err) = gtk4::init() {

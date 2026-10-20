@@ -11,8 +11,8 @@ use gtk4::{Widget, gio};
 
 use crate::layout::{Instance, LAUNCHER};
 use crate::{
-    app_menu, clock, launcher, logo, network_applet, places_menu, system_menu, volume_applet,
-    window_list, workspace_switcher,
+    app_menu, arbeitsflaeche_zeigen, clock, glocke, launcher, logo, network_applet, places_menu,
+    system_menu, volume_applet, window_list, workspace_switcher,
 };
 
 /// One applet type.
@@ -214,12 +214,49 @@ pub const APPLETS: &[AppletType] = &[
         status: true,
         factory: |_, height| network_applet::widget(height).upcast(),
     },
+    // G2-AL (QD-078): GNOME 2's „Arbeitsfläche anzeigen“ at the left end of
+    // the bottom panel. Single: it works through the one window list.
+    AppletType {
+        id: SHOW_DESKTOP,
+        name: "Arbeitsfläche anzeigen",
+        description: "Alle Fenster minimieren und wiederherstellen",
+        icon: arbeitsflaeche_zeigen::ICON,
+        classic_icon: None,
+        multiple: false,
+        once: false,
+        removable: true,
+        chooses_application: false,
+        menu: None,
+        status: false,
+        factory: |_, height| arbeitsflaeche_zeigen::widget(height).upcast(),
+    },
+    // G2-AL (QD-073 part 2): the bell of the notification centre, a status
+    // icon right of the network applet. Single: one service.
+    AppletType {
+        id: NOTIFICATIONS,
+        name: "Mitteilungen",
+        description: "Ungelesene Mitteilungen, öffnet die Mitteilungszentrale",
+        // The dialog draws the applet's own icon (`add_dialog.rs`).
+        icon: "preferences-desktop-notification",
+        classic_icon: None,
+        multiple: false,
+        once: false,
+        removable: true,
+        chooses_application: false,
+        menu: Some(glocke::menu),
+        status: true,
+        factory: |_, height| glocke::widget(height).upcast(),
+    },
 ];
 
 /// Type ID of the volume applet (G2-J).
 pub const VOLUME: &str = "volume";
 /// Type ID of the network applet (G2-M).
 pub const NETWORK: &str = "network";
+/// Type ID of „Arbeitsfläche anzeigen“ (G2-AL).
+pub const SHOW_DESKTOP: &str = "show-desktop";
+/// Type ID of the notification bell (G2-AL).
+pub const NOTIFICATIONS: &str = "benachrichtigungen";
 
 /// The applet type with `id`, if there is one.
 pub fn find(id: &str) -> Option<&'static AppletType> {
@@ -245,7 +282,9 @@ mod tests {
                 "clock",
                 "launcher",
                 "volume",
-                "network"
+                "network",
+                "show-desktop",
+                "benachrichtigungen"
             ]
         );
         assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len());
@@ -300,17 +339,38 @@ mod tests {
             .filter(|a| a.removable)
             .map(|a| a.id)
             .collect();
-        assert_eq!(removable, ["clock", LAUNCHER, VOLUME, NETWORK]);
+        assert_eq!(
+            removable,
+            [
+                "clock",
+                LAUNCHER,
+                VOLUME,
+                NETWORK,
+                SHOW_DESKTOP,
+                NOTIFICATIONS
+            ]
+        );
     }
 
     #[test]
-    fn only_volume_and_network_have_a_menu_of_their_own_and_are_single() {
+    fn only_volume_network_and_the_bell_have_a_menu_of_their_own_and_are_single() {
         let with_menu: Vec<_> = APPLETS
             .iter()
             .filter(|a| a.menu.is_some())
             .map(|a| a.id)
             .collect();
-        assert_eq!(with_menu, [VOLUME, NETWORK]);
+        assert_eq!(with_menu, [VOLUME, NETWORK, NOTIFICATIONS]);
+        let bell = find(NOTIFICATIONS).unwrap();
+        assert!(!bell.multiple && bell.removable && !bell.once && bell.status);
+        let menu = (bell.menu.unwrap())();
+        let section = menu.item_link(2, "section").expect("Abschnitt");
+        let action = section
+            .item_attribute_value(0, "action", Some(gtk4::glib::VariantTy::STRING))
+            .and_then(|v| v.get::<String>());
+        assert_eq!(action.as_deref(), Some(crate::panel_menu::REMOVE_ACTION));
+        let show = find(SHOW_DESKTOP).unwrap();
+        assert!(!show.multiple && show.removable && !show.status && show.menu.is_none());
+        assert_eq!(show.icon, "user-desktop");
         let network = find(NETWORK).unwrap();
         assert!(!network.multiple && network.removable && !network.once);
         assert!(!network.chooses_application);
@@ -334,9 +394,9 @@ mod tests {
     }
 
     #[test]
-    fn only_volume_and_network_are_status_icons() {
+    fn only_volume_network_and_the_bell_are_status_icons() {
         let status: Vec<_> = APPLETS.iter().filter(|a| a.status).map(|a| a.id).collect();
-        assert_eq!(status, [VOLUME, NETWORK]);
+        assert_eq!(status, [VOLUME, NETWORK, NOTIFICATIONS]);
     }
 
     #[test]
@@ -355,5 +415,7 @@ mod tests {
         assert!(!find("workspace-switcher").unwrap().multiple);
         assert!(!find(VOLUME).unwrap().multiple);
         assert!(!find(NETWORK).unwrap().multiple);
+        assert!(!find(SHOW_DESKTOP).unwrap().multiple);
+        assert!(!find(NOTIFICATIONS).unwrap().multiple);
     }
 }
