@@ -262,9 +262,30 @@ impl PanelSpec {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Layout {
     pub panels: Vec<PanelSpec>,
+    /// Settings of the window list (G2-AK), the same for every window list.
+    pub window_list: WindowListSettings,
+}
+
+/// `[window-list]` in `panel.ini` (G2-AK, B11).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct WindowListSettings {
+    /// `alle_arbeitsflaechen`: the windows of all workspaces (`ja`) or, as
+    /// in GNOME 2, only those of the current one (`nein`). `None`: not in
+    /// the file, the standard [`WindowListSettings::DEFAULT_ALL_WORKSPACES`];
+    /// saving then leaves it out, so the file keeps following the standard.
+    pub all_workspaces: Option<bool>,
+}
+
+impl WindowListSettings {
+    /// GNOME 2's window list showed the current workspace only.
+    pub const DEFAULT_ALL_WORKSPACES: bool = false;
+
+    pub fn all_workspaces(self) -> bool {
+        self.all_workspaces.unwrap_or(Self::DEFAULT_ALL_WORKSPACES)
+    }
 }
 
 /// Result of [`Layout::validated`].
@@ -300,6 +321,7 @@ impl Layout {
 
         Layout {
             panels: vec![top, bottom],
+            ..Default::default()
         }
     }
 
@@ -399,13 +421,19 @@ impl Layout {
         if panels.is_empty() {
             problems.push("kein gültiges Panel, Standardlayout verwendet".to_string());
             return Validated {
-                layout: Layout::standard(),
+                layout: Layout {
+                    window_list: self.window_list,
+                    ..Layout::standard()
+                },
                 problems,
                 fallback: true,
             };
         }
         Validated {
-            layout: Layout { panels },
+            layout: Layout {
+                panels,
+                window_list: self.window_list,
+            },
             problems,
             fallback: false,
         }
@@ -670,7 +698,10 @@ mod tests {
                 );
             }
         }
-        Layout { panels: vec![top] }
+        Layout {
+            panels: vec![top],
+            ..Default::default()
+        }
     }
 
     fn rows(layout: &Layout) -> [Vec<&str>; 3] {
@@ -848,6 +879,7 @@ mod tests {
         }
         let result = Layout {
             panels: vec![panel],
+            ..Default::default()
         }
         .validated(known);
         assert!(result.problems.is_empty());
@@ -880,6 +912,7 @@ mod tests {
             fallback,
         } = Layout {
             panels: vec![top, same_edge, bottom, repeated, bad_id],
+            ..Default::default()
         }
         .validated(known);
         assert!(!fallback);
@@ -898,13 +931,18 @@ mod tests {
 
     #[test]
     fn nothing_usable_falls_back_to_the_standard_layout() {
-        let empty = Layout { panels: vec![] }.validated(known);
+        let empty = Layout {
+            panels: vec![],
+            ..Default::default()
+        }
+        .validated(known);
         assert!(empty.fallback);
         assert_eq!(empty.layout, Layout::standard());
         assert_eq!(empty.problems.len(), 1);
 
         let broken = Layout {
             panels: vec![PanelSpec::new("-x", Edge::Top, 32)],
+            ..Default::default()
         }
         .validated(known);
         assert!(broken.fallback);
@@ -916,6 +954,7 @@ mod tests {
     fn empty_panels_stay_valid() {
         let result = Layout {
             panels: vec![PanelSpec::new("leer", Edge::Bottom, 24)],
+            ..Default::default()
         }
         .validated(known);
         assert!(result.problems.is_empty() && !result.fallback);
@@ -1021,7 +1060,10 @@ mod tests {
         top.push(Region::Start, Instance::new("clock-3", "clock"));
         // an instance of another type may carry a name that looks like ours
         top.push(Region::End, Instance::new("clock-2", "places"));
-        let mut layout = Layout { panels: vec![top] };
+        let mut layout = Layout {
+            panels: vec![top],
+            ..Default::default()
+        };
         let added = layout
             .add_applet("top", "clock", Region::Start, known)
             .unwrap();
@@ -1097,6 +1139,7 @@ mod tests {
         // a layout without a window list may get exactly one, on any panel
         let mut layout = Layout {
             panels: vec![PanelSpec::new("top", Edge::Top, 32)],
+            ..Default::default()
         };
         assert!(layout.can_add("window-list", known));
         let added = layout
@@ -1271,6 +1314,7 @@ mod tests {
         );
         let checked = Layout {
             panels: vec![panel],
+            ..Default::default()
         }
         .validated(known);
         let top = &checked.layout.panels[0];

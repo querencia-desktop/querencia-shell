@@ -293,8 +293,7 @@ mod tests {
         );
         let test = std::ffi::OsString::from("/tmp/t/querencia-sitzung");
         assert_eq!(
-            querencia_program(SITZUNG_PROGRAM, Some(&test), Some(&path), home, |_| true)
-                .as_deref(),
+            querencia_program(SITZUNG_PROGRAM, Some(&test), Some(&path), home, |_| true).as_deref(),
             Some(Path::new("/tmp/t/querencia-sitzung"))
         );
     }

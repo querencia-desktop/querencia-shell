@@ -248,7 +248,10 @@ mod tests {
             .split("<keybind ")
             .find(|b| b.starts_with("key=\"C-A-l\""))
             .expect("C-A-l in rc.xml");
-        assert!(bind.contains("querencia-sitzung --sperren --sofort"), "{bind}");
+        assert!(
+            bind.contains("querencia-sitzung --sperren --sofort"),
+            "{bind}"
+        );
         assert_eq!(SPERREN_KUERZEL, "<Control><Alt>l");
     }
 }

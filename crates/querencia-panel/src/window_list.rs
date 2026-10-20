@@ -14,6 +14,12 @@
 //! window's button is dimmed (instead of GNOME 2's brackets around the
 //! title), the full title is in the tooltip. A click minimizes the active
 //! window, restores a minimized one and activates any other, as in GNOME 2.
+//!
+//! G2-AK (B11): as in GNOME 2 the list shows only the windows of the
+//! current workspace, unless `panel.ini` says `[window-list]
+//! alle_arbeitsflaechen=ja`. The same connection binds
+//! `ext_workspace_manager_v1`, so window and workspace events arrive in the
+//! order labwc sent them; `fensterliste.rs` places the windows from them.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -26,12 +32,25 @@ use gtk4::subclass::prelude::*;
 use gtk4::{Box as GtkBox, Button, Image, Label, Orientation, glib, pango};
 use wayland_client::backend::WaylandError;
 use wayland_client::globals::{GlobalListContents, registry_queue_init};
-use wayland_client::protocol::{wl_registry::WlRegistry, wl_seat::WlSeat};
-use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle, event_created_child};
+use wayland_client::protocol::{
+    wl_callback::{self, WlCallback},
+    wl_registry::WlRegistry,
+    wl_seat::WlSeat,
+};
+use wayland_client::{
+    Connection, Dispatch, EventQueue, Proxy, QueueHandle, WEnum, event_created_child,
+};
+use wayland_protocols::ext::workspace::v1::client::{
+    ext_workspace_group_handle_v1::{self as workspace_group, ExtWorkspaceGroupHandleV1},
+    ext_workspace_handle_v1::{self as workspace, ExtWorkspaceHandleV1},
+    ext_workspace_manager_v1::{self as workspace_manager, ExtWorkspaceManagerV1},
+};
 use wayland_protocols_wlr::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_handle_v1::{self as handle, ZwlrForeignToplevelHandleV1},
     zwlr_foreign_toplevel_manager_v1::{self as manager, ZwlrForeignToplevelManagerV1},
 };
+
+use crate::fensterliste::{self, Ereignis, Flaechen, Zuordnung};
 
 /// Identity of a window for the widgets. Never reused while the panel runs,
 /// unlike Wayland protocol ids, which the compositor reuses after `closed`.
@@ -61,6 +80,9 @@ struct Windows<H> {
     entries: HashMap<H, Entry>,
     next_key: u64,
     changed: bool,
+    /// Appearing, focus and closing in the order of their `done` (G2-AK),
+    /// for [`Zuordnung`].
+    events: Vec<Ereignis<WindowKey>>,
 }
 
 impl<H: Clone + Eq + Hash> Windows<H> {
@@ -69,6 +91,7 @@ impl<H: Clone + Eq + Hash> Windows<H> {
             entries: HashMap::new(),
             next_key: 0,
             changed: false,
+            events: Vec::new(),
         }
     }
 
@@ -104,6 +127,16 @@ impl<H: Clone + Eq + Hash> Windows<H> {
         if let Some(entry) = self.entries.get_mut(handle)
             && entry.current.as_ref() != Some(&entry.pending)
         {
+            let was = entry.current.as_ref().map(|info| info.activated);
+            let now = entry.pending.activated;
+            if was.is_none() {
+                self.events.push(Ereignis::Erschienen(entry.key));
+            }
+            match (was.unwrap_or(false), now) {
+                (false, true) => self.events.push(Ereignis::Aktiviert(entry.key)),
+                (true, false) => self.events.push(Ereignis::Deaktiviert(entry.key)),
+                _ => {}
+            }
             entry.current = Some(entry.pending.clone());
             self.changed = true;
         }
@@ -111,6 +144,9 @@ impl<H: Clone + Eq + Hash> Windows<H> {
 
     fn closed(&mut self, handle: &H) {
         if let Some(entry) = self.entries.remove(handle) {
+            if entry.current.is_some() {
+                self.events.push(Ereignis::Geschlossen(entry.key));
+            }
             self.changed |= entry.current.is_some();
         }
     }
@@ -232,6 +268,8 @@ fn click_action(info: &Info) -> Click {
 struct Protocol {
     windows: Windows<ZwlrForeignToplevelHandleV1>,
     finished: bool,
+    /// The workspaces (G2-AK); their changes go into `windows.events`.
+    workspaces: Flaechen<ExtWorkspaceHandleV1>,
 }
 
 impl Dispatch<WlRegistry, GlobalListContents> for Protocol {
@@ -279,6 +317,97 @@ impl Dispatch<ZwlrForeignToplevelManagerV1, ()> for Protocol {
     ]);
 }
 
+/// The answer to the `sync` sent after binding: the windows reported so far
+/// were open before the list started.
+impl Dispatch<WlCallback, ()> for Protocol {
+    fn event(
+        state: &mut Self,
+        _: &WlCallback,
+        event: wl_callback::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        if let wl_callback::Event::Done { .. } = event {
+            state.windows.events.push(Ereignis::Bereit);
+        }
+    }
+}
+
+impl Dispatch<ExtWorkspaceManagerV1, ()> for Protocol {
+    fn event(
+        state: &mut Self,
+        _: &ExtWorkspaceManagerV1,
+        event: workspace_manager::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        match event {
+            workspace_manager::Event::Workspace { workspace } => state.workspaces.neu(workspace),
+            workspace_manager::Event::Done => {
+                if let Some(active) = state.workspaces.fertig() {
+                    state.windows.events.push(Ereignis::Flaeche(active));
+                }
+            }
+            // without workspaces every window is shown again
+            workspace_manager::Event::Finished => {
+                state.windows.events.push(Ereignis::Flaeche(None));
+            }
+            _ => {}
+        }
+    }
+
+    event_created_child!(Protocol, ExtWorkspaceManagerV1, [
+        workspace_manager::EVT_WORKSPACE_GROUP_OPCODE => (ExtWorkspaceGroupHandleV1, ()),
+        workspace_manager::EVT_WORKSPACE_OPCODE => (ExtWorkspaceHandleV1, ()),
+    ]);
+}
+
+impl Dispatch<ExtWorkspaceGroupHandleV1, ()> for Protocol {
+    fn event(
+        _: &mut Self,
+        proxy: &ExtWorkspaceGroupHandleV1,
+        event: workspace_group::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        if let workspace_group::Event::Removed = event {
+            proxy.destroy();
+        }
+    }
+}
+
+impl Dispatch<ExtWorkspaceHandleV1, ()> for Protocol {
+    fn event(
+        state: &mut Self,
+        proxy: &ExtWorkspaceHandleV1,
+        event: workspace::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        match event {
+            workspace::Event::Name { name } => state.workspaces.name(proxy, name),
+            workspace::Event::State { state: bits } => {
+                let bits = match bits {
+                    WEnum::Value(value) => value.bits(),
+                    WEnum::Unknown(raw) => raw,
+                };
+                state
+                    .workspaces
+                    .aktiv(proxy, bits & workspace::State::Active.bits() != 0);
+            }
+            workspace::Event::Removed => {
+                state.workspaces.entfernt(proxy);
+                proxy.destroy();
+            }
+            _ => {}
+        }
+    }
+}
+
 impl Dispatch<ZwlrForeignToplevelHandleV1, ()> for Protocol {
     fn event(
         state: &mut Self,
@@ -320,6 +449,13 @@ struct WindowList {
     /// The fd source while it is attached. Its closure holds the only
     /// strong reference to the list.
     source: Option<glib::SourceId>,
+    /// G2-AK: which workspace each window is on, and whether to show all.
+    placement: Zuordnung<WindowKey>,
+    all_workspaces: bool,
+    /// What is shown may have changed although no window did.
+    refilter: bool,
+    /// Pending [`Zuordnung::festschreiben`] after a workspace change.
+    settle: Option<glib::SourceId>,
 }
 
 type Shared = Rc<RefCell<WindowList>>;
@@ -335,11 +471,16 @@ pub fn widget() -> WindowRow {
     container.add_css_class(crate::panel_menu::FREE_SPACE_CLASS);
     // a little air before the next applet (workspace switcher), as in GNOME 2
     container.set_margin_end(6);
+    let all_workspaces = fensterliste::alle_arbeitsflaechen();
     let list = Rc::new(RefCell::new(WindowList {
         container: container.downgrade(),
         session: None,
         buttons: HashMap::new(),
         source: None,
+        placement: Zuordnung::default(),
+        all_workspaces,
+        refilter: false,
+        settle: None,
     }));
     match connect() {
         Ok(session) => {
@@ -359,11 +500,18 @@ pub fn widget() -> WindowRow {
             // A source that already ended with `Break` has given up its id.
             let list = Rc::downgrade(&list);
             container.connect_destroy(move |_| {
-                let source = list
+                let (source, settle) = list
                     .upgrade()
-                    .and_then(|list| list.borrow_mut().source.take());
+                    .map(|list| {
+                        let mut list = list.borrow_mut();
+                        (list.source.take(), list.settle.take())
+                    })
+                    .unwrap_or_default();
                 if let Some(source) = source {
                     source.remove();
+                }
+                if let Some(settle) = settle {
+                    settle.remove();
                 }
             });
         }
@@ -382,14 +530,23 @@ fn connect() -> Result<Session, String> {
     let seat: WlSeat = globals
         .bind(&qh, 1..=1, ())
         .map_err(|_| "kein wl_seat".to_owned())?;
+    let workspaces: Option<ExtWorkspaceManagerV1> = globals.bind(&qh, 1..=1, ()).ok();
+    // answered after everything labwc reports on binding (G2-AK)
+    conn.display().sync(&qh, ());
     conn.flush().map_err(|e| e.to_string())?;
     eprintln!(
-        "querencia-panel: Fensterliste über zwlr_foreign_toplevel_manager_v1 v{}",
-        manager.version()
+        "querencia-panel: Fensterliste über zwlr_foreign_toplevel_manager_v1 v{}, {}",
+        manager.version(),
+        match (&workspaces, fensterliste::alle_arbeitsflaechen()) {
+            (_, true) => "Fenster aller Arbeitsflächen (alle_arbeitsflaechen=ja)",
+            (Some(_), false) => "nur Fenster der aktuellen Arbeitsfläche",
+            (None, false) => "kein ext_workspace_manager_v1, Fenster aller Arbeitsflächen",
+        }
     );
     let protocol = Protocol {
         windows: Windows::new(),
         finished: false,
+        workspaces: Flaechen::default(),
     };
     Ok(Session {
         conn,
@@ -417,6 +574,7 @@ fn on_readable(list: &Shared, condition: glib::IOCondition) -> glib::ControlFlow
     };
     match result {
         Ok(()) => {
+            place(list);
             sync(list);
             glib::ControlFlow::Continue
         }
@@ -470,40 +628,122 @@ fn flush(conn: &Connection) -> Result<(), String> {
     }
 }
 
-/// Makes the buttons match the completed window state.
+/// Applies the window and workspace events of the last batch to the
+/// placement (G2-AK) and, after a workspace change, settles it later.
+fn place(list: &Shared) {
+    let mut guard = list.borrow_mut();
+    let state = &mut *guard;
+    let Some(session) = state.session.as_mut() else {
+        return;
+    };
+    let mut settle = false;
+    let mut changed_workspace = None;
+    for event in std::mem::take(&mut session.protocol.windows.events) {
+        let effect = state.placement.anwenden(event);
+        state.refilter |= effect.neu_filtern;
+        settle |= effect.festschreiben_planen;
+        if let Ereignis::Flaeche(Some(number)) = event {
+            changed_workspace = Some(number);
+        }
+    }
+    if let Some(number) = changed_workspace {
+        let name = session.protocol.workspaces.name_von(number).unwrap_or("");
+        eprintln!("querencia-panel: Fensterliste: Arbeitsfläche „{name}“");
+    }
+    if settle {
+        if let Some(old) = state.settle.take() {
+            old.remove();
+        }
+        let weak = Rc::downgrade(list);
+        state.settle = Some(glib::timeout_add_local_once(
+            std::time::Duration::from_millis(fensterliste::NACHZIEHEN_MS.into()),
+            move || {
+                if let Some(list) = weak.upgrade() {
+                    {
+                        let mut list = list.borrow_mut();
+                        list.settle = None;
+                        list.placement.festschreiben();
+                        list.refilter = true;
+                    }
+                    sync(&list);
+                }
+            },
+        ));
+    }
+}
+
+/// Makes the buttons match the completed window state, showing the
+/// windows the placement lets through (G2-AK).
 fn sync(list: &Shared) {
     let (snapshot, container) = {
-        let mut list = list.borrow_mut();
-        let snapshot = match list.session.as_mut() {
+        let mut guard = list.borrow_mut();
+        let state = &mut *guard;
+        let refilter = std::mem::take(&mut state.refilter);
+        let snapshot = match state.session.as_mut() {
             Some(session) => {
                 let windows = &mut session.protocol.windows;
-                windows.take_changed().then(|| windows.snapshot())
+                (windows.take_changed() || refilter).then(|| windows.snapshot())
             }
             None => Some(Vec::new()),
         };
-        (snapshot, list.container.upgrade())
+        let snapshot = snapshot.map(|all| {
+            let total = all.len();
+            let shown: Vec<_> = all
+                .into_iter()
+                .filter(|(key, _)| state.placement.sichtbar(*key, state.all_workspaces))
+                .collect();
+            (total, shown)
+        });
+        (snapshot, state.container.upgrade())
     };
-    let (Some(snapshot), Some(container)) = (snapshot, container) else {
+    let (Some((total, snapshot)), Some(container)) = (snapshot, container) else {
         return;
     };
-
+    log_shown(&list.borrow(), total, &snapshot);
     let mut stale: HashMap<_, _> = std::mem::take(&mut list.borrow_mut().buttons);
     let mut buttons = HashMap::new();
+    let mut previous: Option<Button> = None;
     for (key, info) in snapshot {
         let button = stale.remove(&key).unwrap_or_else(|| {
             let button = new_button(Rc::downgrade(list), key);
-            // appended last: the order of the windows' appearance
             button.set_parent(&container);
             button
         });
+        // in the order of the windows' appearance, also for a button shown
+        // again after a workspace change
+        button.insert_after(&container, previous.as_ref());
         update_button(&button, &info);
-        buttons.insert(key, button);
+        buttons.insert(key, button.clone());
+        previous = Some(button);
     }
     for button in stale.into_values() {
         button.unparent();
     }
     container.queue_resize();
     list.borrow_mut().buttons = buttons;
+}
+
+/// Logs which windows are shown when that set changes and the list filters
+/// by workspace; the app ID, never the title (it may be private).
+fn log_shown(list: &WindowList, total: usize, shown: &[(WindowKey, Info)]) {
+    if list.all_workspaces || list.placement.aktuelle().is_none() {
+        return;
+    }
+    let mut before: Vec<WindowKey> = list.buttons.keys().copied().collect();
+    before.sort();
+    let now: Vec<WindowKey> = shown.iter().map(|(key, _)| *key).collect();
+    if before == now {
+        return;
+    }
+    let ids: Vec<String> = shown
+        .iter()
+        .map(|(key, info)| format!("{} {}", key.0, info.app_id))
+        .collect();
+    eprintln!(
+        "querencia-panel: Fensterliste: {} von {total} Fenstern sichtbar ({})",
+        shown.len(),
+        ids.join(", ")
+    );
 }
 
 /// Icon size in a window button, as in GNOME 2.
@@ -723,6 +963,43 @@ mod tests {
         windows.added(2);
         windows.closed(&2);
         assert!(!windows.take_changed());
+    }
+
+    /// G2-AK: `done` reports appearing, focus and closing for the
+    /// workspace placement, in order and only on a change.
+    #[test]
+    fn done_reports_appearing_focus_and_closing() {
+        use crate::fensterliste::Ereignis::*;
+        let mut windows = Windows::new();
+        windows.added(1);
+        windows.state(&1, &state(true, false));
+        windows.done(&1);
+        let key = windows.snapshot()[0].0;
+        windows.added(2);
+        windows.done(&2);
+        let other = windows.snapshot()[1].0;
+        // title only: no event
+        windows.title(&1, "neu".into());
+        windows.done(&1);
+        windows.state(&1, &state(false, false));
+        windows.done(&1);
+        windows.state(&2, &state(true, false));
+        windows.done(&2);
+        windows.closed(&2);
+        // closed before its first done: never shown, never reported
+        windows.added(3);
+        windows.closed(&3);
+        assert_eq!(
+            std::mem::take(&mut windows.events),
+            [
+                Erschienen(key),
+                Aktiviert(key),
+                Erschienen(other),
+                Deaktiviert(key),
+                Aktiviert(other),
+                Geschlossen(other),
+            ]
+        );
     }
 
     #[test]

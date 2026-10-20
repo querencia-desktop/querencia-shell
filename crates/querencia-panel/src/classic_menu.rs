@@ -1294,7 +1294,12 @@ mod tests {
     #[test]
     fn shortcuts_are_shown_in_german() {
         let menu = gio::Menu::new();
-        let lock = entry("Bildschirm sperren", "system-lock-screen", Some("x.lock"), None);
+        let lock = entry(
+            "Bildschirm sperren",
+            "system-lock-screen",
+            Some("x.lock"),
+            None,
+        );
         lock.set_attribute_value("accel", Some(&"<Control><Alt>l".to_variant()));
         menu.append_item(&lock);
         let broken = entry("Kaputt", "", Some("x.b"), None);
