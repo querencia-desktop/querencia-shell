@@ -20,6 +20,11 @@
 //! alle_arbeitsflaechen=ja`. The same connection binds
 //! `ext_workspace_manager_v1`, so window and workspace events arrive in the
 //! order labwc sent them; `fensterliste.rs` places the windows from them.
+//!
+//! G2-AL: „Arbeitsfläche anzeigen“ (`arbeitsflaeche_zeigen.rs`) minimizes
+//! and restores the windows of the current workspace through this list's
+//! connection ([`arbeitsflaeche_umschalten`]); the list keeps the
+//! [`Merkliste`] up to date from the same events.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -50,6 +55,7 @@ use wayland_protocols_wlr::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_manager_v1::{self as manager, ZwlrForeignToplevelManagerV1},
 };
 
+use crate::arbeitsflaeche_zeigen::{self, Merkliste, Schritt};
 use crate::fensterliste::{self, Ereignis, Flaechen, Zuordnung};
 
 /// Identity of a window for the widgets. Never reused while the panel runs,
@@ -456,9 +462,18 @@ struct WindowList {
     refilter: bool,
     /// Pending [`Zuordnung::festschreiben`] after a workspace change.
     settle: Option<glib::SourceId>,
+    /// G2-AL: the windows „Arbeitsfläche anzeigen“ minimized.
+    merkliste: Merkliste<WindowKey>,
 }
 
 type Shared = Rc<RefCell<WindowList>>;
+
+thread_local! {
+    /// The window list of the running panel (G2-AL), for „Arbeitsfläche
+    /// anzeigen“. Weak: the list ends with its panel; a panel built again
+    /// puts its new list here.
+    static AKTUELL: RefCell<Weak<RefCell<WindowList>>> = const { RefCell::new(Weak::new()) };
+}
 
 /// The window list for the bottom panel. Without a compositor that offers
 /// the protocol it stays empty.
@@ -481,7 +496,10 @@ pub fn widget() -> WindowRow {
         all_workspaces,
         refilter: false,
         settle: None,
+        merkliste: Merkliste::default(),
     }));
+    AKTUELL.with(|a| a.replace(Rc::downgrade(&list)));
+    arbeitsflaeche_zeigen::melden(false);
     match connect() {
         Ok(session) => {
             let fd = session.conn.backend().poll_fd().as_raw_fd();
@@ -587,7 +605,9 @@ fn on_readable(list: &Shared, condition: glib::IOCondition) -> glib::ControlFlow
                 let mut list = list.borrow_mut();
                 list.session = None;
                 list.source = None;
+                list.merkliste.vergessen();
             }
+            arbeitsflaeche_zeigen::melden(false);
             sync(list);
             glib::ControlFlow::Break
         }
@@ -638,7 +658,9 @@ fn place(list: &Shared) {
     };
     let mut settle = false;
     let mut changed_workspace = None;
+    let showed_desktop = state.merkliste.zeigt_arbeitsflaeche();
     for event in std::mem::take(&mut session.protocol.windows.events) {
+        state.merkliste.ereignis(event);
         let effect = state.placement.anwenden(event);
         state.refilter |= effect.neu_filtern;
         settle |= effect.festschreiben_planen;
@@ -646,10 +668,15 @@ fn place(list: &Shared) {
             changed_workspace = Some(number);
         }
     }
+    let windows = &session.protocol.windows;
+    state
+        .merkliste
+        .abgleichen(|key| windows.info(key).map(|info| info.minimized));
     if let Some(number) = changed_workspace {
         let name = session.protocol.workspaces.name_von(number).unwrap_or("");
         eprintln!("querencia-panel: Fensterliste: Arbeitsfläche „{name}“");
     }
+    let shows_desktop = state.merkliste.zeigt_arbeitsflaeche();
     if settle {
         if let Some(old) = state.settle.take() {
             old.remove();
@@ -669,6 +696,15 @@ fn place(list: &Shared) {
                 }
             },
         ));
+    }
+    drop(guard);
+    if shows_desktop != showed_desktop {
+        // only the end of a list is news here; a click logs its own start
+        eprintln!(
+            "querencia-panel: Arbeitsfläche anzeigen: Merkliste verworfen \
+             (anderes Fenster aktiv, Fläche gewechselt oder Fenster wieder da)"
+        );
+        arbeitsflaeche_zeigen::melden(shows_desktop);
     }
 }
 
@@ -826,6 +862,83 @@ fn click(list: &WindowList, key: WindowKey) {
             }
         ),
         Err(err) => eprintln!("querencia-panel: Anfrage nicht gesendet: {err}"),
+    }
+}
+
+/// Whether the windows of the last „Arbeitsfläche anzeigen“ are minimized
+/// (G2-AL); `false` without a window list.
+pub fn zeigt_arbeitsflaeche() -> bool {
+    AKTUELL.with(|a| {
+        a.borrow()
+            .upgrade()
+            .is_some_and(|list| list.borrow().merkliste.zeigt_arbeitsflaeche())
+    })
+}
+
+/// „Arbeitsfläche anzeigen“ (G2-AL): minimizes the windows of the current
+/// workspace or restores the ones the last call minimized
+/// ([`Merkliste::umschalten`]). `why` names the trigger for the log
+/// (button, D-Bus). Returns whether the window list could act, and what was
+/// done (the D-Bus answer). The look of the buttons follows the state.
+pub fn arbeitsflaeche_umschalten(why: &str) -> (bool, String) {
+    let Some(list) = AKTUELL.with(|a| a.borrow().upgrade()) else {
+        return (false, format!("keine Fensterliste im Panel ({why})"));
+    };
+    let result = {
+        let mut guard = list.borrow_mut();
+        let state = &mut *guard;
+        match state.session.as_ref() {
+            None => Err(format!("Fensterliste ohne Verbindung ({why})")),
+            Some(session) => {
+                let windows = &session.protocol.windows;
+                let current: Vec<(WindowKey, bool)> = windows
+                    .snapshot()
+                    .into_iter()
+                    .filter(|(key, _)| state.placement.sichtbar(*key, false))
+                    .map(|(key, info)| (key, info.minimized))
+                    .collect();
+                let step = state.merkliste.umschalten(&current);
+                let (keys, verb) = match &step {
+                    Schritt::Minimieren(keys) => (keys.clone(), "minimiert"),
+                    Schritt::Wiederherstellen(keys) => (keys.clone(), "wiederhergestellt"),
+                    Schritt::Nichts => (Vec::new(), ""),
+                };
+                for (n, key) in keys.iter().enumerate() {
+                    let Some(handle) = windows.handle(*key) else {
+                        continue;
+                    };
+                    if matches!(step, Schritt::Minimieren(_)) {
+                        handle.set_minimized();
+                    } else {
+                        handle.unset_minimized();
+                        // labwc raises and focuses each restored window;
+                        // the last one, active last before, gets the focus
+                        if n + 1 == keys.len() {
+                            handle.activate(&session.seat);
+                        }
+                    }
+                }
+                let ids: Vec<String> = keys
+                    .iter()
+                    .map(|key| {
+                        let app = windows.info(*key).map_or("", |info| info.app_id.as_str());
+                        format!("{} {app}", key.0)
+                    })
+                    .collect();
+                flush(&session.conn).map(|()| {
+                    if keys.is_empty() {
+                        format!("kein Fenster auf der Arbeitsfläche ({why})")
+                    } else {
+                        format!("{} Fenster {verb} ({why}: {})", keys.len(), ids.join(", "))
+                    }
+                })
+            }
+        }
+    };
+    arbeitsflaeche_zeigen::melden(zeigt_arbeitsflaeche());
+    match result {
+        Ok(message) => (true, message),
+        Err(message) => (false, message),
     }
 }
 

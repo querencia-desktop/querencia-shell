@@ -21,6 +21,10 @@
 //! menus; a changed, new or removed panel is built again or taken away
 //! ([`plan`]). A changed window list setting rebuilds the panels that hold
 //! a window list. One log line per reload says what was done.
+//!
+//! G2-AL: the same interface offers [`ARBEITSFLAECHE`], the switch of
+//! „Arbeitsfläche anzeigen“ (`arbeitsflaeche_zeigen.rs`), for Super+D in
+//! the labwc default; it answers `(b ausgefuehrt, s meldung)` as well.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -36,6 +40,8 @@ use crate::{fensterliste, panel};
 /// D-Bus interface of the reload method, on the panel's object path.
 pub const INTERFACE: &str = "org.querencia.Panel";
 pub const METHOD: &str = "NeuLaden";
+/// G2-AL: minimizes or restores the windows of the current workspace.
+pub const ARBEITSFLAECHE: &str = "ArbeitsflaecheUmschalten";
 /// Quiet time after the last change of `panel.ini` before it is read.
 pub const ENTPRELLEN_MS: u32 = 250;
 
@@ -43,6 +49,10 @@ const INTROSPECTION: &str = r#"<node>
   <interface name="org.querencia.Panel">
     <method name="NeuLaden">
       <arg type="b" name="geladen" direction="out"/>
+      <arg type="s" name="meldung" direction="out"/>
+    </method>
+    <method name="ArbeitsflaecheUmschalten">
+      <arg type="b" name="ausgefuehrt" direction="out"/>
       <arg type="s" name="meldung" direction="out"/>
     </method>
   </interface>
@@ -201,7 +211,8 @@ fn watch(panels: &Shared, path: &std::path::Path) {
     panels.borrow_mut().monitor = Some(monitor);
 }
 
-/// Offers [`METHOD`] on the application's D-Bus connection.
+/// Offers [`METHOD`] and [`ARBEITSFLAECHE`] on the application's D-Bus
+/// connection.
 fn export(app: &Application, panels: &Shared) {
     let (Some(connection), Some(object_path)) = (app.dbus_connection(), app.dbus_object_path())
     else {
@@ -220,6 +231,13 @@ fn export(app: &Application, panels: &Shared) {
     let registered = connection
         .register_object(&object_path, &info)
         .method_call(move |_, sender, _, _, method, _, invocation| {
+            if method == ARBEITSFLAECHE {
+                let why = format!("D-Bus {}", sender.unwrap_or("?"));
+                let (done, message) = crate::window_list::arbeitsflaeche_umschalten(&why);
+                eprintln!("querencia-panel: Arbeitsfläche anzeigen: {message}");
+                invocation.return_value(Some(&(done, message).to_variant()));
+                return;
+            }
             let Some(panels) = weak.upgrade().filter(|_| method == METHOD) else {
                 invocation.return_error(
                     gio::DBusError::UnknownMethod,
@@ -237,7 +255,11 @@ fn export(app: &Application, panels: &Shared) {
         .build();
     match registered {
         Ok(_) => {
-            eprintln!("querencia-panel: Neuladen: D-Bus {INTERFACE}.{METHOD} auf {object_path}")
+            eprintln!("querencia-panel: Neuladen: D-Bus {INTERFACE}.{METHOD} auf {object_path}");
+            eprintln!(
+                "querencia-panel: Arbeitsfläche anzeigen: D-Bus {INTERFACE}.{ARBEITSFLAECHE} \
+                 auf {object_path}"
+            );
         }
         Err(err) => eprintln!("querencia-panel: Neuladen: D-Bus nicht angeboten: {err}"),
     }
@@ -473,7 +495,9 @@ mod tests {
         let node = gio::DBusNodeInfo::for_xml(INTROSPECTION).expect("XML");
         let iface = node.lookup_interface(INTERFACE).expect("Schnittstelle");
         assert!(iface.lookup_method(METHOD).is_some());
-        // the answer (b geladen, s meldung), no arguments
+        assert!(iface.lookup_method(ARBEITSFLAECHE).is_some());
+        // the answers (b geladen, s meldung) and (b ausgefuehrt, s
+        // meldung), no arguments
         let args: Vec<&str> = INTROSPECTION
             .lines()
             .map(str::trim)
@@ -483,6 +507,8 @@ mod tests {
             args,
             [
                 r#"<arg type="b" name="geladen" direction="out"/>"#,
+                r#"<arg type="s" name="meldung" direction="out"/>"#,
+                r#"<arg type="b" name="ausgefuehrt" direction="out"/>"#,
                 r#"<arg type="s" name="meldung" direction="out"/>"#
             ]
         );

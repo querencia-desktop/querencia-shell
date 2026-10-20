@@ -481,7 +481,8 @@ pub(crate) fn stock_button(mnemonic: &str, icon: &str) -> Button {
 
 /// One list row: icon, name in bold, description below. "Anwendungen"
 /// shows the built-in Querencia logo (QREL-04c) at the same size,
-/// "Lautstärke" (G2-J) and "Netzwerk" (G2-M) their own icons.
+/// "Lautstärke" (G2-J), "Netzwerk" (G2-M) and "Mitteilungen" (G2-AL) their
+/// own icons.
 fn row(applet: &AppletType) -> ListBoxRow {
     let image = if applet.icon == logo::ICON_NAME {
         logo::image_of_size(ICON_SIZE)
@@ -491,6 +492,9 @@ fn row(applet: &AppletType) -> ListBoxRow {
     } else if applet.id == crate::applets::NETWORK {
         // G2-M: the network applet's own Querencia icon.
         crate::network_applet::image_of_size(ICON_SIZE)
+    } else if applet.id == crate::applets::NOTIFICATIONS {
+        // G2-AL: the bell's own Querencia icon.
+        crate::glocke::image_of_size(ICON_SIZE)
     } else {
         let names = icon_names(applet);
         let names: Vec<&str> = names.iter().map(String::as_str).collect();
@@ -544,9 +548,11 @@ mod tests {
             [
                 "Anwendungen",
                 "Anwendungsstarter …",
+                "Arbeitsfläche anzeigen",
                 "Arbeitsflächenumschalter",
                 "Fensterliste",
                 "Lautstärke",
+                "Mitteilungen",
                 "Netzwerk",
                 "Orte",
                 "System",
@@ -574,11 +580,13 @@ mod tests {
         };
         assert_eq!(found("UHR"), ["clock"]);
         assert_eq!(found(" orte "), ["places"]);
-        assert_eq!(found("fenster"), ["window-list"]);
+        // G2-AL: „Alle Fenster minimieren …“
+        assert_eq!(found("fenster"), ["show-desktop", "window-list"]);
         // only in the description
         assert_eq!(found("datum"), ["clock"]);
+        assert_eq!(found("zentrale"), ["benachrichtigungen"]);
         // non-ASCII, in name and description of the same type
-        assert_eq!(found("FLÄCHE"), ["workspace-switcher"]);
+        assert_eq!(found("FLÄCHE"), ["show-desktop", "workspace-switcher"]);
         assert!(found("wetter").is_empty());
     }
 

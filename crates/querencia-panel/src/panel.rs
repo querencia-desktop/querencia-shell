@@ -27,6 +27,9 @@ const LAUNCHER_SPACING: i32 = 2;
 /// GNOME 2 notification area. Status buttons have no padding, only their
 /// 1 px hover border, so the icons themselves stand 4 px apart.
 const STATUS_SPACING: i32 = 2;
+/// Space right of „Arbeitsfläche anzeigen“ (G2-AL): as in the GNOME 2 /
+/// MATE panel the window list follows close by.
+const SHOW_DESKTOP_SPACING: i32 = 4;
 /// Style class of the status applets (volume, network and later ones,
 /// [`crate::applets::AppletType::status`]); `main.rs` gives them one inner
 /// border and [`space_out`] the close gap.
@@ -260,12 +263,15 @@ fn margins(kinds: &[Kind]) -> Vec<i32> {
 enum Kind {
     Launcher,
     Status,
+    ShowDesktop,
     Other,
 }
 
 impl Kind {
     fn of(widget: &Widget) -> Kind {
-        if widget.has_css_class(launcher::LAUNCHER_CLASS) {
+        if widget.has_css_class(crate::arbeitsflaeche_zeigen::CLASS) {
+            Kind::ShowDesktop
+        } else if widget.has_css_class(launcher::LAUNCHER_CLASS) {
             Kind::Launcher
         } else if widget.has_css_class(STATUS_CLASS) {
             Kind::Status
@@ -282,6 +288,7 @@ fn gap(left: Kind, right: Kind) -> i32 {
     match (left, right) {
         (Kind::Launcher, Kind::Launcher) => LAUNCHER_SPACING,
         (Kind::Status, Kind::Status) => STATUS_SPACING,
+        (Kind::ShowDesktop, _) => SHOW_DESKTOP_SPACING,
         _ => SPACING,
     }
 }
@@ -362,5 +369,10 @@ mod tests {
         assert_eq!(margins(&[L, L, S, S]), [0, 2, 16, 2]);
         // Start=applications-1;places-1;system-1
         assert_eq!(margins(&[O, O, O]), [0, 16, 16]);
+        // G2-AL: Start=show-desktop-1;window-list-1, the list close by;
+        // End=volume-1;network-1;benachrichtigungen-1;clock-1
+        assert_eq!(margins(&[Kind::ShowDesktop, O]), [0, 4]);
+        assert_eq!(margins(&[O, Kind::ShowDesktop, O]), [0, 16, 4]);
+        assert_eq!(margins(&[S, S, S, O]), [0, 2, 2, 16]);
     }
 }
