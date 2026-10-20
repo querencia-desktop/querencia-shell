@@ -159,10 +159,7 @@ fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], session:
         let entries = gio::Menu::new();
         if session.lock {
             let lock = action_item("Bildschirm sperren", LOCK, "system-lock-screen");
-            lock.set_attribute_value(
-                "accel",
-                Some(&sitzung_start::SPERREN_KUERZEL.to_variant()),
-            );
+            lock.set_attribute_value("accel", Some(&sitzung_start::SPERREN_KUERZEL.to_variant()));
             entries.append_item(&lock);
         }
         if session.logout {
@@ -427,11 +424,7 @@ mod tests {
             crate::classic_menu::Row::Entry { accel: Some(a), .. } if a == "Strg+Alt+L"
         ));
         for i in 1..3 {
-            assert!(
-                session
-                    .item_attribute_value(i, "accel", None)
-                    .is_none()
-            );
+            assert!(session.item_attribute_value(i, "accel", None).is_none());
         }
     }
 

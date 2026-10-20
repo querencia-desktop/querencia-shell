@@ -25,6 +25,19 @@
 //! types have none. The format version stays 1: an older panel reads such a
 //! file and only drops the launchers it does not know.
 //!
+//! The window list's setting (G2-AK, B11) is a group of its own:
+//!
+//! ```ini
+//! [window-list]
+//! alle_arbeitsflaechen=nein
+//! ```
+//!
+//! `nein` (the standard, also without the group) shows the windows of the
+//! current workspace only, as GNOME 2; `ja` those of all workspaces. `true`
+//! and `false` are read as well; anything else is a problem and leaves the
+//! standard. Saving writes the key only if the file had it, as `ja` or
+//! `nein`. An older panel ignores the group (and drops it when it saves).
+//!
 //! Lists are `;`-separated; IDs never contain `;` (see
 //! [`crate::layout::valid_id`]). Reading never fails: a missing file gives
 //! the standard layout, an unreadable file or an unknown format version
@@ -47,9 +60,14 @@ use std::path::{Path, PathBuf};
 
 use gtk4::glib;
 
-use crate::layout::{DEFAULT_HEIGHT, Edge, FORMAT_VERSION, Instance, Layout, PanelSpec, Region};
+use crate::layout::{
+    DEFAULT_HEIGHT, Edge, FORMAT_VERSION, Instance, Layout, PanelSpec, Region, WindowListSettings,
+};
 
 const LAYOUT_GROUP: &str = "Layout";
+/// Group and key of the window list's setting (G2-AK).
+pub const WINDOW_LIST_GROUP: &str = "window-list";
+pub const ALL_WORKSPACES_KEY: &str = "alle_arbeitsflaechen";
 
 /// Where a loaded layout came from.
 #[derive(Debug, PartialEq, Eq)]
@@ -166,7 +184,41 @@ fn parse(file: &glib::KeyFile, problems: &mut Vec<String>) -> Option<Layout> {
         }
         panels.push(panel);
     }
-    Some(Layout { panels })
+    let window_list = window_list_settings(file, problems);
+    Some(Layout {
+        panels,
+        window_list,
+    })
+}
+
+/// `[window-list]` of `file`; a value that is neither yes nor no is a
+/// problem and leaves the standard.
+fn window_list_settings(file: &glib::KeyFile, problems: &mut Vec<String>) -> WindowListSettings {
+    let Ok(text) = file.string(WINDOW_LIST_GROUP, ALL_WORKSPACES_KEY) else {
+        return WindowListSettings::default();
+    };
+    let all_workspaces = parse_yes_no(&text);
+    if all_workspaces.is_none() {
+        problems.push(format!(
+            "[{WINDOW_LIST_GROUP}] {ALL_WORKSPACES_KEY}={text}: weder ja noch nein, \
+             Standard ({}) verwendet",
+            yes_no(WindowListSettings::DEFAULT_ALL_WORKSPACES)
+        ));
+    }
+    WindowListSettings { all_workspaces }
+}
+
+/// `ja`/`nein` (also `true`/`false`), case and surrounding space ignored.
+fn parse_yes_no(text: &str) -> Option<bool> {
+    match text.trim().to_lowercase().as_str() {
+        "ja" | "true" => Some(true),
+        "nein" | "false" => Some(false),
+        _ => None,
+    }
+}
+
+fn yes_no(value: bool) -> &'static str {
+    if value { "ja" } else { "nein" }
 }
 
 /// `layout` as a key file in the format above.
@@ -194,6 +246,9 @@ fn to_key_file(layout: &Layout) -> glib::KeyFile {
                 file.set_string(&group, "DesktopId", app);
             }
         }
+    }
+    if let Some(all) = layout.window_list.all_workspaces {
+        file.set_string(WINDOW_LIST_GROUP, ALL_WORKSPACES_KEY, yes_no(all));
     }
     file
 }
@@ -874,5 +929,77 @@ mod tests {
         assert_eq!(start, [("launcher-2", Some("foot.desktop"))]);
         assert_eq!(loaded.problems.len(), 1, "{:?}", loaded.problems);
         assert!(loaded.lossy());
+    }
+
+    /// G2-AK (B11): the window list setting, read and kept by saving.
+    #[test]
+    fn window_list_setting_is_read_and_kept() {
+        let scratch = Scratch::new("fensterliste");
+        // existing users without the group get the standard: current only
+        let without = scratch.write(
+            "ohne.ini",
+            &String::from_utf8(save_bytes(&Layout::standard())).unwrap(),
+        );
+        let loaded = load_stored(&without, known);
+        assert_eq!(loaded.layout.window_list.all_workspaces, None);
+        assert!(!loaded.layout.window_list.all_workspaces());
+        assert!(!loaded.lossy());
+        assert!(
+            !String::from_utf8(save_bytes(&loaded.layout))
+                .unwrap()
+                .contains("window-list]"),
+            "ohne Eintrag bleibt der Standard der Standard"
+        );
+
+        for (text, value) in [
+            ("ja", Some(true)),
+            ("nein", Some(false)),
+            (" Ja ", Some(true)),
+            ("true", Some(true)),
+            ("false", Some(false)),
+        ] {
+            let path = scratch.write(
+                "mit.ini",
+                &format!(
+                    "{}\n[window-list]\nalle_arbeitsflaechen={text}\n",
+                    String::from_utf8(save_bytes(&Layout::standard())).unwrap()
+                ),
+            );
+            let loaded = load_stored(&path, known);
+            assert_eq!(loaded.layout.window_list.all_workspaces, value, "{text:?}");
+            assert!(loaded.problems.is_empty(), "{:?}", loaded.problems);
+            // saving writes it back as ja/nein
+            let saved = String::from_utf8(save_bytes(&loaded.layout)).unwrap();
+            let expected = if value == Some(true) { "ja" } else { "nein" };
+            assert!(
+                saved.ends_with(&format!("[window-list]\nalle_arbeitsflaechen={expected}\n")),
+                "{saved}"
+            );
+            let again = scratch.write("wieder.ini", &saved);
+            let reread = load_stored(&again, known);
+            assert_eq!(reread.layout, loaded.layout);
+            assert!(!reread.lossy(), "geschrieben = gelesen");
+        }
+
+        let bad = scratch.write(
+            "falsch.ini",
+            &format!(
+                "{}\n[window-list]\nalle_arbeitsflaechen=vielleicht\n",
+                String::from_utf8(save_bytes(&Layout::standard())).unwrap()
+            ),
+        );
+        let loaded = load_stored(&bad, known);
+        assert_eq!(loaded.source, Source::File);
+        assert_eq!(loaded.layout.window_list.all_workspaces, None);
+        assert_eq!(loaded.problems.len(), 1, "{:?}", loaded.problems);
+        assert!(
+            loaded.problems[0].contains("vielleicht"),
+            "{:?}",
+            loaded.problems
+        );
+    }
+
+    fn save_bytes(layout: &Layout) -> Vec<u8> {
+        to_key_file(layout).to_data().as_bytes().to_vec()
     }
 }

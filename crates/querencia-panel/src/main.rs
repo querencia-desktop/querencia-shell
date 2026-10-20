@@ -7,6 +7,7 @@ mod applets;
 mod apps;
 mod classic_menu;
 mod clock;
+mod fensterliste;
 mod icon_reload;
 mod icon_theme;
 mod launcher;
@@ -16,6 +17,7 @@ mod layout_store;
 mod logo;
 mod network_applet;
 mod network_dialogs;
+mod neuladen;
 mod panel;
 mod panel_menu;
 mod places_menu;
@@ -222,10 +224,8 @@ fn build_panels(app: &Application) {
         "querencia-panel: Layout {source}, {} Panel(s)",
         layout.panels.len()
     );
-    let editor = Rc::new(RefCell::new(editor));
-    for spec in &layout.panels {
-        panel::build(app, spec, &editor).present();
-    }
+    // G2-AK: builds the panels and follows later changes of panel.ini
+    neuladen::start(app, Rc::new(RefCell::new(editor)));
 }
 
 #[cfg(test)]
