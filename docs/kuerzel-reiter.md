@@ -43,11 +43,7 @@ gehört zur gettext-Umstellung des Crates (eigener Auftrag).
 - Isolierter Lauf, Integrationsskript, Vorlage und Probe liegen außerhalb
   des Repos in `~/projects/querencia-runtime-kuerzel-0.2.0/`
   (`integration/kuerzel-020-integrieren.sh pruefen|aktivieren|zurueck`,
-  `QK2_FREIGABE=ja`). Getauscht werden der Link
-  `~/opt/querencia/bin/querencia-kuerzel` und der Menüeintrag
-  `~/.local/share/applications/org.querencia.Kuerzel.desktop`: statt des
-  festen SVG-Pfads in die Ablage 0.1.0 `Icon=org.querencia.Kuerzel` aus dem
-  Symbolthema Querencia (Symbole 0.7). Das Skript setzt den Namen nur, wenn
-  das eingestellte Thema das Symbol in allen Größen hat; sonst bleibt der
-  Pfad. Panel und Desktop bleiben unberührt, das Skript des Vorgängers
+  `QK2_FREIGABE=ja`). Getauscht wird nur der Link
+  `~/opt/querencia/bin/querencia-kuerzel`; Menüeintrag, Panel und Desktop
+  bleiben unberührt. Das Skript des Vorgängers
   (`integration/kuerzel/kuerzel-integrieren.sh`) bleibt unverändert.
