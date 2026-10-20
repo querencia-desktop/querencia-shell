@@ -20,7 +20,8 @@ Arten (mit G2AK_SITZUNG bzw. G2AK_PANELINI aus laeufe-g2ak.sh):
 
 Koordinaten vermessen bei 1024x768 (ak-erkunden*): System x 269, Menüzeilen
 y 78 (Sperren), 102 (Abmelden), 126 (Ausschalten); Uhr W - 76, Rechtsklick-
-menü der Uhr „Nach links“ (W - 110, 111); Umschalterzellen W - 113, W - 84.
+menü der Uhr „Nach links“ (W - 110, 111); Umschalterzellen aus der Zellbreite
+22 * W / H (1024: W - 113, W - 84; 1920: W - 149, W - 110).
 """
 import sys
 
@@ -29,7 +30,10 @@ NY = 16
 SYSTEM, MENU_X = 269, 300
 SPERREN, ABMELDEN, AUSSCHALTEN = 78, 102, 126
 UHR = W - 76
-ZELLE = {1: W - 113, 2: W - 84}
+# Umschalterzellen: 22 px hoch, so breit wie der Bildschirm im Verhältnis
+# (cell_size in workspace_switcher.rs), rechts 12 px vor dem Rand
+ZELLE_B = 22 * W / H
+ZELLE = {i: round(W - 12 - (4 - i + 0.5) * ZELLE_B) for i in (1, 2)}
 AWAY = (W // 2, H // 2 + 150)
 out = []
 
@@ -174,6 +178,15 @@ elif ART == "vollbild":
     fenster("org.querencia.TestV", "Fenster V", "#5a8fd0"); shot("x08-wayland")
     chord("Super_L", "f"); shot("x08-wayland-super-f")
     chord("Alt_L", "F11"); shot("x08-wayland-alt-f11")
+    mark("ENDE", "")
+elif ART == "vollbild-erst":
+    # Befund X01 (1920, 1 von 3): Vollbild vor dem Abbilden beim ersten
+    # X-Programm, das Xwayland erst startet, und beim zweiten
+    for key, nr in (("E01", "1"), ("E02", "2")):
+        mark(key, f"X11-Fenster {nr} mit _NET_WM_STATE_FULLSCREEN vor dem Abbilden")
+        run(f"BIN/qx11fenster vorher 5 SHOT/x11-{nr}.id > SHOT/x11-{nr}.txt 2>&1", 3000)
+        shot(f"e0{nr}-vorher")
+        run(f"xprop -id $(cat SHOT/x11-{nr}.id) _NET_WM_STATE > SHOT/xprop-{nr}.txt 2>&1", 3500)
     mark("ENDE", "")
 else:
     sys.exit(f"unbekannte Art {ART}")
