@@ -9,9 +9,13 @@
 # Kürzel des Live-Stands:
 #   Arbeitsfläche   querencia-runtime crates/querencia-desktop (QE-02)
 #   Files           querencia-files-dev src/ui/keys/bindings (QF-0l)
-#   Terminal        querencia-terminal-dev src/clipboard.rs
+#   Terminal        querencia-terminal-dev Tag terminal/0.3.0 src/tabs.rs
+#                   (shortcut, shortcut_overview) und src/clipboard.rs
+#                   (Nachtrag kuerzel-reiter, 21.10.2026; live seit
+#                   20.10. 23:34)
 #   Editor, Bilder  querencia-werkstatt-g2e-apps prototyp-*/src (live 19:36)
-#   Bildschirmfoto  querencia-screenshot-dev src/editor.rs (0.2.4)
+#   Bildschirmfoto  querencia-screenshot-dev src/editor.rs (0.2.4;
+#                   Strg+Q aus Tag screenshot/0.2.8, QD-051)
 #   Taschenrechner  querencia-rechner src/fenster.rs (0.1.0)
 #   Dateisuche      querencia-dateisuche src/fenster.rs (0.1.0)
 # Ändert ein Programm seine Kürzel, muss diese Datei mitgezogen werden.
@@ -49,6 +53,14 @@ Alt+↑ = Übergeordneter Ordner
 Alt+Pos1 = Persönlicher Ordner
 
 [Querencia Terminal]
+Strg+Umschalt+T = Neuer Reiter
+Strg+Umschalt+W = Reiter schließen
+Strg+Umschalt+Q = Fenster schließen
+Strg+Bild↑ / Strg+Bild↓ = Vorheriger / nächster Reiter
+Strg+Umschalt+Bild↑ / Strg+Umschalt+Bild↓ = Reiter nach links / rechts verschieben
+Alt+1 … Alt+9 = Zu Reiter 1 … 9 wechseln
+Mittelklick auf einen Reiter = Reiter schließen
+Doppelklick auf die freie Reiterleiste = Neuer Reiter
 Strg+Umschalt+C = Kopieren
 Strg+Umschalt+V / Umschalt+Einfg = Einfügen
 Menü / Umschalt+F10 = Kontextmenü
@@ -89,7 +101,7 @@ Alt+Druck = Bildschirmfoto eines Fensters
 Strg+N = Neues Bildschirmfoto (im Bearbeitungsfenster)
 Strg+S = Speichern
 Strg+C = In die Zwischenablage kopieren
-Strg+W = Schließen
+Strg+W / Strg+Q = Schließen
 Strg+Z = Rückgängig
 Strg+Umschalt+Z / Strg+Y = Wiederholen
 Esc = Aufnahme oder Werkzeug abbrechen
