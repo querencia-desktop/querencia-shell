@@ -20,3 +20,10 @@ XKB_DEFAULT_LAYOUT=de
 # Programme; fehlt das Thema, nimmt labwc den Standardzeiger.
 XCURSOR_THEME=DMZ-White
 XCURSOR_SIZE=24
+
+# GTK 4.22 zeichnet beim Teilneuzeichnen mit Hinting 1 px über die
+# Knotengrenzen hinaus; beim Seitenwechsel bleiben blasse Textreste stehen
+# (QD-070, Befund G2-AJ 20.10.2026, Belege ).
+# Vollständiges Neuzeichnen behebt das für alle GTK-4-Programme der Sitzung.
+# Gilt nur für labwc und seine Kinder, nicht für D-Bus-Aktivierungen.
+GSK_DEBUG=full-redraw
