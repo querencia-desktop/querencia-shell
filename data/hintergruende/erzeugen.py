@@ -9,8 +9,9 @@ Quellen sind die von pottrauschen erzeugten und sortierten Rohbilder (Ordner
 `querencia-hintergruende-roh`, siehe HERKUNFT.md); jede Quelle wird über ihre
 SHA256 erkannt. Die Fassungen ohne Logo sind byte-gleiche Kopien der Quellen,
 mit einer Ausnahme: „Abend“ 16:9 wird aus dem logofreien ChatGPT-Original
-(1672×941) auf 2560×1440 hochskaliert, weil die sortierte Datei
-`querencia-abend.png` ein von der KI gezeichnetes Q enthält. Die 4:3-Dateien
+(1672×941) auf 2560×1440 hochskaliert, weil die zuerst sortierte Datei
+`querencia-abend.png` ein von der KI gezeichnetes Q enthielt (inzwischen im
+Rohordner berichtigt; die eigene Hochrechnung bleibt, siehe HERKUNFT.md). Die 4:3-Dateien
 sind eigene Bildausschnitte der KI, nie gestauchte 16:9-Bilder.
 
 Das Q-Logo wird aus der SVG-Vorlage `logo/querencia-logo.svg` aufgeprägt
