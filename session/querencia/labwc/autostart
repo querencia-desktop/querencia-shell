@@ -4,12 +4,61 @@
 : "${QUERENCIA_STATE_DIR:?nur über querencia-session starten}"
 : "${QUERENCIA_PANEL_RECORD:?nur über querencia-session starten}"
 
+# Settings portal guard (QD-062, G2-AI). GTK 4 asks
+# org.freedesktop.portal.Settings while it starts and waits up to 25 s per
+# call for an answer; a portal left over from an earlier session kept panel
+# and desktop away for about a minute (20.10.2026). The starter stops the
+# portals before labwc starts, so normally a fresh one answers here within
+# a fraction of a second (D-Bus starts it on demand). Wait at most 1.5 s. If
+# it does not answer, the GTK programs below start with
+# GDK_DEBUG=no-portals and never wait (panel and desktop then take theme,
+# font and cursor from gsettings themselves), and the portal and its GTK
+# backend are stopped in the background, so that programs started later
+# get a fresh one. Lines go to sitzung-start.log.
+portal_log() {
+    echo "autostart $(date '+%T'): $*" >>"$QUERENCIA_STATE_DIR/sitzung-start.log"
+}
+portal_answers() {
+    busctl --user --timeout=500ms call org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop \
+        org.freedesktop.portal.Settings ReadOne ss org.gnome.desktop.interface gtk-theme \
+        >/dev/null 2>&1
+}
+# Succeeds once the portal answers within $1 tenths of a second.
+portal_wait() {
+    end=$(($(date +%s%N) / 100000000 + $1))
+    while [ "$(($(date +%s%N) / 100000000))" -lt "$end" ]; do
+        portal_answers && return 0
+        sleep 0.2
+    done
+    return 1
+}
+portal_missing=
+portal_start=$(date +%s%N)
+if portal_wait 15; then
+    portal_log "Settings-Portal antwortet nach $((($(date +%s%N) - portal_start) / 1000000)) ms"
+else
+    portal_missing=ja
+    portal_log "Settings-Portal antwortet nicht in 1,5 s: GTK-Programme starten mit GDK_DEBUG=no-portals, Portal wird neu angestoßen"
+    (
+        systemctl --user stop xdg-desktop-portal-gtk.service xdg-desktop-portal.service
+        systemctl --user reset-failed xdg-desktop-portal-gtk.service xdg-desktop-portal.service
+    ) >/dev/null 2>&1 &
+fi
+# Runs a GTK program (exec, so "$!" is the program itself) without the
+# portal if it did not answer.
+gtk_exec() {
+    if [ -n "$portal_missing" ]; then
+        GDK_DEBUG="${GDK_DEBUG:+$GDK_DEBUG,}no-portals" exec "$@"
+    fi
+    exec "$@"
+}
+
 # Querencia polkit agent (G2-K) first: polkit requests of the session
 # (reboot, power off, package installation …) get a password dialog instead
 # of failing with "no agent". Ends with labwc. QUERENCIA_POLKIT_AGENT is
 # empty without the program.
 if [ -n "${QUERENCIA_POLKIT_AGENT-}" ] && [ -x "$QUERENCIA_POLKIT_AGENT" ]; then
-    "$QUERENCIA_POLKIT_AGENT" </dev/null >>"$QUERENCIA_STATE_DIR/polkit-agent.log" 2>&1 &
+    gtk_exec "$QUERENCIA_POLKIT_AGENT" </dev/null >>"$QUERENCIA_STATE_DIR/polkit-agent.log" 2>&1 &
 fi
 
 # Bildschirm (G2-G): die in ~/.config/querencia/bildschirm.ini gespeicherte
@@ -17,15 +66,15 @@ fi
 # Flächen anlegen. Läuft synchron (labwc antwortet sofort, Zeitgrenze 5 s im
 # Programm). Ohne Datei, ohne installierte Einstellungen oder bei Fehler
 # bleibt alles wie von labwc eingerichtet; Ausgabe in bildschirm.log.
-if [ -x ~/opt/querencia/bin/querencia-einstellungen ]; then
-    ~/opt/querencia/bin/querencia-einstellungen --bildschirm-anwenden \
+if [ -x /home/user/opt/querencia/bin/querencia-einstellungen ]; then
+    /home/user/opt/querencia/bin/querencia-einstellungen --bildschirm-anwenden \
         </dev/null >>"$QUERENCIA_STATE_DIR/bildschirm.log" 2>&1 || true
 fi
 
 # The desktop (background, icons, desktop menu; optional) first, so the
 # panel appears over a finished desktop, as on GNOME 2.
 if [ -n "${QUERENCIA_DESKTOP-}" ] && [ -x "$QUERENCIA_DESKTOP" ]; then
-    "$QUERENCIA_DESKTOP" </dev/null >>"$QUERENCIA_STATE_DIR/desktop.log" 2>&1 &
+    gtk_exec "$QUERENCIA_DESKTOP" </dev/null >>"$QUERENCIA_STATE_DIR/desktop.log" 2>&1 &
     pid=$!
     if [ -n "${QUERENCIA_DESKTOP_RECORD-}" ] && stat=$(cat "/proc/$pid/stat" 2>/dev/null); then
         set -- ${stat##*) }
@@ -33,7 +82,7 @@ if [ -n "${QUERENCIA_DESKTOP-}" ] && [ -x "$QUERENCIA_DESKTOP" ]; then
     fi
 fi
 
-"$QUERENCIA_PANEL" </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
+gtk_exec "$QUERENCIA_PANEL" </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
 
 # Record "PID STARTTIME" for the starter's cleanup (see starttime() there).
 pid=$!
@@ -46,9 +95,9 @@ fi
 # ohne installierten Dienst bleibt die Sitzung wie bisher. Belegt ein anderer
 # Dienst den Namen schon, beendet er sich selbst mit einer Meldung im Log.
 # Bewusst nach dem Panel-Eintrag, damit "$!" oben weiter das Panel ist.
-BENACHRICHTIGUNGEN=${QUERENCIA_BENACHRICHTIGUNGEN:-~/opt/querencia/bin/querencia-benachrichtigungen}
+BENACHRICHTIGUNGEN=${QUERENCIA_BENACHRICHTIGUNGEN:-/home/user/opt/querencia/bin/querencia-benachrichtigungen}
 if [ -x "$BENACHRICHTIGUNGEN" ]; then
-    "$BENACHRICHTIGUNGEN" </dev/null >>"$QUERENCIA_STATE_DIR/benachrichtigungen.log" 2>&1 &
+    gtk_exec "$BENACHRICHTIGUNGEN" </dev/null >>"$QUERENCIA_STATE_DIR/benachrichtigungen.log" 2>&1 &
 fi
 
 # Querencia Sitzung (G2-K): idle lock. Ends with labwc (Wayland connection
