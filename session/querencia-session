@@ -30,10 +30,13 @@
 #     this XDG_RUNTIME_DIR (panel, desktop, notifications, polkit agent,
 #     idle lock, applet helpers; a labwc only if its logind session is gone),
 #   - stops xdg-desktop-portal and xdg-desktop-portal-gtk (systemctl --user,
-#     no sudo), so the next GTK program activates them afresh with this
-#     session's WAYLAND_DISPLAY instead of meeting a portal that waits for a
-#     closed display (gvfs with its network mounts and the document portal
-#     stay),
+#     no sudo; reset-failed before and after), so the next GTK program
+#     activates them afresh with this session's WAYLAND_DISPLAY instead of
+#     meeting a portal that waits for a closed display (gvfs with its
+#     network mounts and the document portal stay),
+#   - before that, gives the user manager and the D-Bus activation
+#     environment the session's locale and desktop variables, and puts the
+#     previous values back at the end (QD-064),
 #   - keeps five generations of every log (NAME.log.1 … NAME.log.5) and
 #     writes its own lines, each with the time, to sitzung-start.log.
 # Isolated test sessions (their own XDG_RUNTIME_DIR) are never touched and
@@ -232,6 +235,7 @@ end_processes() {
 # environment of the session that is running then.
 PORTAL_UNITS="xdg-desktop-portal-gtk.service xdg-desktop-portal.service"
 portals_reset() {
+    systemctl --user reset-failed $PORTAL_UNITS 2>/dev/null
     active=$(systemctl --user is-active $PORTAL_UNITS 2>/dev/null | tr '\n' ' ')
     case " $active" in
     *" active "* | *" activating "* | *" deactivating "* | *" reloading "*)
@@ -244,6 +248,80 @@ portals_reset() {
     *) echo "$(date +%T.%3N) querencia-session: Portale laufen nicht ($1; $active)" ;;
     esac
     systemctl --user reset-failed $PORTAL_UNITS 2>/dev/null
+}
+
+# Session environment for programs the user manager or D-Bus activation
+# starts (QD-064): they inherit the user manager's environment (LANG from
+# /etc/default/locale, no LANGUAGE), not labwc's. Before labwc starts, the
+# values labwc will use (its environment file and environment.d/*.env, the
+# later file wins as in labwc) go to the user manager and the D-Bus
+# activation environment, like gnome-session does; the user manager's
+# previous values are kept in $STATE_DIR/aktivierungsumgebung.vorher and
+# put back after labwc has ended, so the next session inherits nothing
+# stale. Only variables the session sets are touched.
+ACTIVATION_VARS="LANG LANGUAGE LC_ALL LC_MESSAGES LC_TIME LC_NUMERIC LC_MONETARY LC_PAPER LC_MEASUREMENT XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP DESKTOP_SESSION XCURSOR_THEME XCURSOR_SIZE GTK_THEME"
+activation_saved=$STATE_DIR/aktivierungsumgebung.vorher
+
+# Last value of variable $1 in labwc's environment files in $CONFIG_DIR;
+# fails if none sets it.
+session_value() {
+    found=
+    for f in "$CONFIG_DIR/environment" "$CONFIG_DIR"/environment.d/*.env; do
+        [ -f "$f" ] || continue
+        line=$(grep -E "^[[:space:]]*$1=" "$f" | tail -n 1)
+        if [ -n "$line" ]; then
+            value=${line#*=}
+            found=ja
+        fi
+    done
+    [ -n "$found" ] && printf '%s\n' "$value"
+}
+
+activation_export() {
+    # Keep the values from before the first session of this boot; a
+    # record from an earlier boot or without boot ID is replaced.
+    if [ "$(head -n 1 "$activation_saved" 2>/dev/null)" != "# boot $boot_id" ]; then
+        {
+            echo "# boot $boot_id"
+            systemctl --user show-environment 2>/dev/null |
+                grep -E "^($(echo "$ACTIVATION_VARS" | tr ' ' '|'))="
+        } >"$activation_saved.neu-$$" && mv -f "$activation_saved.neu-$$" "$activation_saved"
+    fi
+    set --
+    for var in $ACTIVATION_VARS; do
+        if value=$(session_value "$var"); then
+            set -- "$@" "$var=$value"
+        fi
+    done
+    [ $# -gt 0 ] || return 0
+    sd=ok db=ok
+    systemctl --user set-environment "$@" 2>/dev/null || sd=Fehler
+    dbus-update-activation-environment "$@" 2>/dev/null || db=Fehler
+    echo "$(date +%T.%3N) querencia-session: Aktivierungsumgebung gesetzt (systemd $sd, D-Bus $db): $*"
+}
+
+activation_restore() {
+    [ -f "$activation_saved" ] || return 0
+    set --
+    unset_vars=
+    for var in $ACTIVATION_VARS; do
+        session_value "$var" >/dev/null || continue
+        line=$(grep -E "^$var=" "$activation_saved" | tail -n 1)
+        if [ -n "$line" ]; then
+            set -- "$@" "$line"
+        else
+            unset_vars="$unset_vars $var"
+        fi
+    done
+    if [ $# -gt 0 ]; then
+        systemctl --user set-environment "$@" 2>/dev/null
+        dbus-update-activation-environment "$@" 2>/dev/null
+    fi
+    if [ -n "$unset_vars" ]; then
+        systemctl --user unset-environment $unset_vars 2>/dev/null
+    fi
+    rm -f "$activation_saved"
+    echo "$(date +%T.%3N) querencia-session: Aktivierungsumgebung zurückgesetzt: $* entfernt:${unset_vars:- nichts} (D-Bus behält entfernte Werte)"
 }
 
 # Who owns org.freedesktop.Notifications, for the log.
@@ -448,8 +526,6 @@ if [ -z "${DBUS_SESSION_BUS_ADDRESS-}" ] && [ -S "$XDG_RUNTIME_DIR/bus" ]; then
     export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 fi
 
-# Fresh portals for this session (see the head of this file).
-portals_reset "vor dem Start"
 
 # Which labwc configuration: the user copy, brought up to date first; the
 # runtime copy if the old way is asked for or the user copy is not usable.
@@ -465,6 +541,10 @@ else
 fi
 echo "$(date +%T.%3N) querencia-session: labwc-Konfiguration $CONFIG_DIR (Protokoll $konfig_log)"
 echo "labwc -C $CONFIG_DIR" >>"$konfig_log"
+# The session's locale and desktop for D-Bus activation, then fresh portals
+# (see the head of this file): a portal started from now on gets both.
+activation_export
+portals_reset "vor dem Start"
 # No labwc or panel of this user runs (checked above), so older records
 # are stale. The panel record is named after this starter's PID, which stays
 # unique while this starter lives; a later session never shares it.
@@ -525,6 +605,7 @@ if [ -n "$leftovers" ]; then
     echo "$leftovers" | end_processes
 fi
 portals_reset "nach dem Ende"
+activation_restore
 
 echo "$(date +%T.%3N) querencia-session: labwc beendet mit Status $status, Logs in $STATE_DIR"
 exit "$status"

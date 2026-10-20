@@ -33,6 +33,11 @@ if [ "${PORTAL:-echt}" != echt ]; then
             >"$PROFIL/data/dbus-1/services/$name.service"
     done
 fi
+# PORTAL_CONF=<datei>: Portal-Konfiguration ins Profil (wie ~/.config/xdg-desktop-portal/)
+if [ -n "${PORTAL_CONF:-}" ]; then
+    mkdir -p "$PROFIL/config/xdg-desktop-portal"
+    cp "$PORTAL_CONF" "$PROFIL/config/xdg-desktop-portal/"
+fi
 RT=$(mktemp -d /tmp/qed-runtime-XXXXXX); chmod 700 "$RT"
 cleanup() {
     for p in /proc/[0-9]*; do
