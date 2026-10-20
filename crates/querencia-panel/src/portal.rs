@@ -131,7 +131,7 @@ fn decide(program: &str) -> Mode {
     if has_no_portals(before.as_deref()) {
         eprintln!(
             "{program}: GDK_DEBUG=no-portals aus der Umgebung: GTK ohne Settings-Portal, \
-             Thema, Schrift und Zeiger aus gsettings"
+             vom Benutzer gesetzte gsettings-Werte gelten"
         );
         return Mode::WithoutPortal { external: true };
     }
@@ -286,9 +286,17 @@ thread_local! {
 }
 
 /// Sets the GTK properties of `key` from `settings`.
-fn apply(gtk_settings: &gtk4::Settings, settings: &gio::Settings, key: &str) {
-    for (property, value) in translate(key, &settings.value(key)) {
+/// With `only_user`, only a value the user has set counts; without one,
+/// the property goes back to what GTK has from elsewhere (`settings.ini`,
+/// built-in default).
+fn apply(gtk_settings: &gtk4::Settings, settings: &gio::Settings, key: &str, only_user: bool) {
+    let user = settings.user_value(key);
+    for (property, value) in translate(key, &user.clone().unwrap_or_else(|| settings.value(key))) {
         if gtk_settings.find_property(property).is_none() {
+            continue;
+        }
+        if only_user && user.is_none() {
+            gtk_settings.reset_property(property);
             continue;
         }
         match value {
@@ -302,10 +310,17 @@ fn apply(gtk_settings: &gtk4::Settings, settings: &gio::Settings, key: &str) {
 /// In [`Mode::WithoutPortal`]: sets the values of [`KEYS`] from GSettings
 /// on this process's `GtkSettings` and follows their changes. Call after
 /// GTK is initialised. Nothing in [`Mode::Portal`].
+///
+/// If `no-portals` came from outside (`external`), only values the user has
+/// set count: test harnesses set `GDK_DEBUG=no-portals` together with their
+/// own `settings.ini` and an empty dconf, whose schema defaults must not
+/// override it; in the session the values that matter (theme, font,
+/// cursor) are the user's choices anyway.
 pub fn follow_gsettings(program: &'static str, mode: Mode) {
-    if mode == Mode::Portal {
-        return;
-    }
+    let only_user = match mode {
+        Mode::Portal => return,
+        Mode::WithoutPortal { external } => external,
+    };
     let Some(gtk_settings) = gtk4::Settings::default() else {
         return;
     };
@@ -326,14 +341,14 @@ pub fn follow_gsettings(program: &'static str, mode: Mode) {
             .map(|(_, k)| *k)
             .collect();
         for key in &keys {
-            apply(&gtk_settings, &settings, key);
+            apply(&gtk_settings, &settings, key, only_user);
         }
         let watched_keys = keys.clone();
         settings.connect_changed(None, move |settings, key| {
             if watched_keys.contains(&key)
                 && let Some(gtk_settings) = gtk4::Settings::default()
             {
-                apply(&gtk_settings, settings, key);
+                apply(&gtk_settings, settings, key, only_user);
                 eprintln!(
                     "{program}: gsettings {key} = {} übernommen",
                     settings.value(key)
@@ -343,7 +358,12 @@ pub fn follow_gsettings(program: &'static str, mode: Mode) {
         WATCHED.with(|w| w.borrow_mut().push(settings));
     }
     eprintln!(
-        "{program}: ohne Portal aus gsettings: Thema {}, Schrift {}, Zeiger {} {} (folgt Änderungen)",
+        "{program}: ohne Portal aus gsettings{}: Thema {}, Schrift {}, Zeiger {} {} (folgt Änderungen)",
+        if only_user {
+            " (nur Benutzerwerte)"
+        } else {
+            ""
+        },
         gtk_settings.gtk_theme_name().unwrap_or_default(),
         gtk_settings.gtk_font_name().unwrap_or_default(),
         gtk_settings.gtk_cursor_theme_name().unwrap_or_default(),
