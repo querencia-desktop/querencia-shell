@@ -22,6 +22,23 @@
 # ~/.config/querencia/labwc-alter-weg or QUERENCIA_LABWC_KONFIG=repo, and by
 # itself if the user copy cannot be set up.
 #
+# A clean start and end (QD-062, G2-AI). The systemd user manager of this
+# user outlives every logout (Linger=yes, SSH sessions), and with it D-Bus,
+# xdg-desktop-portal and gvfs. Before labwc starts and after it ends, the
+# starter therefore
+#   - ends what is left of an earlier Querencia session of this user in
+#     this XDG_RUNTIME_DIR (panel, desktop, notifications, polkit agent,
+#     idle lock, applet helpers; a labwc only if its logind session is gone),
+#   - stops xdg-desktop-portal and xdg-desktop-portal-gtk (systemctl --user,
+#     no sudo), so the next GTK program activates them afresh with this
+#     session's WAYLAND_DISPLAY instead of meeting a portal that waits for a
+#     closed display (gvfs with its network mounts and the document portal
+#     stay),
+#   - keeps five generations of every log (NAME.log.1 … NAME.log.5) and
+#     writes its own lines to sitzung-start.log.
+# Isolated test sessions (their own XDG_RUNTIME_DIR) are never touched and
+# no longer block a login.
+#
 # Derived from session/classic2-session (M2.0b). The Classic2 session keeps
 # its own runtime copy, configuration and state; both are never active for
 # the same user at the same time.
@@ -139,13 +156,124 @@ remove_record() {
     fi
 }
 
-# Succeeds if a process of this user runs program $1, judged by the first
-# word of its command line (with or without a path). The kernel's process
-# name is cut to 15 characters; the command line is not, so the check stays
-# exact for longer names and is not fooled by programs that merely mention
-# the name as an argument.
+# PIDs of this user's processes running program $1, judged by the first
+# word of the command line (with or without a path), and only those with
+# this session's XDG_RUNTIME_DIR: isolated test sessions use their own and
+# are none of the starter's business. The kernel's process name is cut to
+# 15 characters; the command line is not, so the check stays exact for
+# longer names and is not fooled by programs that merely mention the name
+# as an argument.
+pids_here() {
+    for p in $(pgrep -u "$(id -u)" -f "^([^ ]*/)?$1( |\$)"); do
+        if tr '\000' '\n' 2>/dev/null <"/proc/$p/environ" |
+            grep -qx "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR"; then
+            echo "$p"
+        fi
+    done
+}
+
+# Succeeds if a process of this user runs program $1 here (see pids_here).
 running() {
-    pgrep -u "$(id -u)" -f "^([^ ]*/)?$1( |\$)" >/dev/null
+    [ -n "$(pids_here "$1")" ]
+}
+
+# Programs of a Querencia session that end with it (kept in step with
+# querencia-sitzung, aufraeumen.rs); querencia-sitzung only as idle lock.
+SESSION_PROGRAMS="querencia-panel querencia-desktop querencia-benachrichtigungen querencia-polkit-agent querencia-lautstaerke querencia-netzwerk classic2-panel"
+
+# Session programs of this user here; with $1, only those of labwc $1
+# (LABWC_PID in their environment). One "PID NAME" per line.
+session_leftovers() {
+    for program in $SESSION_PROGRAMS querencia-sitzung; do
+        for p in $(pids_here "$program"); do
+            if [ "$program" = querencia-sitzung ] &&
+                ! tr '\000' '\n' 2>/dev/null <"/proc/$p/cmdline" | grep -qx -e --leerlauf -e --leerlauf-sekunden; then
+                continue
+            fi
+            if [ -n "${1-}" ] && ! tr '\000' '\n' 2>/dev/null <"/proc/$p/environ" | grep -qx "LABWC_PID=$1"; then
+                continue
+            fi
+            echo "$p $program"
+        done
+    done
+}
+
+# Ends the processes "PID NAME" on stdin: SIGTERM, up to 2 s, then SIGKILL.
+# A PID is only signalled while it still has the start time noted before.
+end_processes() {
+    list=
+    while read -r p name; do
+        start=$(starttime "$p") || continue
+        list="$list $p:$start:$name"
+        echo "querencia-session: beende $name ($p), SIGTERM"
+        kill -TERM "$p" 2>/dev/null
+    done
+    [ -n "$list" ] || return 0
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        alive=
+        for e in $list; do
+            p=${e%%:*} rest=${e#*:}
+            [ "$(starttime "$p")" = "${rest%%:*}" ] && alive=ja
+        done
+        [ -n "$alive" ] || return 0
+        sleep 0.2
+    done
+    for e in $list; do
+        p=${e%%:*} rest=${e#*:}
+        if [ "$(starttime "$p")" = "${rest%%:*}" ]; then
+            echo "querencia-session: ${rest#*:} ($p) reagiert nicht, SIGKILL"
+            kill -KILL "$p" 2>/dev/null
+        fi
+    done
+}
+
+# The settings portal and its GTK backend of the user manager. Stopped, the
+# next GTK program activates them again through D-Bus, with the activation
+# environment of the session that is running then.
+PORTAL_UNITS="xdg-desktop-portal-gtk.service xdg-desktop-portal.service"
+portals_reset() {
+    active=$(systemctl --user is-active $PORTAL_UNITS 2>/dev/null | tr '\n' ' ')
+    case " $active" in
+    *" active "* | *" activating "* | *" deactivating "* | *" reloading "*)
+        if systemctl --user stop $PORTAL_UNITS 2>&1; then
+            echo "querencia-session: Portale gestoppt ($1; vorher: $active)"
+        else
+            echo "querencia-session: Portale ließen sich nicht stoppen ($1)"
+        fi
+        ;;
+    *) echo "querencia-session: Portale laufen nicht ($1; $active)" ;;
+    esac
+    systemctl --user reset-failed $PORTAL_UNITS 2>/dev/null
+}
+
+# Who owns org.freedesktop.Notifications, for the log.
+notifications_owner() {
+    owner=$(busctl --user --timeout=2 call org.freedesktop.DBus /org/freedesktop/DBus \
+        org.freedesktop.DBus GetConnectionUnixProcessID s org.freedesktop.Notifications 2>/dev/null) || {
+        echo "frei"
+        return
+    }
+    pid=${owner#u }
+    echo "PID $pid ($(ps -o args= -p "$pid" 2>/dev/null | cut -c1-80))"
+}
+
+# Log files of the session; each start moves NAME.log to NAME.log.1 and so
+# on up to NAME.log.5.
+LOGS="labwc labwc-konfig panel desktop sitzung polkit-agent benachrichtigungen bildschirm sitzung-start"
+LOG_GENERATIONS=5
+rotate_logs() {
+    for log in $LOGS; do
+        f=$STATE_DIR/$log.log
+        [ -f "$f" ] || continue
+        i=$((LOG_GENERATIONS - 1))
+        while [ "$i" -ge 1 ]; do
+            if [ -f "$f.$i" ]; then
+                mv -f "$f.$i" "$f.$((i + 1))"
+            fi
+            i=$((i - 1))
+        done
+        mv -f "$f" "$f.1"
+    done
 }
 
 # Copies $1 to $2 (mode 0644) through a temporary file in the same
@@ -252,22 +380,57 @@ fi
 [ "$(readlink -f "$0")" = "$QUERENCIA_REPO/session/querencia-session" ] ||
     die "nur aus der Querencia-Laufzeitkopie starten: $QUERENCIA_REPO/session/querencia-session"
 
-# One graphical session per user: the systemd user manager, the D-Bus
-# activation environment and the D-Bus session bus are shared per user.
-# Both the Querencia and the Classic2 session run labwc, so a running labwc
-# of this user blocks either starter; the panel names are checked as well.
 [ -z "${WAYLAND_DISPLAY-}" ] ||
     die "läuft bereits in einer Wayland-Sitzung (WAYLAND_DISPLAY=$WAYLAND_DISPLAY)"
 [ -n "${XDG_RUNTIME_DIR-}" ] || die "XDG_RUNTIME_DIR fehlt"
+
+# Logs first, so that even a refused start leaves a trace: greetd discards
+# the starter's own output. From a terminal the lines stay visible there.
+mkdir -p "$STATE_DIR" || die "kann $STATE_DIR nicht anlegen"
+rotate_logs
+start_log=$STATE_DIR/sitzung-start.log
+if [ ! -t 2 ]; then
+    exec >>"$start_log" 2>&1
+fi
+for log in $LOGS; do
+    echo "# Querencia-Sitzung $(date '+%F %T'), querencia-session PID $$" >>"$STATE_DIR/$log.log"
+done
+
 [ -n "${XDG_SESSION_ID-}" ] || die "keine logind-Sitzung (XDG_SESSION_ID fehlt)"
 seat=$(loginctl show-session "$XDG_SESSION_ID" -p Seat --value 2>/dev/null)
 [ -n "$seat" ] ||
     die "logind-Sitzung $XDG_SESSION_ID hat keinen Sitz; nur nach Anmeldung an der Konsole starten"
-for program in labwc querencia-panel querencia-desktop classic2-panel; do
+
+# One graphical session per user: the systemd user manager, the D-Bus
+# activation environment and the D-Bus session bus are shared per user.
+# Both the Querencia and the Classic2 session run labwc. A labwc here whose
+# logind session is still there blocks either starter; one whose session
+# has ended (logout without its end, e.g. a hanging labwc) is a leftover
+# and is ended.
+for p in $(pids_here labwc); do
+    sid=$(tr '\000' '\n' 2>/dev/null <"/proc/$p/environ" | sed -n 's/^XDG_SESSION_ID=//p')
+    state=$(loginctl show-session "$sid" -p State --value 2>/dev/null)
+    case $state in
+    active | online)
+        die "es läuft bereits ein labwc dieses Benutzers ($p, logind-Sitzung $sid $state; Classic2- oder Querencia-Sitzung aktiv?)"
+        ;;
+    esac
+    echo "querencia-session: labwc $p gehört zu keiner laufenden Sitzung (logind-Sitzung ${sid:-?}: ${state:-weg}), Rest einer früheren Sitzung"
+    echo "$p labwc" | end_processes
+done
+# Without a labwc, every session program here is left over from an earlier
+# session (it outlived its labwc or started in a session that broke).
+leftovers=$(session_leftovers)
+if [ -n "$leftovers" ]; then
+    echo "querencia-session: Reste einer früheren Sitzung: $(echo "$leftovers" | tr '\n' ' ')"
+    echo "$leftovers" | end_processes
+fi
+for program in $SESSION_PROGRAMS; do
     if running "$program"; then
-        die "es läuft bereits ein $program dieses Benutzers (Classic2- oder Querencia-Sitzung aktiv?)"
+        die "es läuft noch ein $program dieses Benutzers, das sich nicht beenden ließ"
     fi
 done
+echo "querencia-session: org.freedesktop.Notifications: $(notifications_owner)"
 
 [ -x "$LABWC" ] || die "labwc fehlt: $LABWC"
 version=$("$LABWC" --version 2>/dev/null | cut -d' ' -f2)
@@ -285,12 +448,8 @@ if [ -z "${DBUS_SESSION_BUS_ADDRESS-}" ] && [ -S "$XDG_RUNTIME_DIR/bus" ]; then
     export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 fi
 
-mkdir -p "$STATE_DIR" || die "kann $STATE_DIR nicht anlegen"
-for log in labwc labwc-konfig panel desktop sitzung polkit-agent; do
-    if [ -f "$STATE_DIR/$log.log" ]; then
-        mv -f "$STATE_DIR/$log.log" "$STATE_DIR/$log.log.1"
-    fi
-done
+# Fresh portals for this session (see the head of this file).
+portals_reset "vor dem Start"
 
 # Which labwc configuration: the user copy, brought up to date first; the
 # runtime copy if the old way is asked for or the user copy is not usable.
@@ -358,6 +517,14 @@ leftover() {
 }
 leftover "$panel_file" "$PANEL" Panel
 leftover "$desktop_file" "$DESKTOP" Arbeitsfläche
+# Everything else this labwc started for the session (normally already
+# ended by querencia-sitzung --abmelden).
+leftovers=$(session_leftovers "$labwc_pid")
+if [ -n "$leftovers" ]; then
+    echo "querencia-session: nach labwc noch da: $(echo "$leftovers" | tr '\n' ' ')"
+    echo "$leftovers" | end_processes
+fi
+portals_reset "nach dem Ende"
 
 echo "querencia-session: labwc beendet mit Status $status, Logs in $STATE_DIR"
 exit "$status"
