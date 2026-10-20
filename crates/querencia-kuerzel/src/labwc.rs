@@ -331,6 +331,8 @@ fn action_group(action: &Action) -> Group {
             let program = program_of(command);
             if program.contains("screenshot") || program == "grim" {
                 Group::Screenshot
+            } else if is_show_desktop(command) {
+                Group::Windows
             } else if program.contains("querencia-sitzung")
                 || program.contains("lock")
                 || command.contains("labwc --exit")
@@ -459,10 +461,20 @@ fn describe(action: &Action) -> String {
     }
 }
 
+/// G2-AL: the panel's „Arbeitsfläche anzeigen“ over D-Bus (Super+D).
+fn is_show_desktop(command: &str) -> bool {
+    program_of(command) == "gdbus"
+        && command
+            .split_whitespace()
+            .any(|w| w == "org.querencia.Panel.ArbeitsflaecheUmschalten")
+}
+
 fn describe_command(command: &str) -> String {
     let program = program_of(command);
     let has = |word: &str| command.split_whitespace().any(|w| w == word);
-    if program.contains("screenshot") {
+    if is_show_desktop(command) {
+        "Arbeitsfläche anzeigen: alle Fenster minimieren oder wiederherstellen".to_owned()
+    } else if program.contains("screenshot") {
         if has("--window") {
             "Bildschirmfoto eines Fensters".to_owned()
         } else if has("--area") || has("--bereich") {
@@ -852,6 +864,20 @@ mod tests {
         assert_eq!(
             find(&list, "Alt+Leertaste").unwrap().description(),
             "Fenstermenü öffnen"
+        );
+        // G2-AL: Super+D through the panel
+        let show = find(&list, "Super+D").unwrap();
+        assert_eq!(
+            (show.group(), show.description().as_str()),
+            (
+                Group::Windows,
+                "Arbeitsfläche anzeigen: alle Fenster minimieren oder wiederherstellen"
+            )
+        );
+        // another gdbus call is just a program
+        assert_eq!(
+            describe_command("gdbus call --session --dest x --method y.Z"),
+            "startet „gdbus“"
         );
         for group in Group::ALL {
             if group != Group::Other {

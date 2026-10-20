@@ -32,11 +32,11 @@
          Both open the editor afterwards. -->
     <keybind key="Print">
       <action name="Execute"
-              command="~/projects/querencia-runtime/session/querencia/querencia-screenshot-start" />
+              command="/home/user/projects/querencia-runtime/session/querencia/querencia-screenshot-start" />
     </keybind>
     <keybind key="A-Print">
       <action name="Execute"
-              command="~/projects/querencia-runtime/session/querencia/querencia-screenshot-start --window" />
+              command="/home/user/projects/querencia-runtime/session/querencia/querencia-screenshot-start --window" />
     </keybind>
     <!-- GNOME 2 (Metacity) workspace keys: Ctrl+Alt+Left/Right switches,
          with Shift the active window moves along. No wrap-around, like
@@ -67,6 +67,15 @@
     <keybind key="A-F11">
       <action name="ToggleFullscreen" />
     </keybind>
+    <!-- QD-078 (G2-AL, 2026-10-20): Super+D wie der Knopf „Arbeitsfläche
+         anzeigen“ links im unteren Panel: minimiert alle Fenster der
+         aktuellen Arbeitsfläche, der nächste Druck stellt genau diese
+         wieder her. Das Panel macht beides (D-Bus an seinem Busnamen);
+         läuft kein Panel, tut das Kürzel nichts. -->
+    <keybind key="W-d">
+      <action name="Execute"
+              command="gdbus call --session --dest org.example.Querencia.Panel --object-path /org/example/Querencia/Panel --method org.querencia.Panel.ArbeitsflaecheUmschalten" />
+    </keybind>
     <!-- Querencia Sitzung (Querencia-Werkstatt G2-K, 2026-10-18): Ctrl+Alt+L locks the
          screen at once (ext-session-lock, as GNOME 2), Ctrl+Alt+Delete
          opens the session dialog (Abmelden, Bildschirm sperren, Neu
@@ -74,11 +83,11 @@
          ~/opt/querencia/bin (sitzung-integrieren.sh). -->
     <keybind key="C-A-l">
       <action name="Execute"
-              command="~/opt/querencia/bin/querencia-sitzung --sperren --sofort" />
+              command="/home/user/opt/querencia/bin/querencia-sitzung --sperren --sofort" />
     </keybind>
     <keybind key="C-A-Delete">
       <action name="Execute"
-              command="~/opt/querencia/bin/querencia-sitzung --dialog" />
+              command="/home/user/opt/querencia/bin/querencia-sitzung --dialog" />
     </keybind>
     <!-- Querencia Tastenkürzel (G2-R, 2026-10-18): Super+? (Super+Umschalt+ß
          auf der deutschen Tastatur; labwc vergleicht die Modifikatoren
@@ -86,7 +95,7 @@
          den Link in ~/opt/querencia/bin (kuerzel-integrieren.sh). -->
     <keybind key="W-S-question">
       <action name="Execute"
-              command="~/opt/querencia/bin/querencia-kuerzel" />
+              command="/home/user/opt/querencia/bin/querencia-kuerzel" />
     </keybind>
   </keyboard>
   <!-- Querencia Sitzung and its polkit agent: their dialogs open centred
