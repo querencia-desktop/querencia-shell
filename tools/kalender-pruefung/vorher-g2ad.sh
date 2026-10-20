@@ -7,7 +7,7 @@
 # Eigener Schreibtischordner im Profil, damit der Desktop nicht ~/Schreibtisch
 # zeigt; Desktop-Log mit Uhrzeit je Zeile.
 set -u
-case "$XDG_RUNTIME_DIR" in */querencia-runtime-wt-kalender/nachweis/gui/rt/g2m-*) ;; *) echo "nicht isoliert"; exit 2 ;; esac
+case "$XDG_RUNTIME_DIR" in */querencia-runtime-wt-g2ai/nachweis/gui/rt/g2m-*) ;; *) echo "nicht isoliert"; exit 2 ;; esac
 OUT="$HMP04_PROFILE/logs"
 mkdir -p "$HMP04_PROFILE/schreibtisch"
 printf 'XDG_DESKTOP_DIR="%s"\n' "$HMP04_PROFILE/schreibtisch" >"$XDG_CONFIG_HOME/user-dirs.dirs"

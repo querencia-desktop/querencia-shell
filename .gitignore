@@ -38,3 +38,7 @@ integration/vorschlag-kalender/querencia-panel
 integration/vorschlag-kalender/querencia-desktop
 nachweis/g2ad/querencia-panel
 nachweis/g2ad/querencia-desktop
+
+# G2-AI: Release-Binaries der Vorlage nicht ins Repo (nur SHA256SUMS)
+/integration/g2ai/vorschlag-panel-desktop/querencia-panel
+/integration/g2ai/vorschlag-panel-desktop/querencia-desktop
