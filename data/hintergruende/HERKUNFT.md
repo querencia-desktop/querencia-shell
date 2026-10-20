@@ -7,7 +7,8 @@ Stand 20.10.2026, G2-AF (QD-058). Prüfsummen: `SHA256SUMS`. Erzeugt mit
 
 ## Lizenz
 
-Die Lizenz der Hintergründe ist **noch nicht entschieden**
+**Lizenzvermerk: vorbehaltlich ENTSCHEIDUNGEN Nr. 15.** Die Lizenz der
+Hintergründe ist **noch nicht entschieden**
 (`querencia-github/ENTSCHEIDUNGEN.md` Nr. 15, Vorschlag der Status-Session,
 offen beim Besitzer). Vorschlag:
 
@@ -20,6 +21,9 @@ offen beim Besitzer). Vorschlag:
   ChatGPT im Erzeugungs-Chat Weitergabe, Veränderung und Nutzung in einem
   Open-Source-Projekt, auch kommerziell, bejaht. Zu prüfen bleiben die
   OpenAI-Nutzungsbedingungen zum Zeitpunkt der Erzeugung.
+- Rein KI-erzeugte Bilder sind womöglich nicht urheberrechtlich geschützt;
+  eine CC-BY-SA-Angabe wäre dann nur ein Hinweis, keine Lizenz im
+  rechtlichen Sinn (Hinweis aus Nr. 15).
 
 Bis zur Entscheidung gelten die Bilder als Teil des privaten Repos und
 werden nicht veröffentlicht.
@@ -59,10 +63,10 @@ Quelle relativ zum Rohordner, Prüfsumme der Quelle (16 Stellen).
 
 | Datei | Quelle | Bearbeitung |
 |---|---|---|
-| `querencia-abend.png` | `chatgpt-original/Copper Ribbons in Plum Shadows.png` (1672×941, `a4bf6a11461add98`) | auf 2560×1440 hochskaliert (GdkPixbuf HYPER). Die sortierte Datei `querencia-abend.png` des Rohordners (`6437418985bdce30`) enthält ein KI-gezeichnetes Q und wird nicht verwendet |
+| `querencia-abend.png` | `chatgpt-original/Copper Ribbons in Plum Shadows.png` (1672×941, `a4bf6a11461add98`) | von `erzeugen.py` auf 2560×1440 hochgerechnet (GdkPixbuf HYPER). Die zuerst sortierte Datei `querencia-abend.png` des Rohordners (`6437418985bdce30`) war aus „Warm Amber Waves on Maroon Gradient.png“ hochgerechnet und trug ein KI-gezeichnetes Q. Die Startsession hat sie am 20.10. 01:05 aus demselben Original neu hochgerechnet (`228cc5a83c8e077a`); G2-AF bleibt bei der eigenen, reproduzierbaren Hochrechnung aus dem unveränderten Original, die gelieferte Datei wird nicht verwendet |
 | `querencia-abend-4x3.png` | `querencia-abend-4x3.png` (`dc686546bb21d3c2`) | byte-gleiche Kopie |
 | `querencia-blau2.png` | `querencia-blau2.png` (`fc2b8085b9a26260`) | byte-gleiche Kopie |
-| `querencia-blau2-4x3.png` | `querencia-blau2-4x3.png` (`fd9e33e293495e76`) | byte-gleiche Kopie |
+| `querencia-blau2-4x3.png` | `querencia-blau2-4x3.png` (`fd9e33e293495e76`) | byte-gleiche Kopie. Die Quelle ist kein ChatGPT-Original, sondern ein mittiger 4:3-Ausschnitt aus dem 16:9-Bild, den die Startsession beim Sortieren angelegt hat (für Blau 2 gab es keine eigene 4:3-Fassung) |
 | `querencia-erde.png` | `querencia-erde.png` (`d1d00e2c49a92dd0`) | byte-gleiche Kopie |
 | `querencia-erde-4x3.png` | `querencia-erde-4x3.png` (`728b0105326df748`) | byte-gleiche Kopie |
 | `querencia-nacht.png` | `querencia-nacht.png` (`11f112f17d58f9f1`) | byte-gleiche Kopie |
