@@ -2,8 +2,28 @@
 
 ## 0.2.1 – 2026-10-21
 
-Standardbild „tiefblau“ (Hintergründe 0.2, QD-093, Entscheidung des
-Besitzers 21.10.2026 19:50, Zweig `standard-tiefblau`).
+Zwei Punkte für Alpha 2 (Zweig `desktop-0.2.1`; Hintergründe 0.2, QD-093,
+Entscheidung des Besitzers 21.10.2026 19:50: alle 16 neuen Hintergründe,
+Standard „tiefblau“).
+
+**Beschriftung der Symbole lesbar auf hellen Hintergründen.**
+
+- Die Beschriftung liegt auf einer abgerundeten dunklen Hinterlegung
+  (`alpha(#000000, 0.55)`, Radius 4 px, Innenabstand 1 px oben/unten und
+  3 px seitlich). Der Schatten der weißen Schrift ist kräftiger
+  (`1px 1px 2px #000000`, vorher 85 % Deckkraft).
+- Weiß bleibt damit auch über reinem Weiß bei 4,7:1. Gemessen auf allen
+  33 Hintergründen (17 alte, 16 neue) bei mindestens 4,5:1 gegen das
+  hellste Pixel unter der Schrift. Vorher lagen die hellen Landschaften
+  bei 1,0–1,6:1.
+- Bei Auswahl ersetzt wie bisher die orange Hinterlegung die dunkle.
+  Beim Umbenennen bleibt das Feld unverändert.
+- Hell und dunkel sehen gleich aus: Der dunkle Block hat keine Regel für
+  die Beschriftung, und die Beschriftungszonen sind pixelgleich.
+- Keine Kachel wird größer als ihre Zelle (zweizeilige Namen gemessen).
+- Ein Test prüft die Deckkraft gegen 4,5:1 über Weiß.
+
+**Standardbild „tiefblau“** (übernommen aus `standard-tiefblau` `3fafafd`).
 
 - Ohne Bild in `desktop.ini` (`File=` leer oder fehlt) zeigt die
   Arbeitsfläche `querencia-tiefblau.png` aus `querencia/hintergruende/` der
