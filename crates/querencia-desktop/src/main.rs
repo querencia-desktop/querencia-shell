@@ -180,10 +180,10 @@ fn load(desktop: &Shared) {
     } else {
         eprintln!(
             "querencia-desktop: Hintergrund {}, Modus {}{}",
-            settings
-                .file
-                .as_ref()
-                .map_or_else(|| config::BUILT_IN.to_owned(), |f| f.display().to_string()),
+            settings.file.as_ref().map_or_else(
+                || "eingebautes Bild".to_owned(),
+                |f| f.display().to_string()
+            ),
             settings.mode.name(),
             if texture.is_none() {
                 " – kein Bild lesbar, nur Farbe"
@@ -227,10 +227,11 @@ fn built_in_texture() -> Option<gdk::Texture> {
     let mut data_dirs = vec![glib::user_data_dir()];
     data_dirs.extend(glib::system_data_dirs());
     let source_tree = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    config::built_in_candidates(&data_dirs, &source_tree)
+    let path = config::built_in_candidates(&data_dirs, &source_tree)
         .into_iter()
-        .find(|path| path.is_file())
-        .and_then(|path| read_texture(&path))
+        .find(|path| path.is_file())?;
+    eprintln!("querencia-desktop: eingebautes Bild {}", path.display());
+    read_texture(&path)
 }
 
 /// Re-reads the config whenever `desktop.ini` changes.

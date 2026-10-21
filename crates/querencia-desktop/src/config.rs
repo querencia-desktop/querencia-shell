@@ -6,7 +6,7 @@
 //! # QE-01: color = the colour only, no image at all (not even the
 //! # built-in one); missing or image = an image. Written only for color.
 //! Type=color
-//! # image; empty or missing: the built-in "Querencia Blau"
+//! # image; empty or missing: the built-in image (tiefblau, else Querencia Blau)
 //! File=/home/user/Bilder/berge.jpg
 //! # zoom (fill the screen, crop, never distort) | scaled (whole image,
 //! # bars in Color) | stretched (fill, distorted, as GNOME 2 offered it)
@@ -366,23 +366,24 @@ pub fn config_path() -> PathBuf {
         .join("desktop.ini")
 }
 
-/// Name of the built-in image.
-pub const BUILT_IN: &str = "querencia-blau.png";
+/// Names of the built-in image, first found wins: "tiefblau" (Hintergründe
+/// 0.2, package `querencia-hintergruende`, standard since 21.10.2026), then
+/// the old "Querencia Blau" while the 0.2 images are not installed.
+pub const BUILT_IN: [&str; 2] = ["querencia-tiefblau.png", "querencia-blau.png"];
 
 /// Where the built-in image is looked for: `querencia/hintergruende/` in the
-/// XDG data dirs (installed), then the source tree (development build).
+/// XDG data dirs (installed), then the source tree (development build); each
+/// name of [`BUILT_IN`] in all of them before the next name.
 pub fn built_in_candidates(data_dirs: &[PathBuf], source_tree: &Path) -> Vec<PathBuf> {
-    let mut list: Vec<PathBuf> = data_dirs
+    let mut dirs: Vec<PathBuf> = data_dirs
         .iter()
-        .map(|dir| dir.join("querencia").join("hintergruende").join(BUILT_IN))
+        .map(|dir| dir.join("querencia").join("hintergruende"))
         .collect();
-    list.push(
-        source_tree
-            .join("data")
-            .join("hintergruende")
-            .join(BUILT_IN),
-    );
-    list
+    dirs.push(source_tree.join("data").join("hintergruende"));
+    BUILT_IN
+        .iter()
+        .flat_map(|name| dirs.iter().map(move |dir| dir.join(name)))
+        .collect()
 }
 
 /// Rectangle (x, y, width, height) the image is drawn into on a monitor of
@@ -528,6 +529,8 @@ mod tests {
         assert_eq!(
             list,
             [
+                PathBuf::from("/usr/share/querencia/hintergruende/querencia-tiefblau.png"),
+                PathBuf::from("/src/q/data/hintergruende/querencia-tiefblau.png"),
                 PathBuf::from("/usr/share/querencia/hintergruende/querencia-blau.png"),
                 PathBuf::from("/src/q/data/hintergruende/querencia-blau.png"),
             ]
