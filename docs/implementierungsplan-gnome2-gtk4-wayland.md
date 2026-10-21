@@ -6,7 +6,7 @@
 **Status:** Technischer Vorschlag, keine abgeschlossene Implementierung  
 **Ausgangsidee:** Das Bediengefühl von GNOME 2 mit moderner GTK4-Oberfläche, nativem Wayland, einer konservativen Produktphilosophie und sinnvoll eingesetzter KI neu aufbauen.
 
-**Projektname seit R1 (14.10.2026):** Querencia Desktop. Der Arbeitstitel „Classic2“ in diesem Dokument und in den Protokollen M1/M2 bezeichnet dasselbe Projekt; Bezeichner `querencia-*` stehen für die geplanten Artefakte, die installierte Sitzung trägt bis zur Migration R2 die alten Namen (`docs/querencia-umbenennung.md`).
+**Projektname seit R1 (14.10.2026):** Querencia Desktop. Der Arbeitstitel „Classic2“ in diesem Dokument und in den Protokollen M1/M2 bezeichnet dasselbe Projekt; Bezeichner `querencia-*` stehen für die geplanten Artefakte, die installierte Sitzung trägt bis zur Migration R2 die alten Namen.
 
 > **Kernaussage:** Das Vorhaben ist technisch realistisch, **wenn zunächst eine klassische Shell auf einem vorhandenen Wayland-Compositor entsteht**. Eine 1:1-Portierung der gesamten historischen GNOME-2-Codebasis oder die gleichzeitige Entwicklung eines eigenen Compositors wäre für einen kleinen Projektstart eine schlechte Wette. Ein erster überzeugender Prototyp ist deutlich kleiner als ein vollständig alltagstauglicher Desktop.
 

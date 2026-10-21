@@ -63,7 +63,7 @@ pub fn build(
     // KeyboardMode::None. From labwc 0.9.4 on, labwc gives a menu's grabbing
     // popup the keyboard and returns it to the previously focused window when
     // the popup closes. labwc 0.9.3 never focuses layer popups, so it is not
-    // supported. Evidence: docs/m1-1b0-labwc-ab-test.md.
+    // supported.
     window.init_layer_shell();
     window.set_namespace(Some(NAMESPACE));
     window.set_layer(Layer::Top);

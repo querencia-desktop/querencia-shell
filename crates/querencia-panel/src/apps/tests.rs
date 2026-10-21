@@ -1,5 +1,4 @@
-//! Tests of the application catalog; see `docs/m1-1b1a-anwendungskatalog-test.md`
-//! and, for the monitor tests, `docs/m1-1b1c-appinfo-monitor-test.md`.
+//! Tests of the application catalog and of the catalog monitor.
 
 use std::cell::Cell;
 use std::collections::BTreeMap;

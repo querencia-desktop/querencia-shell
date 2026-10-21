@@ -2,7 +2,7 @@
 //!
 //! GTK 4's `PopoverMenu` shows no icons next to text and either slides
 //! submenus in place or opens them beside the menu with an 80 ms timer
-//! that loses diagonal pointer movement (`docs/m1-1b1d-…`, `m1-1b1e-…`).
+//! that loses diagonal pointer movement.
 //! This module draws the menus itself from the same `gio::Menu` models:
 //!
 //! - each row: 16 px icon, label, ▸ for a submenu; sections become

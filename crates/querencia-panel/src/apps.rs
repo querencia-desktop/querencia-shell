@@ -4,8 +4,7 @@
 //! should be shown, gives each one exactly one menu group and sorts them by
 //! name for the current locale; settings also get a section of the system
 //! menu. No widgets here; `app_menu.rs` and `system_menu.rs` build the GTK
-//! menus on top of this. Details and test results:
-//! `docs/m1-1b1a-anwendungskatalog-test.md`.
+//! menus on top of this.
 
 use std::collections::HashSet;
 

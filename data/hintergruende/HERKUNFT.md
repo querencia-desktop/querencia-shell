@@ -1,32 +1,18 @@
 # Herkunft der eingebauten Hintergründe
 
-Stand 20.10.2026, G2-AF (QD-058). Prüfsummen: `SHA256SUMS`. Erzeugt mit
-`erzeugen.py` (Beschreibung im Kopf des Skripts, Prüfung mit
-`python3 -I erzeugen.py --pruefen`). Einbau und Auswahl:
-`docs/g2af-hintergruende.md`.
+Prüfsummen: `SHA256SUMS`. Erzeugt mit `erzeugen.py` (Beschreibung im Kopf des
+Skripts, Prüfung mit `python3 -I erzeugen.py --pruefen`).
 
 ## Lizenz
 
-**Lizenzvermerk: vorbehaltlich ENTSCHEIDUNGEN Nr. 15.** Die Lizenz der
-Hintergründe ist **noch nicht entschieden**
-(`querencia-github/ENTSCHEIDUNGEN.md` Nr. 15, Vorschlag der Status-Session,
-offen beim Besitzer). Vorschlag:
-
-- Bilder **ohne Logo**: CC-BY-SA-4.0, wie die Dokumentation.
-- Bilder **mit Q-Logo**: zusätzlich die Markenregel (Nr. 5, `MARKE.md`).
-  Das Logo ist ein Markenzeichen von Querencia Desktop und nicht frei;
-  die Bildlizenz erstreckt sich nicht auf das Logo.
-- **KI-erzeugte Bilder** nur, wenn die Nutzungsbedingungen des Erzeugers
-  die Weitergabe unter CC-BY-SA erlauben. Für die vier Motive unten hat
-  ChatGPT im Erzeugungs-Chat Weitergabe, Veränderung und Nutzung in einem
-  Open-Source-Projekt, auch kommerziell, bejaht. Zu prüfen bleiben die
-  OpenAI-Nutzungsbedingungen zum Zeitpunkt der Erzeugung.
-- Rein KI-erzeugte Bilder sind womöglich nicht urheberrechtlich geschützt;
-  eine CC-BY-SA-Angabe wäre dann nur ein Hinweis, keine Lizenz im
-  rechtlichen Sinn (Hinweis aus Nr. 15).
-
-Bis zur Entscheidung gelten die Bilder als Teil des privaten Repos und
-werden nicht veröffentlicht.
+Wie in `COPYRIGHT`: `querencia-blau.png` ist ein eigenes, per Skript erzeugtes
+Bild (GPL-3.0-or-later wie das Programm). Die vier Motive aus ChatGPT stehen unter
+CC-BY-SA-4.0. Rein KI-erzeugte Bilder sind in manchen Rechtsordnungen womöglich
+nicht urheberrechtlich geschützt; die Lizenzangabe ist dann ein Hinweis, kein
+durchsetzbarer Schutz. Das Q-Logo in den Dateien `*-logo*` ist aus der eigenen
+SVG-Vorlage aufgeprägt und fällt unter `MARKE.md`; die Bildlizenz erstreckt sich
+nicht auf das Logo. Die Hintergründe ab 0.2 liegen im Repo
+`querencia-hintergruende`.
 
 ## Querencia Blau
 
@@ -42,8 +28,8 @@ werden nicht veröffentlicht.
 | Modell | laut Generierungsdaten „DALL-E generation metadata“; genaue Version (DALL·E 3 oder GPT-Image) nicht angezeigt |
 | Datum | Nacht vom 19. auf den 20.10.2026 |
 | Bediener | pottrauschen |
-| Prompt-Blatt | `WALLY-PROMPTS.md` im Rohordner `~/Bilder/querencia-hintergruende-roh/` (Prompts 1–4, Zusatz „4:3-Variante“); Zusammenfassung unten |
-| Rohordner | `~/Bilder/querencia-hintergruende-roh/` mit `herkunft.txt`, `SHA256SUMS` und allen Originalen unter `chatgpt-original/` |
+| Prompt-Blatt | Prompt-Blatt im Rohordner des Besitzers (nicht im Repo); Zusammenfassung unten |
+| Rohordner | Rohordner des Besitzers (nicht im Repo) mit Herkunftsliste, Prüfsummen und allen Originalen |
 | Logo | nicht von der KI: aus `logo/querencia-logo.svg` (Kopie von `querencia-systemmonitor/data/logo/querencia-logo.svg`, SHA256 `a1746943…`) per Skript aufgeprägt. Die KI-Fassungen mit Logo dienten nur als Stilvorlage (Lage unten rechts, etwa 180 px, dezente Prägung) |
 
 Prompts, zusammengefasst (Stil für alle: ruhig wie Ubuntu 10.04/GNOME 2,
