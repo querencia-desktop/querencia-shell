@@ -13,9 +13,9 @@ Standard „tiefblau“).
   3 px seitlich). Der Schatten der weißen Schrift ist kräftiger
   (`1px 1px 2px #000000`, vorher 85 % Deckkraft).
 - Weiß bleibt damit auch über reinem Weiß bei 4,7:1. Gemessen auf allen
-  33 Hintergründen (17 alte, 16 neue) bei mindestens 4,5:1 gegen das
-  hellste Pixel unter der Schrift. Vorher lagen die hellen Landschaften
-  bei 1,0–1,6:1.
+  33 Hintergründen (17 alte, 16 neue) bei mindestens 5,1:1 gegen das
+  hellste Pixel unter der Schrift (`huegel`). Vorher lagen die sechs
+  hellen Landschaften bei 1,1–1,6:1.
 - Bei Auswahl ersetzt wie bisher die orange Hinterlegung die dunkle.
   Beim Umbenennen bleibt das Feld unverändert.
 - Hell und dunkel sehen gleich aus: Der dunkle Block hat keine Regel für

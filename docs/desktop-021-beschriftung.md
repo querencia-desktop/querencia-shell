@@ -72,5 +72,27 @@ unter der Schrift, ohne die Schriftpixel. Die Fläche ist:
 - nachher die Hinterlegung;
 - vorher das Rechteck der Schrift mit demselben Innenabstand.
 
-Die Formel ist `kontrast.py` des Thema-Repos. Ergebnisse stehen in Bericht
-und Übergabe von Desktop 0.2.1.
+Die Formel ist `kontrast.py` des Thema-Repos.
+
+**Ergebnis:** 33/33 erreichen hell und dunkel mindestens 4,5:1, und die
+Beschriftungszonen sind in hell und dunkel pixelgleich. Volle Tabelle:
+`integration/desktop-021/nachweis/kontrast.md`.
+
+| Hintergrund | vorher | nachher |
+|---|---|---|
+| huegel | 1,10 | 5,11 |
+| see | 1,22 | 5,50 |
+| wueste | 1,28 | 5,70 |
+| kueste | 1,47 | 6,25 |
+| duenen | 1,47 | 6,28 |
+| berge | 1,56 | 6,58 |
+| strand | 8,88 | 16,02 |
+| alle 17 alten | 10,04–20,21 | 16,83–20,70 |
+
+Das hellste Pixel unter der Hinterlegung hat höchstens den Kanalwert 114
+(`huegel`). Das liegt unter dem rechnerischen Grenzwert 115 über reinem Weiß.
+
+**Zustände:**
+- Überfahren ändert nichts (pixelgleich zum Ruhezustand).
+- Auswahl, Mehrfachauswahl und Umbenennen sind wie bisher.
+- Keine Kachel ist größer als ihre Zelle.
