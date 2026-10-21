@@ -11,7 +11,7 @@ Kernmerkmale der GNOME-2-Menüs nicht (geprüft im Quelltext von GTK 4.22.4):
 - keine Symbole neben Menüeinträgen mit Text (`gtkmodelbutton.c`);
 - Untermenüs gleiten an Ort und Stelle ein („‹ Zubehör“) oder öffnen mit
   NESTED daneben über einen 80-ms-Zeitgeber, der schräge Mausbewegungen
-  verliert (M1.1b-1d, `docs/m1-1b1d-nested-entscheidung.md`).
+  verliert (M1.1b-1d).
 
 Der Besitzer hat ein eigenes Menü-Widget beschlossen (HMP-03). Die
 `gio::Menu`-Modelle aus `app_menu.rs`, `places_menu.rs` und `system_menu.rs`

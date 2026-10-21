@@ -5,8 +5,7 @@
 //! GNOME 2 button: label (and for "Anwendungen" the Querencia logo,
 //! `logo.rs`), no dropdown arrow, menu left-aligned below the button.
 //! Launching and following changes are shared with the "System" menu
-//! (`system_menu.rs`). Details and test results:
-//! `docs/m1-1b1b-anwendungsmenue-test.md`, `docs/m1-1b1c-appinfo-monitor-test.md`.
+//! (`system_menu.rs`).
 
 use std::cell::Cell;
 use std::rc::Rc;
