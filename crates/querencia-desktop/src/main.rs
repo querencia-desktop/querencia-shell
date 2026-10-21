@@ -331,11 +331,14 @@ popover.querencia-menu .qmenu-item:disabled { color: @insensitive_fg_color; }
 popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-color: #dcd8d3; }
 ";
 
+/// Desktop 0.2.1: icon labels sit on a rounded dark plate (55 % black), so
+/// white text keeps 4.5:1 on any picture, the light ones of Hintergründe
+/// 0.2 included; a selected label has the orange plate instead.
 const DESKTOP_CSS: &str = "\
 window.querencia-desktop-icons, window.querencia-desktop-icons.background { background: none; background-color: transparent; }
 window.querencia-desktop-icons menubutton.desktop-menu-anchor > button { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; background: none; box-shadow: none; }
 window.querencia-desktop-icons box.desktop-icon { padding: 1px; }
-window.querencia-desktop-icons box.desktop-icon > label { color: #ffffff; text-shadow: 1px 1px 2px alpha(#000000, 0.85); padding: 0 2px; border-radius: 3px; }
+window.querencia-desktop-icons box.desktop-icon > label { color: #ffffff; text-shadow: 1px 1px 2px #000000; background-color: alpha(#000000, 0.55); padding: 1px 3px; border-radius: 4px; }
 window.querencia-desktop-icons box.desktop-icon.selected > label { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); text-shadow: none; }
 window.querencia-desktop-icons box.desktop-icon.selected > image { opacity: 0.7; }
 window.querencia-desktop-icons box.desktop-icon.dragging { opacity: 0.6; }
@@ -347,7 +350,7 @@ window.querencia-desktop-icons entry.desktop-rename > text > selection { backgro
 /// QD-081 (CSS-Welle dunkel): the dark menu rules of the panel, line for
 /// line (a test compares them), and a dark rename field (Thema 0.2 view
 /// colours). They apply only while `farbschema::dunkel` holds; the icon
-/// labels stay white with their shadow on the picture.
+/// labels keep their dark plate (Desktop 0.2.1), the same light and dark.
 const DUNKEL_CSS: &str = "\
 @media (prefers-color-scheme: dark) {
   popover.querencia-menu > contents { border-color: #2b2a27; background-color: #353430; color: #dfdbd2; }
@@ -455,6 +458,44 @@ mod tests {
         for rule in DESKTOP_CSS.lines().filter(|l| !l.is_empty()) {
             assert!(rule.starts_with("window.querencia-desktop-icons"), "{rule}");
         }
+    }
+
+    /// Desktop 0.2.1: white label text on the dark plate stays at 4.5:1 or
+    /// more even over pure white (the brightest any picture can be), and
+    /// the plate looks the same light and dark (no label rule in the dark
+    /// block); a selected label trades the plate for the orange one.
+    #[test]
+    fn the_label_plate_keeps_white_text_readable_on_any_picture() {
+        let rule = DESKTOP_CSS
+            .lines()
+            .find(|l| l.contains("box.desktop-icon > label"))
+            .expect("label rule");
+        let alpha: f64 = rule
+            .split("background-color: alpha(#000000, ")
+            .nth(1)
+            .and_then(|rest| rest.split(')').next())
+            .and_then(|a| a.parse().ok())
+            .expect("plate alpha");
+        let luminance = |channel: f64| {
+            let c = channel / 255.0;
+            let linear = if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            };
+            0.2126 * linear + 0.7152 * linear + 0.0722 * linear
+        };
+        // white picture under the plate, rounded up as an 8-bit pixel
+        let under = (255.0 * (1.0 - alpha)).ceil();
+        let contrast = 1.05 / (luminance(under) + 0.05);
+        assert!(contrast >= 4.5, "{contrast:.2}:1 bei Deckkraft {alpha}");
+        assert!(rule.contains("color: #ffffff;") && rule.contains("border-radius"));
+        let selected = DESKTOP_CSS
+            .lines()
+            .find(|l| l.contains("box.desktop-icon.selected > label"))
+            .expect("selected rule");
+        assert!(selected.contains("background-color: #f07746;"));
+        assert!(!DUNKEL_CSS.contains("box.desktop-icon"));
     }
 
     #[test]
