@@ -50,3 +50,10 @@
 #      icons.rs (Pfeil und Auslassung in den neuen Kommentaren, wie im
 #      übrigen Code) und die höhere Zählung bei P002; sie fallen unter die Ausnahmen oben
 #     .
+# desktop-0.2.3 (21.10.2026): neu nur S003/S004/S005 in
+#      crates/querencia-desktop/src/fileops.rs und desktop_view/transfer.rs
+#      (englische Kommentare mit Backticks, Anführungszeichen und Auslassung
+#      wie im übrigen Desktop-Code; deutsche Texte der Oberfläche), S004/S005/
+#      H003 in integration/desktop-023 (Kopie der Prüfwerkzeuge wie
+#      integration/desktop-022) und die höhere Zählung bei P002; sie fallen
+#      unter die Ausnahmen oben.
