@@ -51,3 +51,5 @@ nachweis/g2al/querencia-panel
 integration/g2al/vorschlag-panel/querencia-panel
 # kuerzel-reiter: Release-Binary der Vorlage 0.2.0 (Summe in integration/kuerzel-020/integration/vorlage/SHA256SUMS)
 /integration/kuerzel-020/integration/vorlage/querencia-kuerzel
+# Ausgaben der isolierten Prüfung (nicht einchecken)
+/nachweis/

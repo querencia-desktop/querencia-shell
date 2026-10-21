@@ -1,0 +1,32 @@
+Querencia Shell – Teil von Querencia Desktop
+Copyright (C) 2026 Querencia Desktop contributors
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option)
+any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License in
+the file LICENSE for more details.
+
+Dateien mit eigenem Lizenzvermerk behalten diesen (README.md, Abschnitt
+„Lizenz“).
+
+Das Querencia-Logo ist ein Kennzeichen des Projekts und von der Lizenz
+ausgenommen; es gilt MARKE.md. The Querencia logo is a mark of the project
+and is not covered by this licence; see MARKE.md.
+Dateien/files: crates/querencia-panel/data/logo/querencia-logo*
+Dateien/files: data/hintergruende/logo/querencia-logo*
+
+Hintergrundbilder in data/hintergruende/ (Fassung 0.1): querencia-blau.png
+ist ein eigenes, per Skript erzeugtes Bild (GPL-3.0-or-later wie das
+Programm). Die Motive querencia-abend*, -blau2*, -erde* und -nacht* sind mit
+einem KI-Bilddienst (ChatGPT, OpenAI) erzeugt und per Skript zugeschnitten
+(data/hintergruende/erzeugen.py, Herkunft in data/hintergruende/HERKUNFT.md);
+sie stehen unter CC-BY-SA-4.0. Rein KI-erzeugte Bilder sind in manchen
+Rechtsordnungen womöglich nicht urheberrechtlich geschützt; die
+Lizenzangabe ist dann ein Hinweis, kein durchsetzbarer Schutz. Das Q-Logo in
+den Dateien *-logo* ist aus der eigenen SVG-Vorlage aufgeprägt und fällt
+unter MARKE.md. Die Hintergründe ab 0.2 liegen im Repo querencia-hintergruende.

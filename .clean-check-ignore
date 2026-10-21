@@ -44,3 +44,16 @@
 #      (wie oben) und die höhere Zählung bei P002; sie fallen unter die
 #      Ausnahmen oben (Vergleich mit main 2e134c6,
 #      ).
+# Begründete Ausnahmen für ai-clean (ENTSCHEIDUNGEN Nr. 17): GitHub erwartet diese
+# Dateien im Root bzw. unter .github/, deshalb liegen sie nicht unter docs/.
+MARKE.md
+CONTRIBUTING.md
+SECURITY.md
+CHANGELOG.md
+.github/pull_request_template.md
+.github/ISSUE_TEMPLATE/*.md
+# Doku-Standard (GH-8): Änderungsprotokolle je Crate und die Herkunftsliste der Bilder liegen bewusst neben Code bzw. Daten
+crates/*/CHANGELOG.md
+data/hintergruende/HERKUNFT.md
+# H003: Name des Wayland-Protokolls aus wayland-protocols (Versionssuffix gehört zum Namen)
+tools/*/virtual-keyboard-unstable-v1.xml
