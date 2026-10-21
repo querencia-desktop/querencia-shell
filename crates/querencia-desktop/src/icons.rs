@@ -257,10 +257,7 @@ mod tests {
     /// name nothing is guessed (shared-mime-info of the system).
     #[test]
     fn an_empty_file_opens_as_the_type_of_its_name() {
-        assert_eq!(
-            type_from_name("leer.txt").as_deref(),
-            Some("text/plain")
-        );
+        assert_eq!(type_from_name("leer.txt").as_deref(), Some("text/plain"));
         assert_eq!(type_from_name("Notiz.TXT").as_deref(), Some("text/plain"));
         assert_eq!(type_from_name("bild.png").as_deref(), Some("image/png"));
         assert_eq!(type_from_name("Leere Datei"), None);

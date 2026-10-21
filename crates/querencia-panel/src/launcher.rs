@@ -177,7 +177,10 @@ mod tests {
         // No comment, an empty one or one equal to the name: name only.
         for comment in [None, Some(""), Some("  "), Some("Beispiel")] {
             let beispiel = data("Beispiel", comment, None);
-            assert_eq!(look("beispiel.desktop", Some(&beispiel)).tooltip, "Beispiel");
+            assert_eq!(
+                look("beispiel.desktop", Some(&beispiel)).tooltip,
+                "Beispiel"
+            );
         }
     }
 
