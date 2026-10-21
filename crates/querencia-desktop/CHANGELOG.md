@@ -1,5 +1,18 @@
 # Änderungen – querencia-desktop
 
+## 0.2.1 – 2026-10-21
+
+Standardbild „tiefblau“ (Hintergründe 0.2, QD-093, Entscheidung des
+Besitzers 21.10.2026 19:50, Zweig `standard-tiefblau`).
+
+- Ohne Bild in `desktop.ini` (`File=` leer oder fehlt) zeigt die
+  Arbeitsfläche `querencia-tiefblau.png` aus `querencia/hintergruende/` der
+  XDG-Datenordner (Repo und Paket `querencia-hintergruende`). Fehlt es, bleibt
+  es beim bisherigen `querencia-blau.png`.
+- Das Protokoll nennt das gefundene eingebaute Bild
+  (`querencia-desktop: eingebautes Bild <Pfad>`).
+- Farbe (`Color=`, Standard `#1c4e96`) und alles andere unverändert.
+
 ## 0.2.0 – 2026-10-21
 
 CSS-Welle dunkel (QD-081, Alpha 2, Zweig `welle-dunkel`): Die Arbeitsfläche
