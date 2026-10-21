@@ -2644,7 +2644,8 @@ fn open(item: &Item, window: &ApplicationWindow) {
                 return;
             }
         }
-        Kind::File(path) | Kind::Folder(path) => {
+        Kind::File(path) => open_file(path, &context),
+        Kind::Folder(path) => {
             gio::AppInfo::launch_default_for_uri(&gio::File::for_path(path).uri(), Some(&context))
         }
         // QE-03: in Querencia Files, as GNOME 2 opened volumes in Nautilus
@@ -2656,6 +2657,46 @@ fn open(item: &Item, window: &ApplicationWindow) {
     match result {
         Ok(()) => log(&format!("geöffnet: {}", item.name)),
         Err(err) => log(&format!("{} nicht geöffnet: {err}", item.name)),
+    }
+}
+
+/// Desktop 0.2.2: a file opens with the default program for its type, as
+/// before. When that type has none (an empty file is
+/// `application/x-zerosize`), it opens with the default program for the
+/// type its name suggests (`icons::type_from_name`), as Nautilus does;
+/// without one GIO's error goes to the log and nothing is started.
+fn open_file(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), glib::Error> {
+    let file = gio::File::for_path(path);
+    let uri = file.uri();
+    let content_type = file
+        .query_info(
+            "standard::content-type",
+            gio::FileQueryInfoFlags::NONE,
+            gio::Cancellable::NONE,
+        )
+        .ok()
+        .and_then(|info| info.content_type());
+    let handled = content_type
+        .as_deref()
+        .is_some_and(|t| gio::AppInfo::default_for_type(t, false).is_some());
+    if handled {
+        return gio::AppInfo::launch_default_for_uri(&uri, Some(context));
+    }
+    let by_name = path
+        .file_name()
+        .and_then(|name| icons::type_from_name(&name.to_string_lossy()));
+    match by_name.and_then(|t| gio::AppInfo::default_for_type(&t, false).map(|app| (t, app))) {
+        Some((t, app)) => {
+            log(&format!(
+                "{}: {} ohne Programm, öffne als {t} mit {}",
+                path.display(),
+                content_type.as_deref().unwrap_or("unbekannter Typ"),
+                app.id().unwrap_or_default()
+            ));
+            app.launch_uris(&[uri.as_str()], Some(context))
+        }
+        // GIO's own message ("keine Anwendung gefunden …")
+        None => gio::AppInfo::launch_default_for_uri(&uri, Some(context)),
     }
 }
 

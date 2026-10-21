@@ -1,5 +1,22 @@
 # Änderungen – querencia-desktop
 
+## 0.2.2 – 2026-10-21
+
+Leere Dateien öffnen sich wieder (Befund des Besitzers 21.10.2026 20:33: Doppelklick
+auf ein leeres `leer.txt` öffnete den Editor nicht).
+
+- GIO nennt eine leere Datei `application/x-zerosize`; dafür gibt es kein
+  Programm. Bisher stand dann nur „nicht geöffnet: Es wurde keine Anwendung
+  gefunden …“ im Protokoll.
+- Hat der Inhaltstyp einer Datei kein Programm, entscheidet jetzt wie in
+  Nautilus der Dateiname (`.txt` → `text/plain` → Standardanwendung, hier
+  Querencia Editor). Das Protokoll nennt den Weg
+  (`… application/x-zerosize ohne Programm, öffne als text/plain mit …`).
+- Sagt auch der Name nichts (leere Datei ohne Endung), wird nichts gestartet
+  und der Fehler bleibt im Protokoll, wie bisher.
+- Alles andere unverändert: Dateien mit eigenem Programm, Ordner, Starter,
+  Laufwerke.
+
 ## 0.2.1 – 2026-10-21
 
 Zwei Punkte für Alpha 2 (Zweig `desktop-0.2.1`; Hintergründe 0.2, QD-093,
