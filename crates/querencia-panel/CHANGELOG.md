@@ -2,8 +2,8 @@
 
 ## 0.2.1 – 2026-10-21
 
-Statussymbole auf dem dunklen Panel (QD-081, Entscheidung der Startsession
-vom 21.10.: Variante A).
+Statussymbole auf dem dunklen Panel (Entscheidung vom 21.10.2026:
+Variante A).
 
 - Neues Modul `symbol_farbe.rs`: Solange `farbschema::dunkel` gilt, zeichnet
   das Panel seine eigenen Symbole für Lautstärke, Netzwerk (Applet und
@@ -22,7 +22,7 @@ vom 21.10.: Variante A).
 
 ## 0.2.0 – 2026-10-21
 
-CSS-Welle dunkel (QD-081, Alpha 2, Zweig `welle-dunkel`): Das Panel folgt
+CSS-Welle dunkel (Alpha 2, Zweig `welle-dunkel`): Das Panel folgt
 der dunklen Fassung von Querencia-Klassisch (Thema 0.2).
 
 - Dunkle Gegenstücke zu den eigenen Regeln in `PANEL_CSS` als ein Block
@@ -33,7 +33,7 @@ der dunklen Fassung von Querencia-Klassisch (Thema 0.2).
   Netzwerkmenü, klassische Menüs (`#353430`, Rand `#2b2a27`, Pfeile und
   Kürzel `#a5a09a`). Werte aus der Zuordnung des Themas. Orange-Hervorhebung
   mit weißer Schrift bleibt. Hell ist unverändert, isoliert gemessen
-  pixelgleich zum Live-Stand G2-AL.
+  pixelgleich zum vorigen Stand.
 - Neues Modul `farbschema.rs` (auch vom Desktop benutzt): Die eigene CSS
   wird dunkel, genau wenn das Farbschema dunkel ist **und** das GTK-Thema
   eine dunkle Fassung hat (`gtk-4.0/gtk-dark.css`, wie Einstellungen 0.1.2).
@@ -52,6 +52,6 @@ der dunklen Fassung von Querencia-Klassisch (Thema 0.2).
 
 ## 0.1.0 – bis 2026-10-20
 
-Stufen ohne eigene Versionsnummer (M1 … HMP-11, G2-J bis G2-AL), live
-zuletzt G2-AL `57a01524` (Arbeitsfläche anzeigen, Glocke der
-Mitteilungszentrale); Einzelheiten in `docs/` und den Übergaben.
+Stufen ohne eigene Versionsnummer (M1 … HMP-11), zuletzt `57a01524`
+(Arbeitsfläche anzeigen, Glocke der Mitteilungszentrale); Einzelheiten in
+`docs/`.

@@ -2,8 +2,8 @@
 //! those of the current workspace, or with `[window-list]
 //! alle_arbeitsflaechen=ja` in `panel.ini` those of all workspaces.
 //!
-//! labwc 0.9.8 tells no client on which workspace a window is
-//! (`docs/hmp-07-arbeitsflaechen.md`). The window list therefore learns it
+//! labwc 0.9.8 tells no client on which workspace a window is. The window
+//! list therefore learns it
 //! from what it sees on its own connection, where window and workspace
 //! events arrive in the order labwc sent them ([`Zuordnung`]):
 //!

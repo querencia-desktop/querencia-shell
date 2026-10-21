@@ -98,7 +98,7 @@ fn gnome2_groups_for_education_and_accessibility() {
 /// HMP-04: the desktop entries of the three Querencia applications
 /// (`session/querencia/applications`). Read as key files, so the test does
 /// not depend on the binaries being installed; GIO and the real binaries
-/// are checked in the isolated GUI test (`docs/hmp-04-…`).
+/// are checked in the isolated GUI test.
 #[test]
 fn querencia_desktop_entries_land_in_accessories() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../session/querencia/applications");

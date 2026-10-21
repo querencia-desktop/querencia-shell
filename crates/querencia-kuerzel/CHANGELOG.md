@@ -14,20 +14,20 @@ Nachtrag der seit 0.1.0 live gegangenen Kürzel (Auftrag kuerzel-reiter):
   (`src/tabs.rs` `shortcut_overview`, Tag `terminal/0.3.0`), Tastennamen
   wie im Rest der Datei (Bild↑ statt „Bild auf“).
 - Block „Bildschirmfoto“: Strg+W / Strg+Q = Schließen (Strg+Q seit
-  Screenshot 0.2.6, QD-051; live ist 0.2.8, `src/editor.rs` `ACCELS`).
+  Screenshot 0.2.6, live ist 0.2.8, `src/editor.rs` `ACCELS`).
   Die übrigen Blöcke stimmen mit den Live-Ständen überein (Abgleich
   21.10.2026: Desktop, Files QF-0p, Editor 0.2.2, Bilder 0.2.3, Rechner
   0.1.3, Dateisuche 0.1.3).
 - Seite „Arbeitsfläche“: Super+D erscheint als „Arbeitsfläche anzeigen:
   alle Fenster minimieren oder wiederherstellen“ statt „startet „gdbus““
-  (Code aus G2-AL, `44f9f4f`, erst mit diesem Bau live). Die Seite liest
+  (Code aus `44f9f4f`, erst mit diesem Bau live). Die Seite liest
   die rc.xml der laufenden Sitzung; Super+D steht dort erst nach dem
   Vorgaben-Abgleich der nächsten Anmeldung.
 - Tests: Reiterkürzel des Terminals; Super+F und Alt+F11 als „Vollbild ein
-  oder aus“ (QD-065, G2-AK), F11 nicht belegt.
+  oder aus“, F11 nicht belegt.
 
 ## 0.1.0 – 2026-10-18
 
-Erste Fassung (G2-R, Tag `kuerzel/0.1.0`): Fenster „Tastenkürzel“ mit den
+Erste Fassung (Tag `kuerzel/0.1.0`): Fenster „Tastenkürzel“ mit den
 Seiten „Arbeitsfläche“ (labwc-Kürzel der laufenden Sitzung) und
 „Programme“ (`data/programme.txt`), `--liste`, `--seite`, `--rc`.

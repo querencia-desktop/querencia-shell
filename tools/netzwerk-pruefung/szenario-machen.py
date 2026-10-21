@@ -6,7 +6,7 @@
 - rueckfall: echter Systembus ohne NetworkManager, echte eth0 (nur lesend);
   Panel mit Lautstärke, Netzwerk kommt über „Zum Panel hinzufügen“ dazu.
 - attrappe:  eigener Systembus mit der NetworkManager-Attrappe (Kabel
-  enp3s0, WLAN wlp2s0 mit Heimnetz/Cafe offen/Nachbar).
+  enp3s0, WLAN wlp2s0 mit Testnetz/Cafe offen/Nachbar).
 - spaet:     eigener Systembus, zuerst ohne NetworkManager (Rückfall), dann
   startet die Attrappe, endet, startet ohne WLAN – ohne Panel-Neustart.
 
@@ -133,8 +133,8 @@ elif ART == "attrappe":
     tooltip("m01-tooltip")
     mark("M02", "Linksklickmenü per Maus: Kabel, drei WLANs mit Schloss, Schalter, Einstellungen grau")
     menu(); shot("m02-menue")
-    # wählbar: [Trennen, Heimnetz, Cafe offen, Nachbar, verborgen, WLAN, Flugmodus, Info]
-    mark("M03", "Tastatur: zweimal Runter hebt Heimnetz hervor, Escape schließt")
+    # wählbar: [Trennen, Testnetz, Cafe offen, Nachbar, verborgen, WLAN, Flugmodus, Info]
+    mark("M03", "Tastatur: zweimal Runter hebt Testnetz hervor, Escape schließt")
     keys("Down", "Down"); shot("m03-tasten")
     keys("Escape", wait=800)
     mark("M04", "Kabel ab (Attrappe): kein Netz")
@@ -154,7 +154,7 @@ elif ART == "attrappe":
     qnm("signal Cafe offen 60"); icon("m08-signal-60")
     mark("M09", "Menü: verbundenes Netz fett mit Adresse, Trennen")
     menu(); shot("m09-menue")
-    # wählbar: [Heimnetz, Nachbar, Trennen, verborgen, WLAN, Flugmodus, Info]
+    # wählbar: [Testnetz, Nachbar, Trennen, verborgen, WLAN, Flugmodus, Info]
     mark("M10", "Nachbar (WPA3, neu): Passwortdialog")
     keys("Down", "Down"); keys("Return", wait=1500); shot("m10-passwort")
     mark("M11", "zu kurzes Passwort: Verbinden grau, Eingabe tut nichts")
@@ -164,15 +164,15 @@ elif ART == "attrappe":
     z("type nachbar99", "wait 400"); keys("Return", wait=3200)
     icon("m12-nachbar-verbunden", 300)
     tooltip("m12-tooltip")
-    mark("M13", "Heimnetz (gespeichert, Schlüssel vom Passwortagenten): Abfrage durch NetworkManager")
+    mark("M13", "Testnetz (gespeichert, Schlüssel vom Passwortagenten): Abfrage durch NetworkManager")
     menu()
-    # wählbar: [Heimnetz, Cafe offen, Trennen, verborgen, WLAN, Flugmodus, Info]
+    # wählbar: [Testnetz, Cafe offen, Trennen, verborgen, WLAN, Flugmodus, Info]
     keys("Down"); keys("Return", wait=2200); shot("m13-agent")
     mark("M14", "falsches Passwort: NetworkManager fragt erneut")
     z("type falsch123", "wait 400"); keys("Return", wait=2400); shot("m14-erneut")
     mark("M15", "richtiges Passwort: verbunden")
     z("type geheim123", "wait 400"); keys("Return", wait=3000)
-    icon("m15-heimnetz-verbunden", 300)
+    icon("m15-testnetz-verbunden", 300)
     tooltip("m15-tooltip")
     mark("M16", "Kabel an: Kabel wird Standardverbindung")
     qnm("kabel an", 400); away(0); shot("m16-verbindet")
@@ -204,7 +204,7 @@ elif ART == "attrappe":
     mark("M23", "Kabel an, Kabel trennen (Menü), WLAN aus (Rechtsklick): WLAN aus")
     qnm("kabel an", 3000)
     menu()
-    # wählbar: [Trennen, Heimnetz, Cafe, Nachbar, verborgen, WLAN, Flugmodus, Info]
+    # wählbar: [Trennen, Testnetz, Cafe, Nachbar, verborgen, WLAN, Flugmodus, Info]
     keys("Down"); keys("Return", wait=1500)
     rmenu(R_WLAN, 1800); icon("m23-wlan-aus")
     tooltip("m23-tooltip")
@@ -213,7 +213,7 @@ elif ART == "attrappe":
     rmenu(R_WLAN, 1800); icon("m24-wlan-an")
     mark("M25", "Mit verborgenem Netz verbinden: Dialog")
     menu()
-    # wählbar: [Verbinden, Heimnetz, Cafe, Nachbar, verborgen, WLAN, Flugmodus, Info]
+    # wählbar: [Verbinden, Testnetz, Cafe, Nachbar, verborgen, WLAN, Flugmodus, Info]
     keys("Down", "Down", "Down", "Down", "Down"); keys("Return", wait=1500); shot("m25-verborgen")
     mark("M26", "Netzname, Passwort, Verbinden")
     z("type Versteckt", "wait 300"); keys("Tab", "Tab", wait=300)
@@ -231,7 +231,7 @@ elif ART == "attrappe":
     keys("Escape", wait=800)
     mark("M29", "Netz verschwindet bei offenem Menü")
     menu()
-    qnm("netz-weg Heimnetz", 1500); shot("m29-ohne-heimnetz")
+    qnm("netz-weg Testnetz", 1500); shot("m29-ohne-testnetz")
     keys("Escape", wait=800)
     mark("M30", "Netzwerkeinstellungen erscheinen (G2-O-Eintrag), Start über die Aktion netzwerk")
     z("run EINST", "wait 2500")

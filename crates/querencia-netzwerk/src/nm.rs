@@ -735,14 +735,14 @@ pub(crate) mod tests {
                 vec![
                     (
                         "AddressData",
-                        vec![address("192.168.10.23", 24)].to_variant(),
+                        vec![address("198.51.100.23", 24)].to_variant(),
                     ),
-                    ("Gateway", "192.168.10.1".to_variant()),
+                    ("Gateway", "198.51.100.1".to_variant()),
                     (
                         "NameserverData",
                         vec![HashMap::from([(
                             "address".to_string(),
-                            "192.168.10.1".to_variant(),
+                            "198.51.100.1".to_variant(),
                         )])]
                         .to_variant(),
                     ),
@@ -846,13 +846,13 @@ pub(crate) mod tests {
             Some("Kabelgebundene Verbindung 1")
         );
         assert_eq!(eth.active_connection.as_deref(), Some("/a/1"));
-        assert_eq!(eth.ipv4[0].to_string(), "192.168.10.23/24");
+        assert_eq!(eth.ipv4[0].to_string(), "198.51.100.23/24");
         assert_eq!(eth.ipv6[0].to_string(), "fe80::5054:ff:fe12:3456/64");
-        assert_eq!(eth.gateway4, Some("192.168.10.1".parse().unwrap()));
+        assert_eq!(eth.gateway4, Some("198.51.100.1".parse().unwrap()));
         assert_eq!(eth.gateway6, None);
         assert_eq!(
             eth.dns,
-            ["192.168.10.1".parse::<std::net::IpAddr>().unwrap()]
+            ["198.51.100.1".parse::<std::net::IpAddr>().unwrap()]
         );
         let wlan = &state.devices[1];
         assert_eq!(wlan.kind, Kind::Wireless);

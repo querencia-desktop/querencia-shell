@@ -2,16 +2,18 @@
 
 Panel, Arbeitsfläche und Kürzelübersicht von Querencia Desktop: die
 Bedienoberfläche im Stil von GNOME 2 auf dem Wayland-Compositor labwc. Teil von
-[Querencia Desktop](https://github.com/querencia-desktop/querencia) – einer
+[Querencia Desktop](https://querencialinux.org) – einer
 klassischen Desktopumgebung im GNOME-2-Stil für Wayland (labwc, Rust, GTK 4).
+Installiert wird es zusammen mit Querencia Desktop aus der APT-Quelle;
+Anleitung auf <https://querencialinux.org>.
 
 *English summary:* The panel, desktop surface and shortcut overview of
 Querencia Desktop, modelled on GNOME 2 and running on the Wayland compositor
 labwc. Alpha software; documentation is in German.
 
-> **Alpha.** Die Bausteine laufen täglich auf der Entwicklungsmaschine, sind
-> aber nur dort und in isolierten Prüfsitzungen getestet. Keine Sicherheits-
-> oder Datenverlustgarantie.
+> **Alpha.** Die Bausteine sind in virtuellen Maschinen aus der APT-Quelle
+> geprüft, noch nicht auf echter Hardware. Keine Sicherheits- oder
+> Datenverlustgarantie.
 
 ## Zweck
 

@@ -343,7 +343,7 @@ class Server:
             return ok.u32(client.index).b if client.version >= 13 else ok.b
         if command == GET_SERVER_INFO:
             self.say("BEFEHL", client.name, "GET_SERVER_INFO")
-            return (ok.s("qpulse (Testserver G2-J)").s("17.0").s("user").s("entwicklungs-vm")
+            return (ok.s("qpulse (Testserver G2-J)").s("17.0").s("user").s("testrechner")
                     .sample_spec().s(self.default_sink).s(self.default_source).u32(0x51)
                     .channel_map().b)
         if command in (GET_SINK_INFO_LIST, GET_SOURCE_INFO_LIST):
