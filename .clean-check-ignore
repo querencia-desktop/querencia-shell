@@ -29,8 +29,9 @@
 #      und crates/querencia-desktop/CHANGELOG.md (CHANGELOG je Crate wie
 #      crates/querencia-kuerzel/CHANGELOG.md, beide in der Doc-Map) sowie
 #      S004/S005/S003 in crates/querencia-panel, crates/querencia-desktop und
-#      integration/welle-dunkel, H001 für Prüfprotokolle unter
-#      integration/welle-dunkel/nachweis/ und H003 für
+#      integration/welle-dunkel, H001/H002/Q002 für Prüfbelege unter
+#      integration/welle-dunkel/nachweis/ (Protokolle, Kontrasttabellen,
+#      clean_check-Ausgaben, die Marker anderer Dateien zitieren) und H003 für
 #      integration/welle-dunkel/werkzeug/virtual-keyboard-unstable-v1.xml
 #      (Wayland-Protokolldatei, Name vom Protokoll vorgegeben, wie in
 #      tools/netzwerk-pruefung); sie fallen unter die Ausnahmen oben
