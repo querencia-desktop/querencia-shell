@@ -44,3 +44,9 @@
 #      (wie oben) und die höhere Zählung bei P002; sie fallen unter die
 #      Ausnahmen oben (Vergleich mit main 2e134c6,
 #      ).
+# desktop-0.2.2 (21.10.2026): neu nur S004/S005/H003 in integration/desktop-022
+#      (Kopie der Prüfwerkzeuge wie integration/desktop-021), höhere
+#      S004-Zählung in crates/querencia-desktop/src/desktop_view.rs und
+#      icons.rs (Pfeil und Auslassung in den neuen Kommentaren, wie im
+#      übrigen Code) und die höhere Zählung bei P002; sie fallen unter die Ausnahmen oben
+#     .
