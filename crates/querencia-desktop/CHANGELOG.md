@@ -1,5 +1,73 @@
 # Änderungen – querencia-desktop
 
+## 0.2.3 – 2026-10-21
+
+Dateien auf der Arbeitsfläche arbeiten mit anderen Programmen zusammen
+(Befund des Besitzers 21.10.2026, QD-108: Ziehen in Querencia Files, Strg+C/Strg+V
+und der Papierkorb gingen nicht; das Kontextmenü bot nur „Öffnen“ und
+„Umbenennen …“).
+
+**Kontextmenü wie unter GNOME 2.** Auf Dateien, Ordnern und Startern:
+„Öffnen“, „Öffnen mit“ (nur Dateien und Ordner), „Ausschneiden“, „Kopieren“,
+„Einfügen in den Ordner“ (nur Ordner), „Umbenennen …“, „In den Papierkorb
+verschieben“ und „Eigenschaften“.
+
+- „Öffnen mit“ listet die Programme für den Typ der Datei. Bei leeren
+  Dateien zählt wie seit 0.2.2 der Name. Darunter steht „Andere
+  Anwendung …“, das GTKs Programmauswahl öffnet.
+- Auf freier Fläche steht neu „Einfügen“. Eingefügte Dateien erscheinen
+  dort, wo das Menü geöffnet wurde.
+- Einträge, die gerade nicht gehen, sind ausgegraut: „Einfügen“ bei leerer
+  Zwischenablage, „Eigenschaften“ bei mehreren ausgewählten Symbolen.
+
+**Tastatur.**
+
+- Strg+X, Strg+C und Strg+V arbeiten mit der Zwischenablage.
+- Entf verschiebt die Auswahl in den Papierkorb.
+- Umschalt+Entf löscht endgültig, erst nach einer Rückfrage. Vorgabe in der
+  Rückfrage ist „Abbrechen“, Escape bricht ab.
+- F2 benennt um, wie bisher.
+
+**Zwischenablage im üblichen Format.**
+
+- Kopierte Dateien liegen als `GdkFileList`, als `text/uri-list` und als
+  `x-special/gnome-copied-files` in der Zwischenablage, beim Ausschneiden
+  zusätzlich mit KDE-Markierung. Das ist dasselbe Format, das Querencia Files
+  schreibt.
+- Einfügen liest dieselben Formate aus jedem Programm.
+- Ausgeschnittene Dateien werden erst beim Einfügen verschoben und sehen bis
+  dahin blass aus.
+
+**Ziehen und Ablegen in beide Richtungen.**
+
+- Das Ziehen von Symbolen ist jetzt ein echtes Ziehen. Dateien kommen als
+  Dateiliste in Querencia Files, GTK-Dateidialoge und andere Fenster.
+- Dateien aus anderen Programmen werden in den Arbeitsflächen-Ordner kopiert
+  und liegen dort, wo man losgelassen hat. Bietet die Quelle nur Verschieben
+  an (Umschalt in Files), werden sie verschoben.
+- Ein Ordnersymbol als Ziel nimmt die Dateien auf. Das Papierkorb-Symbol
+  wirft sie weg. Das Ziel ist dabei orange hervorgehoben.
+- Innerhalb der Arbeitsfläche ordnet Ziehen auf freie Fläche wie bisher nur
+  die Symbole an, einzeln oder als Gruppe, mit derselben Vorschau im Raster.
+
+**Dateioperationen.**
+
+- Kopieren, Verschieben, Papierkorb und Löschen laufen über GIO, ohne die
+  Oberfläche anzuhalten.
+- Es wird nie etwas überschrieben. Eine Kopie auf einen belegten Namen heißt
+  „Name (Kopie).txt“. Verschieben auf einen belegten Namen wird abgelehnt.
+- Ein Ordner kommt nie in sich selbst. Verknüpfungen werden als
+  Verknüpfungen behandelt, nie verfolgt.
+- Was nicht klappt, zeigt ein Fehlerdialog mit Namen und Grund, statt nur im
+  Protokoll zu stehen.
+
+**Eigenschaften.** Ein kleines Fenster zeigt Name, Typ, Größe (bei Ordnern
+Anzahl und Gesamtgröße), Ort und Änderungsdatum.
+
+Unverändert: Panel und Kürzel (keine Änderung an gemeinsamen Quellen),
+Beschriftung, Standardbild, Öffnen per Doppelklick, Umbenennen, Anordnen,
+„Papierkorb leeren …“, Datenträger.
+
 ## 0.2.2 – 2026-10-21
 
 Leere Dateien öffnen sich wieder (Befund des Besitzers 21.10.2026 20:33: Doppelklick

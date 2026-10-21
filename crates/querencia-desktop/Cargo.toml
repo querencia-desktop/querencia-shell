@@ -1,6 +1,6 @@
 [package]
 name = "querencia-desktop"
-version = "0.2.2"
+version = "0.2.3"
 description = "Querencia Desktop: Arbeitsfläche (Hintergrund, Symbole, Kontextmenü) als Layer-Shell-Ebenen"
 edition.workspace = true
 rust-version.workspace = true
