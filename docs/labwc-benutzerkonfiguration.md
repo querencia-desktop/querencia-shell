@@ -1,6 +1,6 @@
 # labwc-Konfiguration als Benutzerdatei (QD-046 ②, G2-AG)
 
-Stand 20.10.2026. Entscheidung des Besitzers (19.10.): Querencia Einstellungen
+Stand 21.10.2026 (§1, §6, §7 gleichgezogen mit Einstellungen 0.1.2, Fassung in deren `docs/`). Entscheidung des Besitzers (19.10.): Querencia Einstellungen
 schreiben die labwc-Konfiguration in eine Benutzerdatei unter
 `~/.config/querencia/labwc/`, mit Vorgaben aus diesem Repo, mit Sicherung und
 `labwc --reconfigure`. Dieses Dokument ist der Vertrag zwischen dem
@@ -11,12 +11,13 @@ Sitzungsstarter (`session/querencia-session`) und Querencia Einstellungen
 
 | Ort | Wer schreibt | Inhalt |
 |---|---|---|
-| `session/querencia/labwc/{rc.xml,autostart,environment[,menu.xml]}` | Entwickler (Git) | **Vorgaben**. labwc liest sie nicht mehr direkt (außer alter Weg, §4). |
+| `session/querencia/labwc/{rc.xml,autostart,environment[,menu.xml]}` im Runtime-Checkout, im Paket `/etc/querencia/labwc/` | Entwickler (Git) bzw. Paket | **Vorgaben**. labwc liest sie nicht mehr direkt (außer alter Weg, §4). Wie Einstellungen sie finden: §7. |
 | `~/.config/querencia/labwc/` (`$XDG_CONFIG_HOME/querencia/labwc`) | Starter, Einstellungen, Benutzer | **Benutzerkopie**; labwc läuft mit `-C` auf diesem Ordner. |
 | `…/labwc/.vorgabe/<datei>` | Starter (Einstellungen nur beim Anlegen) | die Vorgabe, aus der `<datei>` zuletzt übernommen wurde (volle Kopie) |
-| `…/labwc/.vorgabe/stand` | Starter | Zeit, Quelle (Commit), SHA256 je Datei in `.vorgabe/` – zum Lesen für Menschen |
+| `…/labwc/.vorgabe/stand` | Starter | Zeit, Quelle (Commit), SHA256 je Datei in `.vorgabe/`; Einstellungen ab 0.1.2 lesen daraus die Zeile `quelle <ordner> (commit …)` (§7) |
 | `…/labwc/<datei>.vorgabe-neu` | Starter | neuere Vorgabe, die wegen eigener Änderungen **nicht** übernommen wurde |
-| `…/labwc/<datei>.vorher-<JJJJMMTT-HHMMSS>` | Starter, Einstellungen | Sicherung vor jedem Ersetzen |
+| `…/labwc/<datei>.vorher-<JJJJMMTT-HHMMSS>` | Starter (Einstellungen bis 0.1.0) | Sicherung vor jedem Ersetzen; Einstellungen ab 0.1.1 löschen sie nie |
+| `…/labwc/<datei>.einstellungen-vorher-<JJJJMMTT-HHMMSS>` | Einstellungen ab 0.1.1 | Sicherung vor dem ersten Schreiben je Programmlauf, höchstens fünf je Datei (§6) |
 | `…/labwc/environment.d/zz-querencia-einstellungen.env` | Einstellungen | eigene Umgebungswerte (Tastaturbelegung, Zeiger); labwc liest sie **nach** `environment`, sie haben Vorrang |
 | `~/.config/querencia/labwc-alter-weg` | Benutzer | erzwingt den alten Weg (§4) |
 | `~/.local/state/querencia/labwc-konfig.log` | Starter | was der Abgleich beim letzten Start getan hat, und welcher Ordner galt |
@@ -91,3 +92,68 @@ nächsten Anmeldung.
   (z. B. Benachrichtigungen), ändern jetzt die Vorgabe: Sie kommt beim
   nächsten Start in die Benutzerkopie, solange der Benutzer `autostart` nicht
   geändert hat.
+
+## 6. Rückstellung und Sicherungen der Einstellungen (ab 0.1.1, QD-080)
+
+Anlass: Werkstatt QREL-06 A17.6 (20.10.) – Ändern und Zurückstellen ließ
+ausdrückliche Standardwerte in `rc.xml` stehen (dann ist die Datei für den
+Abgleich „geändert“, neue Vorgaben kommen nur noch als `.vorgabe-neu`), und
+jedes „Übernehmen“ legte eine `rc.xml.vorher-<Zeit>` an; 0.1.0 räumte dabei
+auch Sicherungen des Starters weg.
+
+- **Rückstellung byte-gleich.** Ein Wert, den „Übernehmen“ ändert und der
+  danach dem Wert der Basis gleicht, wird so geschrieben, wie die Basis ihn
+  hat: deren Text, oder gar nicht, wenn die Basis ihn nicht angibt (dann gilt
+  labwcs eingebauter Wert, wie ihn die Bereiche anzeigen). Basis ist
+  `.vorgabe/rc.xml`, sonst die aktuelle Vorgabe – genau die Datei, mit der der
+  Starter vergleicht. Behälter, die Einstellungen dafür angelegt hatten
+  (`<libinput><device category="default">`, `<font place="…">`), gehen mit,
+  wenn sie leer werden und die Basis sie nicht hat. Bleibt danach nur
+  Leerraum anders als in der Basis, wird die Basis byte-gleich geschrieben.
+  Eigene Werte, fremde Blöcke und Kommentare bleiben unberührt.
+- **Umgebung.** `environment.d/zz-querencia-einstellungen.env` verschwindet
+  wieder, wenn nur noch ihr eigener Kopf übrig ist; Zeilen, die nicht von
+  Einstellungen stammen, halten sie.
+- **Sicherungen.** Eigenes Muster `<datei>.einstellungen-vorher-<Zeit>`
+  (bei gleicher Sekunde `-2`, `-3` …). Eine Sicherung je Datei und
+  Programmlauf: der Stand vor dem ersten Schreiben; eine weitere nur, wenn
+  ein anderer die Datei inzwischen geändert hat. Gleicht eine eigene
+  Sicherung danach der Datei, ist sie überflüssig und wird entfernt (Ändern
+  und Zurückstellen hinterlässt keine). Höchstens fünf je Datei, die ältesten
+  gehen. `<datei>.vorher-*` (Starter und Einstellungen bis 0.1.0, nicht zu
+  unterscheiden) löschen Einstellungen nie.
+
+## 7. Wo Einstellungen die Vorgabe finden (ab 0.1.2, G1a)
+
+Bis 0.1.1 stand der Pfad des Runtime-Checkouts der Entwicklungs-VM fest im
+Programm. Ab 0.1.2 ermittelt `labwc_konfig::vorgabe_ermitteln` ihn zur
+Laufzeit, in dieser Reihenfolge (die erste passende Angabe gilt):
+
+| # | Quelle | Fall |
+|---|---|---|
+| 1 | `QE_LABWC_VORGABE=<ordner>` | Prüfungen (isolierte Läufe, Tests) |
+| 2 | `$QUERENCIA_REPO/session/querencia/labwc` | Entwicklung mit einem Runtime-Checkout; gleicher Name wie im Starter |
+| 3 | Zeile `quelle <ordner> (commit …)` in `~/.config/querencia/labwc/.vorgabe/stand`, wenn dort eine `rc.xml` liegt | Sitzung: der Starter hat die Benutzerkopie aus diesem Ordner abgeglichen (Entwicklungs-VM: Runtime-Checkout) |
+| 4 | `/etc/querencia/labwc` | Paket |
+
+Leere und relative Angaben zählen nicht. `querencia-einstellungen
+--labwc-zeigen` nennt Ordner und Herkunft (`vorgabe=`, `vorgabe-herkunft=`
+`Umgebung|Repo|Stand|Paket`). Für den Starter heißt das: Die Zeile `quelle`
+in `.vorgabe/stand` bleibt in dieser Form (absoluter Ordner, danach
+` (commit …)`); ein Paket-Starter schreibt dort `/etc/querencia/labwc`.
+
+**Was der Starter schreibt** (`session/querencia-session`, `konfig_abgleichen`):
+- Nach jedem Abgleich, der etwas übernommen hat, und wenn `stand` noch fehlt,
+  schreibt der Starter `.vorgabe/stand` neu, atomar über `stand.neu-<pid>` und
+  `mv`:
+  - zwei Kommentarzeilen,
+  - `zeit <JJJJ-MM-TT HH:MM:SS>`,
+  - `quelle <VORGABE_DIR> (commit <kurz>|unbekannt)`,
+  - je Datei in `.vorgabe/` eine `sha256sum`-Zeile.
+- `VORGABE_DIR` ist `$QUERENCIA_REPO/session/querencia/labwc`; auf der
+  Entwicklungs-VM ist das der Runtime-Checkout.
+- **Vertrag:** Die `quelle`-Zeile bleibt in dieser Form (ein absoluter Ordner,
+  dann ` (commit …)`). Einstellungen ab 0.1.2 finden die Vorgabe darüber (Fall 3).
+- Ein Paket-Starter (G2-F) schreibt dort `/etc/querencia/labwc` oder setzt
+  `QUERENCIA_REPO`. Ändert sich das Format, müssen Starter und Einstellungen
+  gemeinsam geändert werden.
