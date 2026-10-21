@@ -64,8 +64,8 @@ gespeicherte Fassung nicht; dafür das Bild in den Einstellungen neu wählen.
 bash integration/hintergruende/hintergruende-integrieren.sh pruefen
 ```
 
-`aktivieren`/`zurueck` nur mit `G2AF_FREIGABE=ja` nach Freigabe der
-Status-Session. Ziel `~/.local/share/querencia/hintergruende/`; fremde
+`aktivieren`/`zurueck` nur mit `G2AF_FREIGABE=ja` (ausdrückliche
+Bestätigung). Ziel `~/.local/share/querencia/hintergruende/`; fremde
 Dateien werden nie ersetzt, `zurueck` entfernt nur die selbst angelegten
 Dateien (Liste `~/.local/state/querencia/hintergruende-g2af.liste`) und
 verweigert, solange `desktop.ini` eines davon zeigt. Probe mit allen
@@ -81,4 +81,4 @@ nach dem Benutzerordner.
   stark ab; das Logo kann dort angeschnitten sein.
 - Mehrere Bildschirme mit verschiedenen Seitenverhältnissen bekommen eine
   Datei; gewählt wird nach dem ersten Bildschirm.
-- Die Lizenz der Bilder ist offen (ENTSCHEIDUNGEN Nr. 15).
+- Die Lizenz der Bilder ist offen.

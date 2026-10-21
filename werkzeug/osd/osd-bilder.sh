@@ -128,7 +128,7 @@ echo "LABWC_PID=\$LABWC_PID labwc=\$(readlink /proc/\$LABWC_PID/exe) \$(tr '\0' 
 "$PANEL" > "$L/panel.log" 2>&1 &
 "$DESKTOP" > "$L/desktop.log" 2>&1 &
 sleep 3
-foot -a org.example.Querencia.Terminal -T "user@entwicklungs-vm: ~" > /dev/null 2>&1 &
+foot -a org.example.Querencia.Terminal -T "user@testrechner: ~" > /dev/null 2>&1 &
 sleep 0.7
 foot -a io.github.lgse.Strata -T "Persönlicher Ordner – Querencia Files" > /dev/null 2>&1 &
 sleep 0.7

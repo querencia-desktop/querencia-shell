@@ -12,7 +12,7 @@
   Execute runs the command without a shell and only expands "~", so the
   launcher is named by its absolute path in the Querencia runtime copy.
 
-  Merged by the Querencia workshop (2026-10-16): QS-0c print key (entwicklungs-vm, unchanged)
+  Merged by the Querencia workshop (2026-10-16): QS-0c print key (unchanged)
   plus four workspaces as in GNOME 2 / Ubuntu 10.04 (HMP-07 proposal).
   Querencia-Werkstatt W3 (2026-10-17, QS-1): Print/Alt+Print as in GNOME 2.
   Querencia-Werkstatt W3 (2026-10-17, QS-0d): Print opens the chooser, Alt+Print frames

@@ -2,8 +2,8 @@
 
 ## 0.2.2 – 2026-10-21
 
-Leere Dateien öffnen sich wieder (Befund des Besitzers 21.10.2026 20:33: Doppelklick
-auf ein leeres `leer.txt` öffnete den Editor nicht).
+Leere Dateien öffnen sich wieder (Befund vom 21.10.2026: Doppelklick auf ein
+leeres `leer.txt` öffnete den Editor nicht).
 
 - GIO nennt eine leere Datei `application/x-zerosize`; dafür gibt es kein
   Programm. Bisher stand dann nur „nicht geöffnet: Es wurde keine Anwendung
@@ -19,9 +19,9 @@ auf ein leeres `leer.txt` öffnete den Editor nicht).
 
 ## 0.2.1 – 2026-10-21
 
-Zwei Punkte für Alpha 2 (Zweig `desktop-0.2.1`; Hintergründe 0.2, QD-093,
-Entscheidung des Besitzers 21.10.2026 19:50: alle 16 neuen Hintergründe,
-Standard „tiefblau“).
+Zwei Punkte für Alpha 2 (Zweig `desktop-0.2.1`, Hintergründe 0.2,
+Entscheidung vom 21.10.2026: alle 16 neuen Hintergründe, Standard
+„tiefblau“).
 
 **Beschriftung der Symbole lesbar auf hellen Hintergründen.**
 
@@ -52,7 +52,7 @@ Standard „tiefblau“).
 
 ## 0.2.0 – 2026-10-21
 
-CSS-Welle dunkel (QD-081, Alpha 2, Zweig `welle-dunkel`): Die Arbeitsfläche
+CSS-Welle dunkel (Alpha 2, Zweig `welle-dunkel`): Die Arbeitsfläche
 folgt der dunklen Fassung von Querencia-Klassisch (Thema 0.2).
 
 - `DUNKEL_CSS`: Das Kontextmenü übernimmt Zeile für Zeile die dunklen
@@ -64,9 +64,9 @@ folgt der dunklen Fassung von Querencia-Klassisch (Thema 0.2).
   bleibt alles hell.
 - Startfehler GTK 4.22: einmal nach dem Start
   `notify("gtk-interface-color-scheme")`.
-- Hell unverändert, isoliert gemessen pixelgleich zum Live-Stand G2-AI.
+- Hell unverändert, isoliert gemessen pixelgleich zum vorigen Stand.
 
 ## 0.1.0 – bis 2026-10-20
 
-Stufen ohne eigene Versionsnummer (HMP-08 … QE-04a, G2-AI), live zuletzt
-G2-AI `4b45feac`; Einzelheiten in `docs/` und den Übergaben.
+Stufen ohne eigene Versionsnummer (HMP-08 … QE-04a), zuletzt `4b45feac`;
+Einzelheiten in `docs/`.

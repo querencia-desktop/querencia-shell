@@ -152,8 +152,8 @@ pub fn parse(text: &str) -> (Background, Vec<String>) {
 /// QE-04 (QD-042): which icons the desktop shows and how large; groups
 /// `[Icons]` and `[Volumes]` of `desktop.ini`, written by Querencia
 /// Einstellungen ("Symbole der Arbeitsfläche"). Format and the rule that
-/// sorts a mount into a type: `docs/qe-04-symbole-der-arbeitsflaeche.md`
-/// (copy of the Einstellungen specification `desktop-ini-arbeitsflaeche.md`).
+/// sorts a mount into a type: the specification
+/// `docs/desktop-ini-arbeitsflaeche.md` in the Einstellungen repository.
 ///
 /// ```ini
 /// [Icons]

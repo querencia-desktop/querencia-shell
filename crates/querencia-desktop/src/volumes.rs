@@ -570,7 +570,7 @@ mod tests {
         );
     }
 
-    /// The mounts of the VM entwicklungs-vm on 19.10.2026 (`gio mount -li`).
+    /// The mounts of a test VM on 19.10.2026 (`gio mount -li`).
     fn cidata() -> Facts {
         Facts {
             name: "cidata".into(),

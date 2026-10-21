@@ -14,7 +14,7 @@ bildet so viel der D-Bus-API 1.x nach, wie das Netzwerk-Applet benutzt:
   und WwanEnabled (schreibbar), ActivateConnection,
   AddAndActivateConnection, DeactivateConnection;
 - ein Kabelgerät enp3s0 (verbunden, „Kabelgebundene Verbindung 1“) und ein
-  WLAN-Gerät wlp2s0 mit drei Netzen: „Heimnetz“ (WPA2, gespeichertes
+  WLAN-Gerät wlp2s0 mit drei Netzen: „Testnetz“ (WPA2, gespeichertes
   Profil ohne Schlüssel: der Schlüssel kommt vom Passwortagenten des
   Panels, richtig ist „geheim123“), „Cafe offen“ (offen), „Nachbar“ (WPA3,
   neu, Schlüssel „nachbar99“);
@@ -257,8 +257,8 @@ class Attrappe:
             "connection": {"id": V("s", "Kabelgebundene Verbindung 1"), "type": V("s", "802-3-ethernet")},
         }, None, settings_variant=True)
         self.home_profile = self.add_profile({
-            "connection": {"id": V("s", "Heimnetz"), "type": V("s", "802-11-wireless")},
-            "802-11-wireless": {"ssid": V("ay", b"Heimnetz"), "mode": V("s", "infrastructure")},
+            "connection": {"id": V("s", "Testnetz"), "type": V("s", "802-11-wireless")},
+            "802-11-wireless": {"ssid": V("ay", b"Testnetz"), "mode": V("s", "infrastructure")},
             "802-11-wireless-security": {"key-mgmt": V("s", "wpa-psk"), "psk-flags": V("u", 1)},
         }, None, settings_variant=True)
         self.wired = NM_PATH + "/Devices/1"
@@ -282,7 +282,7 @@ class Attrappe:
                            "ActiveAccessPoint": V("o", NONE), "Bitrate": V("u", 0), "LastScan": V("x", 0)},
             })
             devices.append(self.wifi)
-            for ssid, strength, sec in (("Heimnetz", 82, "wpa2"), ("Cafe offen", 45, "offen"), ("Nachbar", 20, "wpa3")):
+            for ssid, strength, sec in (("Testnetz", 82, "wpa2"), ("Cafe offen", 45, "offen"), ("Nachbar", 20, "wpa3")):
                 self.new_ap(ssid, strength, sec)
         else:
             self.wifi = None
@@ -402,7 +402,7 @@ class Attrappe:
             self.ask_agent(device, active, profile, attempt)
             return False
         if key_mgmt:
-            right = {"Heimnetz": "geheim123", "Nachbar": "nachbar99"}.get(ssid)
+            right = {"Testnetz": "geheim123", "Nachbar": "nachbar99"}.get(ssid)
             if right is not None and self.secrets[profile] != right:
                 log(f"Schlüssel für {ssid} falsch")
                 del self.secrets[profile]

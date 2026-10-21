@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """G2-M: steuert die NetworkManager-Attrappe qnm.py (Testbefehle, nur Prüfung).
 
-  python3 -I qnmctl.py kabel ab | kabel an | signal Heimnetz 30 | netz-neu Gast 60 offen
+  python3 -I qnmctl.py kabel ab | kabel an | signal Testnetz 30 | netz-neu Gast 60 offen
                        netz-weg Gast | wlan-schalter aus | zustand | beenden
 
 Spricht nur den Bus aus DBUS_SYSTEM_BUS_ADDRESS an, und nur, wenn er im
