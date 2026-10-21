@@ -261,6 +261,13 @@ pub fn widget(panel_height: i32) -> Button {
         protokolliert: RefCell::new(None),
     });
     glocke.zeigen();
+    // QD-081: the icon follows the dark look at once
+    let weak = Rc::downgrade(&glocke);
+    crate::symbol_farbe::bei_wechsel(&button, move || {
+        if let Some(glocke) = weak.upgrade() {
+            glocke.zeigen();
+        }
+    });
 
     let weak = Rc::downgrade(&glocke);
     nicht_stoeren.connect_change_state(move |action, value| {
@@ -338,7 +345,18 @@ pub fn image_of_size(size: i32) -> Image {
     image
 }
 
+/// The bell `symbol`, recoloured on the dark panel (QD-081).
 fn texture(symbol: Symbol, pixels: i32) -> Option<gdk::Texture> {
+    crate::symbol_farbe::texture(symbol.svg(), pixels, || texture_hell(symbol, pixels))
+}
+
+/// All bell icons, for the test of the dark greys.
+#[cfg(test)]
+pub fn alle_svgs() -> [&'static [u8]; 3] {
+    [Symbol::Glocke, Symbol::Neu, Symbol::Ruhe].map(Symbol::svg)
+}
+
+fn texture_hell(symbol: Symbol, pixels: i32) -> Option<gdk::Texture> {
     let stream = gio::MemoryInputStream::from_bytes(&glib::Bytes::from_static(symbol.svg()));
     match gtk4::gdk_pixbuf::Pixbuf::from_stream_at_scale(
         &stream,

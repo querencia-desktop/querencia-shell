@@ -182,6 +182,19 @@ pub fn widget(panel_height: i32) -> Button {
         button,
         move |image| show(&button, image, size, &model::look(&service.state()))
     ));
+    // QD-081: the icon follows the dark look at once
+    crate::symbol_farbe::bei_wechsel(
+        &button,
+        glib::clone!(
+            #[strong]
+            service,
+            #[weak]
+            button,
+            #[weak]
+            image,
+            move || show(&button, &image, size, &model::look(&service.state()))
+        ),
+    );
     button.connect_destroy(glib::clone!(
         #[strong]
         service,
@@ -203,9 +216,7 @@ pub fn image_of_size(size: i32) -> Image {
     let image = Image::new();
     image.set_pixel_size(size);
     let draw = move |image: &Image| {
-        if let Some(texture) =
-            icons::texture(model::Level::High, size * image.scale_factor().max(1))
-        {
+        if let Some(texture) = symbol(model::Level::High, size * image.scale_factor().max(1)) {
             image.set_paintable(Some(&texture));
         }
     };
@@ -214,10 +225,15 @@ pub fn image_of_size(size: i32) -> Image {
     image
 }
 
+/// The icon for `level`, recoloured on the dark panel (QD-081).
+fn symbol(level: model::Level, pixels: i32) -> Option<gtk4::gdk::Texture> {
+    crate::symbol_farbe::texture(icons::svg(level), pixels, || icons::texture(level, pixels))
+}
+
 /// Shows `look` on the applet: icon, tooltip, greyed out or not.
 fn show(button: &Button, image: &Image, size: i32, look: &Look) {
     let pixels = size * image.scale_factor().max(1);
-    match icons::texture(look.level, pixels) {
+    match symbol(look.level, pixels) {
         Some(texture) => image.set_paintable(Some(&texture)),
         None => image.set_icon_name(Some("audio-volume-muted")),
     }

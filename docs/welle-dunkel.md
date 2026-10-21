@@ -1,4 +1,4 @@
-# CSS-Welle dunkel – Panel 0.2.0 und Desktop 0.2.0 (QD-081)
+# CSS-Welle dunkel – Panel 0.2.1 und Desktop 0.2.0 (QD-081)
 
 Stand 21.10.2026, Zweig `welle-dunkel`. Auftrag „CSS-Welle dunkel“ für
 Alpha 2: Jedes Programm bekommt eine dunkeltaugliche Fassung, erst danach
@@ -29,6 +29,10 @@ Querencia-Klassisch) zusammen mit allen Programmen.
     Themenname.
   - `startfehler_beheben()` ist der GTK-4.22-Einzeiler
     `notify("gtk-interface-color-scheme")`.
+
+**Regel für Panel und Desktop:** Eigene Farben werden nur dunkel, wenn
+`farbschema::dunkel` gilt, also bei dunklem Farbschema und einem Thema mit
+dunkler Fassung. Nie wird allein an `gtk-interface-color-scheme` gebunden.
 
 Dunkel gilt nur, wenn das Farbschema dunkel ist (Portal: color-scheme 1;
 ohne Portal: `gtk-application-prefer-dark-theme` aus `portal.rs`) **und**
@@ -73,8 +77,13 @@ Kontrast AA: `werkzeug/kontrast-panel.py` im Arbeitsordner nutzt
 ## Grenzen
 
 - Die Symbole von Lautstärke, Netzwerk und Glocke sind feste graue SVGs.
-  Auf dunklem Grund sind sie schwach (Produktfrage an die Startsession,
-  siehe Übergabe).
+  Ab Panel 0.2.1 zeichnet das Panel sie bei `farbschema::dunkel` umgefärbt
+  (`symbol_farbe.rs`):
+  - Fläche `#bdb7b1`, Umriss `#23221f`;
+  - leere Balken `#5f5d57`;
+  - ausgegraut `#858079`.
+
+  Die Quellen bleiben unverändert, hell ist pixelgleich.
 - Die Titelleisten (labwc) haben keine dunkle Fassung (Thema-Übergabe §6).
 - Das Applet-Kontextmenü und das Glockenmenü sind `PopoverMenu` und folgen
   dem Thema selbst.

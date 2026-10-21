@@ -1,5 +1,25 @@
 # Änderungen – querencia-panel
 
+## 0.2.1 – 2026-10-21
+
+Statussymbole auf dem dunklen Panel (QD-081, Entscheidung der Startsession
+vom 21.10.: Variante A).
+
+- Neues Modul `symbol_farbe.rs`: Solange `farbschema::dunkel` gilt, zeichnet
+  das Panel seine eigenen Symbole für Lautstärke, Netzwerk (Applet und
+  Netzwerkmenü) und Glocke mit umgetauschten Grautönen (`UMFAERBUNG`).
+  - Fläche `#5a5a5a` → `#bdb7b1`, Umriss `#3c3c3c` → `#23221f`.
+  - Blasse „leere“ Balken bleiben blass (`#5f5d57`), ausgegraute Symbole
+    bleiben ausgegraut.
+  - Orange, Weiß und die orangen Zeilenvarianten bleiben.
+- Beim Wechsel des Farbschemas oder Themas werden die Symbole sofort neu
+  gezeichnet.
+- Die SVG-Quellen und die Crates `querencia-lautstaerke` und
+  `querencia-netzwerk` bleiben unverändert. Das Panel nutzt deren
+  öffentliches `svg()`. Hell zeichnen die Crates wie bisher (pixelgleich).
+- Tests: Jede Graufarbe der Applet-Symbole hat ein dunkles Gegenstück, und
+  Orange bleibt an derselben Stelle.
+
 ## 0.2.0 – 2026-10-21
 
 CSS-Welle dunkel (QD-081, Alpha 2, Zweig `welle-dunkel`): Das Panel folgt
