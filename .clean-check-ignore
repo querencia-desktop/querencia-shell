@@ -36,3 +36,11 @@
 #      (Wayland-Protokolldatei, Name vom Protokoll vorgegeben, wie in
 #      tools/netzwerk-pruefung); sie fallen unter die Ausnahmen oben
 #      (Vergleich mit main 0adc563, ).
+# desktop-0.2.1 (21.10.2026): neu nur S004/S005 in integration/desktop-021
+#      (Kopie der Prüfwerkzeuge aus welle-dunkel, Typografie in Strings und
+#      Kommentaren), H002 für den Prüfbeleg
+#      integration/desktop-021/nachweis/kontrast.md, H003 für
+#      integration/desktop-021/werkzeug/virtual-keyboard-unstable-v1.xml
+#      (wie oben) und die höhere Zählung bei P002; sie fallen unter die
+#      Ausnahmen oben (Vergleich mit main 2e134c6,
+#      ).
