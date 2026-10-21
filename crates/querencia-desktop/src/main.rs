@@ -25,6 +25,8 @@
 mod classic_menu;
 mod config;
 mod desktop_view;
+#[path = "../../querencia-panel/src/farbschema.rs"]
+mod farbschema;
 // The icon theme rule of the panel (G2-AD), shared source.
 #[path = "../../querencia-panel/src/icon_theme.rs"]
 mod icon_theme;
@@ -141,6 +143,7 @@ fn main() -> glib::ExitCode {
         std::mem::forget(app.hold());
         icon_theme::follow("querencia-desktop");
         install_style();
+        farbschema::startfehler_beheben();
         load(&desktop);
         watch_config(&desktop);
         if let Some(display) = gdk::Display::default() {
@@ -340,12 +343,27 @@ window.querencia-desktop-icons entry.desktop-rename { min-height: 0; padding: 1p
 window.querencia-desktop-icons entry.desktop-rename > text > selection { background-color: #f07746; color: #ffffff; }
 ";
 
+/// QD-081 (CSS-Welle dunkel): the dark menu rules of the panel, line for
+/// line (a test compares them), and a dark rename field (Thema 0.2 view
+/// colours). They apply only while `farbschema::dunkel` holds; the icon
+/// labels stay white with their shadow on the picture.
+const DUNKEL_CSS: &str = "\
+@media (prefers-color-scheme: dark) {
+  popover.querencia-menu > contents { border-color: #2b2a27; background-color: #353430; color: #dfdbd2; }
+  popover.querencia-menu .qmenu-item .qmenu-arrow { color: #a5a09a; }
+  popover.querencia-menu separator { background-color: #2b2a27; }
+  window.querencia-desktop-icons entry.desktop-rename { background-color: #2b2a27; color: #f2f1f0; }
+}
+";
+
 fn install_style() {
     let Some(display) = gdk::Display::default() else {
         return;
     };
     let provider = gtk4::CssProvider::new();
-    provider.load_from_data(&format!("{MENU_CSS}{DESKTOP_CSS}"));
+    // QD-081: before loading, so the dark rules apply from the start
+    farbschema::folgen(&provider, "querencia-desktop");
+    provider.load_from_data(&format!("{MENU_CSS}{DESKTOP_CSS}{DUNKEL_CSS}"));
     gtk4::style_context_add_provider_for_display(
         &display,
         &provider,
@@ -397,6 +415,38 @@ mod tests {
         let ours: Vec<&str> = MENU_CSS.lines().filter(|l| !l.is_empty()).collect();
         assert!(!panel_rules.is_empty());
         assert_eq!(ours, panel_rules);
+    }
+
+    /// QD-081: the dark menu rules are the panel's, line for line; the
+    /// dark block is the only `@media` one and scoped like the light rules.
+    #[test]
+    fn the_dark_desktop_menu_looks_exactly_like_the_dark_panel_menus() {
+        let panel = include_str!("../../querencia-panel/src/main.rs");
+        let panel_rules: Vec<&str> = panel
+            .lines()
+            .filter(|l| l.starts_with("  popover.querencia-menu"))
+            .collect();
+        let ours: Vec<&str> = DUNKEL_CSS
+            .lines()
+            .filter(|l| l.starts_with("  popover.querencia-menu"))
+            .collect();
+        assert_eq!(ours.len(), 3);
+        assert_eq!(ours, panel_rules);
+        assert!(DUNKEL_CSS.starts_with("@media (prefers-color-scheme: dark) {\n"));
+        assert!(DUNKEL_CSS.ends_with("\n}\n"));
+        assert!(!MENU_CSS.contains("@media") && !DESKTOP_CSS.contains("@media"));
+        for rule in DUNKEL_CSS.lines().filter(|l| l.starts_with("  ")) {
+            let rule = rule.trim_start();
+            assert!(
+                rule.starts_with("popover.querencia-menu")
+                    || rule.starts_with("window.querencia-desktop-icons"),
+                "{rule}"
+            );
+            assert!(
+                !rule.contains("#f07746") && !rule.contains("#ffffff"),
+                "{rule}"
+            );
+        }
     }
 
     #[test]

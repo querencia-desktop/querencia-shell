@@ -9,6 +9,7 @@ mod arbeitsflaeche_zeigen;
 mod classic_menu;
 mod clock;
 mod ergaenzung;
+mod farbschema;
 mod fensterliste;
 mod glocke;
 mod icon_reload;
@@ -188,6 +189,53 @@ popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-
 .querencia-panel popover.querencia-menu .qmenu-item.qmenu-active .qmenu-accel { color: #ffffff; }
 ";
 
+// QD-081 (CSS-Welle dunkel): the dark counterparts of the light rules
+// above, for Thema 0.2 (Querencia-Klassisch dark: window and panel #3c3b37,
+// text #dfdbd2, menu #353430). They apply only while `farbschema::dunkel`
+// holds, so the light look stays exactly as before. Values from the
+// theme's own mapping (`quelle/dunkel-zuordnung.txt`): raised elements like
+// its buttons (#57554f to #4a4843, hover #5f5d57 to #524f4a, pressed
+// #33322e to #3c3b37, frame #23221f), the pager's cells like its header
+// bar, grey text #a5a09a/#b3aea7 (AA on #353430); the orange highlight and
+// its white text stay. Every light rule that sets a property has a dark
+// rule of the same selector setting it, in the same order, so the cascade
+// between hover, active and minimized is the light one; where a dark rule
+// would win over a light one of the same weight (a hovered active pager
+// cell, a hovered minimized window button), it says so itself.
+const PANEL_CSS_DUNKEL: &str = "
+@media (prefers-color-scheme: dark) {
+  .querencia-panel box.workspace-pager { border-color: #1c1b19; border-right-color: #57554f; border-bottom-color: #57554f; background-color: #2b2a27; }
+  .querencia-panel box.workspace-pager > button.workspace-cell { background-color: #45443f; background-image: linear-gradient(to bottom, #524f4a, #3c3b37); box-shadow: inset 1px 1px #5f5d57, inset -1px -1px #2b2a27; }
+  .querencia-panel box.workspace-pager > button.workspace-cell + button.workspace-cell { border-left-color: #23221f; }
+  .querencia-panel box.workspace-pager > button.workspace-cell:hover:not(.active) { background-image: linear-gradient(to bottom, #5f5d57, #4a4843); }
+  .querencia-panel windowlist button.window-button { border-color: #23221f; border-top-color: #2b2a27; border-bottom-color: #1c1b19; background-color: #4f4d48; background-image: linear-gradient(to bottom, #57554f, #4a4843); color: #dfdbd2; }
+  .querencia-panel windowlist button.window-button:hover { background-image: linear-gradient(to bottom, #5f5d57, #524f4a); }
+  .querencia-panel windowlist button.window-button.active { background-color: #383733; background-image: linear-gradient(to bottom, #33322e, #3c3b37); border-color: #1c1b19; box-shadow: inset 0 1px 2px alpha(#000000, 0.35); }
+  .querencia-panel windowlist button.window-button.minimized { background-image: none; background-color: #34332f; border-color: #2b2a27; }
+  .querencia-panel button.querencia-launcher:hover { background-color: #302f2b; border-color: #23221f; }
+  .querencia-panel button.querencia-launcher:active { background-color: #2b2a27; border-color: #1c1b19; }
+  .querencia-panel button.querencia-status:hover { background-color: #302f2b; border-color: #23221f; }
+  .querencia-panel button.querencia-status:active { background-color: #2b2a27; border-color: #1c1b19; }
+  .querencia-panel button.querencia-status label.querencia-zahl { color: #dfdbd2; }
+  .querencia-panel button.querencia-show-desktop:hover { background-color: #302f2b; border-color: #23221f; }
+  .querencia-panel button.querencia-show-desktop:active,
+  .querencia-panel button.querencia-show-desktop:checked { background-color: #2b2a27; border-color: #1c1b19; box-shadow: inset 0 1px 2px alpha(#000000, 0.35); }
+  .querencia-panel popover.querencia-network-menu button.qnet-item { color: #dfdbd2; }
+  .querencia-panel popover.querencia-network-menu button.qnet-item.qnet-current { color: #dfdbd2; }
+  .querencia-panel popover.querencia-network-menu label.qnet-header { color: #dfdbd2; }
+  .querencia-panel popover.querencia-network-menu label.qnet-note { color: #a5a09a; }
+  .querencia-panel popover.querencia-network-menu label.qnet-detail { color: #b3aea7; }
+  .querencia-panel menubutton.querencia-main-menu > button { color: #dfdbd2; }
+  .querencia-panel menubutton.querencia-main-menu > button:hover,
+  .querencia-panel menubutton.querencia-main-menu > button:active,
+  .querencia-panel menubutton.querencia-main-menu > button:checked { background-color: #302f2b; border-color: #23221f; color: #dfdbd2; }
+  popover.querencia-menu > contents { border-color: #2b2a27; background-color: #353430; color: #dfdbd2; }
+  popover.querencia-menu .qmenu-item .qmenu-arrow { color: #a5a09a; }
+  popover.querencia-menu separator { background-color: #2b2a27; }
+  .querencia-panel popover.querencia-menu .qmenu-item .qmenu-accel { color: #a5a09a; }
+}
+";
+
 fn main() -> glib::ExitCode {
     // G2-AL: the integration's panel.ini step, without GTK or a display
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -222,7 +270,9 @@ fn main() -> glib::ExitCode {
 fn install_panel_style() {
     icon_theme::follow("querencia-panel");
     let css = gtk4::CssProvider::new();
-    css.load_from_data(PANEL_CSS);
+    // QD-081: before loading, so the dark rules apply from the start
+    farbschema::folgen(&css, "querencia-panel");
+    css.load_from_data(&format!("{PANEL_CSS}{PANEL_CSS_DUNKEL}"));
     gtk4::style_context_add_provider_for_display(
         &gtk4::gdk::Display::default().expect("GTK is initialised, so a display exists"),
         &css,
@@ -237,6 +287,7 @@ fn build_panels(app: &Application) {
     }
 
     install_panel_style();
+    farbschema::startfehler_beheben();
     // Teil 6: icons the user gets later appear without a restart.
     icon_reload::start();
 
@@ -555,5 +606,124 @@ mod tests {
                 assert!(!rule.contains(orange), "{rule}");
             }
         }
+    }
+
+    /// The rules of a style sheet as (selector, declarations), one entry
+    /// per selector of a list; the `@media` wrapper is dropped.
+    fn regeln(css: &str) -> Vec<(String, String)> {
+        let inner = css
+            .trim()
+            .strip_prefix("@media (prefers-color-scheme: dark) {")
+            .and_then(|c| c.strip_suffix('}'))
+            .unwrap_or(css);
+        inner
+            .split_inclusive('}')
+            .filter_map(|rule| {
+                let (selectors, body) = rule.split_once('{')?;
+                Some(
+                    selectors
+                        .split(',')
+                        .map(|s| {
+                            (
+                                s.trim().to_owned(),
+                                body.trim_end_matches('}').trim().to_owned(),
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .flatten()
+            .filter(|(s, _)| !s.is_empty())
+            .collect()
+    }
+
+    /// QD-081: the dark rules are one `@media` block, every one of them for
+    /// a selector of the light rules (so the cascade is the light one), the
+    /// light sheet has no dark rules of its own.
+    #[test]
+    fn dark_rules_are_one_media_block_of_light_selectors() {
+        let dark = PANEL_CSS_DUNKEL.trim();
+        assert!(dark.starts_with("@media (prefers-color-scheme: dark) {\n"));
+        assert!(dark.ends_with("\n}"));
+        assert_eq!(dark.matches('{').count(), dark.matches('}').count());
+        assert!(!PANEL_CSS.contains("@media"));
+        let light: Vec<String> = regeln(PANEL_CSS).into_iter().map(|(s, _)| s).collect();
+        let rules = regeln(PANEL_CSS_DUNKEL);
+        assert!(rules.len() > 20, "{rules:?}");
+        for (selector, _) in &rules {
+            let plain = selector.replace(":not(.active)", "");
+            assert!(light.contains(&plain), "keine helle Regel für {selector}");
+        }
+        for line in PANEL_CSS_DUNKEL
+            .lines()
+            .filter(|l| l.contains('{') && !l.starts_with('@'))
+        {
+            assert!(line.starts_with("  "), "eingerückt: {line}");
+        }
+    }
+
+    /// QD-081: Anwendungen, Orte, System and every other text with the dark
+    /// Ambiance text colour get light text on the dark panel; the orange
+    /// highlight with its white text stays as it is.
+    #[test]
+    fn every_dark_text_of_the_light_rules_turns_light() {
+        let dark = regeln(PANEL_CSS_DUNKEL);
+        for (selector, body) in regeln(PANEL_CSS) {
+            if !(body.contains(" color: #3c3c3c") || body.starts_with("color: #3c3c3c")) {
+                continue;
+            }
+            assert!(
+                dark.iter()
+                    .any(|(s, b)| *s == selector && b.contains("color: #dfdbd2")),
+                "dunkle Schrift ohne Gegenstück: {selector}"
+            );
+        }
+        for (selector, body) in &dark {
+            for orange in [
+                "#f07746", "#f8875d", "#ea703d", "#fd9975", "#b36c4e", "#ffffff",
+            ] {
+                assert!(!body.contains(orange), "{selector}: {body}");
+            }
+            for part in body.split(';').map(str::trim) {
+                if let Some(colour) = part.strip_prefix("color: ") {
+                    assert!(
+                        ["#dfdbd2", "#a5a09a", "#b3aea7"].contains(&colour),
+                        "{selector}: {colour}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// QD-081: the pager's active cell keeps its orange under the pointer,
+    /// a minimized window button stays flat under the pointer, as in light.
+    #[test]
+    fn dark_hover_never_wins_over_active_or_minimized() {
+        let dark = regeln(PANEL_CSS_DUNKEL);
+        let rule = |sel: &str| {
+            dark.iter()
+                .find(|(s, _)| s == sel)
+                .map(|(_, b)| b.as_str())
+                .unwrap_or_else(|| panic!("keine dunkle Regel {sel}"))
+        };
+        rule(".querencia-panel box.workspace-pager > button.workspace-cell:hover:not(.active)");
+        assert!(
+            !dark
+                .iter()
+                .any(|(s, _)| s.ends_with("workspace-cell:hover"))
+        );
+        let hover = dark
+            .iter()
+            .position(|(s, _)| s == ".querencia-panel windowlist button.window-button:hover")
+            .expect("hover");
+        let minimized = dark
+            .iter()
+            .position(|(s, _)| s == ".querencia-panel windowlist button.window-button.minimized")
+            .expect("minimized");
+        assert!(hover < minimized);
+        assert!(
+            rule(".querencia-panel windowlist button.window-button.minimized")
+                .contains("background-image: none")
+        );
     }
 }
