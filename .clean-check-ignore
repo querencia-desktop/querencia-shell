@@ -25,3 +25,9 @@
 #      crates/querencia-kuerzel, integration/g2al und tools/g2al-pruefung
 #      sowie die höhere Zählung bei P002; sie fallen unter die Ausnahmen
 #      oben (Vergleich mit main 548483c,  §4).
+# welle-dunkel (21.10.2026): neu nur H002 für crates/querencia-panel/CHANGELOG.md
+#      und crates/querencia-desktop/CHANGELOG.md (CHANGELOG je Crate wie
+#      crates/querencia-kuerzel/CHANGELOG.md, beide in der Doc-Map) sowie
+#      S004/S005/S003 in crates/querencia-panel, crates/querencia-desktop und
+#      integration/welle-dunkel; sie fallen unter die Ausnahmen oben
+#      (Vergleich mit main 0adc563, ).
