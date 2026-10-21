@@ -27,6 +27,7 @@ mod config;
 mod desktop_view;
 #[path = "../../querencia-panel/src/farbschema.rs"]
 mod farbschema;
+mod fileops;
 // The icon theme rule of the panel (G2-AD), shared source.
 #[path = "../../querencia-panel/src/icon_theme.rs"]
 mod icon_theme;
@@ -342,6 +343,9 @@ window.querencia-desktop-icons box.desktop-icon > label { color: #ffffff; text-s
 window.querencia-desktop-icons box.desktop-icon.selected > label { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); text-shadow: none; }
 window.querencia-desktop-icons box.desktop-icon.selected > image { opacity: 0.7; }
 window.querencia-desktop-icons box.desktop-icon.dragging { opacity: 0.6; }
+window.querencia-desktop-icons box.desktop-icon.cut > image { opacity: 0.45; }
+window.querencia-desktop-icons box.desktop-icon.drop-target > label { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); text-shadow: none; }
+window.querencia-desktop-icons box.desktop-icon.drop-target > image { opacity: 0.7; }
 window.querencia-desktop-icons box.rubberband { background-color: alpha(#f07746, 0.18); border: 1px solid #ea703d; }
 window.querencia-desktop-icons entry.desktop-rename { min-height: 0; padding: 1px 3px; border: 1px solid #000000; border-radius: 0; box-shadow: none; outline: none; background-color: #ffffff; background-image: none; color: #000000; }
 window.querencia-desktop-icons entry.desktop-rename > text > selection { background-color: #f07746; color: #ffffff; }
