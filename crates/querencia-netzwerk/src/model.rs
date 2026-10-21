@@ -1036,10 +1036,7 @@ pub(crate) mod tests {
         d.speed_mbit = Some(1000);
         d.gateway4 = Some(Ipv4Addr::new(192, 0, 2, 1));
         d.dns = vec![IpAddr::V4(Ipv4Addr::new(192, 0, 2, 1))];
-        d.ipv6 = vec![Address::v6(
-            "fe80::200:5eff:fe00:53df".parse().unwrap(),
-            64,
-        )];
+        d.ipv6 = vec![Address::v6("fe80::200:5eff:fe00:53df".parse().unwrap(), 64)];
         let groups = info(&d, &Backend::Fallback { networkd: true });
         let find = |group: usize, label: &str| {
             groups[group]
