@@ -28,6 +28,7 @@ mod places_menu;
 mod portal;
 mod session;
 mod sitzung_start;
+mod symbol_farbe;
 mod system_menu;
 mod volume_applet;
 mod window_icons;

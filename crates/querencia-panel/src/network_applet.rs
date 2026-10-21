@@ -513,6 +513,19 @@ pub fn widget(panel_height: i32) -> Button {
         button,
         move |image| show(&button, image, size, &service.state())
     ));
+    // QD-081: the icon follows the dark look at once
+    crate::symbol_farbe::bei_wechsel(
+        &button,
+        glib::clone!(
+            #[strong]
+            service,
+            #[weak]
+            button,
+            #[weak]
+            image,
+            move || show(&button, &image, size, &service.state())
+        ),
+    );
     // Querencia Einstellungen with its network page may be installed or
     // removed while the panel runs (G2-O): follow the installed
     // applications, as the menus do.
@@ -546,9 +559,7 @@ pub fn image_of_size(size: i32) -> Image {
     let image = Image::new();
     image.set_pixel_size(size);
     let draw = move |image: &Image| {
-        if let Some(texture) =
-            icons::texture(Icon::WiredConnected, size * image.scale_factor().max(1))
-        {
+        if let Some(texture) = symbol(Icon::WiredConnected, size * image.scale_factor().max(1)) {
             image.set_paintable(Some(&texture));
         }
     };
@@ -557,11 +568,24 @@ pub fn image_of_size(size: i32) -> Image {
     image
 }
 
+/// The icon `icon`, recoloured on the dark panel and in its dark menu
+/// (QD-081).
+fn symbol(icon: Icon, pixels: i32) -> Option<gtk4::gdk::Texture> {
+    crate::symbol_farbe::texture(icons::svg(icon), pixels, || icons::texture(icon, pixels))
+}
+
+/// The small menu icon `icon`, recoloured like [`symbol`].
+fn kleines_symbol(icon: Small, pixels: i32) -> Option<gtk4::gdk::Texture> {
+    crate::symbol_farbe::texture(icons::small_svg(icon), pixels, || {
+        icons::small_texture(icon, pixels)
+    })
+}
+
 /// Shows `state` on the applet: icon, tooltip, dimmed without data.
 fn show(button: &Button, image: &Image, size: i32, state: &State) {
     let icon = model::icon(state);
     let pixels = size * image.scale_factor().max(1);
-    match icons::texture(icon, pixels) {
+    match symbol(icon, pixels) {
         Some(texture) => image.set_paintable(Some(&texture)),
         None => image.set_icon_name(Some("network-wired")),
     }
@@ -841,8 +865,8 @@ impl Popup {
         picture.add_css_class("qnet-icon");
         let scale = self.popover.scale_factor().max(1);
         let texture = match icon {
-            Some(RowIcon::Network(icon)) => icons::texture(icon, ROW_ICON * scale),
-            Some(RowIcon::Check(on)) => icons::small_texture(
+            Some(RowIcon::Network(icon)) => symbol(icon, ROW_ICON * scale),
+            Some(RowIcon::Check(on)) => kleines_symbol(
                 if on { Small::Checked } else { Small::Unchecked },
                 ROW_ICON * scale,
             ),
@@ -885,7 +909,7 @@ impl Popup {
         if lock {
             let padlock = Image::new();
             padlock.set_pixel_size(ROW_ICON);
-            if let Some(texture) = icons::small_texture(Small::Lock, ROW_ICON * scale) {
+            if let Some(texture) = kleines_symbol(Small::Lock, ROW_ICON * scale) {
                 padlock.set_paintable(Some(&texture));
             }
             padlock.set_valign(Align::Center);
