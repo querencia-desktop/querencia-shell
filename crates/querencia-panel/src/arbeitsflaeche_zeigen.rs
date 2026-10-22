@@ -25,7 +25,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use gtk4::prelude::*;
-use gtk4::{Image, ToggleButton, glib};
+use gtk4::{ToggleButton, glib};
 
 use crate::fensterliste::Ereignis;
 use crate::logo;
@@ -200,8 +200,7 @@ fn zeigen(button: &ToggleButton, zeigt_arbeitsflaeche: bool) {
 
 /// The button for a panel `panel_height` pixels high.
 pub fn widget(panel_height: i32) -> ToggleButton {
-    let image = Image::from_icon_name(ICON);
-    image.set_pixel_size(logo::size_for_panel(panel_height));
+    let image = crate::symbole::image_named(ICON, logo::size_for_panel(panel_height));
     let button = ToggleButton::builder()
         .has_frame(false)
         .child(&image)

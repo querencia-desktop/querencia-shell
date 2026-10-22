@@ -818,7 +818,7 @@ fn parts(button: &Button) -> Option<(Image, Label)> {
 fn update_button(button: &Button, info: &Info) {
     if let Some((icon, label)) = parts(button) {
         label.set_label(&button_text(info));
-        icon.set_from_gicon(&crate::window_icons::icon_for(&info.app_id));
+        crate::symbole::set(&icon, &crate::window_icons::icon_for(&info.app_id));
     }
     button.set_tooltip_text(Some(&tooltip_text(info)));
     for (class, on) in [

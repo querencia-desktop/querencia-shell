@@ -120,8 +120,12 @@ Beide Panels gemeinsam und sauber mit Exit-Code 0 über die
 GApplication-Aktion:
 
 ```bash
-gapplication action org.example.Querencia.Panel quit
+gapplication action org.querencia.Panel quit
 ```
+
+Bis Panel 0.2.3 hieß die Kennung `org.example.Querencia.Panel`; ab 0.2.4
+antwortet das Panel dort nur noch mit seiner D-Bus-Schnittstelle (Super+D),
+siehe `docs/panel-024-absturzursache-und-kennung.md` §5.
 
 Das ältere `classic2-panel` der Classic2-Laufzeitkopie heißt auf dem
 Sitzungsbus weiterhin `org.example.Classic2.Panel`.

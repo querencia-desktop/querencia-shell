@@ -54,10 +54,22 @@ fn place_icon(label: &str) -> &'static str {
     }
 }
 
-/// Name and desktop ID of the Querencia file manager (desktop entry in
-/// `session/querencia/applications`; the ID is its GApplication ID).
+/// Name and desktop IDs of the Querencia file manager, preferred first
+/// (QD-059): the new ID from QF-0t, then the old one, which stays as a
+/// hidden bridge for a while; the name as before when neither matches.
 const QUERENCIA_FILES: &str = "Querencia Files";
-const QUERENCIA_FILES_ID: &str = "io.github.lgse.Strata.desktop";
+const QUERENCIA_FILES_IDS: [&str; 2] = [
+    "org.querencia.Files.desktop",
+    "io.github.lgse.Strata.desktop",
+];
+
+/// How well an application with desktop ID `id` and `name` is Querencia
+/// Files: 0 and 1 by ID in the order of [`QUERENCIA_FILES_IDS`], 2 by name;
+/// `None` for any other application.
+fn files_rank(id: Option<&str>, name: &str) -> Option<usize> {
+    id.and_then(|id| QUERENCIA_FILES_IDS.iter().position(|f| *f == id))
+        .or_else(|| (name == QUERENCIA_FILES).then_some(QUERENCIA_FILES_IDS.len()))
+}
 const DIRECTORY: &str = "inode/directory";
 
 /// The application that opens directories, and whether GIO chose it.
@@ -83,13 +95,12 @@ fn directory_handler(
         });
     }
     let declares = |app: &gio::AppInfo| app.supported_types().iter().any(|t| t == DIRECTORY);
-    let is_files = |app: &gio::AppInfo| {
-        app.id().is_some_and(|id| id == QUERENCIA_FILES_ID) || app.name() == QUERENCIA_FILES
-    };
     let candidates: Vec<gio::AppInfo> = installed.into_iter().filter(declares).collect();
     let app = candidates
         .iter()
-        .find(|app| is_files(app))
+        .filter_map(|app| files_rank(app.id().as_deref(), &app.name()).map(|rank| (rank, app)))
+        .min_by_key(|(rank, _)| *rank)
+        .map(|(_, app)| app)
         .or_else(|| candidates.first())
         .cloned()?;
     Some(DirectoryHandler {
@@ -525,6 +536,30 @@ mod tests {
             chosen(directory_handler(None, vec![editor, app("Ohne", None)])),
             None
         );
+    }
+
+    /// QD-059: the new desktop ID of Querencia Files first, then the old
+    /// one (hidden bridge), then the name; other applications not at all.
+    #[test]
+    fn querencia_files_by_new_id_then_old_id_then_name() {
+        assert_eq!(
+            files_rank(Some("org.querencia.Files.desktop"), "Querencia Files"),
+            Some(0)
+        );
+        assert_eq!(
+            files_rank(Some("io.github.lgse.Strata.desktop"), "Querencia Files"),
+            Some(1)
+        );
+        assert_eq!(
+            files_rank(Some("io.github.lgse.Strata.desktop"), "Strata"),
+            Some(1)
+        );
+        assert_eq!(files_rank(None, QUERENCIA_FILES), Some(2));
+        assert_eq!(
+            files_rank(Some("org.gnome.Nautilus.desktop"), "Dateien"),
+            None
+        );
+        assert_eq!(files_rank(None, "Anderer"), None);
     }
 
     #[test]

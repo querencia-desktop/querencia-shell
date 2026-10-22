@@ -1162,11 +1162,11 @@ fn row_widget(row: &Row) -> Widget {
         .accessible_role(AccessibleRole::MenuItem)
         .sensitive(row.selectable())
         .build();
-    let image = match icon.as_ref().map(usable_icon) {
-        Some(icon) => Image::from_gicon(&icon),
-        None => Image::new(),
-    };
+    let image = Image::new();
     image.set_pixel_size(ICON_SIZE);
+    if let Some(icon) = icon.as_ref().map(usable_icon) {
+        show_icon(&image, &icon);
+    }
     line.append(&image);
     line.append(
         &Label::builder()
@@ -1183,12 +1183,26 @@ fn row_widget(row: &Row) -> Widget {
         line.append(&shortcut);
     }
     if submenu {
-        let arrow = Image::from_icon_name("pan-end-symbolic");
+        let arrow = Image::new();
         arrow.set_pixel_size(ICON_SIZE);
+        show_icon(
+            &arrow,
+            gio::ThemedIcon::new("pan-end-symbolic").upcast_ref(),
+        );
         arrow.add_css_class(ARROW_CLASS);
         line.append(&arrow);
     }
     line.upcast()
+}
+
+/// Shows `icon` on `image`. In the panel without GTK's preloading in the
+/// thread pool (QD-106, `crate::symbole`); the desktop, which shares this
+/// file, keeps GTK's own way.
+fn show_icon(image: &Image, icon: &gio::Icon) {
+    #[cfg(not(querencia_desktop))]
+    crate::symbole::set(image, icon);
+    #[cfg(querencia_desktop)]
+    image.set_from_gicon(icon);
 }
 
 /// `icon`, or the generic one if the theme has none of a themed icon's

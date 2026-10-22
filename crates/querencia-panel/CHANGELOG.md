@@ -1,5 +1,62 @@
 # Änderungen – querencia-panel
 
+## 0.2.5 – 2026-10-22
+
+Enthält 0.2.4 (nicht einzeln aktiviert) und die App-ID von Querencia Files
+(QD-059, Entscheidung der Startsession zu QF-0t).
+
+- Fensterliste (`window_icons.rs`): Ein Fenster mit der App-ID
+  `org.querencia.Files` bekommt das Symbol des Starters
+  `org.querencia.Files.desktop`; solange nur der alte Starter
+  `io.github.lgse.Strata.desktop` (Brücke, `NoDisplay`) installiert ist,
+  dessen Symbol (Tabelle `RENAMED`). Die alte App-ID findet weiter den alten
+  Starter.
+- Orte (`places_menu.rs`): Ohne Wahl von GIO öffnet Querencia Files
+  Ordner, erkannt zuerst an `org.querencia.Files.desktop`, dann an
+  `io.github.lgse.Strata.desktop`, dann am Namen „Querencia Files“.
+
+## 0.2.4 – 2026-10-22
+
+Ursache der Abstürze QD-106 behoben, Absturzberichte (QD-128), Fenstersymbol
+(QD-129), App-ID `org.querencia.Panel` (QD-059).
+
+- Symbole ohne GTKs Vorladen im Thread-Pool (neues Modul `symbole.rs`):
+  Ein `GtkImage` mit Symbolname oder GIcon lässt GTK 4.22 das Symbol in
+  GLibs Thread-Pool laden (`GTK_ICON_LOOKUP_PRELOAD`). Daraus kamen beide
+  Abstürze: (1) Gibt der Pool-Faden die letzte Referenz auf das Symbol frei,
+  findet der Hauptfaden es noch in GTKs Symbol-Cache, `g_object_ref` meldet
+  `object_already_finalized` und liefert NULL, GTK liest NULL+0x50 – live
+  22.10. 04:07:24 (`libgtk-4.so.1.2200.4[1c5e1e]`). (2) Ein SVG-Symbol mit
+  Text wird im Pool-Faden über Pango gezeichnet, der Heap geht kaputt –
+  `pool-4 … libpangocairo` beim ersten Öffnen von Zubehör (21.10.). Beides
+  ist mit `integration/panel-024/werkzeug/gtk-wettlauf.py` in 18 von 18
+  Läufen nachgestellt (Stapel im gdb identisch mit dem Live-Absturz). Das Panel schlägt seine
+  Symbole jetzt selbst ohne Vorladen nach, gibt dem Bild das Paintable und
+  hält es bis zum nächsten Themenwechsel; GTK lädt sie dann beim ersten
+  Zeichnen im Hauptfaden. Bilder folgen Themen-, Skalen- und
+  Richtungswechseln wie bisher; eigene Texturen der Applets bleiben
+  unberührt. Betrifft Menüs, Fensterliste, Starter, „Arbeitsfläche
+  anzeigen“, Dialoge und die Ersatzsymbole der Applets. Gegenprobe: 0 von 22
+  Läufen; im 10-Minuten-Belastungslauf des Panels 0 statt 863
+  Vorladeaufträge.
+- Absturzberichte unter `--ueberwacht` (QD-128): Umgebungsvariable
+  `QUERENCIA_PANEL_ABSTURZBERICHT` = `erster` (Vorgabe) | `nie` | `immer`.
+  Bei `erster` bekommt apport nur den ersten Absturz (ein Bericht zum
+  Nachsehen); danach startet die Überwachung weitere Panels mit
+  `RLIMIT_CORE` 1, der Kernel reicht dann keinen Kernabzug mehr an apport
+  (kein Warten von rund 6 s vor dem Neustart, kein weiterer Bericht von
+  rund 17 MB in `/var/crash`). `/proc/<pid>/exe` und `environ` des Panels
+  bleiben lesbar.
+- Fenstersymbol (QD-129): Info-Dialog und die anderen Fenster des Panels
+  zeigen das Querencia-Logo statt eines allgemeinen Symbols (eingebaute
+  Ressource `data/panel.gresource`, nur SVG, Name
+  `org.querencia.Panel-fenster`).
+- App-ID und Busname `org.querencia.Panel`, Objektpfad
+  `/org/querencia/Panel` (QD-059). Der alte Name
+  `org.example.Querencia.Panel` mit `/org/example/Querencia/Panel` bleibt als
+  Zweitname mit derselben Schnittstelle, damit Super+D aus der labwc-Vorgabe
+  von Alpha 2/2.1 und aus Benutzerkopien weiter wirkt.
+
 ## 0.2.3 – 2026-10-22
 
 Absturz beim ersten Öffnen von Anwendungen (QD-106) und Neustart-Schutz.
