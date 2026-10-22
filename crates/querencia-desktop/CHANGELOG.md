@@ -1,5 +1,123 @@
 # Änderungen – querencia-desktop
 
+## 0.2.3 – 2026-10-21
+
+Dateien auf der Arbeitsfläche arbeiten mit anderen Programmen zusammen
+(Befund des Besitzers 21.10.2026, QD-108: Ziehen in Querencia Files, Strg+C/Strg+V
+und der Papierkorb gingen nicht; das Kontextmenü bot nur „Öffnen“ und
+„Umbenennen …“).
+
+**Kontextmenü wie unter GNOME 2.** Auf Dateien, Ordnern und Startern:
+„Öffnen“, „Öffnen mit“ (nur Dateien und Ordner), „Ausschneiden“, „Kopieren“,
+„Einfügen in den Ordner“ (nur Ordner), „Umbenennen …“, „In den Papierkorb
+verschieben“ und „Eigenschaften“.
+
+- „Öffnen mit“ listet die Programme für den Typ der Datei. Bei leeren
+  Dateien zählt wie seit 0.2.2 der Name. Darunter steht „Andere
+  Anwendung …“, das GTKs Programmauswahl öffnet.
+- Auf freier Fläche steht neu „Einfügen“. Eingefügte Dateien erscheinen
+  dort, wo das Menü geöffnet wurde.
+- Einträge, die gerade nicht gehen, sind ausgegraut: „Einfügen“ bei leerer
+  Zwischenablage, „Eigenschaften“ bei mehreren ausgewählten Symbolen.
+
+**Tastatur.**
+
+- Strg+X, Strg+C und Strg+V arbeiten mit der Zwischenablage.
+- Entf verschiebt die Auswahl in den Papierkorb.
+- Umschalt+Entf löscht endgültig, erst nach einer Rückfrage. Vorgabe in der
+  Rückfrage ist „Abbrechen“, Escape bricht ab.
+- F2 benennt um, wie bisher.
+
+**Zwischenablage im üblichen Format.**
+
+- Kopierte Dateien liegen als `GdkFileList`, als `text/uri-list` und als
+  `x-special/gnome-copied-files` in der Zwischenablage, beim Ausschneiden
+  zusätzlich mit KDE-Markierung. Das ist dasselbe Format, das Querencia Files
+  schreibt.
+- Einfügen liest dieselben Formate aus jedem Programm.
+- Ausgeschnittene Dateien werden erst beim Einfügen verschoben und sehen bis
+  dahin blass aus.
+
+**Ziehen und Ablegen in beide Richtungen.**
+
+- Das Ziehen von Symbolen ist jetzt ein echtes Ziehen. Dateien kommen als
+  Dateiliste in Querencia Files, GTK-Dateidialoge und andere Fenster.
+- Dateien aus anderen Programmen werden in den Arbeitsflächen-Ordner kopiert
+  und liegen dort, wo man losgelassen hat. Bietet die Quelle nur Verschieben
+  an (Umschalt in Files), werden sie verschoben.
+- Ein Ordnersymbol als Ziel nimmt die Dateien auf. Das Papierkorb-Symbol
+  wirft sie weg. Das Ziel ist dabei orange hervorgehoben.
+- Innerhalb der Arbeitsfläche ordnet Ziehen auf freie Fläche wie bisher nur
+  die Symbole an, einzeln oder als Gruppe, mit derselben Vorschau im Raster.
+
+**Dateioperationen.**
+
+- Kopieren, Verschieben, Papierkorb und Löschen laufen über GIO, ohne die
+  Oberfläche anzuhalten.
+- Es wird nie etwas überschrieben. Eine Kopie auf einen belegten Namen heißt
+  „Name (Kopie).txt“. Verschieben auf einen belegten Namen wird abgelehnt.
+- Ein Ordner kommt nie in sich selbst. Verknüpfungen werden als
+  Verknüpfungen behandelt, nie verfolgt.
+- Was nicht klappt, zeigt ein Fehlerdialog mit Namen und Grund, statt nur im
+  Protokoll zu stehen.
+
+**Eigenschaften.** Ein kleines Fenster zeigt Name, Typ, Größe (bei Ordnern
+Anzahl und Gesamtgröße), Ort und Änderungsdatum.
+
+Unverändert: Panel und Kürzel (keine Änderung an gemeinsamen Quellen),
+Beschriftung, Standardbild, Öffnen per Doppelklick, Umbenennen, Anordnen,
+„Papierkorb leeren …“, Datenträger.
+
+## 0.2.2 – 2026-10-21
+
+Leere Dateien öffnen sich wieder (Befund des Besitzers 21.10.2026 20:33: Doppelklick
+auf ein leeres `leer.txt` öffnete den Editor nicht).
+
+- GIO nennt eine leere Datei `application/x-zerosize`; dafür gibt es kein
+  Programm. Bisher stand dann nur „nicht geöffnet: Es wurde keine Anwendung
+  gefunden …“ im Protokoll.
+- Hat der Inhaltstyp einer Datei kein Programm, entscheidet jetzt wie in
+  Nautilus der Dateiname (`.txt` → `text/plain` → Standardanwendung, hier
+  Querencia Editor). Das Protokoll nennt den Weg
+  (`… application/x-zerosize ohne Programm, öffne als text/plain mit …`).
+- Sagt auch der Name nichts (leere Datei ohne Endung), wird nichts gestartet
+  und der Fehler bleibt im Protokoll, wie bisher.
+- Alles andere unverändert: Dateien mit eigenem Programm, Ordner, Starter,
+  Laufwerke.
+
+## 0.2.1 – 2026-10-21
+
+Zwei Punkte für Alpha 2 (Zweig `desktop-0.2.1`; Hintergründe 0.2, QD-093,
+Entscheidung des Besitzers 21.10.2026 19:50: alle 16 neuen Hintergründe,
+Standard „tiefblau“).
+
+**Beschriftung der Symbole lesbar auf hellen Hintergründen.**
+
+- Die Beschriftung liegt auf einer abgerundeten dunklen Hinterlegung
+  (`alpha(#000000, 0.55)`, Radius 4 px, Innenabstand 1 px oben/unten und
+  3 px seitlich). Der Schatten der weißen Schrift ist kräftiger
+  (`1px 1px 2px #000000`, vorher 85 % Deckkraft).
+- Weiß bleibt damit auch über reinem Weiß bei 4,7:1. Gemessen auf allen
+  33 Hintergründen (17 alte, 16 neue) bei mindestens 5,1:1 gegen das
+  hellste Pixel unter der Schrift (`huegel`). Vorher lagen die sechs
+  hellen Landschaften bei 1,1–1,6:1.
+- Bei Auswahl ersetzt wie bisher die orange Hinterlegung die dunkle.
+  Beim Umbenennen bleibt das Feld unverändert.
+- Hell und dunkel sehen gleich aus: Der dunkle Block hat keine Regel für
+  die Beschriftung, und die Beschriftungszonen sind pixelgleich.
+- Keine Kachel wird größer als ihre Zelle (zweizeilige Namen gemessen).
+- Ein Test prüft die Deckkraft gegen 4,5:1 über Weiß.
+
+**Standardbild „tiefblau“** (übernommen aus `standard-tiefblau` `3fafafd`).
+
+- Ohne Bild in `desktop.ini` (`File=` leer oder fehlt) zeigt die
+  Arbeitsfläche `querencia-tiefblau.png` aus `querencia/hintergruende/` der
+  XDG-Datenordner (Repo und Paket `querencia-hintergruende`). Fehlt es, bleibt
+  es beim bisherigen `querencia-blau.png`.
+- Das Protokoll nennt das gefundene eingebaute Bild
+  (`querencia-desktop: eingebautes Bild <Pfad>`).
+- Farbe (`Color=`, Standard `#1c4e96`) und alles andere unverändert.
+
 ## 0.2.0 – 2026-10-21
 
 CSS-Welle dunkel (QD-081, Alpha 2, Zweig `welle-dunkel`): Die Arbeitsfläche

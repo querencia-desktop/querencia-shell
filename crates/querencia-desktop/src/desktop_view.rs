@@ -25,9 +25,15 @@
 //!   shared source) on an invisible menu button; the menu points at the click.
 //! - Only entries that work are shown: "Ordner anlegen", "Dokument anlegen"
 //!   ("Leere Datei" and the real files of the XDG templates directory),
-//!   "Nach Namen aufräumen" and "Hintergrund der Arbeitsfläche ändern …"
-//!   (writes `desktop.ini`, HMP-08 applies it). Not yet: "Starter
-//!   anlegen", "Einfügen".
+//!   "Nach Namen aufräumen", "Einfügen" and "Hintergrund der Arbeitsfläche
+//!   ändern …" (writes `desktop.ini`, HMP-08 applies it). Not yet:
+//!   "Starter anlegen".
+//! - Desktop 0.2.3 (QD-108): files and folders have GNOME 2's menu (Öffnen,
+//!   Öffnen mit, Ausschneiden, Kopieren, Einfügen in den Ordner,
+//!   Umbenennen, In den Papierkorb verschieben, Eigenschaften), Strg+X/C/V,
+//!   Entf and Umschalt+Entf, and go to and come from other programs by
+//!   clipboard and drag and drop (`transfer.rs`). Dragging icons is a real
+//!   drag now; inside the desktop it still only moves the icons.
 //! - New folders and documents are created with GIO calls that fail on an
 //!   existing name, after [`icons::unique_name`] picked a free one: nothing
 //!   is ever overwritten. The desktop directory itself is created only by
@@ -66,6 +72,8 @@ use crate::rename;
 use crate::store::{self, Store};
 use crate::volumes::{self, Picture, Removal, Volume};
 
+mod transfer;
+
 pub const FILES_APP: &str = "io.github.lgse.Strata.desktop";
 pub const TERMINAL_APP: &str = "org.example.Querencia.Terminal.desktop";
 // Grid cell: wide enough for "Persönlicher" on one line (GNOME 2 broke
@@ -92,26 +100,16 @@ const RENAME_WIDTH: i32 = 150;
 /// What a `desktop.*` menu action does.
 type ActionFn = Box<dyn Fn(&Rc<Icons>, Option<&glib::Variant>)>;
 
-/// A press with the left button that may become a drag (HMP-10, HMP-10a).
+/// A press with the left button that may become a rubber band (HMP-10a).
+/// A press on an icon becomes a drag of `transfer.rs` instead (0.2.3).
 struct Drag {
     /// The icon under the pointer at the press; `None`: the free desktop
     /// (a rubber band).
     index: Option<usize>,
     start: (f64, f64),
-    /// Pointer position inside the icon under the pointer.
-    grab: (f64, f64),
-    /// Past the threshold on an icon: the icons moved together (the one
-    /// under the pointer first) with their translucent copies.
-    moving: Vec<(usize, gtk4::Box)>,
     /// Past the threshold on the free desktop: the rectangle and the
     /// selection it adds to (Strg/Umschalt kept it).
     band: Option<(gtk4::Box, BTreeSet<usize>)>,
-}
-
-impl Drag {
-    fn started(&self) -> bool {
-        !self.moving.is_empty() || self.band.is_some()
-    }
 }
 
 /// The label being edited (HMP-10).
@@ -147,6 +145,14 @@ pub struct Icons {
     /// Applies a new desktop.ini at once (main.rs `load`).
     background_changed: Rc<dyn Fn()>,
     drag: RefCell<Option<Drag>>,
+    /// 0.2.3: the icons being dragged (`transfer.rs`).
+    own_drag: RefCell<Option<transfer::OwnDrag>>,
+    /// 0.2.3: the folder or trash icon a drop would go into.
+    drop_over: Cell<Option<usize>>,
+    /// 0.2.3: the clipboard while the desktop owns it.
+    clip: RefCell<Option<transfer::Clip>>,
+    /// 0.2.3: where the last menu opened (a paste puts the files there).
+    menu_point: Cell<(f64, f64)>,
     /// Counts drags; a double click must not span one.
     drags: Cell<u64>,
     drags_at_first_press: Cell<u64>,
@@ -289,6 +295,10 @@ impl Icons {
             watches: RefCell::default(),
             background_changed,
             drag: RefCell::default(),
+            own_drag: RefCell::default(),
+            drop_over: Cell::new(None),
+            clip: RefCell::default(),
+            menu_point: Cell::new((0.0, 0.0)),
             drags: Cell::new(0),
             drags_at_first_press: Cell::new(0),
             drags_at_press: Cell::new(0),
@@ -312,7 +322,9 @@ impl Icons {
         icons.install_actions();
         icons.install_clicks();
         icons.install_drag();
+        icons.install_dnd();
         icons.install_keys();
+        icons.watch_clipboard();
         // The area between the panels: known after the first configure,
         // changes with the panels, the resolution and the scale factor.
         let weak = Rc::downgrade(&icons);
@@ -345,7 +357,10 @@ impl Icons {
 
     /// Re-reads which icons there are; places come from the state file.
     pub fn reload(self: &Rc<Self>) {
-        if self.drag.borrow().is_some() || self.editing.borrow().is_some() {
+        if self.drag.borrow().is_some()
+            || self.own_drag.borrow().is_some()
+            || self.editing.borrow().is_some()
+        {
             self.reload_waiting.set(true);
             return;
         }
@@ -492,6 +507,7 @@ impl Icons {
             .map(|(i, _)| i)
             .collect();
         self.collapse_on_release.set(None);
+        self.drop_over.set(None);
         for widget in self.widgets.borrow_mut().drain(..) {
             self.fixed.remove(&widget);
         }
@@ -533,6 +549,7 @@ impl Icons {
         *self.widgets.borrow_mut() = widgets;
         self.layout();
         self.show_selection();
+        self.show_cut();
     }
 
     /// Shows every icon at its place; icons without one get a free spot,
@@ -919,16 +936,9 @@ impl Icons {
             if icons.editing.borrow().is_some() || icons.press_swallowed.get() {
                 return;
             }
-            let index = icons.hit(x, y);
-            let grab = index.map_or((0.0, 0.0), |i| {
-                let (px, py) = icons.positions.borrow()[i];
-                (x - f64::from(px), y - f64::from(py))
-            });
             *icons.drag.borrow_mut() = Some(Drag {
-                index,
+                index: icons.hit(x, y),
                 start: (x, y),
-                grab,
-                moving: Vec::new(),
                 band: None,
             });
         });
@@ -937,57 +947,24 @@ impl Icons {
             let Some(icons) = weak.upgrade() else { return };
             let mut state = icons.drag.borrow_mut();
             let Some(drag) = state.as_mut() else { return };
-            if !drag.started() {
+            // a press on an icon becomes a real drag (`transfer.rs`)
+            if drag.index.is_some() {
+                return;
+            }
+            if drag.band.is_none() {
                 if !layout::is_drag(dx, dy, drag_threshold(&icons.window)) {
                     return;
                 }
                 icons.drags.set(icons.drags.get() + 1);
                 icons.collapse_on_release.set(None);
-                match drag.index {
-                    Some(i) => {
-                        // the whole selection moves if the icon is part of
-                        // it, else this icon alone
-                        if !icons.selection.borrow().contains(&i) {
-                            icons.select_only(Some(i));
-                        }
-                        let mut members = vec![i];
-                        members.extend(icons.selection_list().into_iter().filter(|&m| m != i));
-                        for m in members {
-                            let Some(item) = icons.items.borrow().get(m).cloned() else {
-                                continue;
-                            };
-                            let ghost = icon_widget(
-                                &item,
-                                icons.trash_full.get().unwrap_or(false),
-                                icons.settings.get().size,
-                            );
-                            ghost.add_css_class("dragging");
-                            ghost.add_css_class("selected");
-                            ghost.set_can_target(false);
-                            icons.fixed.put(&ghost, 0.0, 0.0);
-                            drag.moving.push((m, ghost));
-                        }
-                    }
-                    None => {
-                        let frame = gtk4::Box::new(Orientation::Horizontal, 0);
-                        frame.add_css_class("rubberband");
-                        frame.set_can_target(false);
-                        icons.fixed.put(&frame, drag.start.0, drag.start.1);
-                        drag.band = Some((frame, icons.selection.borrow().clone()));
-                    }
-                }
+                let frame = gtk4::Box::new(Orientation::Horizontal, 0);
+                frame.add_css_class("rubberband");
+                frame.set_can_target(false);
+                icons.fixed.put(&frame, drag.start.0, drag.start.1);
+                drag.band = Some((frame, icons.selection.borrow().clone()));
             }
             let geometry = icons.geometry.get();
             let positions = icons.positions.borrow().clone();
-            if let Some((lead, _)) = drag.moving.first() {
-                let lead_at = positions[*lead];
-                let want = drop_point(drag, dx, dy);
-                let (mx, my) = (want.0 - lead_at.0, want.1 - lead_at.1);
-                for (m, ghost) in &drag.moving {
-                    let at = geometry.clamp((positions[*m].0 + mx, positions[*m].1 + my));
-                    icons.fixed.move_(ghost, f64::from(at.0), f64::from(at.1));
-                }
-            }
             if let Some((frame, base)) = &drag.band {
                 let corner = (drag.start.0 + dx, drag.start.1 + dy);
                 let (x0, y0) = (drag.start.0.min(corner.0), drag.start.1.min(corner.1));
@@ -1004,23 +981,12 @@ impl Icons {
             }
         });
         let weak = Rc::downgrade(self);
-        drag.connect_drag_end(move |_, dx, dy| {
+        drag.connect_drag_end(move |_, _, _| {
             let Some(icons) = weak.upgrade() else { return };
             icons.press_swallowed.set(false);
             let Some(drag) = icons.drag.borrow_mut().take() else {
                 return;
             };
-            for (_, ghost) in &drag.moving {
-                icons.fixed.remove(ghost);
-            }
-            match drag.moving.len() {
-                0 => {}
-                1 => icons.drop_icon(drag.moving[0].0, drop_point(&drag, dx, dy)),
-                _ => {
-                    let members: Vec<usize> = drag.moving.iter().map(|(m, _)| *m).collect();
-                    icons.drop_group(&members, drop_point(&drag, dx, dy));
-                }
-            }
             if let Some((frame, _)) = &drag.band {
                 icons.fixed.remove(frame);
                 let selection = icons.selection_list();
@@ -1173,6 +1139,24 @@ impl Icons {
             if icons.editing.borrow().is_some() {
                 return glib::Propagation::Proceed;
             }
+            let ctrl = modifiers.contains(gdk::ModifierType::CONTROL_MASK);
+            // 0.2.3: Strg+X/C/V, Entf, Umschalt+Entf
+            if ctrl && matches!(key, gdk::Key::x | gdk::Key::X | gdk::Key::c | gdk::Key::C) {
+                icons.put_on_clipboard(matches!(key, gdk::Key::x | gdk::Key::X));
+                return glib::Propagation::Stop;
+            }
+            if ctrl && matches!(key, gdk::Key::v | gdk::Key::V) {
+                icons.paste(None, None);
+                return glib::Propagation::Stop;
+            }
+            if matches!(key, gdk::Key::Delete | gdk::Key::KP_Delete) {
+                if modifiers.contains(gdk::ModifierType::SHIFT_MASK) {
+                    icons.confirm_delete();
+                } else {
+                    icons.trash_selection();
+                }
+                return glib::Propagation::Stop;
+            }
             if key == gdk::Key::F2 {
                 // renaming is for one icon at a time
                 if icons.selection.borrow().len() == 1
@@ -1206,6 +1190,7 @@ impl Icons {
 
     fn popup_menu(&self, index: Option<usize>, x: f64, y: f64) {
         self.menu.remove_all();
+        self.menu_point.set((x, y));
         let volume = index
             .and_then(|i| self.items.borrow().get(i).cloned())
             .and_then(|item| match item.kind {
@@ -1259,6 +1244,34 @@ impl Icons {
             } else {
                 self.menu.append(Some("Öffnen"), Some("desktop.open"));
             }
+            let item = self.items.borrow().get(index).cloned();
+            let file = item
+                .as_ref()
+                .filter(|item| transfer::item_path(item).is_some());
+            let single = self.selection.borrow().len() <= 1;
+            if let Some(item) = file
+                && matches!(item.kind, Kind::File(_) | Kind::Folder(_))
+                && let Some(programs) = self.open_with_menu(item)
+            {
+                self.menu.append_submenu(Some("Öffnen mit"), &programs);
+            }
+            if let Some(item) = file {
+                // 0.2.3: GNOME 2's clipboard section
+                let clip = gio::Menu::new();
+                clip.append(Some("Ausschneiden"), Some("desktop.cut"));
+                clip.append(Some("Kopieren"), Some("desktop.copy"));
+                if let Kind::Folder(path) = &item.kind {
+                    let paste = gio::MenuItem::new(Some("Einfügen in den Ordner"), None);
+                    if single && self.clipboard_has_files() {
+                        paste.set_action_and_target_value(
+                            Some("desktop.paste"),
+                            Some(&path.to_string_lossy().to_variant()),
+                        );
+                    }
+                    clip.append_item(&paste);
+                }
+                self.menu.append_section(None, &clip);
+            }
             let edit = gio::Menu::new();
             // one icon at a time (HMP-10a: not with several selected)
             let can_rename = self.selection.borrow().len() <= 1
@@ -1270,6 +1283,23 @@ impl Icons {
             // insensitive (no action) where renaming cannot work
             edit.append(Some("Umbenennen …"), can_rename.then_some("desktop.rename"));
             self.menu.append_section(None, &edit);
+            if file.is_some() {
+                let trash = gio::Menu::new();
+                trash.append(Some("In den Papierkorb verschieben"), Some("desktop.trash"));
+                self.menu.append_section(None, &trash);
+                let properties = gio::Menu::new();
+                properties.append(
+                    Some("Eigenschaften"),
+                    single.then_some("desktop.properties"),
+                );
+                self.menu.append_section(None, &properties);
+            }
+            if debugging() {
+                log(&format!(
+                    "Menü Symbol: {}",
+                    menu_labels(&self.menu).join(" | ")
+                ));
+            }
         } else {
             let can_create = desktop_dir().is_some();
             let create = gio::Menu::new();
@@ -1322,12 +1352,29 @@ impl Icons {
             }
             arrange.append_item(&toggle);
             self.menu.append_section(None, &arrange);
+            if can_create {
+                // 0.2.3: the clipboard's files onto the desktop, at the click
+                let paste = gio::MenuItem::new(Some("Einfügen"), None);
+                if self.clipboard_has_files() {
+                    paste
+                        .set_action_and_target_value(Some("desktop.paste"), Some(&"".to_variant()));
+                }
+                let section = gio::Menu::new();
+                section.append_item(&paste);
+                self.menu.append_section(None, &section);
+            }
             let background = gio::Menu::new();
             background.append(
                 Some("Hintergrund der Arbeitsfläche ändern …"),
                 Some("desktop.change-background"),
             );
             self.menu.append_section(None, &background);
+            if debugging() {
+                log(&format!(
+                    "Menü Fläche: {}",
+                    menu_labels(&self.menu).join(" | ")
+                ));
+            }
         }
         // Top left corner of the menu at the pointer, as on GNOME 2. The
         // anchor stays at the surface origin and the popover points at the
@@ -1368,6 +1415,60 @@ impl Icons {
             "empty-trash",
             None,
             Box::new(|icons, _| icons.confirm_empty_trash()),
+        );
+        // 0.2.3 (`transfer.rs`)
+        add(
+            "open-with",
+            Some(glib::VariantTy::STRING),
+            Box::new(|icons, value| {
+                let app = value.and_then(|v| v.str()).unwrap_or_default().to_owned();
+                if let Some(item) = icons
+                    .selected
+                    .get()
+                    .and_then(|i| icons.items.borrow().get(i).cloned())
+                {
+                    icons.open_with(&item, &app);
+                }
+            }),
+        );
+        add(
+            "cut",
+            None,
+            Box::new(|icons, _| icons.put_on_clipboard(true)),
+        );
+        add(
+            "copy",
+            None,
+            Box::new(|icons, _| icons.put_on_clipboard(false)),
+        );
+        add(
+            "paste",
+            Some(glib::VariantTy::STRING),
+            Box::new(|icons, value| {
+                let into = value.and_then(|v| v.str()).unwrap_or_default();
+                if into.is_empty() {
+                    // at the menu's place, as GNOME 2 pasted onto the desktop
+                    let (x, y) = icons.menu_point.get();
+                    let at = ((x - 50.0).round() as i32, (y - 25.0).round() as i32);
+                    icons.paste(None, Some(at));
+                } else {
+                    icons.paste(Some(PathBuf::from(into)), None);
+                }
+            }),
+        );
+        add("trash", None, Box::new(|icons, _| icons.trash_selection()));
+        add(
+            "properties",
+            None,
+            Box::new(|icons, _| {
+                if let Some(item) = icons
+                    .selected
+                    .get()
+                    .and_then(|i| icons.items.borrow().get(i).cloned())
+                {
+                    icons.show_properties(&item);
+                }
+            }),
         );
         add(
             "unmount",
@@ -2066,6 +2167,30 @@ impl Icons {
     }
 }
 
+/// The labels of a menu, sections and submenus included (one line in the
+/// log for the isolated tests; "(aus)" marks insensitive entries).
+fn menu_labels(menu: &gio::Menu) -> Vec<String> {
+    let mut labels = Vec::new();
+    for i in 0..menu.n_items() {
+        if let Some(section) = menu.item_link(i, "section").and_downcast::<gio::Menu>() {
+            labels.extend(menu_labels(&section));
+            continue;
+        }
+        let label = menu
+            .item_attribute_value(i, "label", Some(glib::VariantTy::STRING))
+            .and_then(|v| v.str().map(str::to_owned))
+            .unwrap_or_default();
+        let action = menu.item_attribute_value(i, "action", Some(glib::VariantTy::STRING));
+        let submenu = menu.item_link(i, "submenu").is_some();
+        labels.push(if action.is_none() && !submenu {
+            format!("{label} (aus)")
+        } else {
+            label
+        });
+    }
+    labels
+}
+
 /// `QUERENCIA_DESKTOP_DEBUG=1`: extra log lines for the isolated tests.
 fn debugging() -> bool {
     std::env::var("QUERENCIA_DESKTOP_DEBUG").is_ok_and(|v| v == "1")
@@ -2184,14 +2309,6 @@ fn delete_next(icons: std::rc::Weak<Icons>, run: Rc<RefCell<TrashRun>>) {
             delete_next(icons, run);
         },
     );
-}
-
-/// The drop position of a drag after a movement of `(dx, dy)`.
-fn drop_point(drag: &Drag, dx: f64, dy: f64) -> Point {
-    (
-        (drag.start.0 + dx - drag.grab.0).round() as i32,
-        (drag.start.1 + dy - drag.grab.1).round() as i32,
-    )
 }
 
 fn drag_threshold(window: &ApplicationWindow) -> i32 {
@@ -2644,7 +2761,8 @@ fn open(item: &Item, window: &ApplicationWindow) {
                 return;
             }
         }
-        Kind::File(path) | Kind::Folder(path) => {
+        Kind::File(path) => open_file(path, &context),
+        Kind::Folder(path) => {
             gio::AppInfo::launch_default_for_uri(&gio::File::for_path(path).uri(), Some(&context))
         }
         // QE-03: in Querencia Files, as GNOME 2 opened volumes in Nautilus
@@ -2656,6 +2774,46 @@ fn open(item: &Item, window: &ApplicationWindow) {
     match result {
         Ok(()) => log(&format!("geöffnet: {}", item.name)),
         Err(err) => log(&format!("{} nicht geöffnet: {err}", item.name)),
+    }
+}
+
+/// Desktop 0.2.2: a file opens with the default program for its type, as
+/// before. When that type has none (an empty file is
+/// `application/x-zerosize`), it opens with the default program for the
+/// type its name suggests (`icons::type_from_name`), as Nautilus does;
+/// without one GIO's error goes to the log and nothing is started.
+fn open_file(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), glib::Error> {
+    let file = gio::File::for_path(path);
+    let uri = file.uri();
+    let content_type = file
+        .query_info(
+            "standard::content-type",
+            gio::FileQueryInfoFlags::NONE,
+            gio::Cancellable::NONE,
+        )
+        .ok()
+        .and_then(|info| info.content_type());
+    let handled = content_type
+        .as_deref()
+        .is_some_and(|t| gio::AppInfo::default_for_type(t, false).is_some());
+    if handled {
+        return gio::AppInfo::launch_default_for_uri(&uri, Some(context));
+    }
+    let by_name = path
+        .file_name()
+        .and_then(|name| icons::type_from_name(&name.to_string_lossy()));
+    match by_name.and_then(|t| gio::AppInfo::default_for_type(&t, false).map(|app| (t, app))) {
+        Some((t, app)) => {
+            log(&format!(
+                "{}: {} ohne Programm, öffne als {t} mit {}",
+                path.display(),
+                content_type.as_deref().unwrap_or("unbekannter Typ"),
+                app.id().unwrap_or_default()
+            ));
+            app.launch_uris(&[uri.as_str()], Some(context))
+        }
+        // GIO's own message ("keine Anwendung gefunden …")
+        None => gio::AppInfo::launch_default_for_uri(&uri, Some(context)),
     }
 }
 
