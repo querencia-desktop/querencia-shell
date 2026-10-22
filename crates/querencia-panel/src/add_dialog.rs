@@ -20,7 +20,7 @@ use std::rc::Rc;
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Application, Box as GtkBox, Button, Image, KeyvalTrigger, Label, ListBox, ListBoxRow,
+    Align, Application, Box as GtkBox, Button, KeyvalTrigger, Label, ListBox, ListBoxRow,
     NamedAction, Orientation, PolicyType, ScrolledWindow, SearchEntry, SelectionMode, Shortcut,
     ShortcutController, Stack, Window, gdk, gio, glib,
 };
@@ -465,10 +465,10 @@ fn selected_target(list: &ListBox, hooks: &Hooks) -> Option<String> {
 /// A button with a small icon before its label, like the GTK 2 stock
 /// buttons of GNOME 2 dialogs.
 pub(crate) fn stock_button(mnemonic: &str, icon: &str) -> Button {
-    let image = Image::from_gicon(&gio::ThemedIcon::from_names(&[
-        icon,
-        &format!("{icon}-symbolic"),
-    ]));
+    let image = crate::symbole::image(
+        &gio::ThemedIcon::from_names(&[icon, &format!("{icon}-symbolic")]),
+        16,
+    );
     let label = Label::with_mnemonic(mnemonic);
     let inner = GtkBox::new(Orientation::Horizontal, 4);
     inner.set_halign(Align::Center);
@@ -498,9 +498,7 @@ fn row(applet: &AppletType) -> ListBoxRow {
     } else {
         let names = icon_names(applet);
         let names: Vec<&str> = names.iter().map(String::as_str).collect();
-        let image = Image::from_gicon(&gio::ThemedIcon::from_names(&names));
-        image.set_pixel_size(ICON_SIZE);
-        image
+        crate::symbole::image(&gio::ThemedIcon::from_names(&names), ICON_SIZE)
     };
 
     let name = Label::builder()

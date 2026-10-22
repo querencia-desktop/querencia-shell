@@ -588,7 +588,7 @@ fn show(button: &Button, image: &Image, size: i32, state: &State) {
     let pixels = size * image.scale_factor().max(1);
     match symbol(icon, pixels) {
         Some(texture) => image.set_paintable(Some(&texture)),
-        None => image.set_icon_name(Some("network-wired")),
+        None => crate::symbole::set_named(image, "network-wired"),
     }
     let tooltip = model::tooltip(state);
     if button.tooltip_text().as_deref() != Some(tooltip.as_str()) {

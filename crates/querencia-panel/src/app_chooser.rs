@@ -13,8 +13,8 @@ use std::rc::Rc;
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box as GtkBox, Image, Label, ListBox, ListBoxRow, Orientation, PolicyType,
-    ScrolledWindow, SearchEntry, SelectionMode, gio, glib,
+    Align, Box as GtkBox, Label, ListBox, ListBoxRow, Orientation, PolicyType, ScrolledWindow,
+    SearchEntry, SelectionMode, gio, glib,
 };
 
 use crate::add_dialog::stock_button;
@@ -325,8 +325,7 @@ fn select(list: &ListBox, app: &str) {
 
 /// A group heading: small icon and bold label; cannot be chosen.
 fn heading_row(section: &Section) -> ListBoxRow {
-    let image = Image::from_icon_name(section.icon);
-    image.set_pixel_size(GROUP_ICON_SIZE);
+    let image = crate::symbole::image_named(section.icon, GROUP_ICON_SIZE);
     let label = Label::builder()
         .label(format!(
             "<b>{}</b>",
@@ -359,8 +358,7 @@ fn app_row(entry: &AppEntry) -> ListBoxRow {
         .as_deref()
         .and_then(|icon| gio::Icon::for_string(icon).ok())
         .unwrap_or_else(|| gio::ThemedIcon::new(GENERIC_ICON).upcast());
-    let image = Image::from_gicon(&icon);
-    image.set_pixel_size(APP_ICON_SIZE);
+    let image = crate::symbole::image(&icon, APP_ICON_SIZE);
     let label = Label::builder().label(&entry.name).xalign(0.0).build();
     let line = GtkBox::builder()
         .orientation(Orientation::Horizontal)

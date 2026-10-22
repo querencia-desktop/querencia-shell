@@ -17,6 +17,19 @@
 //!
 //! The session's starter records the PID of what it started; with
 //! `--ueberwacht` that is this process, and ending it ends the panel.
+//!
+//! Crash reports (QD-128): on Ubuntu the kernel pipes the core dump of a
+//! crashed panel to apport, which holds the dying process for about 6 s
+//! and writes a report of about 17 MB to `/var/crash` (installed package);
+//! only then does the watchdog learn of the end. [`ABSTURZBERICHT`] chooses
+//! ([`Absturzbericht`]): `erster` (default) lets apport have the first
+//! crash, so there is one report to look into, and turns the core dump off
+//! for the panels started after it; `nie` turns it off from the start;
+//! `immer` leaves it on. Off means `RLIMIT_CORE` 1 for the panel (inherited
+//! from this process): for a core dump to a pipe the kernel takes 1 as
+//! "do not dump" (its guard against apport crashing itself, core(5),
+//! `fs/coredump.c`) and logs one line. Unlike `PR_SET_DUMPABLE` this keeps
+//! `/proc/<pid>/exe` and `environ` of the panel readable for the user.
 
 use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
@@ -33,6 +46,8 @@ pub const MAX_NEUSTARTS: usize = 3;
 pub const FENSTER: Duration = Duration::from_secs(10 * 60);
 /// Pause before a restart, so a panel that crashes at once does not spin.
 const PAUSE: Duration = Duration::from_secs(1);
+/// Environment variable choosing the crash reports, see [`Absturzbericht`].
+pub const ABSTURZBERICHT: &str = "QUERENCIA_PANEL_ABSTURZBERICHT";
 /// How long the panel gets to end after SIGTERM before SIGKILL.
 const ENDE_FRIST: Duration = Duration::from_secs(5);
 const LOG: &str = "querencia-panel: Überwachung:";
@@ -42,8 +57,82 @@ const SIGINT: i32 = 2;
 const SIGKILL: i32 = 9;
 const SIGTERM: i32 = 15;
 
+/// Resource number of the core file limit, the same on every Linux architecture.
+const RLIMIT_CORE: i32 = 4;
+
+#[repr(C)]
+struct Rlimit {
+    cur: std::ffi::c_ulong,
+    max: std::ffi::c_ulong,
+}
+
 unsafe extern "C" {
     fn kill(pid: i32, sig: i32) -> i32;
+    fn getrlimit(resource: i32, rlim: *mut Rlimit) -> i32;
+    fn setrlimit(resource: i32, rlim: *const Rlimit) -> i32;
+}
+
+/// Which crashes the kernel passes on as core dump (to apport), from
+/// [`ABSTURZBERICHT`]; anything else than `immer` or `nie` is `erster`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Absturzbericht {
+    Immer,
+    Erster,
+    Nie,
+}
+
+impl Absturzbericht {
+    pub fn aus(wert: Option<&str>) -> Absturzbericht {
+        match wert.map(str::trim) {
+            Some("immer") => Absturzbericht::Immer,
+            Some("nie") => Absturzbericht::Nie,
+            _ => Absturzbericht::Erster,
+        }
+    }
+
+    /// Whether the panel to start after `abstuerze` crashes runs without
+    /// core dump.
+    pub fn ohne_kernabzug(self, abstuerze: usize) -> bool {
+        match self {
+            Absturzbericht::Immer => false,
+            Absturzbericht::Erster => abstuerze >= 1,
+            Absturzbericht::Nie => true,
+        }
+    }
+
+    fn beschreibung(self) -> &'static str {
+        match self {
+            Absturzbericht::Immer => "bei jedem Absturz",
+            Absturzbericht::Erster => "nur beim ersten Absturz",
+            Absturzbericht::Nie => "keine",
+        }
+    }
+}
+
+/// Sets this process's soft `RLIMIT_CORE` to 1 (see the module
+/// documentation); panels started afterwards inherit it.
+fn kernabzug_aus() {
+    let mut grenze = Rlimit { cur: 0, max: 0 };
+    // SAFETY: getrlimit/setrlimit with a valid pointer to a struct rlimit
+    // of the C layout (two rlim_t, i.e. unsigned long, on Linux).
+    if unsafe { getrlimit(RLIMIT_CORE, &mut grenze) } != 0 {
+        let err = std::io::Error::last_os_error();
+        eprintln!("{LOG} Kernabzug nicht abschaltbar: {err}");
+        return;
+    }
+    if grenze.max < 1 {
+        // hard limit 0: only the core dump to a pipe remains, apport stays
+        eprintln!("{LOG} Kernabzug nicht abschaltbar: harte Grenze RLIMIT_CORE 0");
+        return;
+    }
+    grenze.cur = 1;
+    // SAFETY: as above.
+    if unsafe { setrlimit(RLIMIT_CORE, &grenze) } == 0 {
+        eprintln!("{LOG} Kernabzug für weitere Panels aus (RLIMIT_CORE 1, kein Absturzbericht)");
+    } else {
+        let err = std::io::Error::last_os_error();
+        eprintln!("{LOG} Kernabzug nicht abschaltbar: {err}");
+    }
 }
 
 /// How the panel ended, from the wait status of `waitpid(2)`.
@@ -196,6 +285,8 @@ pub fn kind_argumente(args: &[String]) -> Vec<String> {
 struct Zustand {
     programm: PathBuf,
     args: Vec<String>,
+    bericht: Absturzbericht,
+    abstuerze: Cell<usize>,
     kind: Cell<Option<(u32, Instant)>>,
     sitzung_aus: Cell<bool>,
     neustarts: RefCell<Neustarts>,
@@ -212,9 +303,12 @@ pub fn laufen(args: &[String]) -> glib::ExitCode {
             return glib::ExitCode::FAILURE;
         }
     };
+    let bericht = Absturzbericht::aus(std::env::var(ABSTURZBERICHT).ok().as_deref());
     let zustand = Rc::new(Zustand {
         programm,
         args: kind_argumente(args),
+        bericht,
+        abstuerze: Cell::new(0),
         kind: Cell::new(None),
         sitzung_aus: Cell::new(false),
         neustarts: RefCell::new(Neustarts::default()),
@@ -229,10 +323,14 @@ pub fn laufen(args: &[String]) -> glib::ExitCode {
         });
     }
     eprintln!(
-        "{LOG} aktiv (PID {}, höchstens {MAX_NEUSTARTS} Neustarts in {} Minuten)",
+        "{LOG} aktiv (PID {}, höchstens {MAX_NEUSTARTS} Neustarts in {} Minuten, Absturzberichte: {})",
         std::process::id(),
-        FENSTER.as_secs() / 60
+        FENSTER.as_secs() / 60,
+        bericht.beschreibung()
     );
+    if bericht.ohne_kernabzug(0) {
+        kernabzug_aus();
+    }
     if !starten(&zustand) {
         return glib::ExitCode::FAILURE;
     }
@@ -286,6 +384,13 @@ fn beendet(zustand: &Rc<Zustand>, pid: u32, ende: Ende) {
     } else {
         "beendet"
     };
+    if ende.absturz() {
+        let vorher = zustand.abstuerze.get();
+        zustand.abstuerze.set(vorher + 1);
+        if !zustand.bericht.ohne_kernabzug(vorher) && zustand.bericht.ohne_kernabzug(vorher + 1) {
+            kernabzug_aus();
+        }
+    }
     match entscheidung {
         Entscheidung::Neustart(nummer) => {
             eprintln!(
@@ -350,6 +455,44 @@ fn beenden(zustand: &Rc<Zustand>, signal: i32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn crash_reports_by_choice() {
+        assert_eq!(Absturzbericht::aus(None), Absturzbericht::Erster);
+        assert_eq!(Absturzbericht::aus(Some("")), Absturzbericht::Erster);
+        assert_eq!(Absturzbericht::aus(Some("immer")), Absturzbericht::Immer);
+        assert_eq!(Absturzbericht::aus(Some(" nie\n")), Absturzbericht::Nie);
+        assert_eq!(Absturzbericht::aus(Some("quatsch")), Absturzbericht::Erster);
+        let ohne = |b: Absturzbericht| (0..3).map(|n| b.ohne_kernabzug(n)).collect::<Vec<_>>();
+        assert_eq!(ohne(Absturzbericht::Erster), [false, true, true]);
+        assert_eq!(ohne(Absturzbericht::Immer), [false, false, false]);
+        assert_eq!(ohne(Absturzbericht::Nie), [true, true, true]);
+    }
+
+    /// The limit is set for this process and its children: run in a
+    /// child so the test process keeps its own.
+    #[test]
+    fn kernabzug_aus_sets_soft_limit_one() {
+        if std::env::var_os("QP_KERNABZUG_KIND").is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "ueberwachung::tests::kernabzug_aus_sets_soft_limit_one",
+                ])
+                .env("QP_KERNABZUG_KIND", "1")
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        kernabzug_aus();
+        let limits = std::fs::read_to_string("/proc/self/limits").unwrap();
+        let zeile = limits
+            .lines()
+            .find(|z| z.starts_with("Max core file size"))
+            .unwrap();
+        assert_eq!(zeile.split_whitespace().nth(4), Some("1"), "{zeile}");
+    }
 
     #[test]
     fn wait_status_decodes_exit_and_signal() {
