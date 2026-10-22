@@ -69,3 +69,13 @@
 #      dazu gtk-wettlauf.py, qvorlade.c, Szenarien belastung/apport/tausch)
 #      und die höhere Zählung bei P002; sie fallen unter die Ausnahmen oben
 #     . Q003 in ueberwachung.rs behoben.
+# desktop-025 (22.10.2026): neu nur S004 (Typografie in den übersetzbaren
+#      Texten und deren Kommentaren: Anführungszeichen “ ”, Auslassung, Pfeil;
+#      Daten, nicht ersetzen) in crates/querencia-desktop/src/{desktop_view,
+#      fileops,i18n,rename,volumes}.rs und desktop_view/transfer.rs, S003/S004
+#      in src/i18n.rs und werkzeug/i18n.py (aus dem Editor-Muster übernommen,
+#      ebenso in integration/desktop-025/werkzeug/deutsch-gleich.py,
+#      Backticks in Rust-Doc-Kommentaren), S004/S005/H003 in
+#      integration/desktop-025 (Kopie der Prüfwerkzeuge wie
+#      integration/desktop-024) und die höhere Zählung bei P002; sie fallen
+#      unter die Ausnahmen oben.

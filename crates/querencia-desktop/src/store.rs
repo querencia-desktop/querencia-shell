@@ -239,7 +239,7 @@ impl Store {
              # Geschrieben vom Desktop; Spalten durch Tabulatoren getrennt.\n\
              # <Art> <Name> <waagrecht> <senkrecht>   Art: sonder programm starter datei ordner\n\
              # name <Art> <Name> <Anzeigename>\n\
-             # einstellung raster ja|nein   (Am Raster ausrichten, HMP-10a)\n",
+             # einstellung raster ja|nein   (Am Raster ausrichten)\n",
         );
         out.push_str(&format!("version\t{VERSION}\n"));
         if let Some(snap) = self.snap {

@@ -22,6 +22,7 @@
 
 use super::*;
 use crate::fileops::{self, Op};
+use crate::i18n::{gettext, gettext_f, ngettext_f};
 
 /// The desktop's own drag of icons (HMP-10 moves, now a real drag so that
 /// files can leave the desktop).
@@ -407,16 +408,23 @@ impl Icons {
             return;
         }
         let message = match items.as_slice() {
-            [one] => format!("Möchten Sie „{}“ wirklich endgültig löschen?", one.name),
-            more => format!(
-                "Möchten Sie die {} ausgewählten Objekte wirklich endgültig löschen?",
-                more.len()
+            [one] => gettext_f(
+                "Are you sure you want to permanently delete “{name}”?",
+                &[("name", &one.name)],
+            ),
+            more => ngettext_f(
+                "Are you sure you want to permanently delete the {n} selected item?",
+                "Are you sure you want to permanently delete the {n} selected items?",
+                u32::try_from(more.len()).unwrap_or(u32::MAX),
+                &[],
             ),
         };
         let dialog = gtk4::AlertDialog::builder()
             .message(message)
-            .detail("Wenn Sie ein Objekt löschen, ist es unwiderruflich verloren.")
-            .buttons(["Abbrechen", "Löschen"])
+            .detail(gettext(
+                "If you delete an item, it will be permanently lost.",
+            ))
+            .buttons([gettext("Cancel"), gettext("Delete")])
             .cancel_button(0)
             .default_button(0)
             .modal(false)
@@ -525,7 +533,7 @@ impl Icons {
             self.update_trash_soon();
         }
         if !outcome.failed.is_empty() {
-            show_error(op.failure_title(), &fileops::failure_text(op, outcome));
+            show_error(&op.failure_title(), &fileops::failure_text(op, outcome));
         }
     }
 
@@ -728,7 +736,7 @@ impl Icons {
         // pointer is over it
         for &m in &own.members {
             let Some(item) = items.get(m) else { continue };
-            let ghost = icon_widget(item, self.trash_full.get().unwrap_or(false), size);
+            let ghost = icon_widget(item, self.trash_full.get().unwrap_or(false), size, tile);
             ghost.add_css_class("dragging");
             ghost.add_css_class("selected");
             ghost.set_can_target(false);
@@ -974,7 +982,7 @@ impl Icons {
             seen.push(id);
         }
         let other = gio::Menu::new();
-        let entry = gio::MenuItem::new(Some("Andere Anwendung …"), None);
+        let entry = gio::MenuItem::new(Some(&gettext("Other Application…")), None);
         entry.set_action_and_target_value(Some("desktop.open-with"), Some(&"".to_variant()));
         other.append_item(&entry);
         menu.append_section(None, &other);
@@ -1003,7 +1011,7 @@ impl Icons {
                 Err(err) => {
                     log(&format!("{} nicht geöffnet mit {app_id}: {err}", item.name));
                     show_error(
-                        &format!("„{}“ konnte nicht geöffnet werden.", item.name),
+                        &gettext_f("“{name}” could not be opened.", &[("name", &item.name)]),
                         err.message(),
                     );
                 }
@@ -1025,7 +1033,10 @@ impl Icons {
             Ok(info) => info,
             Err(err) => {
                 show_error(
-                    &format!("Die Eigenschaften von „{}“ sind nicht lesbar.", item.name),
+                    &gettext_f(
+                        "The properties of “{name}” cannot be read.",
+                        &[("name", &item.name)],
+                    ),
                     err.message(),
                 );
                 return;
@@ -1034,11 +1045,15 @@ impl Icons {
         let folder = info.file_type() == gio::FileType::Directory;
         let content_type = content_type_of(path).unwrap_or_default();
         let kind = if info.file_type() == gio::FileType::SymbolicLink {
-            format!(
-                "Verknüpfung auf {}",
-                info.symlink_target()
-                    .map(|t| t.display().to_string())
-                    .unwrap_or_default()
+            gettext_f(
+                "Link to {target}",
+                &[(
+                    "target",
+                    &info
+                        .symlink_target()
+                        .map(|t| t.display().to_string())
+                        .unwrap_or_default(),
+                )],
             )
         } else {
             format!(
@@ -1047,14 +1062,16 @@ impl Icons {
             )
         };
         let size = gtk4::Label::new(Some(&if folder {
-            "wird gezählt …".to_owned()
+            gettext("counting …")
         } else {
             fileops::size_text(u64::try_from(info.size()).unwrap_or(0))
         }));
         let modified = info
             .modification_date_time()
             .and_then(|t| t.to_local().ok())
-            .and_then(|t| t.format("%d.%m.%Y %H:%M").ok())
+            // TRANSLATORS: date and time of the last change (strftime
+            // format of GLib's GDateTime)
+            .and_then(|t| t.format(&gettext("%Y-%m-%d %H:%M")).ok())
             .map(|t| t.to_string())
             .unwrap_or_default();
         let place = path
@@ -1063,7 +1080,7 @@ impl Icons {
             .unwrap_or_default();
 
         let window = gtk4::Window::builder()
-            .title(format!("Eigenschaften von „{}“", item.name))
+            .title(gettext_f("“{name}” Properties", &[("name", &item.name)]))
             .resizable(false)
             .build();
         window.add_css_class("querencia-desktop-properties");
@@ -1079,12 +1096,12 @@ impl Icons {
         image.set_pixel_size(48);
         image.set_valign(Align::Start);
         grid.attach(&image, 0, 0, 1, 5);
-        let rows: [(&str, gtk4::Label); 5] = [
-            ("Name:", gtk4::Label::new(Some(&item.name))),
-            ("Typ:", gtk4::Label::new(Some(&kind))),
-            ("Größe:", size.clone()),
-            ("Ort:", gtk4::Label::new(Some(&place))),
-            ("Geändert:", gtk4::Label::new(Some(&modified))),
+        let rows: [(String, gtk4::Label); 5] = [
+            (gettext("Name:"), gtk4::Label::new(Some(&item.name))),
+            (gettext("Type:"), gtk4::Label::new(Some(&kind))),
+            (gettext("Size:"), size.clone()),
+            (gettext("Location:"), gtk4::Label::new(Some(&place))),
+            (gettext("Modified:"), gtk4::Label::new(Some(&modified))),
         ];
         for (row, (text, value)) in rows.iter().enumerate() {
             let row = i32::try_from(row).unwrap_or(0);
@@ -1102,7 +1119,7 @@ impl Icons {
             grid.attach(&key, 1, row, 1, 1);
             grid.attach(value, 2, row, 1, 1);
         }
-        let close = gtk4::Button::with_label("Schließen");
+        let close = gtk4::Button::with_label(&gettext("Close"));
         close.set_halign(Align::End);
         let window_weak = window.downgrade();
         close.connect_clicked(move |_| {
@@ -1133,10 +1150,11 @@ impl Icons {
             let handle = gio::spawn_blocking(move || fileops::tally(&dir));
             glib::MainContext::default().spawn_local(async move {
                 if let Ok((count, bytes)) = handle.await {
-                    size.set_text(&format!(
-                        "{count} {}, insgesamt {}",
-                        if count == 1 { "Objekt" } else { "Objekte" },
-                        fileops::size_text(bytes)
+                    size.set_text(&ngettext_f(
+                        "{n} item, totalling {size}",
+                        "{n} items, totalling {size}",
+                        u32::try_from(count).unwrap_or(u32::MAX),
+                        &[("size", &fileops::size_text(bytes))],
                     ));
                 }
             });
@@ -1169,17 +1187,17 @@ fn names_of(paths: &[PathBuf]) -> String {
 
 /// "Andere Anwendung …": GTK's app chooser for the file's type.
 #[allow(deprecated)] // GtkAppChooserDialog: GTK 4 has no replacement yet
-fn choose_app(item: &Item, path: &Path, uri: String, context: gdk::AppLaunchContext) {
+pub(super) fn choose_app(item: &Item, path: &Path, uri: String, context: gdk::AppLaunchContext) {
     let content_type = content_type_of(path).unwrap_or_else(|| "application/octet-stream".into());
     let dialog = gtk4::AppChooserDialog::for_content_type(
         None::<&gtk4::Window>,
         gtk4::DialogFlags::empty(),
         &content_type,
     );
-    dialog.set_title(Some("Öffnen mit"));
-    dialog.set_heading(&format!(
-        "Wählen Sie ein Programm, um „{}“ zu öffnen",
-        item.name
+    dialog.set_title(Some(&gettext("Open With")));
+    dialog.set_heading(&gettext_f(
+        "Select an application to open “{name}”",
+        &[("name", &item.name)],
     ));
     let name = item.name.clone();
     dialog.connect_response(move |dialog, response| {
@@ -1194,7 +1212,7 @@ fn choose_app(item: &Item, path: &Path, uri: String, context: gdk::AppLaunchCont
                 Err(err) => {
                     log(&format!("{name} nicht geöffnet: {err}"));
                     show_error(
-                        &format!("„{name}“ konnte nicht geöffnet werden."),
+                        &gettext_f("“{name}” could not be opened.", &[("name", &name)]),
                         err.message(),
                     );
                 }

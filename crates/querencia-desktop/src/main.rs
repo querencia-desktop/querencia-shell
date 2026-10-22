@@ -28,6 +28,7 @@ mod desktop_view;
 #[path = "../../querencia-panel/src/farbschema.rs"]
 mod farbschema;
 mod fileops;
+mod i18n;
 // The icon theme rule of the panel (G2-AD), shared source.
 #[path = "../../querencia-panel/src/icon_theme.rs"]
 mod icon_theme;
@@ -85,6 +86,8 @@ const CAPABILITIES: &str =
     "type-color mode-centered mode-tiled volumes-types icons-visible icon-size";
 
 fn main() -> glib::ExitCode {
+    // translations (`i18n.rs`); the locale itself is set by GTK's start
+    i18n::init();
     // answered before GTK or GApplication start: no display needed, no
     // running instance is activated
     if std::env::args().skip(1).any(|a| a == "--faehigkeiten") {
@@ -391,7 +394,7 @@ fn background_window(
 ) -> ApplicationWindow {
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("Arbeitsfläche")
+        .title(i18n::gettext("Desktop"))
         .child(wallpaper)
         .build();
     window.add_css_class("querencia-desktop");
