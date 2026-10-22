@@ -20,10 +20,18 @@ Absturz beim ersten Öffnen von Anwendungen (QD-106) und Neustart-Schutz.
   Sitzungsstarter `--ueberwacht` nur an Panels gibt, die es kennen.
 - Ohne `--ueberwacht` startet das Panel wie bisher; eingeschaltet wird der
   Schutz im Sitzungsstarter (`session/`, eigener Schritt).
-- Absturzursache: in 160 isolierten Kaltstarts mit sofortigem Öffnen von
-  Anwendungen → Zubehör nicht nachgestellt (auch nicht mit Symbolen, die nur
-  als SVG mit Text vorliegen); Befund und Verdacht in
-  `docs/panel-023-absturz-und-ueberwachung.md`.
+- Symbolthema seltener neu einlesen (`icon_reload.rs`): Eine Änderung der
+  installierten Programme liest das Thema nur noch neu ein, wenn ein
+  Programmsymbol fehlt, das nach dem letzten Einlesen noch nicht fehlte;
+  sonst nur eine Protokollzeile. Änderungen unter `~/.local/share/icons`
+  lösen wie bisher aus. Grund: Panel 0.2.2 stürzte live am 22.10. um 04:07
+  im Symbol-Cache von GTK ab (`object_ref` auf ein freigegebenes Symbol,
+  Lesen an NULL+0x50 in `libgtk-4`), Minuten nach drei Neueinlesungen, die
+  nur vom Umschreiben vorhandener Starter kamen; jedes Neueinlesen verwirft
+  GTKs Cache, während Bilder und Ladefäden ihn noch benutzen.
+- Absturz beim ersten Öffnen von Anwendungen (Thread-Pool, `libpangocairo`):
+  in 160 isolierten Kaltstarts nicht nachgestellt; Befund, Verdacht und
+  Zusammenhang in `docs/panel-023-absturz-und-ueberwachung.md`.
 
 ## 0.2.2 – 2026-10-22
 
