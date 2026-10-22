@@ -14,16 +14,16 @@ Ursache der Abstürze QD-106 behoben, Absturzberichte (QD-128), Fenstersymbol
   22.10. 04:07:24 (`libgtk-4.so.1.2200.4[1c5e1e]`). (2) Ein SVG-Symbol mit
   Text wird im Pool-Faden über Pango gezeichnet, der Heap geht kaputt –
   `pool-4 … libpangocairo` beim ersten Öffnen von Zubehör (21.10.). Beides
-  ist mit `werkzeug/gtk-wettlauf.py` in 13 von 13 Läufen nachgestellt
-  (Stapel im gdb identisch mit dem Live-Absturz). Das Panel schlägt seine
+  ist mit `integration/panel-024/werkzeug/gtk-wettlauf.py` in 18 von 18
+  Läufen nachgestellt (Stapel im gdb identisch mit dem Live-Absturz). Das Panel schlägt seine
   Symbole jetzt selbst ohne Vorladen nach, gibt dem Bild das Paintable und
   hält es bis zum nächsten Themenwechsel; GTK lädt sie dann beim ersten
   Zeichnen im Hauptfaden. Bilder folgen Themen-, Skalen- und
   Richtungswechseln wie bisher; eigene Texturen der Applets bleiben
   unberührt. Betrifft Menüs, Fensterliste, Starter, „Arbeitsfläche
-  anzeigen“, Dialoge und die Ersatzsymbole der Applets. Gegenprobe: 0 von 20
-  Abstürzen; im Belastungslauf des Panels 0 statt 78 Vorladeaufträge pro
-  Minute.
+  anzeigen“, Dialoge und die Ersatzsymbole der Applets. Gegenprobe: 0 von 22
+  Läufen; im 10-Minuten-Belastungslauf des Panels 0 statt 863
+  Vorladeaufträge.
 - Absturzberichte unter `--ueberwacht` (QD-128): Umgebungsvariable
   `QUERENCIA_PANEL_ABSTURZBERICHT` = `erster` (Vorgabe) | `nie` | `immer`.
   Bei `erster` bekommt apport nur den ersten Absturz (ein Bericht zum
