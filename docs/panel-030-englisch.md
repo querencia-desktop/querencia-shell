@@ -1,7 +1,7 @@
 # Panel 0.3.0 – Englisch per gettext
 
 Stand 22.10.2026. Zweig `panel-024`, Tag `panel/0.3.0`, Integrationsstand
-`panel/0.3.0-int`. Ausgang ist Panel 0.2.5 (live seit 21:46). Muster:
+`panel/0.3.0-2-int` (§5; `panel/0.3.0-int` ersetzt). Ausgang ist Panel 0.2.5 (live seit 21:46). Muster:
 `docs/i18n-muster.md` im Editor-Repo, im selben Repo umgesetzt von
 Querencia Desktop 0.2.5. Änderungen: `crates/querencia-panel/CHANGELOG.md`.
 
@@ -101,7 +101,23 @@ Tests ohne Katalog erwarten die englische msgid.
 - `classic_menu.rs` ist mit dem Desktop geteilt. Die Tastennamen laufen in
   beiden Crates über `pgettext`; der Desktop zeigt keine Kürzel.
 
-## 5. Prüfung
+## 5. Integrationsstand 0.3.0-2
+
+`panel/0.3.0-int` setzte auf main `f037023` auf; main stand inzwischen auf
+`52935d0` (Desktop 0.2.6-2 live). Deshalb ist main `52935d0` in den Zweig
+gemergt (`9d12daa`, Tag `panel/0.3.0-2`, kein Rebase).
+
+- Konflikt nur in `.clean-check-ignore` (Vereinigung).
+- `Cargo.lock` ist aus main neu erzeugt und gleich dem automatischen Merge;
+  `--locked` grün.
+- `crates/querencia-desktop` ist gleich main.
+- Release und die drei Kataloge sind byte-gleich mit 0.3.0 (`b6f9b2fa…`,
+  `SHA256SUMS` `4502964e…`). Die Ablage hat also denselben Ordnernamen.
+
+Aktiviert wird nur über `integration/panel-030-2/`; `integration/panel-030/`
+bleibt eingefroren.
+
+## 6. Prüfung
 
 Siehe Bericht .
 
