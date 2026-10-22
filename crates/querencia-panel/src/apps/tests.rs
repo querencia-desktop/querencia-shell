@@ -97,7 +97,8 @@ fn gnome2_groups_for_education_and_accessibility() {
     );
 }
 /// HMP-04: the desktop entries of the three Querencia applications
-/// (`session/querencia/applications`). Read as key files, so the test does
+/// (`session/querencia/applications`), plus the hidden bridge of the old
+/// Files ID (QD-059). Read as key files, so the test does
 /// not depend on the binaries being installed; GIO and the real binaries
 /// are checked in the isolated GUI test (`docs/hmp-04-…`).
 #[test]
@@ -114,14 +115,15 @@ fn querencia_desktop_entries_land_in_accessories() {
         [
             "io.github.lgse.Strata.desktop",
             "org.example.Querencia.Terminal.desktop",
+            "org.querencia.Files.desktop",
             "org.querencia.Screenshot.desktop",
         ]
     );
     let expected = [
         (
-            "io.github.lgse.Strata.desktop",
+            "org.querencia.Files.desktop",
             "Querencia Files",
-            "folder",
+            "org.querencia.Files",
             "/target/debug/strata",
         ),
         (
@@ -175,13 +177,35 @@ fn querencia_desktop_entries_land_in_accessories() {
     let files = glib::KeyFile::new();
     files
         .load_from_file(
-            dir.join("io.github.lgse.Strata.desktop"),
+            dir.join("org.querencia.Files.desktop"),
             glib::KeyFileFlags::NONE,
         )
         .unwrap();
     assert_eq!(
         files.string("Desktop Entry", "MimeType").unwrap(),
         "inode/directory;"
+    );
+    // the old ID stays as a hidden bridge: not in any menu, no MIME types,
+    // starts the same binary with the new window ID
+    let bridge = glib::KeyFile::new();
+    bridge
+        .load_from_file(
+            dir.join("io.github.lgse.Strata.desktop"),
+            glib::KeyFileFlags::NONE,
+        )
+        .unwrap();
+    assert!(bridge.boolean("Desktop Entry", "NoDisplay").unwrap());
+    assert!(bridge.string("Desktop Entry", "MimeType").is_err());
+    assert_eq!(
+        bridge.string("Desktop Entry", "Exec").unwrap(),
+        files.string("Desktop Entry", "Exec").unwrap()
+    );
+    assert_eq!(
+        bridge
+            .string("Desktop Entry", "StartupWMClass")
+            .unwrap()
+            .as_str(),
+        "org.querencia.Files"
     );
     assert!(
         files

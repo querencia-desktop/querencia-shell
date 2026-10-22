@@ -1,9 +1,8 @@
 [Desktop Entry]
-# Querencia Files (Weiterentwicklung von Strata), HMP-04.
-# Desktop-ID = GApplication-ID io.github.lgse.Strata, damit labwc und die
-# Fensterliste das Fenster dieser Datei zuordnen. Entwicklungsbuild aus
-# querencia-files-dev; MimeType=inode/directory macht ihn ohne Eintrag in
-# mimeapps.list zum Ordnerprogramm, solange kein anderes festgelegt ist.
+# Brücke (QD-059, Files QF-0t): alte Desktop-ID io.github.lgse.Strata,
+# unsichtbar und ohne MimeType; startet Files mit der neuen App-ID
+# org.querencia.Files. Desktop (FILES_APPS) und Panel finden die alte ID
+# noch; die Brücke fällt frühestens mit Alpha 2.3 weg.
 Type=Application
 Version=1.5
 Name=Querencia Files
@@ -11,10 +10,10 @@ GenericName=Dateimanager
 Comment=Ordner und Dateien durchsuchen
 Exec=/home/user/projects/querencia-files-dev/target/debug/strata %U
 TryExec=/home/user/projects/querencia-files-dev/target/debug/strata
-Icon=folder
+Icon=org.querencia.Files
 Terminal=false
 Categories=GTK;Utility;FileTools;FileManager;
-MimeType=inode/directory;
 Keywords=Dateien;Ordner;Dateimanager;
 StartupNotify=true
-StartupWMClass=io.github.lgse.Strata
+StartupWMClass=org.querencia.Files
+NoDisplay=true
