@@ -118,6 +118,26 @@ pub fn desktop_dir(special: Option<PathBuf>, home: &Path) -> Option<PathBuf> {
     special.filter(|dir| dir != home)
 }
 
+/// QD-112: where to wait for a desktop directory that does not exist yet:
+/// its nearest existing ancestor (usually the home folder). `None` when
+/// the directory exists (it is watched itself) or nothing above it does.
+pub fn waiting_point(dir: &Path, exists: impl Fn(&Path) -> bool) -> Option<PathBuf> {
+    if exists(dir) {
+        return None;
+    }
+    dir.ancestors()
+        .skip(1)
+        .find(|a| exists(a))
+        .map(Path::to_path_buf)
+}
+
+/// QD-112: whether a change of `path` (an entry of the watched ancestor)
+/// may have made the desktop directory `dir` appear or vanish: `path` is
+/// the directory itself or a folder on the way to it.
+pub fn concerns_desktop(dir: &Path, path: &Path) -> bool {
+    dir.starts_with(path)
+}
+
 /// Valid templates: visible regular files directly in the templates
 /// directory, by name. None when the directory is unset, the home folder or
 /// missing.
@@ -367,5 +387,23 @@ mod tests {
         assert_eq!(stick.key, "laufwerk:file:///run/media/u/QDTEST");
         assert_eq!(stick.art(), Art::Volume);
         assert!(stick.is_transient() && !folder.is_transient());
+    }
+
+    #[test]
+    fn a_missing_desktop_directory_is_awaited_in_its_parent() {
+        let home = Path::new("/home/u");
+        let dir = home.join("Schreibtisch");
+        let only_home = |p: &Path| p == home || p == Path::new("/home") || p == Path::new("/");
+        assert_eq!(waiting_point(&dir, only_home), Some(home.to_path_buf()));
+        // two levels missing: the nearest existing ancestor
+        let deep = home.join("a/b/Desktop");
+        assert_eq!(waiting_point(&deep, only_home), Some(home.to_path_buf()));
+        // an existing directory is watched itself
+        assert_eq!(waiting_point(&dir, |_| true), None);
+        // only events on the way to the directory count
+        assert!(concerns_desktop(&dir, &dir));
+        assert!(concerns_desktop(&deep, &home.join("a")));
+        assert!(!concerns_desktop(&dir, &home.join(".bash_history")));
+        assert!(!concerns_desktop(&dir, &home.join("Schreibtisch2")));
     }
 }

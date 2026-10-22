@@ -66,6 +66,7 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 use crate::classic_menu;
 use crate::config;
+use crate::i18n::{gettext, gettext_f, ngettext_f};
 use crate::icons::{self, Item, Kind};
 use crate::layout::{self, Geometry, Point};
 use crate::rename;
@@ -76,23 +77,75 @@ mod transfer;
 
 pub const FILES_APP: &str = "io.github.lgse.Strata.desktop";
 pub const TERMINAL_APP: &str = "org.example.Querencia.Terminal.desktop";
-// Grid cell: wide enough for "Persönlicher" on one line (GNOME 2 broke
-// labels between words). One icon with its label (at most two lines)
-// takes one cell; cells never overlap.
+// Grid cell at the reference font (11 pt, as HMP-10b measured): wide
+// enough for "Persönlicher" on one line (GNOME 2 broke labels between
+// words). One icon with its label (at most two lines) takes one cell;
+// cells never overlap.
 const CELL: (i32, i32) = (100, 88);
 const MARGIN: i32 = 8;
+/// What a tile draws around its label text: the tile's padding (1 px each
+/// side) and the label's (3 px left and right, 1 px top and bottom), see
+/// `DESKTOP_CSS`; the spacing between icon and label (2 px); and the free
+/// gap below a tile before the next one.
+const TILE_SIDES: i32 = 2 + 6;
+const TILE_ROWS: i32 = 2 + 2 + 2;
+const TILE_GAP: i32 = 6;
+/// Characters on one label line, as many as `max_width_chars` of the label
+/// allows: room for "Persönlicher" and for host names of network shares
+/// ("nas-test.local").
+const LINE_CHARS: i32 = 14;
+
+/// QD-091: the label font in pixels, measured from the icon layer's Pango
+/// context (the font of the session, its size and scaling).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LabelFont {
+    /// Pango's approximate character width.
+    pub char_width: f64,
+    /// The height of two label lines.
+    pub two_lines: i32,
+}
+
+impl LabelFont {
+    /// DejaVu Sans 11 at 96 dpi, the font HMP-10b sized the cells for.
+    pub const REFERENCE: LabelFont = LabelFont {
+        char_width: 7.66,
+        two_lines: 36,
+    };
+
+    fn measure(widget: &impl IsA<gtk4::Widget>) -> LabelFont {
+        let context = widget.pango_context();
+        let metrics = context.metrics(None, None);
+        let char_width =
+            f64::from(metrics.approximate_char_width()) / f64::from(gtk4::pango::SCALE);
+        let layout = widget.create_pango_layout(Some("Ag\nAg"));
+        let (_, two_lines) = layout.pixel_size();
+        if char_width > 0.0 && two_lines > 0 {
+            LabelFont {
+                char_width,
+                two_lines,
+            }
+        } else {
+            LabelFont::REFERENCE
+        }
+    }
+}
 
 /// QE-04: the grid cell for an icon size of `desktop.ini` `[Icons] Size`.
-/// 48 px is the cell of HMP-10b; the width never drops below it, so
-/// "Persönlicher" still fits on one line, the height is the icon plus two
-/// label lines.
-fn cell_for(icon_px: i32) -> (i32, i32) {
-    match icon_px {
+/// QD-091: never smaller than the drawn tile in the session's font:
+/// `LINE_CHARS` average characters per line, the icon, two label lines and
+/// a gap below, so that neighbouring tiles never touch.
+fn cell_for(icon_px: i32, font: LabelFont) -> (i32, i32) {
+    let base = match icon_px {
         32 => (CELL.0, 72),
         72 => (110, 112),
         96 => (130, 136),
         _ => CELL,
-    }
+    };
+    let text = (f64::from(LINE_CHARS) * font.char_width).ceil() as i32;
+    (
+        base.0.max(text + TILE_SIDES),
+        base.1.max(icon_px + font.two_lines + TILE_ROWS + TILE_GAP),
+    )
 }
 // The rename box is a little wider than a cell, as Nautilus' was.
 const RENAME_WIDTH: i32 = 150;
@@ -163,6 +216,8 @@ pub struct Icons {
     /// A refresh that waits for the end of a drag or rename.
     reload_waiting: Cell<bool>,
     reload_timer: RefCell<Option<glib::SourceId>>,
+    /// QD-112: new monitors shortly after the desktop directory came or went.
+    rewatch_timer: RefCell<Option<glib::SourceId>>,
     /// QE-02: what the trash icon shows (`Some(true)`: full); `None` before
     /// the first count or without a trash icon.
     trash_full: Cell<Option<bool>>,
@@ -177,6 +232,9 @@ pub struct Icons {
     /// QE-04: `desktop.ini` `[Icons]`/`[Volumes]` (main.rs `load` passes
     /// changes on, see `apply_settings`).
     settings: Cell<config::IconSettings>,
+    /// QD-091: the label font the cells are sized for (`None` before the
+    /// first measurement).
+    font: Cell<Option<LabelFont>>,
     last_logged: RefCell<String>,
     last_selection: RefCell<String>,
     check_tiles: Cell<bool>,
@@ -237,7 +295,7 @@ impl Icons {
         let fixed = Fixed::new();
         let window = ApplicationWindow::builder()
             .application(app)
-            .title("Arbeitsfläche – Symbole")
+            .title(gettext("Desktop – Icons"))
             .child(&fixed)
             .build();
         window.add_css_class("querencia-desktop-icons");
@@ -284,7 +342,7 @@ impl Icons {
             geometry: Cell::new(Geometry {
                 width: 0,
                 height: 0,
-                tile: cell_for(settings.size),
+                tile: cell_for(settings.size, LabelFont::REFERENCE),
                 margin: MARGIN,
                 // "Am Raster ausrichten": on unless switched off
                 snap: store.snap.unwrap_or(true),
@@ -306,6 +364,7 @@ impl Icons {
             editing: RefCell::default(),
             reload_waiting: Cell::new(false),
             reload_timer: RefCell::default(),
+            rewatch_timer: RefCell::default(),
             trash_full: Cell::new(None),
             trash_timer: RefCell::default(),
             volume_monitor: crate::icons_enabled(
@@ -315,6 +374,7 @@ impl Icons {
             volume_places: RefCell::default(),
             volume_timer: RefCell::default(),
             settings: Cell::new(settings),
+            font: Cell::new(None),
             last_logged: RefCell::default(),
             last_selection: RefCell::default(),
             check_tiles: Cell::new(false),
@@ -345,6 +405,8 @@ impl Icons {
             }
             glib::ControlFlow::Continue
         });
+        icons.update_font();
+        icons.watch_font();
         icons.watch();
         icons.watch_volumes();
         icons.reload();
@@ -353,6 +415,46 @@ impl Icons {
         }
         icons.window.present();
         icons
+    }
+
+    /// QD-091: measures the label font; when it changed, the cells follow
+    /// (`cell_for`). Returns whether it changed.
+    fn update_font(&self) -> bool {
+        let font = LabelFont::measure(&self.fixed);
+        if Some(font) == self.font.get() {
+            return false;
+        }
+        self.font.set(Some(font));
+        let mut geometry = self.geometry.get();
+        geometry.tile = cell_for(self.settings.get().size, font);
+        self.geometry.set(geometry);
+        log(&format!(
+            "Schrift der Beschriftung: Zeichen {:.2} px, zwei Zeilen {} px, Zelle {}x{}",
+            font.char_width, font.two_lines, geometry.tile.0, geometry.tile.1
+        ));
+        true
+    }
+
+    /// QD-091: another font (name, size, scaling) resizes the cells and
+    /// rebuilds the icons; places are kept, the grid snaps them. Measured
+    /// once the widgets took the new font (idle after the notification).
+    fn watch_font(self: &Rc<Self>) {
+        let Some(settings) = gtk4::Settings::default() else {
+            return;
+        };
+        for property in ["gtk-font-name", "gtk-xft-dpi"] {
+            let weak = Rc::downgrade(self);
+            settings.connect_notify_local(Some(property), move |_, _| {
+                let weak = weak.clone();
+                glib::idle_add_local_once(move || {
+                    if let Some(icons) = weak.upgrade()
+                        && icons.update_font()
+                    {
+                        icons.reload();
+                    }
+                });
+            });
+        }
     }
 
     /// Re-reads which icons there are; places come from the state file.
@@ -418,7 +520,10 @@ impl Icons {
         ));
         self.settings.set(settings);
         let mut geometry = self.geometry.get();
-        geometry.tile = cell_for(settings.size);
+        geometry.tile = cell_for(
+            settings.size,
+            self.font.get().unwrap_or(LabelFont::REFERENCE),
+        );
         self.geometry.set(geometry);
         self.reload();
         self.check_tiles.set(true);
@@ -524,7 +629,14 @@ impl Icons {
         self.trash_full.set(trash_full);
         let widgets: Vec<gtk4::Box> = items
             .iter()
-            .map(|item| icon_widget(item, trash_full.unwrap_or(false), self.settings.get().size))
+            .map(|item| {
+                icon_widget(
+                    item,
+                    trash_full.unwrap_or(false),
+                    self.settings.get().size,
+                    self.geometry.get().tile,
+                )
+            })
             .collect();
         for widget in &widgets {
             // shown once placed (`layout`), never first at the top left
@@ -732,7 +844,8 @@ impl Icons {
             return false;
         }
         let lines = debugging();
-        for (item, widget) in items.iter().zip(widgets.iter()) {
+        let selection = self.selection.borrow();
+        for (index, (item, widget)) in items.iter().zip(widgets.iter()).enumerate() {
             // the whole tile as drawn (CSS padding included), not only its
             // content (`width()`)
             let Some(tile) = widget.compute_bounds(&self.fixed) else {
@@ -754,7 +867,8 @@ impl Icons {
                 ));
             }
             let tile = self.geometry.get().tile;
-            if w > tile.0 || h > tile.1 {
+            // a selected icon shows its whole name on purpose (`show_selection`)
+            if !selection.contains(&index) && (w > tile.0 || h > tile.1) {
                 log(&format!(
                     "Kachel größer als die Zelle: {} {w}x{h}",
                     item.name
@@ -766,12 +880,38 @@ impl Icons {
 
     fn show_selection(&self) {
         let selection = self.selection.borrow();
+        let mut raised = false;
         for (index, widget) in self.widgets.borrow().iter().enumerate() {
-            if selection.contains(&index) {
+            let selected = selection.contains(&index);
+            if selected {
                 widget.add_css_class("selected");
             } else {
                 widget.remove_css_class("selected");
             }
+            // QD-091: a selected icon shows its whole name, as GNOME 2 did,
+            // drawn above its neighbours (the last child is drawn last)
+            if let Some(label) = widget.last_child().and_downcast::<Label>() {
+                let lines = if selected { -1 } else { 2 };
+                if label.lines() != lines {
+                    label.set_lines(lines);
+                    label.set_ellipsize(if selected {
+                        gtk4::pango::EllipsizeMode::None
+                    } else {
+                        gtk4::pango::EllipsizeMode::End
+                    });
+                }
+            }
+            if selected && widget.next_sibling().is_some() {
+                widget.insert_before(&self.fixed, None::<&gtk4::Widget>);
+                raised = true;
+            }
+        }
+        // the rename box stays above every icon
+        if raised
+            && let Ok(editing) = self.editing.try_borrow()
+            && let Some(edit) = editing.as_ref()
+        {
+            edit.entry.insert_before(&self.fixed, None::<&gtk4::Widget>);
         }
         // the selection in the log when it changes (for the isolated tests)
         let names: Vec<String> = selection
@@ -1199,10 +1339,11 @@ impl Icons {
             });
         if let Some(volume) = volume {
             // QE-03: GNOME 2's volume menu, without what Querencia lacks
-            self.menu.append(Some("Öffnen"), Some("desktop.open"));
+            self.menu
+                .append(Some(&gettext("Open")), Some("desktop.open"));
             if let Some(removal) = volume.removal {
                 let section = gio::Menu::new();
-                section.append(Some(removal.label()), Some(removal.action()));
+                section.append(Some(&removal.menu_label()), Some(removal.action()));
                 self.menu.append_section(None, &section);
             }
             if debugging() {
@@ -1222,7 +1363,7 @@ impl Icons {
             if is_trash {
                 // HMP-10b: GNOME 2's trash menu
                 self.menu
-                    .append(Some("Papierkorb öffnen"), Some("desktop.open"));
+                    .append(Some(&gettext("Open Trash")), Some("desktop.open"));
                 let empty = gio::Menu::new();
                 // insensitive while the trash is empty (or unreachable)
                 let count = trash_count();
@@ -1231,7 +1372,7 @@ impl Icons {
                 // working trash monitor)
                 self.show_trash_state(count);
                 empty.append(
-                    Some("Papierkorb leeren…"),
+                    Some(&gettext("Empty Trash…")),
                     full.then_some("desktop.empty-trash"),
                 );
                 self.menu.append_section(None, &empty);
@@ -1242,7 +1383,8 @@ impl Icons {
                     ));
                 }
             } else {
-                self.menu.append(Some("Öffnen"), Some("desktop.open"));
+                self.menu
+                    .append(Some(&gettext("Open")), Some("desktop.open"));
             }
             let item = self.items.borrow().get(index).cloned();
             let file = item
@@ -1253,15 +1395,16 @@ impl Icons {
                 && matches!(item.kind, Kind::File(_) | Kind::Folder(_))
                 && let Some(programs) = self.open_with_menu(item)
             {
-                self.menu.append_submenu(Some("Öffnen mit"), &programs);
+                self.menu
+                    .append_submenu(Some(&gettext("Open With")), &programs);
             }
             if let Some(item) = file {
                 // 0.2.3: GNOME 2's clipboard section
                 let clip = gio::Menu::new();
-                clip.append(Some("Ausschneiden"), Some("desktop.cut"));
-                clip.append(Some("Kopieren"), Some("desktop.copy"));
+                clip.append(Some(&gettext("Cut")), Some("desktop.cut"));
+                clip.append(Some(&gettext("Copy")), Some("desktop.copy"));
                 if let Kind::Folder(path) = &item.kind {
-                    let paste = gio::MenuItem::new(Some("Einfügen in den Ordner"), None);
+                    let paste = gio::MenuItem::new(Some(&gettext("Paste Into Folder")), None);
                     if single && self.clipboard_has_files() {
                         paste.set_action_and_target_value(
                             Some("desktop.paste"),
@@ -1281,15 +1424,18 @@ impl Icons {
                     .get(index)
                     .is_some_and(|item| renamable(item).is_ok());
             // insensitive (no action) where renaming cannot work
-            edit.append(Some("Umbenennen …"), can_rename.then_some("desktop.rename"));
+            edit.append(
+                Some(&gettext("Rename…")),
+                can_rename.then_some("desktop.rename"),
+            );
             self.menu.append_section(None, &edit);
             if file.is_some() {
                 let trash = gio::Menu::new();
-                trash.append(Some("In den Papierkorb verschieben"), Some("desktop.trash"));
+                trash.append(Some(&gettext("Move to Trash")), Some("desktop.trash"));
                 self.menu.append_section(None, &trash);
                 let properties = gio::Menu::new();
                 properties.append(
-                    Some("Eigenschaften"),
+                    Some(&gettext("Properties")),
                     single.then_some("desktop.properties"),
                 );
                 self.menu.append_section(None, &properties);
@@ -1304,10 +1450,10 @@ impl Icons {
             let can_create = desktop_dir().is_some();
             let create = gio::Menu::new();
             if can_create {
-                create.append(Some("Ordner anlegen"), Some("desktop.new-folder"));
+                create.append(Some(&gettext("Create Folder")), Some("desktop.new-folder"));
                 let documents = gio::Menu::new();
                 documents.append_item(&gio::MenuItem::new(
-                    Some("Leere Datei"),
+                    Some(&gettext("Empty File")),
                     Some("desktop.new-document::"),
                 ));
                 for template in icons::templates(
@@ -1325,24 +1471,24 @@ impl Icons {
                     );
                     documents.append_item(&item);
                 }
-                create.append_submenu(Some("Dokument anlegen"), &documents);
+                create.append_submenu(Some(&gettext("Create Document")), &documents);
             }
             if create.n_items() > 0 {
                 self.menu.append_section(None, &create);
             }
             let arrange = gio::Menu::new();
             arrange.append(
-                Some("Nach Namen aufräumen"),
+                Some(&gettext("Clean Up by Name")),
                 Some("desktop.arrange-by-name"),
             );
             // HMP-10a: put every icon on the grid once; switch the grid on
             // or off (a check mark in the icon column, as GNOME 2 drew it)
             arrange.append(
-                Some("Symbole am Raster ausrichten"),
+                Some(&gettext("Align Icons to Grid")),
                 Some("desktop.align-to-grid"),
             );
             let toggle =
-                gio::MenuItem::new(Some("Am Raster ausrichten"), Some("desktop.toggle-grid"));
+                gio::MenuItem::new(Some(&gettext("Keep Aligned")), Some("desktop.toggle-grid"));
             if self.geometry.get().snap {
                 toggle.set_icon(&gio::ThemedIcon::from_names(&[
                     "object-select-symbolic",
@@ -1354,7 +1500,7 @@ impl Icons {
             self.menu.append_section(None, &arrange);
             if can_create {
                 // 0.2.3: the clipboard's files onto the desktop, at the click
-                let paste = gio::MenuItem::new(Some("Einfügen"), None);
+                let paste = gio::MenuItem::new(Some(&gettext("Paste")), None);
                 if self.clipboard_has_files() {
                     paste
                         .set_action_and_target_value(Some("desktop.paste"), Some(&"".to_variant()));
@@ -1365,7 +1511,7 @@ impl Icons {
             }
             let background = gio::Menu::new();
             background.append(
-                Some("Hintergrund der Arbeitsfläche ändern …"),
+                Some(&gettext("Change Desktop Background…")),
                 Some("desktop.change-background"),
             );
             self.menu.append_section(None, &background);
@@ -1500,7 +1646,7 @@ impl Icons {
             None,
             Box::new(|icons, _| {
                 if let Some(dir) = icons.ensure_desktop_dir() {
-                    let name = icons::unique_name("Neuer Ordner", |n| dir.join(n).exists());
+                    let name = icons::unique_name(&gettext("New Folder"), |n| dir.join(n).exists());
                     match gio::File::for_path(dir.join(&name))
                         .make_directory(gio::Cancellable::NONE)
                     {
@@ -1586,12 +1732,11 @@ impl Icons {
             return;
         }
         let dialog = gtk4::AlertDialog::builder()
-            .message("Möchten Sie alle Dateien im Papierkorb endgültig löschen?")
-            .detail(
-                "Wenn Sie den Papierkorb leeren, werden alle darin befindlichen \
-                 Objekte unwiderruflich gelöscht.",
-            )
-            .buttons(["Abbrechen", "Papierkorb leeren"])
+            .message(gettext("Empty all items from the trash?"))
+            .detail(gettext(
+                "If you empty the trash, all items in it will be permanently lost.",
+            ))
+            .buttons([gettext("Cancel"), gettext("Empty Trash")])
             .cancel_button(0)
             .default_button(0)
             .modal(false)
@@ -1637,8 +1782,11 @@ impl Icons {
             Err(err) => {
                 log(&format!("Papierkorb nicht erreichbar: {err}"));
                 show_error(
-                    "Der Papierkorb konnte nicht geleert werden.",
-                    &format!("Der Papierkorb ist nicht erreichbar: {}", err.message()),
+                    &gettext("The trash could not be emptied."),
+                    &gettext_f(
+                        "The trash cannot be reached: {why}",
+                        &[("why", err.message())],
+                    ),
                 );
                 return;
             }
@@ -1746,8 +1894,40 @@ impl Icons {
     fn watch(self: &Rc<Self>) {
         let mut watches = Vec::new();
         let mut targets = vec![gio::File::for_uri("trash:///")];
-        if let Some(dir) = desktop_dir().filter(|d| d.is_dir()) {
+        let desktop = desktop_dir();
+        if let Some(dir) = desktop.as_ref().filter(|d| d.is_dir()) {
             targets.push(gio::File::for_path(dir));
+        }
+        // QD-112: a desktop directory made after the start (or removed) is
+        // awaited in its nearest existing ancestor
+        let waiting = desktop
+            .as_ref()
+            .and_then(|dir| icons::waiting_point(dir, Path::is_dir));
+        if let Some(point) = &waiting {
+            match gio::File::for_path(point)
+                .monitor_directory(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE)
+            {
+                Ok(monitor) => {
+                    log(&format!(
+                        "Arbeitsflächen-Ordner fehlt, warte in {}",
+                        point.display()
+                    ));
+                    let weak = Rc::downgrade(self);
+                    let dir = desktop.clone().unwrap_or_default();
+                    monitor.connect_changed(move |_, file, other, _| {
+                        let touched = [Some(file), other]
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|f| f.path())
+                            .any(|path| icons::concerns_desktop(&dir, &path));
+                        if touched && let Some(icons) = weak.upgrade() {
+                            icons.rewatch_soon();
+                        }
+                    });
+                    watches.push(monitor);
+                }
+                Err(err) => log(&format!("keine Überwachung von {}: {err}", point.display())),
+            }
         }
         for target in targets {
             let is_trash = target.uri_scheme().as_deref() == Some("trash");
@@ -1768,6 +1948,14 @@ impl Icons {
                                 icons.update_trash_soon();
                             }
                             return;
+                        }
+                        // QD-112: the desktop directory itself went away
+                        if matches!(
+                            event,
+                            gio::FileMonitorEvent::Deleted | gio::FileMonitorEvent::MovedOut
+                        ) && file.path().is_some_and(|p| Some(p) == desktop_dir())
+                        {
+                            icons.rewatch_soon();
                         }
                         // renamed elsewhere (a file manager): keep the place
                         if event == gio::FileMonitorEvent::Renamed
@@ -1809,6 +1997,31 @@ impl Icons {
             }
         }
         *self.watches.borrow_mut() = watches;
+    }
+
+    /// QD-112: the desktop directory appeared or vanished: new monitors
+    /// (the directory itself, or the ancestor to wait in) and a refresh, so
+    /// that its files appear at once.
+    fn rewatch_soon(self: &Rc<Self>) {
+        if let Some(id) = self.rewatch_timer.take() {
+            id.remove();
+        }
+        let weak = Rc::downgrade(self);
+        let id = glib::timeout_add_local_once(Duration::from_millis(120), move || {
+            if let Some(icons) = weak.upgrade() {
+                icons.rewatch_timer.take();
+                let dir = desktop_dir();
+                let present = dir.as_ref().is_some_and(|d| d.is_dir());
+                log(&format!(
+                    "Arbeitsflächen-Ordner {}: {}",
+                    if present { "da" } else { "weg" },
+                    dir.map(|d| d.display().to_string()).unwrap_or_default()
+                ));
+                icons.watch();
+                icons.reload();
+            }
+        });
+        *self.rewatch_timer.borrow_mut() = Some(id);
     }
 
     /// QE-03: follows mounts coming and going (and changing).
@@ -1958,7 +2171,7 @@ impl Icons {
                 item.name
             ));
             show_error(
-                &format!("„{}“ kann nicht umbenannt werden.", item.name),
+                &gettext_f("“{name}” cannot be renamed.", &[("name", &item.name)]),
                 &reason,
             );
             return;
@@ -2070,7 +2283,10 @@ impl Icons {
     fn apply_rename(&self, item: &Item, new: &str) -> Result<(), (String, String)> {
         let failed = |detail: String| {
             (
-                format!("„{}“ konnte nicht in „{new}“ umbenannt werden.", item.name),
+                gettext_f(
+                    "“{name}” could not be renamed to “{new}”.",
+                    &[("name", &item.name), ("new", new)],
+                ),
                 detail,
             )
         };
@@ -2082,17 +2298,19 @@ impl Icons {
                 rename::check_file_name(new).map_err(|p| failed(p.text(new)))?;
                 let old = item.ident();
                 let gone = || {
-                    format!(
-                        "„{old}“ gibt es nicht mehr. Vielleicht wurde es inzwischen gelöscht oder verschoben."
+                    gettext_f(
+                        "“{name}” no longer exists. Perhaps it was deleted or moved in the meantime.",
+                        &[("name", &old)],
                     )
                 };
                 if path.symlink_metadata().is_err() {
                     return Err(failed(gone()));
                 }
                 let exists = || {
-                    format!(
-                        "Der Name „{new}“ wird in diesem Ordner bereits verwendet. \
-                         Bitte verwenden Sie einen anderen Namen."
+                    gettext_f(
+                        "The name “{new}” is already used in this folder. \
+                         Please use a different name.",
+                        &[("new", new)],
                     )
                 };
                 if path.with_file_name(new).symlink_metadata().is_ok() {
@@ -2105,9 +2323,10 @@ impl Icons {
                         failed(match err.kind::<gio::IOErrorEnum>() {
                             Some(gio::IOErrorEnum::Exists) => exists(),
                             Some(gio::IOErrorEnum::NotFound) => gone(),
-                            Some(gio::IOErrorEnum::PermissionDenied) => {
-                                format!("Sie haben keine Berechtigung, „{old}“ umzubenennen.")
-                            }
+                            Some(gio::IOErrorEnum::PermissionDenied) => gettext_f(
+                                "You do not have the permissions to rename “{name}”.",
+                                &[("name", &old)],
+                            ),
                             Some(gio::IOErrorEnum::InvalidFilename) => {
                                 rename::Problem::Dots.text(new)
                             }
@@ -2147,7 +2366,7 @@ impl Icons {
                 self.set_alias(item, new);
                 Ok(())
             }
-            Kind::Volume(_) => Err(failed(VOLUME_NAME.to_owned())),
+            Kind::Volume(_) => Err(failed(volume_name_note())),
         }
     }
 
@@ -2262,24 +2481,26 @@ fn delete_next(icons: std::rc::Weak<Icons>, run: Rc<RefCell<TrashRun>>) {
             icons.update_trash_icon();
         }
         if !run.failed.is_empty() {
-            let (verb, rest) = if run.failed.len() == 1 {
-                ("konnte", "ist")
-            } else {
-                ("konnten", "sind")
-            };
-            let mut detail = format!(
-                "{} von {} Objekten {verb} nicht gelöscht werden und {rest} noch im Papierkorb:",
-                run.failed.len(),
-                run.total
+            let mut detail = ngettext_f(
+                "{n} of {total} items could not be deleted and is still in the trash:",
+                "{n} of {total} items could not be deleted and are still in the trash:",
+                u32::try_from(run.failed.len()).unwrap_or(u32::MAX),
+                &[("total", &run.total.to_string())],
             );
             for (name, why) in run.failed.iter().take(5) {
-                detail.push_str(&format!("\n• {name}: {why}"));
+                detail.push('\n');
+                detail.push_str(&gettext_f(
+                    "• {name}: {why}",
+                    &[("name", name), ("why", why)],
+                ));
             }
             if run.failed.len() > 5 {
-                detail.push_str(&format!("\n… und {} weitere", run.failed.len() - 5));
+                let more = u32::try_from(run.failed.len() - 5).unwrap_or(u32::MAX);
+                detail.push('\n');
+                detail.push_str(&ngettext_f("… and {n} more", "… and {n} more", more, &[]));
             }
             show_error(
-                "Der Papierkorb konnte nicht vollständig geleert werden.",
+                &gettext("The trash could not be emptied completely."),
                 &detail,
             );
         }
@@ -2292,17 +2513,18 @@ fn delete_next(icons: std::rc::Weak<Icons>, run: Rc<RefCell<TrashRun>>) {
         move |result| {
             if let Err(err) = result {
                 log(&format!("nicht gelöscht: {name} ({}): {err}", file2.uri()));
-                // in German first; GVfs' own text (often English) as detail
+                // in the user's language first; GVfs' own text (often
+                // English) as detail
                 let why = match err.kind::<gio::IOErrorEnum>() {
-                    Some(gio::IOErrorEnum::PermissionDenied) => "keine Berechtigung".to_owned(),
-                    Some(gio::IOErrorEnum::NotFound) => "nicht mehr vorhanden".to_owned(),
+                    Some(gio::IOErrorEnum::PermissionDenied) => gettext("permission denied"),
+                    Some(gio::IOErrorEnum::NotFound) => gettext("no longer there"),
                     Some(
                         gio::IOErrorEnum::NotMounted
                         | gio::IOErrorEnum::HostNotFound
                         | gio::IOErrorEnum::HostUnreachable
                         | gio::IOErrorEnum::TimedOut,
-                    ) => "Datenträger nicht erreichbar".to_owned(),
-                    _ => format!("nicht löschbar (GVfs: {})", err.message()),
+                    ) => gettext("volume not reachable"),
+                    _ => gettext_f("cannot be deleted (GVfs: {why})", &[("why", err.message())]),
                 };
                 run.borrow_mut().failed.push((name, why));
             }
@@ -2365,17 +2587,22 @@ fn set_launcher_name(path: &Path, new: &str) -> Result<(), String> {
     let (bytes, etag) = file
         .load_contents(gio::Cancellable::NONE)
         .map_err(|err| err.message().to_owned())?;
-    let text = std::str::from_utf8(&bytes)
-        .map_err(|_| "Die Starter-Datei ist kein gültiger Text.".to_owned())?;
+    let text =
+        std::str::from_utf8(&bytes).map_err(|_| gettext("The launcher file is not valid text."))?;
     let keys = glib::KeyFile::new();
     keys.load_from_data(text, glib::KeyFileFlags::KEEP_TRANSLATIONS)
-        .map_err(|err| format!("Die Starter-Datei ist ungültig: {}", err.message()))?;
+        .map_err(|err| {
+            gettext_f(
+                "The launcher file is not valid: {why}",
+                &[("why", err.message())],
+            )
+        })?;
     let key = rename::name_key(
         keys.locale_for_key("Desktop Entry", "Name", None)
             .as_deref(),
     );
     let changed = rename::with_name(text, &key, new)
-        .ok_or_else(|| "Die Starter-Datei hat keine Gruppe [Desktop Entry].".to_owned())?;
+        .ok_or_else(|| gettext("The launcher file has no group [Desktop Entry]."))?;
     let mode =
         std::fs::metadata(path).map(|m| std::os::unix::fs::PermissionsExt::mode(&m.permissions()));
     // The etag refuses to overwrite a file changed in the meantime.
@@ -2388,8 +2615,7 @@ fn set_launcher_name(path: &Path, new: &str) -> Result<(), String> {
     )
     .map_err(|err| match err.kind::<gio::IOErrorEnum>() {
         Some(gio::IOErrorEnum::WrongEtag) => {
-            "Die Starter-Datei wurde inzwischen verändert. Bitte versuchen Sie es erneut."
-                .to_owned()
+            gettext("The launcher file was changed in the meantime. Please try again.")
         }
         _ => err.message().to_owned(),
     })?;
@@ -2402,8 +2628,6 @@ fn set_launcher_name(path: &Path, new: &str) -> Result<(), String> {
     Ok(())
 }
 
-const VOLUME_NAME: &str = "Datenträger behalten ihren eigenen Namen.";
-
 /// Whether `item` can get a new name; Err: why not (for the user).
 fn renamable(item: &Item) -> Result<(), String> {
     match &item.kind {
@@ -2415,24 +2639,31 @@ fn renamable(item: &Item) -> Result<(), String> {
             );
             match info {
                 Ok(info) if info.boolean("access::can-rename") => Ok(()),
-                Ok(_) => Err(format!(
-                    "Sie haben keine Berechtigung, „{}“ umzubenennen.",
-                    item.name
+                Ok(_) => Err(gettext_f(
+                    "You do not have the permissions to rename “{name}”.",
+                    &[("name", &item.name)],
                 )),
-                Err(_) => Err(format!("„{}“ gibt es nicht mehr.", item.name)),
+                Err(_) => Err(gettext_f(
+                    "“{name}” no longer exists.",
+                    &[("name", &item.name)],
+                )),
             }
         }
         // a name of the user's own, kept in the state file
         Kind::Launcher(_) | Kind::Computer | Kind::Home | Kind::Trash | Kind::App(_) => Ok(()),
-        Kind::Volume(_) => Err(VOLUME_NAME.to_owned()),
+        Kind::Volume(_) => Err(volume_name_note()),
     }
+}
+
+fn volume_name_note() -> String {
+    gettext("Volumes keep their own names.")
 }
 
 fn show_error(title: &str, detail: &str) {
     let dialog = gtk4::AlertDialog::builder()
         .message(title)
         .detail(detail)
-        .buttons(["Schließen"])
+        .buttons([gettext("Close")])
         .cancel_button(0)
         .default_button(0)
         .modal(false)
@@ -2449,13 +2680,13 @@ fn load_items(settings: &config::IconSettings) -> (Vec<Item>, bool) {
     let mut items = Vec::new();
     let files = DesktopAppInfo::new(FILES_APP);
     if files.is_some() && settings.computer {
-        items.push(Item::new(Kind::Computer, "Rechner"));
+        items.push(Item::new(Kind::Computer, &gettext("Computer")));
     }
     if settings.home && gio::AppInfo::default_for_type("inode/directory", false).is_some() {
-        items.push(Item::new(Kind::Home, "Persönlicher Ordner"));
+        items.push(Item::new(Kind::Home, &gettext("Home Folder")));
     }
     if files.is_some() && settings.trash {
-        items.push(Item::new(Kind::Trash, "Papierkorb"));
+        items.push(Item::new(Kind::Trash, &gettext("Trash")));
     }
     if let Some(terminal) = DesktopAppInfo::new(TERMINAL_APP) {
         items.push(Item::new(
@@ -2696,30 +2927,33 @@ fn label_lines(label: &Label) -> Vec<String> {
     lines
 }
 
-fn icon_widget(item: &Item, trash_full: bool, icon_px: i32) -> gtk4::Box {
+fn icon_widget(item: &Item, trash_full: bool, icon_px: i32, cell: (i32, i32)) -> gtk4::Box {
     let tile = gtk4::Box::new(Orientation::Vertical, 2);
     tile.add_css_class("desktop-icon");
     // HMP-10b: the tile spans the whole cell width (cells never overlap,
     // every grid keeps at least a cell between columns). With 6 px less,
     // "Persönlicher" (89 px in DejaVu/Adwaita Sans 11) missed the 88 px
     // left for the text by one pixel and was split ("Persönliche" / "r").
-    let cell = cell_for(icon_px);
-    tile.set_size_request(cell.0, cell.1 - 6);
+    // QD-091: the cell follows the font (`cell_for`).
+    tile.set_size_request(cell.0, cell.1 - TILE_GAP);
     let image = Image::from_gicon(&icon_for(item, trash_full));
     image.set_pixel_size(icon_px);
     image.set_halign(Align::Center);
     let label = Label::new(Some(&item.name));
     label.set_wrap(true);
     label.set_wrap_mode(gtk4::pango::WrapMode::WordChar);
-    // GTK sizes a wrapped label to the narrowest width with the same number
-    // of lines, which may split a word: keep whole words for that width.
-    label.set_natural_wrap_mode(gtk4::NaturalWrapMode::Word);
+    // QD-091: the natural width is the unwrapped text, so a long label takes
+    // the whole cell and wraps there. With `Word` GTK sized a wrapped label
+    // to the narrowest width with the same number of lines; with an
+    // ellipsized second line that split words ("Gemeinsam" / "e …") and cut
+    // names that fit ("user auf" / "nas.exam…").
+    label.set_natural_wrap_mode(gtk4::NaturalWrapMode::None);
     label.set_lines(2);
     label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
     label.set_justify(gtk4::Justification::Center);
     // GNOME 2 broke desktop labels between words ("Persönlicher" /
     // "Ordner") and only split over-long words, never with a hyphen.
-    label.set_max_width_chars(14);
+    label.set_max_width_chars(LINE_CHARS);
     let attributes = gtk4::pango::AttrList::new();
     attributes.insert(gtk4::pango::AttrInt::new_insert_hyphens(false));
     label.set_attributes(Some(&attributes));
@@ -2761,7 +2995,18 @@ fn open(item: &Item, window: &ApplicationWindow) {
                 return;
             }
         }
-        Kind::File(path) => open_file(path, &context),
+        Kind::File(path) => match open_file(path, &context) {
+            Err(OpenFailure::NoProgram(content_type)) => {
+                log(&format!(
+                    "{} nicht geöffnet: kein Programm für {content_type}",
+                    item.name
+                ));
+                no_program(item, path, &content_type, context.clone());
+                return;
+            }
+            Err(OpenFailure::Gio(err)) => Err(err),
+            Ok(()) => Ok(()),
+        },
         Kind::Folder(path) => {
             gio::AppInfo::launch_default_for_uri(&gio::File::for_path(path).uri(), Some(&context))
         }
@@ -2777,12 +3022,21 @@ fn open(item: &Item, window: &ApplicationWindow) {
     }
 }
 
+/// Why `open_file` started nothing.
+enum OpenFailure {
+    /// QD-102: neither the file's type nor the type its name suggests has a
+    /// program; the file's type.
+    NoProgram(String),
+    Gio(glib::Error),
+}
+
 /// Desktop 0.2.2: a file opens with the default program for its type, as
 /// before. When that type has none (an empty file is
 /// `application/x-zerosize`), it opens with the default program for the
-/// type its name suggests (`icons::type_from_name`), as Nautilus does;
-/// without one GIO's error goes to the log and nothing is started.
-fn open_file(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), glib::Error> {
+/// type its name suggests (`icons::type_from_name`), as Nautilus does.
+/// QD-102: without one nothing is started and the caller shows a notice
+/// (`no_program`).
+fn open_file(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), OpenFailure> {
     let file = gio::File::for_path(path);
     let uri = file.uri();
     let content_type = file
@@ -2791,13 +3045,12 @@ fn open_file(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), glib::E
             gio::FileQueryInfoFlags::NONE,
             gio::Cancellable::NONE,
         )
-        .ok()
-        .and_then(|info| info.content_type());
-    let handled = content_type
-        .as_deref()
-        .is_some_and(|t| gio::AppInfo::default_for_type(t, false).is_some());
-    if handled {
-        return gio::AppInfo::launch_default_for_uri(&uri, Some(context));
+        .map_err(OpenFailure::Gio)?
+        .content_type()
+        .map(|t| t.to_string())
+        .unwrap_or_else(|| "application/octet-stream".to_owned());
+    if gio::AppInfo::default_for_type(&content_type, false).is_some() {
+        return gio::AppInfo::launch_default_for_uri(&uri, Some(context)).map_err(OpenFailure::Gio);
     }
     let by_name = path
         .file_name()
@@ -2805,16 +3058,51 @@ fn open_file(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), glib::E
     match by_name.and_then(|t| gio::AppInfo::default_for_type(&t, false).map(|app| (t, app))) {
         Some((t, app)) => {
             log(&format!(
-                "{}: {} ohne Programm, öffne als {t} mit {}",
+                "{}: {content_type} ohne Programm, öffne als {t} mit {}",
                 path.display(),
-                content_type.as_deref().unwrap_or("unbekannter Typ"),
                 app.id().unwrap_or_default()
             ));
             app.launch_uris(&[uri.as_str()], Some(context))
+                .map_err(OpenFailure::Gio)
         }
-        // GIO's own message ("keine Anwendung gefunden …")
-        None => gio::AppInfo::launch_default_for_uri(&uri, Some(context)),
+        None => Err(OpenFailure::NoProgram(content_type)),
     }
+}
+
+/// QD-102: no program opens `path`: says so with the file's name and type
+/// (as Nautilus 2 did) and offers GTK's program choice.
+fn no_program(item: &Item, path: &Path, content_type: &str, context: gdk::AppLaunchContext) {
+    let description = gio::content_type_get_description(content_type);
+    let dialog = gtk4::AlertDialog::builder()
+        .message(gettext_f(
+            "“{name}” cannot be opened.",
+            &[("name", &item.name)],
+        ))
+        .detail(gettext_f(
+            "There is no application installed for “{type}” files ({mime}).",
+            &[("type", &description), ("mime", content_type)],
+        ))
+        .buttons([gettext("Close"), gettext("Open With Other Application…")])
+        .cancel_button(0)
+        .default_button(1)
+        .modal(false)
+        .build();
+    log(&format!("Hinweis: kein Programm für {}", item.name));
+    let item = item.clone();
+    let path = path.to_path_buf();
+    // No parent: the desktop is a layer surface, not a toplevel window.
+    dialog.choose(
+        None::<&gtk4::Window>,
+        gio::Cancellable::NONE,
+        move |answer| {
+            if answer == Ok(1) {
+                let uri = gio::File::for_path(&path).uri().to_string();
+                transfer::choose_app(&item, &path, uri, context);
+            } else {
+                log(&format!("Hinweis ohne Programm geschlossen: {}", item.name));
+            }
+        },
+    );
 }
 
 fn launch_starter(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), glib::Error> {
@@ -2846,16 +3134,16 @@ fn is_trusted(path: &Path) -> bool {
 /// Nautilus 2.30's question for an untrusted starter.
 fn ask_trust(item: &Item, path: PathBuf, context: gdk::AppLaunchContext) {
     let dialog = gtk4::AlertDialog::builder()
-        .message("Nicht vertrauenswürdiger Anwendungsstarter")
-        .detail(format!(
-            "Der Anwendungsstarter „{}“ wurde nicht als vertrauenswürdig markiert. \
-             Wenn Sie die Herkunft dieser Datei nicht kennen, kann ihr Start unsicher sein.",
-            item.name
+        .message(gettext("Untrusted application launcher"))
+        .detail(gettext_f(
+            "The application launcher “{name}” has not been marked as trusted. \
+             If you do not know the source of this file, launching it may be unsafe.",
+            &[("name", &item.name)],
         ))
         .buttons([
-            "Abbrechen",
-            "Als vertrauenswürdig markieren",
-            "Trotzdem starten",
+            gettext("Cancel"),
+            gettext("Mark as Trusted"),
+            gettext("Launch Anyway"),
         ])
         .cancel_button(0)
         .default_button(0)
@@ -2898,7 +3186,7 @@ fn ask_trust(item: &Item, path: PathBuf, context: gdk::AppLaunchContext) {
 /// name; GIO's create/copy without overwrite flags fail on existing names.
 fn new_document(dir: &std::path::Path, template: &str) {
     if template.is_empty() {
-        let name = icons::unique_name("Neues Dokument", |n| dir.join(n).exists());
+        let name = icons::unique_name(&gettext("New Document"), |n| dir.join(n).exists());
         match gio::File::for_path(dir.join(&name))
             .create(gio::FileCreateFlags::NONE, gio::Cancellable::NONE)
         {
@@ -2914,7 +3202,7 @@ fn new_document(dir: &std::path::Path, template: &str) {
     let base = source
         .basename()
         .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "Vorlage".to_owned());
+        .unwrap_or_else(|| gettext("Template"));
     let name = icons::unique_name(&base, |n| dir.join(n).exists());
     match source.copy(
         &gio::File::for_path(dir.join(&name)),
@@ -2993,12 +3281,12 @@ fn start_settings(icons: &Rc<Icons>, program: &Path) -> Result<(), glib::Error> 
 /// colour stay as they are.
 fn choose_background(done: Rc<dyn Fn()>) {
     let filter = gtk4::FileFilter::new();
-    filter.set_name(Some("Bilder"));
+    filter.set_name(Some(&gettext("Images")));
     filter.add_mime_type("image/*");
     let filters = gio::ListStore::new::<gtk4::FileFilter>();
     filters.append(&filter);
     let dialog = gtk4::FileDialog::builder()
-        .title("Hintergrund der Arbeitsfläche ändern")
+        .title(gettext("Change Desktop Background"))
         .modal(false)
         .filters(&filters)
         .default_filter(&filter)
@@ -3080,5 +3368,31 @@ mod tests {
             .expect("cleanup");
         assert_eq!(settings_program(Some(&relative), &home), None);
         std::fs::remove_dir_all(&base).expect("cleanup");
+    }
+
+    #[test]
+    fn cells_follow_the_label_font() {
+        // DejaVu Sans 11 and 12 at 96 dpi (Pango's approximate character
+        // width, height of two lines)
+        let eleven = LabelFont::REFERENCE;
+        let twelve = LabelFont {
+            char_width: 8.35,
+            two_lines: 38,
+        };
+        // 14 characters and the padding; icon, two lines, padding and gap
+        assert_eq!(cell_for(48, eleven), (116, 96));
+        assert_eq!(cell_for(48, twelve), (125, 98));
+        // the drawn tile of two lines (2 + 48 + 2 + 38 + 2 = 92) fits with
+        // a gap: neighbouring tiles never touch (the live finding: 92 in 88)
+        assert!(cell_for(48, twelve).1 >= 92 + TILE_GAP);
+        // larger icons keep their wider cells, smaller fonts never shrink
+        // a cell below the QE-04 sizes
+        assert_eq!(cell_for(96, eleven).0, 130);
+        let tiny = LabelFont {
+            char_width: 4.0,
+            two_lines: 20,
+        };
+        assert_eq!(cell_for(32, tiny), (100, 72));
+        assert_eq!(cell_for(72, tiny), (110, 112));
     }
 }

@@ -20,6 +20,7 @@ use gtk4::prelude::*;
 use gtk4::{gio, glib};
 
 use crate::config::IconSettings;
+use crate::i18n::{gettext, gettext_f, ngettext_f};
 use crate::layout::Place;
 
 /// What GIO tells about a mount, without GIO.
@@ -255,10 +256,19 @@ impl Picture {
 }
 
 impl Removal {
+    /// For the log.
     pub fn label(self) -> &'static str {
         match self {
             Removal::Eject => "Auswerfen",
             Removal::Unmount => "Aushängen",
+        }
+    }
+
+    /// The entry of the icon menu.
+    pub fn menu_label(self) -> String {
+        match self {
+            Removal::Eject => gettext("Eject"),
+            Removal::Unmount => gettext("Unmount"),
         }
     }
 
@@ -280,20 +290,20 @@ pub fn failure(
     message: &str,
 ) -> Option<(String, String)> {
     let title = match removal {
-        Removal::Eject => format!("„{name}“ konnte nicht ausgeworfen werden."),
-        Removal::Unmount => format!("„{name}“ konnte nicht ausgehängt werden."),
+        Removal::Eject => gettext_f("“{name}” could not be ejected.", &[("name", name)]),
+        Removal::Unmount => gettext_f("“{name}” could not be unmounted.", &[("name", name)]),
     };
     let detail = match kind {
         Some(gio::IOErrorEnum::Cancelled | gio::IOErrorEnum::FailedHandled) => return None,
-        Some(gio::IOErrorEnum::Busy) => "Der Datenträger wird noch benutzt. Schließen Sie alle \
-             Programme und Fenster, die Dateien auf diesem Datenträger geöffnet haben, und \
-             versuchen Sie es erneut."
-            .to_owned(),
+        Some(gio::IOErrorEnum::Busy) => gettext(
+            "The volume is still in use. Close all programs and windows that have files \
+             on this volume open, and try again.",
+        ),
         Some(gio::IOErrorEnum::PermissionDenied) => {
-            "Sie haben keine Berechtigung für diesen Datenträger.".to_owned()
+            gettext("You do not have the permissions for this volume.")
         }
         Some(gio::IOErrorEnum::NotMounted | gio::IOErrorEnum::NotFound) => {
-            "Der Datenträger ist nicht mehr eingehängt.".to_owned()
+            gettext("The volume is no longer mounted.")
         }
         _ => message.to_owned(),
     };
@@ -333,32 +343,47 @@ pub fn busy_question(
     removal: Removal,
     name: &str,
     users: &[(u32, String)],
-) -> (String, String, [&'static str; 2]) {
+) -> (String, String, [String; 2]) {
     let mut detail = if users.is_empty() {
-        "Ein Programm hat noch Dateien auf dem Datenträger geöffnet.".to_owned()
+        gettext("A program still has files on the volume open.")
     } else {
-        let mut text =
-            "Diese Programme haben noch Dateien auf dem Datenträger geöffnet:".to_owned();
+        let mut text = gettext("These programs still have files on the volume open:");
         for (pid, program) in users.iter().take(5) {
-            text.push_str(&format!("\n• {program} (Prozess {pid})"));
+            text.push('\n');
+            text.push_str(&gettext_f(
+                "• {program} (process {pid})",
+                &[("program", program), ("pid", &pid.to_string())],
+            ));
         }
         if users.len() > 5 {
-            text.push_str(&format!("\n… und {} weitere", users.len() - 5));
+            let more = u32::try_from(users.len() - 5).unwrap_or(u32::MAX);
+            text.push('\n');
+            text.push_str(&ngettext_f("… and {n} more", "… and {n} more", more, &[]));
         }
         text
     };
-    let (verb, anyway) = match removal {
-        Removal::Eject => ("werfen Sie ihn trotzdem aus", "Trotzdem auswerfen"),
-        Removal::Unmount => ("hängen Sie ihn trotzdem aus", "Trotzdem aushängen"),
+    let (advice, anyway) = match removal {
+        Removal::Eject => (
+            gettext(
+                "Close the programs, or eject the volume anyway. Unsaved data of these \
+                 programs may be lost.",
+            ),
+            gettext("Eject Anyway"),
+        ),
+        Removal::Unmount => (
+            gettext(
+                "Close the programs, or unmount the volume anyway. Unsaved data of these \
+                 programs may be lost.",
+            ),
+            gettext("Unmount Anyway"),
+        ),
     };
-    detail.push_str(&format!(
-        "\n\nSchließen Sie die Programme, oder {verb}. Ungesicherte Daten \
-         dieser Programme können dabei verloren gehen."
-    ));
+    detail.push_str("\n\n");
+    detail.push_str(&advice);
     (
-        format!("Der Datenträger „{name}“ wird noch benutzt."),
+        gettext_f("The volume “{name}” is still in use.", &[("name", name)]),
         detail,
-        ["Abbrechen", anyway],
+        [gettext("Cancel"), anyway],
     )
 }
 
@@ -766,8 +791,8 @@ mod tests {
             "target is busy",
         )
         .expect("busy is reported");
-        assert_eq!(title, "„QDTEST“ konnte nicht ausgehängt werden.");
-        assert!(detail.starts_with("Der Datenträger wird noch benutzt."));
+        assert_eq!(title, "“QDTEST” could not be unmounted.");
+        assert!(detail.starts_with("The volume is still in use."));
         let (title, detail) = failure(
             Some(gio::IOErrorEnum::Failed),
             Removal::Eject,
@@ -775,7 +800,7 @@ mod tests {
             "kaputt",
         )
         .expect("x");
-        assert_eq!(title, "„cidata“ konnte nicht ausgeworfen werden.");
+        assert_eq!(title, "“cidata” could not be ejected.");
         assert_eq!(detail, "kaputt");
         assert_eq!(
             failure(
@@ -830,18 +855,16 @@ mod tests {
     fn the_busy_question_names_the_programs() {
         let (message, detail, buttons) =
             busy_question(Removal::Unmount, "QDTEST", &[(40, "sleep".to_owned())]);
-        assert_eq!(message, "Der Datenträger „QDTEST“ wird noch benutzt.");
-        assert!(detail.contains("• sleep (Prozess 40)"), "{detail}");
-        assert!(detail.contains("hängen Sie ihn trotzdem aus"));
-        assert_eq!(buttons, ["Abbrechen", "Trotzdem aushängen"]);
+        assert_eq!(message, "The volume “QDTEST” is still in use.");
+        assert!(detail.contains("• sleep (process 40)"), "{detail}");
+        assert!(detail.contains("unmount the volume anyway"));
+        assert_eq!(buttons, ["Cancel", "Unmount Anyway"]);
         let many: Vec<(u32, String)> = (1..=7).map(|n| (n, format!("p{n}"))).collect();
         let (_, detail, buttons) = busy_question(Removal::Eject, "cidata", &many);
-        assert!(
-            detail.contains("p5") && !detail.contains("p6") && detail.contains("… und 2 weitere")
-        );
-        assert_eq!(buttons[1], "Trotzdem auswerfen");
+        assert!(detail.contains("p5") && !detail.contains("p6") && detail.contains("… and 2 more"));
+        assert_eq!(buttons[1], "Eject Anyway");
         let (_, detail, _) = busy_question(Removal::Unmount, "x", &[]);
-        assert!(detail.starts_with("Ein Programm hat noch Dateien"));
+        assert!(detail.starts_with("A program still has files"));
     }
 
     #[test]
