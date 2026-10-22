@@ -70,7 +70,7 @@ und 0.2.2:
 - `autostart` (Panel-Block der Vorgabe wie vom Starter ausgeführt): neue
   Vorgabe + 0.2.3 → Überwachung, Record-Datei, Neustart nach Absturz,
   Abmelden per SIGTERM beendet beide in ~0,1 s; neue Vorgabe + 0.2.2 → wie
-  bisher; alte Vorgabe + 0.2.3 → wie bisher (18/18).
+  bisher; alte Vorgabe + 0.2.3 → wie bisher (17/17).
 - `tausch`: ohne → mit, Absturz danach, mit → mit (neue Fassung, altes Panel
   nicht neu gestartet), mit → ohne, kaputtes neues Panel → Rückfall (31/31).
 - Probe des Skripts samt Starter-Abgleich S1–S5: 40/40.
