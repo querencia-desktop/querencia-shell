@@ -1,5 +1,18 @@
 # Änderungen – querencia-desktop
 
+## 0.2.4 – 2026-10-22
+
+Die Beschriftung der Arbeitsflächen-Symbole steht wieder ohne Platte auf dem
+Hintergrundbild (Wunsch des Besitzers vom 22.10.2026: die dunkle Platte hinter
+„Rechner“, „Persönlicher Ordner“, „Papierkorb“ und den Startern stört auf dem
+Bild).
+
+- Weißer Text mit dunklem Schattenkranz: drei gestapelte Schatten, zwei
+  weiche rund um die Buchstaben und einer nach rechts unten versetzt wie
+  unter GNOME 2. Die 55 % schwarze Platte aus 0.2.1 entfällt.
+- Ausgewählte Symbole und Ablageziele behalten die orange Platte.
+- Hell und dunkel gleich; der Schatten ist in keinem Farbschema anders.
+
 ## 0.2.3 – 2026-10-21
 
 Dateien auf der Arbeitsfläche arbeiten mit anderen Programmen zusammen
