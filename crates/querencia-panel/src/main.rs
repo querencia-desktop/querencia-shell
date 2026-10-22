@@ -18,6 +18,7 @@ mod launcher;
 mod layout;
 mod layout_editor;
 mod layout_store;
+mod links;
 mod logo;
 mod network_applet;
 mod network_dialogs;
