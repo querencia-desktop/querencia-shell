@@ -1,0 +1,565 @@
+# Übersetzungsvorlage für Querencia Desktop.
+# Copyright (C) 2026 Querencia
+# Diese Datei steht unter derselben Lizenz wie Querencia Desktop (GPL-3.0-or-later).
+# Erzeugt mit werkzeug/i18n.py pot – nicht von Hand bearbeiten.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-desktop\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: src/desktop_view.rs:298
+msgid "Desktop – Icons"
+msgstr ""
+
+#: src/desktop_view.rs:1343 src/desktop_view.rs:1387
+msgid "Open"
+msgstr ""
+
+#: src/desktop_view.rs:1366
+msgid "Open Trash"
+msgstr ""
+
+#: src/desktop_view.rs:1375
+msgid "Empty Trash…"
+msgstr ""
+
+#: src/desktop_view.rs:1399 src/desktop_view/transfer.rs:1197
+msgid "Open With"
+msgstr ""
+
+#: src/desktop_view.rs:1404
+msgid "Cut"
+msgstr ""
+
+#: src/desktop_view.rs:1405
+msgid "Copy"
+msgstr ""
+
+#: src/desktop_view.rs:1407
+msgid "Paste Into Folder"
+msgstr ""
+
+#: src/desktop_view.rs:1428
+msgid "Rename…"
+msgstr ""
+
+#: src/desktop_view.rs:1434
+msgid "Move to Trash"
+msgstr ""
+
+#: src/desktop_view.rs:1438
+msgid "Properties"
+msgstr ""
+
+#: src/desktop_view.rs:1453
+msgid "Create Folder"
+msgstr ""
+
+#: src/desktop_view.rs:1456
+msgid "Empty File"
+msgstr ""
+
+#: src/desktop_view.rs:1474
+msgid "Create Document"
+msgstr ""
+
+#: src/desktop_view.rs:1481
+msgid "Clean Up by Name"
+msgstr ""
+
+#: src/desktop_view.rs:1487
+msgid "Align Icons to Grid"
+msgstr ""
+
+#: src/desktop_view.rs:1491
+msgid "Keep Aligned"
+msgstr ""
+
+#: src/desktop_view.rs:1503
+msgid "Paste"
+msgstr ""
+
+#: src/desktop_view.rs:1514
+msgid "Change Desktop Background…"
+msgstr ""
+
+#: src/desktop_view.rs:1649
+msgid "New Folder"
+msgstr ""
+
+#: src/desktop_view.rs:1735
+msgid "Empty all items from the trash?"
+msgstr ""
+
+#: src/desktop_view.rs:1736
+msgid "If you empty the trash, all items in it will be permanently lost."
+msgstr ""
+
+#: src/desktop_view.rs:1739 src/desktop_view.rs:3144 src/desktop_view/transfer.rs:427 src/volumes.rs:386
+msgid "Cancel"
+msgstr ""
+
+#: src/desktop_view.rs:1739
+msgid "Empty Trash"
+msgstr ""
+
+#: src/desktop_view.rs:1785
+msgid "The trash could not be emptied."
+msgstr ""
+
+#: src/desktop_view.rs:1786
+#, no-c-format
+msgid "The trash cannot be reached: {why}"
+msgstr ""
+
+#: src/desktop_view.rs:2174
+#, no-c-format
+msgid "“{name}” cannot be renamed."
+msgstr ""
+
+#: src/desktop_view.rs:2286
+#, no-c-format
+msgid "“{name}” could not be renamed to “{new}”."
+msgstr ""
+
+#: src/desktop_view.rs:2301
+#, no-c-format
+msgid ""
+"“{name}” no longer exists. Perhaps it was deleted or moved in the meantime."
+msgstr ""
+
+#: src/desktop_view.rs:2310
+#, no-c-format
+msgid ""
+"The name “{new}” is already used in this folder. Please use a different name."
+msgstr ""
+
+#: src/desktop_view.rs:2326 src/desktop_view.rs:2642
+#, no-c-format
+msgid "You do not have the permissions to rename “{name}”."
+msgstr ""
+
+#: src/desktop_view.rs:2484
+#, no-c-format
+msgid "{n} of {total} items could not be deleted and is still in the trash:"
+msgid_plural "{n} of {total} items could not be deleted and are still in the trash:"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/desktop_view.rs:2492
+#, no-c-format
+msgid "• {name}: {why}"
+msgstr ""
+
+#: src/desktop_view.rs:2500 src/fileops.rs:194 src/i18n.rs:137 src/volumes.rs:361
+#, no-c-format
+msgid "… and {n} more"
+msgid_plural "… and {n} more"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/desktop_view.rs:2503
+msgid "The trash could not be emptied completely."
+msgstr ""
+
+#: src/desktop_view.rs:2519 src/fileops.rs:346
+msgid "permission denied"
+msgstr ""
+
+#: src/desktop_view.rs:2520 src/fileops.rs:254 src/fileops.rs:270 src/fileops.rs:347
+msgid "no longer there"
+msgstr ""
+
+#: src/desktop_view.rs:2526
+msgid "volume not reachable"
+msgstr ""
+
+#: src/desktop_view.rs:2527
+#, no-c-format
+msgid "cannot be deleted (GVfs: {why})"
+msgstr ""
+
+#: src/desktop_view.rs:2591
+msgid "The launcher file is not valid text."
+msgstr ""
+
+#: src/desktop_view.rs:2595
+#, no-c-format
+msgid "The launcher file is not valid: {why}"
+msgstr ""
+
+#: src/desktop_view.rs:2605
+msgid "The launcher file has no group [Desktop Entry]."
+msgstr ""
+
+#: src/desktop_view.rs:2618
+msgid "The launcher file was changed in the meantime. Please try again."
+msgstr ""
+
+#: src/desktop_view.rs:2646
+#, no-c-format
+msgid "“{name}” no longer exists."
+msgstr ""
+
+#: src/desktop_view.rs:2659
+msgid "Volumes keep their own names."
+msgstr ""
+
+#: src/desktop_view.rs:2666 src/desktop_view.rs:3085 src/desktop_view/transfer.rs:1122
+msgid "Close"
+msgstr ""
+
+#: src/desktop_view.rs:2683
+msgid "Computer"
+msgstr ""
+
+#: src/desktop_view.rs:2686
+msgid "Home Folder"
+msgstr ""
+
+#: src/desktop_view.rs:2689
+msgid "Trash"
+msgstr ""
+
+#: src/desktop_view.rs:3077 src/i18n.rs:141
+#, no-c-format
+msgid "“{name}” cannot be opened."
+msgstr ""
+
+#: src/desktop_view.rs:3081
+#, no-c-format
+msgid "There is no application installed for “{type}” files ({mime})."
+msgstr ""
+
+#: src/desktop_view.rs:3085
+msgid "Open With Other Application…"
+msgstr ""
+
+#: src/desktop_view.rs:3137
+msgid "Untrusted application launcher"
+msgstr ""
+
+#: src/desktop_view.rs:3138
+#, no-c-format
+msgid ""
+"The application launcher “{name}” has not been marked as trusted. If you do not know the source of this file, launching it may be unsafe."
+msgstr ""
+
+#: src/desktop_view.rs:3145
+msgid "Mark as Trusted"
+msgstr ""
+
+#: src/desktop_view.rs:3146
+msgid "Launch Anyway"
+msgstr ""
+
+#: src/desktop_view.rs:3189
+msgid "New Document"
+msgstr ""
+
+#: src/desktop_view.rs:3205
+msgid "Template"
+msgstr ""
+
+#: src/desktop_view.rs:3284
+msgid "Images"
+msgstr ""
+
+#: src/desktop_view.rs:3289
+msgid "Change Desktop Background"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:411
+#, no-c-format
+msgid "Are you sure you want to permanently delete “{name}”?"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:415
+#, no-c-format
+msgid "Are you sure you want to permanently delete the {n} selected item?"
+msgid_plural "Are you sure you want to permanently delete the {n} selected items?"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/desktop_view/transfer.rs:424
+msgid "If you delete an item, it will be permanently lost."
+msgstr ""
+
+#: src/desktop_view/transfer.rs:427
+msgid "Delete"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:985
+msgid "Other Application…"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1014 src/desktop_view/transfer.rs:1215
+#, no-c-format
+msgid "“{name}” could not be opened."
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1036
+#, no-c-format
+msgid "The properties of “{name}” cannot be read."
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1048
+#, no-c-format
+msgid "Link to {target}"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1065
+msgid "counting …"
+msgstr ""
+
+#. TRANSLATORS: date and time of the last change (strftime format of GLib's GDateTime)
+#: src/desktop_view/transfer.rs:1074
+msgid "%Y-%m-%d %H:%M"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1083
+#, no-c-format
+msgid "“{name}” Properties"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1100
+msgid "Name:"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1101
+msgid "Type:"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1102
+msgid "Size:"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1103
+msgid "Location:"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1104
+msgid "Modified:"
+msgstr ""
+
+#: src/desktop_view/transfer.rs:1153
+#, no-c-format
+msgid "{n} item, totalling {size}"
+msgid_plural "{n} items, totalling {size}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/desktop_view/transfer.rs:1198
+#, no-c-format
+msgid "Select an application to open “{name}”"
+msgstr ""
+
+#. TRANSLATORS: name of a copy next to the original, e.g. "notes (copy).txt"
+#: src/fileops.rs:88
+#, no-c-format
+msgid "{stem} (copy){ext}"
+msgstr ""
+
+#. TRANSLATORS: the second, third … copy, e.g. "notes (copy 2).txt"
+#: src/fileops.rs:94
+#, no-c-format
+msgid "{stem} (copy {n}){ext}"
+msgstr ""
+
+#: src/fileops.rs:126
+msgid "Error while copying."
+msgstr ""
+
+#: src/fileops.rs:127
+msgid "Error while moving."
+msgstr ""
+
+#: src/fileops.rs:128
+msgid "Not everything could be moved to the trash."
+msgstr ""
+
+#: src/fileops.rs:129
+msgid "Not everything could be deleted."
+msgstr ""
+
+#: src/fileops.rs:156
+#, no-c-format
+msgid "{n} of {total} items was not copied:"
+msgid_plural "{n} of {total} items were not copied:"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/fileops.rs:162
+#, no-c-format
+msgid "{n} of {total} items was not moved:"
+msgid_plural "{n} of {total} items were not moved:"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/fileops.rs:168
+#, no-c-format
+msgid "{n} of {total} items was not moved to the trash:"
+msgid_plural "{n} of {total} items were not moved to the trash:"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/fileops.rs:174
+#, no-c-format
+msgid "{n} of {total} items was not deleted:"
+msgid_plural "{n} of {total} items were not deleted:"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: one line of the error list: file name and reason
+#: src/fileops.rs:188
+#, no-c-format
+msgid "“{name}”: {why}"
+msgstr ""
+
+#: src/fileops.rs:220
+msgid "no target"
+msgstr ""
+
+#: src/fileops.rs:258
+msgid "A folder cannot be copied into itself."
+msgstr ""
+
+#: src/fileops.rs:277
+msgid "A folder cannot be moved into itself."
+msgstr ""
+
+#: src/fileops.rs:281 src/fileops.rs:349
+msgid "There is already an item with this name at the target."
+msgstr ""
+
+#: src/fileops.rs:293
+#, no-c-format
+msgid "copied, but the original remained: {why}"
+msgstr ""
+
+#: src/fileops.rs:351
+msgid "There is no space left at the target."
+msgstr ""
+
+#: src/fileops.rs:352
+msgid "The target is read-only."
+msgstr ""
+
+#: src/fileops.rs:354
+msgid "The name is not allowed at the target."
+msgstr ""
+
+#: src/fileops.rs:357
+msgid "There is no trash at this location."
+msgstr ""
+
+#. TRANSLATORS: digit group separator in "1.2 kB (1,234 bytes)"
+#: src/fileops.rs:397
+msgctxt "thousands separator"
+msgid ","
+msgstr ""
+
+#: src/fileops.rs:405
+#, no-c-format
+msgid "{size} ({bytes} bytes)"
+msgstr ""
+
+#: src/main.rs:397
+msgid "Desktop"
+msgstr ""
+
+#: src/rename.rs:29
+msgid "The name cannot be empty."
+msgstr ""
+
+#: src/rename.rs:30
+#, no-c-format
+msgid ""
+"The name “{name}” is not valid because it contains the character “/”. Please use a different name."
+msgstr ""
+
+#: src/rename.rs:35
+#, no-c-format
+msgid "“{name}” is not a valid file name. Please use a different name."
+msgstr ""
+
+#: src/rename.rs:39
+msgid "The name contains an invalid character."
+msgstr ""
+
+#: src/volumes.rs:270
+msgid "Eject"
+msgstr ""
+
+#: src/volumes.rs:271
+msgid "Unmount"
+msgstr ""
+
+#: src/volumes.rs:293
+#, no-c-format
+msgid "“{name}” could not be ejected."
+msgstr ""
+
+#: src/volumes.rs:294
+#, no-c-format
+msgid "“{name}” could not be unmounted."
+msgstr ""
+
+#: src/volumes.rs:298
+msgid ""
+"The volume is still in use. Close all programs and windows that have files on this volume open, and try again."
+msgstr ""
+
+#: src/volumes.rs:303
+msgid "You do not have the permissions for this volume."
+msgstr ""
+
+#: src/volumes.rs:306
+msgid "The volume is no longer mounted."
+msgstr ""
+
+#: src/volumes.rs:348
+msgid "A program still has files on the volume open."
+msgstr ""
+
+#: src/volumes.rs:350
+msgid "These programs still have files on the volume open:"
+msgstr ""
+
+#: src/volumes.rs:353
+#, no-c-format
+msgid "• {program} (process {pid})"
+msgstr ""
+
+#: src/volumes.rs:367
+msgid ""
+"Close the programs, or eject the volume anyway. Unsaved data of these programs may be lost."
+msgstr ""
+
+#: src/volumes.rs:371
+msgid "Eject Anyway"
+msgstr ""
+
+#: src/volumes.rs:374
+msgid ""
+"Close the programs, or unmount the volume anyway. Unsaved data of these programs may be lost."
+msgstr ""
+
+#: src/volumes.rs:378
+msgid "Unmount Anyway"
+msgstr ""
+
+#: src/volumes.rs:384
+#, no-c-format
+msgid "The volume “{name}” is still in use."
+msgstr ""

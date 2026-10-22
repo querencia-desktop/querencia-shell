@@ -19,6 +19,7 @@ use gtk4::gio;
 use gtk4::gio::prelude::*;
 use gtk4::glib;
 
+use crate::i18n::{gettext, gettext_f, ngettext_f, pgettext};
 use crate::icons;
 
 pub const URI_LIST: &str = "text/uri-list";
@@ -83,10 +84,20 @@ pub fn copy_name(name: &str, is_dir: bool, exists: impl Fn(&str) -> bool) -> Str
     } else {
         icons::split_extension(name)
     };
-    std::iter::once(format!("{stem} (Kopie){ext}"))
-        .chain((2..).map(|n| format!("{stem} (Kopie {n}){ext}")))
-        .find(|candidate| !exists(candidate))
-        .unwrap_or_default()
+    // TRANSLATORS: name of a copy next to the original, e.g. "notes (copy).txt"
+    std::iter::once(gettext_f(
+        "{stem} (copy){ext}",
+        &[("stem", stem), ("ext", ext)],
+    ))
+    .chain((2..).map(|n: u32| {
+        // TRANSLATORS: the second, third … copy, e.g. "notes (copy 2).txt"
+        gettext_f(
+            "{stem} (copy {n}){ext}",
+            &[("stem", stem), ("n", &n.to_string()), ("ext", ext)],
+        )
+    }))
+    .find(|candidate| !exists(candidate))
+    .unwrap_or_default()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -110,12 +121,12 @@ impl Op {
     }
 
     /// The title of the error dialog.
-    pub fn failure_title(self) -> &'static str {
+    pub fn failure_title(self) -> String {
         match self {
-            Op::Copy => "Beim Kopieren ist ein Fehler aufgetreten.",
-            Op::Move => "Beim Verschieben ist ein Fehler aufgetreten.",
-            Op::Trash => "Nicht alles konnte in den Papierkorb verschoben werden.",
-            Op::Delete => "Nicht alles konnte gelöscht werden.",
+            Op::Copy => gettext("Error while copying."),
+            Op::Move => gettext("Error while moving."),
+            Op::Trash => gettext("Not everything could be moved to the trash."),
+            Op::Delete => gettext("Not everything could be deleted."),
         }
     }
 }
@@ -135,33 +146,52 @@ pub struct Outcome {
 /// The error dialog's text: up to five objects, then how many more.
 pub fn failure_text(op: Op, outcome: &Outcome) -> String {
     let total = outcome.done + outcome.failed.len();
-    let mut text = if total == 1 {
+    let failed = u32::try_from(outcome.failed.len()).unwrap_or(u32::MAX);
+    let total = total.to_string();
+    let args = [("total", total.as_str())];
+    let mut text = if outcome.done + outcome.failed.len() == 1 {
         String::new()
     } else {
-        format!(
-            "{} von {total} Objekten {}:\n",
-            outcome.failed.len(),
-            match (op, outcome.failed.len()) {
-                (Op::Copy, 1) => "wurde nicht kopiert",
-                (Op::Copy, _) => "wurden nicht kopiert",
-                (Op::Move, 1) => "wurde nicht verschoben",
-                (Op::Move, _) => "wurden nicht verschoben",
-                (Op::Trash, 1) => "wurde nicht in den Papierkorb verschoben",
-                (Op::Trash, _) => "wurden nicht in den Papierkorb verschoben",
-                (Op::Delete, 1) => "wurde nicht gelöscht",
-                (Op::Delete, _) => "wurden nicht gelöscht",
-            }
-        )
+        let head = match op {
+            Op::Copy => ngettext_f(
+                "{n} of {total} items was not copied:",
+                "{n} of {total} items were not copied:",
+                failed,
+                &args,
+            ),
+            Op::Move => ngettext_f(
+                "{n} of {total} items was not moved:",
+                "{n} of {total} items were not moved:",
+                failed,
+                &args,
+            ),
+            Op::Trash => ngettext_f(
+                "{n} of {total} items was not moved to the trash:",
+                "{n} of {total} items were not moved to the trash:",
+                failed,
+                &args,
+            ),
+            Op::Delete => ngettext_f(
+                "{n} of {total} items was not deleted:",
+                "{n} of {total} items were not deleted:",
+                failed,
+                &args,
+            ),
+        };
+        format!("{head}\n")
     };
     let lines: Vec<String> = outcome
         .failed
         .iter()
         .take(5)
-        .map(|(name, why)| format!("„{name}“: {why}"))
+        // TRANSLATORS: one line of the error list: file name and reason
+        .map(|(name, why)| gettext_f("“{name}”: {why}", &[("name", name), ("why", why)]))
         .collect();
     text.push_str(&lines.join("\n"));
     if outcome.failed.len() > 5 {
-        text.push_str(&format!("\n… und {} weitere", outcome.failed.len() - 5));
+        let more = u32::try_from(outcome.failed.len() - 5).unwrap_or(u32::MAX);
+        text.push('\n');
+        text.push_str(&ngettext_f("… and {n} more", "… and {n} more", more, &[]));
     }
     text
 }
@@ -187,7 +217,7 @@ pub fn run(op: Op, sources: &[String], target: Option<&str>) -> Outcome {
             (Op::Delete, _) => delete_recursive(&source)
                 .map(|()| None)
                 .map_err(|err| reason(&err, op)),
-            (Op::Copy | Op::Move, None) => Err("kein Ziel".to_owned()),
+            (Op::Copy | Op::Move, None) => Err(gettext("no target")),
         };
         match result {
             Ok(arrived) => {
@@ -221,11 +251,11 @@ fn exists(file: &gio::File) -> bool {
 
 fn copy_into(source: &gio::File, dir: &gio::File, name: &str) -> Result<Option<String>, String> {
     if !exists(source) {
-        return Err("nicht mehr vorhanden".to_owned());
+        return Err(gettext("no longer there"));
     }
     let folder = is_dir(source);
     if folder && inside(dir, source) {
-        return Err("Ein Ordner kann nicht in sich selbst kopiert werden.".to_owned());
+        return Err(gettext("A folder cannot be copied into itself."));
     }
     let free = copy_name(name, folder, |n| exists(&dir.child(n)));
     let dest = dir.child(&free);
@@ -237,18 +267,20 @@ fn copy_into(source: &gio::File, dir: &gio::File, name: &str) -> Result<Option<S
 
 fn move_into(source: &gio::File, dir: &gio::File, name: &str) -> Result<Option<String>, String> {
     if !exists(source) {
-        return Err("nicht mehr vorhanden".to_owned());
+        return Err(gettext("no longer there"));
     }
     // already there: nothing to move (a drop or paste into its own folder)
     if source.parent().is_some_and(|parent| parent.equal(dir)) {
         return Ok(Some(name.to_owned()));
     }
     if is_dir(source) && inside(dir, source) {
-        return Err("Ein Ordner kann nicht in sich selbst verschoben werden.".to_owned());
+        return Err(gettext("A folder cannot be moved into itself."));
     }
     let dest = dir.child(name);
     if exists(&dest) {
-        return Err("Am Ziel gibt es schon ein Objekt mit diesem Namen.".to_owned());
+        return Err(gettext(
+            "There is already an item with this name at the target.",
+        ));
     }
     let flags = gio::FileCopyFlags::NOFOLLOW_SYMLINKS | gio::FileCopyFlags::ALL_METADATA;
     match source.move_(&dest, flags, gio::Cancellable::NONE, None) {
@@ -258,9 +290,9 @@ fn move_into(source: &gio::File, dir: &gio::File, name: &str) -> Result<Option<S
         Err(err) if err.matches(gio::IOErrorEnum::WouldRecurse) => {
             copy_recursive(source, &dest).map_err(|err| reason(&err, Op::Move))?;
             delete_recursive(source).map_err(|err| {
-                format!(
-                    "kopiert, aber das Original blieb: {}",
-                    reason(&err, Op::Delete)
+                gettext_f(
+                    "copied, but the original remained: {why}",
+                    &[("why", &reason(&err, Op::Delete))],
                 )
             })?;
             Ok(Some(name.to_owned()))
@@ -311,16 +343,18 @@ pub fn delete_recursive(file: &gio::File) -> Result<(), glib::Error> {
 /// better is known.
 fn reason(err: &glib::Error, op: Op) -> String {
     match err.kind::<gio::IOErrorEnum>() {
-        Some(gio::IOErrorEnum::PermissionDenied) => "keine Berechtigung".to_owned(),
-        Some(gio::IOErrorEnum::NotFound) => "nicht mehr vorhanden".to_owned(),
+        Some(gio::IOErrorEnum::PermissionDenied) => gettext("permission denied"),
+        Some(gio::IOErrorEnum::NotFound) => gettext("no longer there"),
         Some(gio::IOErrorEnum::Exists) => {
-            "Am Ziel gibt es schon ein Objekt mit diesem Namen.".to_owned()
+            gettext("There is already an item with this name at the target.")
         }
-        Some(gio::IOErrorEnum::NoSpace) => "Auf dem Ziel ist kein Platz mehr.".to_owned(),
-        Some(gio::IOErrorEnum::ReadOnly) => "Das Ziel ist schreibgeschützt.".to_owned(),
-        Some(gio::IOErrorEnum::InvalidFilename) => "Der Name ist am Ziel nicht erlaubt.".to_owned(),
+        Some(gio::IOErrorEnum::NoSpace) => gettext("There is no space left at the target."),
+        Some(gio::IOErrorEnum::ReadOnly) => gettext("The target is read-only."),
+        Some(gio::IOErrorEnum::InvalidFilename) => {
+            gettext("The name is not allowed at the target.")
+        }
         Some(gio::IOErrorEnum::NotSupported) if op == Op::Trash => {
-            "An diesem Ort gibt es keinen Papierkorb.".to_owned()
+            gettext("There is no trash at this location.")
         }
         _ => err.message().to_owned(),
     }
@@ -351,21 +385,27 @@ pub fn tally(path: &Path) -> (u64, u64) {
     (count, bytes)
 }
 
-/// A size as GNOME 2's properties showed it: "1,2 kB (1.234 Bytes)".
+/// A size as GNOME 2's properties showed it: "1.2 kB (1,234 bytes)", in
+/// German "1,2 kB (1.234 Bytes)" (separator and words from the catalog).
 pub fn size_text(bytes: u64) -> String {
     let short = glib::format_size(bytes).to_string();
     if bytes < 1000 {
         return short;
     }
     let digits = bytes.to_string();
+    // TRANSLATORS: digit group separator in "1.2 kB (1,234 bytes)"
+    let separator = pgettext("thousands separator", ",");
     let mut grouped = String::new();
     for (i, c) in digits.chars().enumerate() {
         if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            grouped.push('.');
+            grouped.push_str(&separator);
         }
         grouped.push(c);
     }
-    format!("{short} ({grouped} Bytes)")
+    gettext_f(
+        "{size} ({bytes} bytes)",
+        &[("size", &short), ("bytes", &grouped)],
+    )
 }
 
 #[cfg(test)]
@@ -424,13 +464,13 @@ mod tests {
 
     #[test]
     fn copies_get_a_free_name_and_keep_the_extension() {
-        let taken = ["notiz.txt", "notiz (Kopie).txt", "Ordner.alt", ".profil"];
+        let taken = ["notiz.txt", "notiz (copy).txt", "Ordner.alt", ".profil"];
         let exists = |n: &str| taken.contains(&n);
         assert_eq!(copy_name("neu.txt", false, exists), "neu.txt");
-        assert_eq!(copy_name("notiz.txt", false, exists), "notiz (Kopie 2).txt");
-        assert_eq!(copy_name("Ordner.alt", true, exists), "Ordner.alt (Kopie)");
-        assert_eq!(copy_name(".profil", false, exists), ".profil (Kopie)");
-        assert_eq!(copy_name("a.txt", false, |n| n == "a.txt"), "a (Kopie).txt");
+        assert_eq!(copy_name("notiz.txt", false, exists), "notiz (copy 2).txt");
+        assert_eq!(copy_name("Ordner.alt", true, exists), "Ordner.alt (copy)");
+        assert_eq!(copy_name(".profil", false, exists), ".profil (copy)");
+        assert_eq!(copy_name("a.txt", false, |n| n == "a.txt"), "a (copy).txt");
     }
 
     #[test]
@@ -452,7 +492,7 @@ mod tests {
         assert_eq!(outcome.failed, vec![]);
         assert_eq!(
             outcome.arrived,
-            vec!["Ordner".to_owned(), "b (Kopie).txt".to_owned()]
+            vec!["Ordner".to_owned(), "b (copy).txt".to_owned()]
         );
         assert_eq!(
             std::fs::read_to_string(to.join("Ordner/innen/a.txt")).expect("kopiert"),
@@ -464,7 +504,7 @@ mod tests {
             "alt"
         );
         assert_eq!(
-            std::fs::read_to_string(to.join("b (Kopie).txt")).expect("neu"),
+            std::fs::read_to_string(to.join("b (copy).txt")).expect("neu"),
             "b"
         );
         let link = to.join("Ordner/verweis").symlink_metadata().expect("link");
@@ -480,19 +520,19 @@ mod tests {
         std::fs::create_dir_all(base.join("Ordner/unter")).expect("fixture");
         std::fs::write(base.join("notiz.txt"), "n").expect("fixture");
         let outcome = run(Op::Copy, &[uri(&base.join("notiz.txt"))], Some(&uri(&base)));
-        assert_eq!(outcome.arrived, vec!["notiz (Kopie).txt".to_owned()]);
+        assert_eq!(outcome.arrived, vec!["notiz (copy).txt".to_owned()]);
         for target in [base.join("Ordner"), base.join("Ordner/unter")] {
             let outcome = run(Op::Copy, &[uri(&base.join("Ordner"))], Some(&uri(&target)));
             assert_eq!(outcome.done, 0);
             assert_eq!(outcome.failed.len(), 1, "{outcome:?}");
-            assert!(outcome.failed[0].1.contains("in sich selbst"));
+            assert!(outcome.failed[0].1.contains("into itself"));
         }
         let outcome = run(
             Op::Move,
             &[uri(&base.join("Ordner"))],
             Some(&uri(&base.join("Ordner/unter"))),
         );
-        assert!(outcome.failed[0].1.contains("in sich selbst"));
+        assert!(outcome.failed[0].1.contains("into itself"));
         assert!(base.join("Ordner/unter").is_dir());
         std::fs::remove_dir_all(&base).expect("cleanup");
     }
@@ -526,7 +566,7 @@ mod tests {
         assert_eq!(outcome.failed[0].0, "a.txt");
         assert_eq!(
             outcome.failed[1],
-            ("fehlt.txt".to_owned(), "nicht mehr vorhanden".to_owned())
+            ("fehlt.txt".to_owned(), "no longer there".to_owned())
         );
         assert_eq!(
             std::fs::read_to_string(to.join("a.txt")).expect("alt"),
@@ -552,7 +592,8 @@ mod tests {
                 failed: vec![("a.txt".to_owned(), "x".to_owned())],
             },
         );
-        assert_eq!(text, "1 von 3 Objekten wurde nicht verschoben:\n„a.txt“: x");
+        // without a catalog (tests): the English msgids
+        assert_eq!(text, "1 of 3 items was not moved:\n“a.txt”: x");
         std::fs::remove_dir_all(&base).expect("cleanup");
     }
 
@@ -579,7 +620,7 @@ mod tests {
         std::fs::write(base.join("u/b"), "56").expect("fixture");
         assert_eq!(tally(&base), (3, 6));
         std::fs::remove_dir_all(&base).expect("cleanup");
-        assert!(size_text(1_234_567).ends_with(" (1.234.567 Bytes)"));
+        assert!(size_text(1_234_567).ends_with(" (1,234,567 bytes)"));
         assert!(!size_text(12).contains('('));
     }
 }

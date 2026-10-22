@@ -1,5 +1,44 @@
 # Änderungen – querencia-desktop
 
+## 0.2.5 – 2026-10-22
+
+**Raster nach der Schrift.** Die Zellen der Arbeitsfläche richten sich nach
+der Schrift der Sitzung (Name, Größe, Skalierung) statt nach festen 100 × 88
+Pixeln. Bei größerer Schrift waren zweizeilige Beschriftungen höher als ihre
+Zelle, und die Zeile reichte nicht für „Persönlicher“; Netzlaufwerke wie
+„daten auf speicher.local“ wurden gekürzt und rückten an den Papierkorb.
+
+- Eine Zeile fasst 14 Durchschnittszeichen, die Höhe zwei Zeilen und einen
+  Abstand; bei 11 pt sind das 116 × 96 Pixel, bei 12 pt 125 × 98.
+- Wechselt die Schrift im Lauf, folgt das Raster ohne Neustart. Gemerkte
+  Plätze bleiben, sie werden auf die nächste Zelle gelegt.
+- Lange Namen nutzen die volle Zellbreite; Wörter werden nur getrennt, wenn
+  sie allein nicht in die Zeile passen.
+- Ein ausgewähltes Symbol zeigt seinen ganzen Namen, wie unter GNOME 2.
+- Laufwerke und Netzlaufwerke stehen weiter unter dem Papierkorb, jetzt mit
+  Abstand und ungekürzt.
+
+**Arbeitsflächen-Ordner später angelegt.** Fehlt der Ordner beim Start,
+wartet der Desktop im nächsten vorhandenen Elternordner. Sobald der Ordner
+entsteht (auch durch Verschieben), erscheinen seine Dateien sofort; wird er
+gelöscht, wartet der Desktop wieder.
+
+**Kein Programm für eine Datei.** Statt nur einer Logzeile erscheint ein
+Hinweis mit Dateiname und Typ. „Mit Programm öffnen …“ öffnet die
+Programmauswahl von GTK.
+
+**Englisch.** Alle Texte der Arbeitsfläche (Menüs, Dialoge, Papierkorb,
+Dateioperationen, Laufwerke, Eigenschaften, Namen der Sondersymbole) laufen
+über gettext. Quelltexte sind englisch, Deutsch kommt aus `po/de.po` und
+bleibt im Wortlaut wie bisher. Die Sprache wählt `LANGUAGE`; ohne
+deutschen Katalog neben dem Programm (`share/locale`) ist die Oberfläche
+englisch.
+
+- Neue Namen für Kopien und neue Dateien folgen der Sprache („notiz (Kopie).txt“,
+  „notes (copy).txt“; „Neuer Ordner“, „New Folder“).
+- Der Kopf der Zustandsdatei `desktop-symbole` nennt keine interne Kennung
+  mehr; Inhalt und Format sind unverändert.
+
 ## 0.2.4 – 2026-10-22
 
 Die Beschriftung der Arbeitsflächen-Symbole steht wieder ohne Platte auf dem
