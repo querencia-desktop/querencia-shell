@@ -62,3 +62,10 @@
 #      lesbarkeit.py) und die höhere Zählung bei P002; crates/querencia-desktop/
 #      src/main.rs unverändert in S003/S004/S005; sie fallen unter die
 #      Ausnahmen oben.
+# panel-0.2.4 (22.10.2026): neu nur S003/S004/S005 in crates/querencia-panel/
+#      src/symbole.rs (englische Kommentare mit Backticks wie im übrigen
+#      Panel-Code, Gedankenstrich in einer Protokollzeile), S004/S005/H003 in
+#      integration/panel-024 (Kopie der Prüfwerkzeuge wie integration/panel-023,
+#      dazu gtk-wettlauf.py, qvorlade.c, Szenarien belastung/apport/tausch)
+#      und die höhere Zählung bei P002; sie fallen unter die Ausnahmen oben
+#     . Q003 in ueberwachung.rs behoben.
