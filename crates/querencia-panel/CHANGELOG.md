@@ -1,5 +1,20 @@
 # Änderungen – querencia-panel
 
+## 0.2.5 – 2026-10-22
+
+Enthält 0.2.4 (nicht einzeln aktiviert) und die App-ID von Querencia Files
+(QD-059, Entscheidung der Startsession zu QF-0t).
+
+- Fensterliste (`window_icons.rs`): Ein Fenster mit der App-ID
+  `org.querencia.Files` bekommt das Symbol des Starters
+  `org.querencia.Files.desktop`; solange nur der alte Starter
+  `io.github.lgse.Strata.desktop` (Brücke, `NoDisplay`) installiert ist,
+  dessen Symbol (Tabelle `RENAMED`). Die alte App-ID findet weiter den alten
+  Starter.
+- Orte (`places_menu.rs`): Ohne Wahl von GIO öffnet Querencia Files
+  Ordner, erkannt zuerst an `org.querencia.Files.desktop`, dann an
+  `io.github.lgse.Strata.desktop`, dann am Namen „Querencia Files“.
+
 ## 0.2.4 – 2026-10-22
 
 Ursache der Abstürze QD-106 behoben, Absturzberichte (QD-128), Fenstersymbol
