@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Panel 0.2.4 (QD-129): window icon of the panel's own windows (info
+     dialog, "Zum Panel hinzufügen", logout question). Only the SVG master
+     of the logo, under its own name; no PNG of the same name next to it
+     (GTK 4.22 crashes with both, W5). Build: data/ressourcen.sh -->
+<gresources>
+  <gresource prefix="/org/querencia/Panel">
+    <file alias="icons/scalable/apps/org.querencia.Panel-fenster.svg">logo/querencia-logo.svg</file>
+  </gresource>
+</gresources>

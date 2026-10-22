@@ -19,7 +19,7 @@ use std::process::{Command, Stdio};
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box as GtkBox, Image, KeyvalTrigger, Label, NamedAction, Orientation, Shortcut,
+    Align, Box as GtkBox, KeyvalTrigger, Label, NamedAction, Orientation, Shortcut,
     ShortcutController, Window, gdk, gio, glib,
 };
 
@@ -95,7 +95,7 @@ pub fn run_sitzung(sitzung: &Path, arg: &str) {
 }
 
 /// The running panel application, for the panel's own windows: belonging
-/// to it gives them the panel's app ID (`org.example.Querencia.Panel`)
+/// to it gives them the panel's app ID (`org.querencia.Panel`)
 /// instead of the program's file name, so the window list shows them with
 /// the Querencia logo (QREL-04c). `None` outside a running application
 /// (tests).
@@ -116,12 +116,14 @@ pub fn confirm_logout(slot: &glib::WeakRef<Window>, labwc: PathBuf) {
         .build();
     window.set_application(panel_application().as_ref());
 
-    let icon = Image::from_gicon(&gio::ThemedIcon::from_names(&[
-        "system-log-out",
-        "system-log-out-symbolic",
-        "application-exit",
-    ]));
-    icon.set_pixel_size(48);
+    let icon = crate::symbole::image(
+        &gio::ThemedIcon::from_names(&[
+            "system-log-out",
+            "system-log-out-symbolic",
+            "application-exit",
+        ]),
+        48,
+    );
     icon.set_valign(Align::Start);
     let question = Label::builder()
         .label(format!(
@@ -223,7 +225,7 @@ mod tests {
 
     fn exe_of(pid: u32) -> Option<PathBuf> {
         match pid {
-            1816 => Some(PathBuf::from("/home/user/opt/labwc-0.9.8/bin/labwc")),
+            1816 => Some(PathBuf::from("~/opt/labwc-0.9.8/bin/labwc")),
             42 => Some(PathBuf::from("/usr/bin/labwc")),
             7 => Some(PathBuf::from("/usr/bin/bash")),
             _ => None,
@@ -234,7 +236,7 @@ mod tests {
     fn the_running_labwc_ends_the_session() {
         assert_eq!(
             labwc_exit_command(Some("1816"), exe_of).as_deref(),
-            Some(Path::new("/home/user/opt/labwc-0.9.8/bin/labwc"))
+            Some(Path::new("~/opt/labwc-0.9.8/bin/labwc"))
         );
         assert_eq!(
             labwc_exit_command(Some("42"), exe_of).as_deref(),

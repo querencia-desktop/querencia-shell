@@ -402,7 +402,7 @@ impl Glocke {
             let pixels = self.size * image.scale_factor().max(1);
             match texture(look.symbol, pixels) {
                 Some(texture) => image.set_paintable(Some(&texture)),
-                None => image.set_icon_name(Some("preferences-desktop-notification")),
+                None => crate::symbole::set_named(&image, "preferences-desktop-notification"),
             }
             zahl.set_label(look.zahl.as_deref().unwrap_or(""));
             zahl.set_visible(look.zahl.is_some());
