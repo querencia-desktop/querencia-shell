@@ -14,6 +14,8 @@ use gtk4::gio;
 use gtk4::glib::CollationKey;
 use gtk4::prelude::*;
 
+use crate::i18n::gettext;
+
 /// Submenus of "Anwendungen"; declaration order is menu order. Groups and
 /// labels follow the GNOME 2 menu of Ubuntu 10.04 (`gnome-menus`
 /// `applications.menu`, German names of `gnome-menus`): the order is the
@@ -54,19 +56,20 @@ impl MenuGroup {
         }
     }
 
-    pub fn label(self) -> &'static str {
+    /// The submenu's name as in GNOME 2 (translated).
+    pub fn label(self) -> String {
         match self {
-            Self::Accessories => "Zubehör",
-            Self::Education => "Bildung",
-            Self::Games => "Spiele",
-            Self::Graphics => "Grafik",
-            Self::Internet => "Internet",
-            Self::Office => "Büro",
-            Self::Programming => "Entwicklung",
-            Self::Multimedia => "Unterhaltungsmedien",
-            Self::SystemTools => "Systemwerkzeuge",
-            Self::Accessibility => "Barrierefreiheit",
-            Self::Other => "Sonstige",
+            Self::Accessories => gettext("Accessories"),
+            Self::Education => gettext("Education"),
+            Self::Games => gettext("Games"),
+            Self::Graphics => gettext("Graphics"),
+            Self::Internet => gettext("Internet"),
+            Self::Office => gettext("Office"),
+            Self::Programming => gettext("Programming"),
+            Self::Multimedia => gettext("Sound & Video"),
+            Self::SystemTools => gettext("System Tools"),
+            Self::Accessibility => gettext("Universal Access"),
+            Self::Other => gettext("Other"),
         }
     }
 }
@@ -79,10 +82,11 @@ pub enum SystemSection {
 }
 
 impl SystemSection {
-    pub fn label(self) -> &'static str {
+    /// The submenu's name as in GNOME 2 (translated).
+    pub fn label(self) -> String {
         match self {
-            Self::Preferences => "Einstellungen",
-            Self::Administration => "Systemverwaltung",
+            Self::Preferences => gettext("Preferences"),
+            Self::Administration => gettext("Administration"),
         }
     }
 }

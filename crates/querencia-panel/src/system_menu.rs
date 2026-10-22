@@ -19,6 +19,7 @@ use gtk4::prelude::*;
 use gtk4::{MenuButton, Window, gio, glib};
 
 use crate::apps::{AppEntry, Catalog, SystemSection};
+use crate::i18n::gettext;
 use crate::{about, app_menu, links, session, sitzung_start};
 
 const ACTION_GROUP: &str = "system";
@@ -37,7 +38,8 @@ pub fn button() -> MenuButton {
     let menu = gio::Menu::new();
     rebuild(&menu);
 
-    let button = app_menu::menu_button("System", None, &menu);
+    // TRANSLATORS: the third main menu of the top panel, as in GNOME 2
+    let button = app_menu::menu_button(&gettext("System"), None, &menu);
     app_menu::add_launch_action(&button, ACTION_GROUP);
 
     // One window each, as in GNOME 2; choosing the entry again raises it.
@@ -155,18 +157,18 @@ fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], session:
                 SystemSection::Preferences => "preferences-desktop",
                 SystemSection::Administration => "preferences-system",
             };
-            settings.append_item(&app_menu::submenu_item(section.label(), icon, &submenu));
+            settings.append_item(&app_menu::submenu_item(&section.label(), icon, &submenu));
         }
         menu.append_section(None, &settings);
     }
     let information = gio::Menu::new();
     information.append_item(&action_item(
-        "Informationen über Querencia",
+        &gettext("About Querencia"),
         ABOUT,
         "help-about",
     ));
-    information.append_item(&action_item("Online-Hilfe", HELP, "help-browser"));
-    let bug = action_item("Fehler melden", BUG, "tools-report-bug");
+    information.append_item(&action_item(&gettext("Online Help"), HELP, "help-browser"));
+    let bug = action_item(&gettext("Report a Problem"), BUG, "tools-report-bug");
     // Few themes have the bug icon; the warning sign stands in for it.
     bug.set_icon(&gio::ThemedIcon::from_names(&[
         "tools-report-bug",
@@ -177,15 +179,19 @@ fn fill(menu: &gio::Menu, sections: &[(SystemSection, Vec<&AppEntry>)], session:
     if session.lock || session.logout || session.shutdown {
         let entries = gio::Menu::new();
         if session.lock {
-            let lock = action_item("Bildschirm sperren", LOCK, "system-lock-screen");
+            let lock = action_item(&gettext("Lock Screen"), LOCK, "system-lock-screen");
             lock.set_attribute_value("accel", Some(&sitzung_start::SPERREN_KUERZEL.to_variant()));
             entries.append_item(&lock);
         }
         if session.logout {
-            entries.append_item(&action_item("Abmelden …", LOGOUT, "system-log-out"));
+            entries.append_item(&action_item(&gettext("Log Out…"), LOGOUT, "system-log-out"));
         }
         if session.shutdown {
-            entries.append_item(&action_item("Ausschalten …", SHUTDOWN, "system-shutdown"));
+            entries.append_item(&action_item(
+                &gettext("Shut Down…"),
+                SHUTDOWN,
+                "system-shutdown",
+            ));
         }
         menu.append_section(None, &entries);
     }
@@ -229,9 +235,9 @@ mod tests {
 
     /// The section after the settings.
     const INFORMATION: [&str; 3] = [
-        "Informationen über Querencia -> session.about",
-        "Online-Hilfe -> session.help",
-        "Fehler melden -> session.bug",
+        "About Querencia -> session.about",
+        "Online Help -> session.help",
+        "Report a Problem -> session.bug",
     ];
 
     fn catalog(entries: Vec<AppEntry>) -> Catalog {
@@ -301,7 +307,7 @@ mod tests {
     fn sections_become_submenus_sorted_by_name() {
         // In catalog order (by menu group), which is not the menu order here.
         let catalog = catalog(vec![
-            entry("u.desktop", "Uhr", &["Utility"]),
+            entry("u.desktop", "Clock", &["Utility"]),
             entry("w.desktop", "Wlan", &["Settings", "Network"]),
             entry("m.desktop", "Monitor", &["System", "Monitor"]),
             entry("p.desktop", "Partitionen", &["Settings", "System"]),
@@ -313,7 +319,7 @@ mod tests {
             structure(&model(&catalog)),
             [
                 group(
-                    "Einstellungen",
+                    "Preferences",
                     &[
                         // Equal names fall back to the desktop ID.
                         "Aussehen -> system.launch(a.desktop)",
@@ -322,7 +328,7 @@ mod tests {
                     ]
                 ),
                 group(
-                    "Systemverwaltung",
+                    "Administration",
                     &[
                         "Drucker -> system.launch(d.desktop)",
                         "Partitionen -> system.launch(p.desktop)",
@@ -342,17 +348,14 @@ mod tests {
         assert_eq!(
             structure(&model(&only_administration)),
             [group(
-                "Systemverwaltung",
+                "Administration",
                 &["Partitionen -> system.launch(p.desktop)"]
             )]
         );
         let only_preferences = catalog(vec![entry("w.desktop", "Wlan", &["Settings"])]);
         assert_eq!(
             structure(&model(&only_preferences)),
-            [group(
-                "Einstellungen",
-                &["Wlan -> system.launch(w.desktop)"]
-            )]
+            [group("Preferences", &["Wlan -> system.launch(w.desktop)"])]
         );
     }
 
@@ -363,10 +366,7 @@ mod tests {
         fill(&menu, &catalog.system_sections(), LOGOUT_ONLY);
         assert_eq!(menu.n_items(), 3);
         assert_eq!(actions(&section(&menu, 1)), INFORMATION);
-        assert_eq!(
-            actions(&section(&menu, 2)),
-            ["Abmelden … -> session.logout"]
-        );
+        assert_eq!(actions(&section(&menu, 2)), ["Log Out… -> session.logout"]);
     }
 
     #[test]
@@ -424,9 +424,9 @@ mod tests {
         assert_eq!(
             actions(&session),
             [
-                "Bildschirm sperren -> session.lock",
-                "Abmelden … -> session.logout",
-                "Ausschalten … -> session.shutdown"
+                "Lock Screen -> session.lock",
+                "Log Out… -> session.logout",
+                "Shut Down… -> session.shutdown"
             ]
         );
         assert_eq!(
@@ -447,7 +447,7 @@ mod tests {
         let rows = crate::classic_menu::rows(session.upcast_ref());
         assert!(matches!(
             &rows[0],
-            crate::classic_menu::Row::Entry { accel: Some(a), .. } if a == "Strg+Alt+L"
+            crate::classic_menu::Row::Entry { accel: Some(a), .. } if a == "Ctrl+Alt+L"
         ));
         for i in 1..3 {
             assert!(session.item_attribute_value(i, "accel", None).is_none());
@@ -459,10 +459,7 @@ mod tests {
         // the fallback: only the panel's own logout question
         let menu = gio::Menu::new();
         fill(&menu, &[], LOGOUT_ONLY);
-        assert_eq!(
-            actions(&section(&menu, 1)),
-            ["Abmelden … -> session.logout"]
-        );
+        assert_eq!(actions(&section(&menu, 1)), ["Log Out… -> session.logout"]);
     }
 
     #[test]
@@ -483,18 +480,18 @@ mod tests {
         assert_eq!(
             actions(&section(&menu, 1)),
             [
-                "Bildschirm sperren -> session.lock",
-                "Ausschalten … -> session.shutdown"
+                "Lock Screen -> session.lock",
+                "Shut Down… -> session.shutdown"
             ]
         );
     }
 
     #[test]
     fn without_settings_only_information_and_session_remain() {
-        // Replaces the placeholder "Keine Einstellungen" of M1.5b: the menu
+        // Replaces the placeholder "Keine Preferences" of M1.5b: the menu
         // is never empty now, so no placeholder is needed.
         let no_settings = catalog(vec![
-            entry("u.desktop", "Uhr", &["Utility"]),
+            entry("u.desktop", "Clock", &["Utility"]),
             entry("m.desktop", "Monitor", &["System", "Monitor"]),
         ]);
         for catalog in [Catalog::default(), no_settings] {
@@ -502,10 +499,7 @@ mod tests {
             fill(&menu, &catalog.system_sections(), LOGOUT_ONLY);
             assert_eq!(menu.n_items(), 2);
             assert_eq!(actions(&section(&menu, 0)), INFORMATION);
-            assert_eq!(
-                actions(&section(&menu, 1)),
-                ["Abmelden … -> session.logout"]
-            );
+            assert_eq!(actions(&section(&menu, 1)), ["Log Out… -> session.logout"]);
         }
     }
 
@@ -534,11 +528,8 @@ mod tests {
         assert_eq!(
             structure(&section(&menu, 0)),
             [
-                group(
-                    "Einstellungen",
-                    &["Partitionen -> system.launch(p.desktop)"]
-                ),
-                group("Systemverwaltung", &["Drucker -> system.launch(d.desktop)"]),
+                group("Preferences", &["Partitionen -> system.launch(p.desktop)"]),
+                group("Administration", &["Drucker -> system.launch(d.desktop)"]),
             ]
         );
 

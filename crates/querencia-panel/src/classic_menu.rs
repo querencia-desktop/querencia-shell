@@ -135,19 +135,22 @@ pub fn rows(model: &gio::MenuModel) -> Vec<Row> {
     rows
 }
 
-/// A GTK accelerator (`<Control><Alt>l`) as GTK 2's German menus showed
-/// it (`Strg+Alt+L`); `None` for an empty or unreadable one. Parsed here,
-/// not by GTK, so the text does not depend on GTK's translations.
+/// A GTK accelerator (`<Control><Alt>l`) as GTK 2's menus showed it
+/// (`Ctrl+Alt+L`, German `Strg+Alt+L` from the catalog); `None` for an empty
+/// or unreadable one. Parsed here, not by GTK, so the text does not depend
+/// on GTK's translations. Only the panel shows shortcuts; the desktop,
+/// which shares this file, never sets `accel`.
 pub fn accel_label(accel: &str) -> Option<String> {
+    use crate::i18n::pgettext;
     let mut parts = Vec::new();
     let mut rest = accel.trim();
     while let Some(after) = rest.strip_prefix('<') {
         let (modifier, tail) = after.split_once('>')?;
         parts.push(match modifier.to_ascii_lowercase().as_str() {
-            "control" | "ctrl" | "ctl" | "primary" => "Strg",
-            "alt" | "mod1" => "Alt",
-            "shift" => "Umschalt",
-            "super" | "mod4" | "meta" => "Super",
+            "control" | "ctrl" | "ctl" | "primary" => pgettext("keyboard key", "Ctrl"),
+            "alt" | "mod1" => "Alt".to_owned(),
+            "shift" => pgettext("keyboard key", "Shift"),
+            "super" | "mod4" | "meta" => "Super".to_owned(),
             _ => return None,
         });
         rest = tail;
@@ -156,10 +159,10 @@ pub fn accel_label(accel: &str) -> Option<String> {
         return None;
     }
     let key = match rest {
-        "Delete" => "Entf".to_owned(),
+        "Delete" => pgettext("keyboard key", "Del"),
         "Escape" => "Esc".to_owned(),
-        "Return" => "Eingabe".to_owned(),
-        "Print" => "Druck".to_owned(),
+        "Return" => pgettext("keyboard key", "Enter"),
+        "Print" => pgettext("keyboard key", "Print"),
         key if key.chars().count() == 1 => key.to_uppercase(),
         key => key.to_owned(),
     };
@@ -1322,17 +1325,18 @@ mod tests {
         assert_eq!(
             summary(&rows(menu.upcast_ref())),
             [
-                "Bildschirm sperren [system-lock-screen] -> x.lock {Strg+Alt+L}",
+                "Bildschirm sperren [system-lock-screen] -> x.lock {Ctrl+Alt+L}",
                 "Kaputt [] -> x.b",
             ]
         );
         for (accel, text) in [
-            ("<Control><Alt>l", Some("Strg+Alt+L")),
-            ("<Primary><Shift>Delete", Some("Strg+Umschalt+Entf")),
+            // without a catalog in the test: the English names
+            ("<Control><Alt>l", Some("Ctrl+Alt+L")),
+            ("<Primary><Shift>Delete", Some("Ctrl+Shift+Del")),
             ("<Super>f", Some("Super+F")),
             ("<Alt>F11", Some("Alt+F11")),
             ("F11", Some("F11")),
-            ("<Alt>Print", Some("Alt+Druck")),
+            ("<Alt>Print", Some("Alt+Print")),
             ("", None),
             ("<Control>", None),
             ("<Hyper>x", None),

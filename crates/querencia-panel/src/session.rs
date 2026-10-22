@@ -24,11 +24,7 @@ use gtk4::{
 };
 
 use crate::add_dialog;
-
-pub const LOGOUT_TITLE: &str = "Abmelden";
-pub const LOGOUT_QUESTION: &str = "Möchten Sie sich wirklich abmelden?";
-pub const LOGOUT_DETAIL: &str = "Alle Anwendungen dieser Sitzung werden beendet. \
-                                 Was dort nicht gespeichert ist, geht verloren.";
+use crate::i18n::gettext;
 
 /// The labwc binary whose `--exit` ends this session: the program of the
 /// process `labwc_pid` (the value of `LABWC_PID`), looked up with `exe`,
@@ -111,7 +107,7 @@ pub fn confirm_logout(slot: &glib::WeakRef<Window>, labwc: PathBuf) {
         return;
     }
     let window = Window::builder()
-        .title(LOGOUT_TITLE)
+        .title(gettext("Log Out"))
         .resizable(false)
         .build();
     window.set_application(panel_application().as_ref());
@@ -128,13 +124,16 @@ pub fn confirm_logout(slot: &glib::WeakRef<Window>, labwc: PathBuf) {
     let question = Label::builder()
         .label(format!(
             "<b><big>{}</big></b>",
-            glib::markup_escape_text(LOGOUT_QUESTION)
+            glib::markup_escape_text(&gettext("Are you sure you want to log out?"))
         ))
         .use_markup(true)
         .xalign(0.0)
         .build();
     let detail = Label::builder()
-        .label(LOGOUT_DETAIL)
+        .label(gettext(
+            "All applications of this session will be closed. \
+             Anything not saved there will be lost.",
+        ))
         .xalign(0.0)
         .wrap(true)
         .max_width_chars(40)
@@ -146,13 +145,13 @@ pub fn confirm_logout(slot: &glib::WeakRef<Window>, labwc: PathBuf) {
     top.append(&icon);
     top.append(&text);
 
-    let cancel = add_dialog::stock_button("_Abbrechen", "process-stop");
+    let cancel = add_dialog::stock_button(&gettext("_Cancel"), "process-stop");
     cancel.connect_clicked(glib::clone!(
         #[weak]
         window,
         move |_| window.close()
     ));
-    let logout = add_dialog::stock_button("Ab_melden", "system-log-out");
+    let logout = add_dialog::stock_button(&gettext("_Log Out"), "system-log-out");
     logout.connect_clicked(glib::clone!(
         #[weak]
         window,
@@ -225,7 +224,7 @@ mod tests {
 
     fn exe_of(pid: u32) -> Option<PathBuf> {
         match pid {
-            1816 => Some(PathBuf::from("~/opt/labwc-0.9.8/bin/labwc")),
+            1816 => Some(PathBuf::from("/home/user/opt/labwc-0.9.8/bin/labwc")),
             42 => Some(PathBuf::from("/usr/bin/labwc")),
             7 => Some(PathBuf::from("/usr/bin/bash")),
             _ => None,
@@ -236,7 +235,7 @@ mod tests {
     fn the_running_labwc_ends_the_session() {
         assert_eq!(
             labwc_exit_command(Some("1816"), exe_of).as_deref(),
-            Some(Path::new("~/opt/labwc-0.9.8/bin/labwc"))
+            Some(Path::new("/home/user/opt/labwc-0.9.8/bin/labwc"))
         );
         assert_eq!(
             labwc_exit_command(Some("42"), exe_of).as_deref(),
@@ -301,8 +300,15 @@ mod tests {
 
     #[test]
     fn confirmation_texts_are_gnome2_like() {
-        assert_eq!(LOGOUT_TITLE, "Abmelden");
-        assert_eq!(LOGOUT_QUESTION, "Möchten Sie sich wirklich abmelden?");
-        assert!(LOGOUT_DETAIL.contains("nicht gespeichert"));
+        use crate::i18n::german;
+        assert_eq!(german("Log Out"), "Abmelden");
+        assert_eq!(
+            german("Are you sure you want to log out?"),
+            "Möchten Sie sich wirklich abmelden?"
+        );
+        assert!(german(
+            "All applications of this session will be closed. Anything not saved there will be lost."
+        )
+        .contains("nicht gespeichert"));
     }
 }

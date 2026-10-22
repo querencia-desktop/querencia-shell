@@ -9,6 +9,7 @@
 use gtk4::prelude::*;
 use gtk4::{Widget, gio};
 
+use crate::i18n::gettext;
 use crate::layout::{Instance, LAUNCHER};
 use crate::{
     app_menu, arbeitsflaeche_zeigen, clock, glocke, launcher, logo, network_applet, places_menu,
@@ -19,9 +20,11 @@ use crate::{
 pub struct AppletType {
     /// Stable ID used in layouts and the configuration file.
     pub id: &'static str,
-    /// Name shown to the user, e.g. in the "Zum Panel hinzufügen" dialog.
-    pub name: &'static str,
-    pub description: &'static str,
+    /// Name shown to the user, e.g. in the "Zum Panel hinzufügen" dialog
+    /// (translated when called).
+    pub name: fn() -> String,
+    /// Description in the dialog (translated when called).
+    pub description: fn() -> String,
     /// Icon name from the freedesktop icon naming specification.
     pub icon: &'static str,
     /// Icon name the GNOME 2 panel used for this applet, tried before
@@ -74,8 +77,8 @@ impl AppletType {
 pub const APPLETS: &[AppletType] = &[
     AppletType {
         id: "applications",
-        name: "Anwendungen",
-        description: "Menü der installierten Anwendungen",
+        name: || gettext("Applications"),
+        description: || gettext("Menu of the installed applications"),
         // The Querencia logo (QREL-04c), not the theme's `start-here`.
         icon: logo::ICON_NAME,
         classic_icon: None,
@@ -89,8 +92,8 @@ pub const APPLETS: &[AppletType] = &[
     },
     AppletType {
         id: "places",
-        name: "Orte",
-        description: "Persönlicher Ordner und Benutzerordner",
+        name: || gettext("Places"),
+        description: || gettext("Home folder and user folders"),
         icon: "folder",
         classic_icon: None,
         multiple: true,
@@ -103,8 +106,8 @@ pub const APPLETS: &[AppletType] = &[
     },
     AppletType {
         id: "system",
-        name: "System",
-        description: "Einstellungen und Systemverwaltung",
+        name: || gettext("System"),
+        description: || gettext("Preferences and administration"),
         icon: "preferences-system",
         classic_icon: None,
         multiple: true,
@@ -117,8 +120,8 @@ pub const APPLETS: &[AppletType] = &[
     },
     AppletType {
         id: "window-list",
-        name: "Fensterliste",
-        description: "Knöpfe für alle offenen Fenster",
+        name: || gettext("Window List"),
+        description: || gettext("Buttons for all open windows"),
         icon: "preferences-system-windows",
         classic_icon: None,
         multiple: false,
@@ -131,8 +134,8 @@ pub const APPLETS: &[AppletType] = &[
     },
     AppletType {
         id: "workspace-switcher",
-        name: "Arbeitsflächenumschalter",
-        description: "Wechsel zwischen den Arbeitsflächen",
+        name: || gettext("Workspace Switcher"),
+        description: || gettext("Switch between workspaces"),
         icon: "preferences-desktop-workspaces",
         classic_icon: Some("workspace-switcher"),
         multiple: false,
@@ -145,8 +148,8 @@ pub const APPLETS: &[AppletType] = &[
     },
     AppletType {
         id: "clock",
-        name: "Uhr",
-        description: "Datum und Uhrzeit",
+        name: || gettext("Clock"),
+        description: || gettext("Date and time"),
         icon: "preferences-system-time",
         classic_icon: Some("clock"),
         multiple: true,
@@ -159,8 +162,8 @@ pub const APPLETS: &[AppletType] = &[
     },
     AppletType {
         id: LAUNCHER,
-        name: "Anwendungsstarter …",
-        description: "Einen Starter aus dem Anwendungsmenü kopieren",
+        name: || gettext("Application Launcher…"),
+        description: || gettext("Copy a launcher from the applications menu"),
         icon: "system-run",
         classic_icon: None,
         multiple: true,
@@ -180,8 +183,8 @@ pub const APPLETS: &[AppletType] = &[
     // `End=volume-1;clock-1` with `[Applet volume-1]` `Type=volume`.
     AppletType {
         id: VOLUME,
-        name: "Lautstärke",
-        description: "Lautstärke einstellen und stummschalten",
+        name: || gettext("Volume"),
+        description: || gettext("Change the volume and mute"),
         // The dialog draws the applet's own icon (`add_dialog.rs`); the
         // theme name is only the fallback for other users of `icon`.
         icon: "audio-volume-high",
@@ -201,8 +204,8 @@ pub const APPLETS: &[AppletType] = &[
     // with `[Applet network-1]` `Type=network`.
     AppletType {
         id: NETWORK,
-        name: "Netzwerk",
-        description: "Netzwerkverbindungen anzeigen und wählen",
+        name: || gettext("Network"),
+        description: || gettext("Show and choose network connections"),
         // The dialog draws the applet's own icon (`add_dialog.rs`).
         icon: "network-wired",
         classic_icon: None,
@@ -218,8 +221,8 @@ pub const APPLETS: &[AppletType] = &[
     // the bottom panel. Single: it works through the one window list.
     AppletType {
         id: SHOW_DESKTOP,
-        name: "Arbeitsfläche anzeigen",
-        description: "Alle Fenster minimieren und wiederherstellen",
+        name: || gettext("Show Desktop"),
+        description: || gettext("Minimize and restore all windows"),
         icon: arbeitsflaeche_zeigen::ICON,
         classic_icon: None,
         multiple: false,
@@ -234,8 +237,8 @@ pub const APPLETS: &[AppletType] = &[
     // icon right of the network applet. Single: one service.
     AppletType {
         id: NOTIFICATIONS,
-        name: "Mitteilungen",
-        description: "Ungelesene Mitteilungen, öffnet die Mitteilungszentrale",
+        name: || gettext("Notifications"),
+        description: || gettext("Unread notifications, opens the notification center"),
         // The dialog draws the applet's own icon (`add_dialog.rs`).
         icon: "preferences-desktop-notification",
         classic_icon: None,
@@ -297,7 +300,7 @@ mod tests {
     fn find_knows_every_type_and_nothing_else() {
         for applet in APPLETS {
             assert_eq!(find(applet.id).map(|a| a.id), Some(applet.id));
-            assert!(!applet.name.is_empty() && !applet.description.is_empty());
+            assert!(!(applet.name)().is_empty() && !(applet.description)().is_empty());
             assert!(!applet.icon.is_empty());
         }
         assert!(find("unbekannt").is_none());
@@ -374,7 +377,7 @@ mod tests {
         let network = find(NETWORK).unwrap();
         assert!(!network.multiple && network.removable && !network.once);
         assert!(!network.chooses_application);
-        assert_eq!(network.name, "Netzwerk");
+        assert_eq!((network.name)(), "Network");
         let menu = (network.menu.unwrap())();
         let section = menu.item_link(3, "section").expect("Abschnitt");
         let action = section
@@ -383,7 +386,7 @@ mod tests {
         assert_eq!(action.as_deref(), Some(crate::panel_menu::REMOVE_ACTION));
         let volume = find(VOLUME).unwrap();
         assert!(!volume.multiple && volume.removable && !volume.chooses_application);
-        assert_eq!(volume.name, "Lautstärke");
+        assert_eq!((volume.name)(), "Volume");
         // its menu removes through the panel's action
         let menu = (volume.menu.unwrap())();
         let section = menu.item_link(2, "section").expect("Abschnitt");

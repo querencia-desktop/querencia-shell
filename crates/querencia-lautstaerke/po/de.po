@@ -1,0 +1,42 @@
+# Querencia Desktop – querencia-lautstaerke: Übersetzung (de).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-lautstaerke\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-22 22:00+0200\n"
+"Last-Translator: Querencia Desktop\n"
+"Language-Team: Deutsch\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/model.rs:286
+msgid "No audio service"
+msgstr "Kein Audiodienst"
+
+#: src/model.rs:287
+msgid "Connecting to the audio service…"
+msgstr "Verbindung zum Audiodienst …"
+
+#: src/model.rs:289
+msgid "No output device"
+msgstr "Kein Ausgabegerät"
+
+#: src/model.rs:294
+#, no-c-format
+msgid "Volume: muted ({percent} %)"
+msgstr "Lautstärke: stumm ({percent} %)"
+
+#: src/model.rs:296
+#, no-c-format
+msgid "Volume: {percent} %"
+msgstr "Lautstärke: {percent} %"
+
+#: src/model.rs:298
+#, no-c-format
+msgid "Device: {device}"
+msgstr "Gerät: {device}"

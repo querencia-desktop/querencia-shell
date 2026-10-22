@@ -57,6 +57,7 @@ use wayland_protocols_wlr::foreign_toplevel::v1::client::{
 
 use crate::arbeitsflaeche_zeigen::{self, Merkliste, Schritt};
 use crate::fensterliste::{self, Ereignis, Flaechen, Zuordnung};
+use crate::i18n::{gettext, gettext_f};
 
 /// Identity of a window for the widgets. Never reused while the panel runs,
 /// unlike Wayland protocol ids, which the compositor reuses after `closed`.
@@ -211,7 +212,7 @@ fn button_text(info: &Info) -> String {
     match (info.title.is_empty(), info.app_id.is_empty()) {
         (false, _) => info.title.clone(),
         (true, false) => info.app_id.clone(),
-        (true, true) => "Unbenanntes Fenster".to_owned(),
+        (true, true) => gettext("Untitled window"),
     }
 }
 
@@ -219,7 +220,7 @@ fn button_text(info: &Info) -> String {
 fn tooltip_text(info: &Info) -> String {
     let text = button_text(info);
     if info.minimized {
-        format!("{text} (minimiert)")
+        gettext_f("{title} (minimized)", &[("title", &text)])
     } else {
         text
     }
@@ -1223,7 +1224,7 @@ mod tests {
         assert_eq!(button_text(&info), "editor");
         info.app_id.clear();
         info.minimized = false;
-        assert_eq!(button_text(&info), "Unbenanntes Fenster");
+        assert_eq!(button_text(&info), "Untitled window");
     }
 
     #[test]
@@ -1237,10 +1238,10 @@ mod tests {
         info.minimized = true;
         assert_eq!(
             tooltip_text(&info),
-            "R1 Abschlussreview austauschen und den Bericht prüfen (minimiert)"
+            "R1 Abschlussreview austauschen und den Bericht prüfen (minimized)"
         );
         info.title.clear();
-        assert_eq!(tooltip_text(&info), "foot (minimiert)");
+        assert_eq!(tooltip_text(&info), "foot (minimized)");
     }
 
     #[test]

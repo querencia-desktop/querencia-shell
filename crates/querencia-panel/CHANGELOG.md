@@ -1,5 +1,30 @@
 # Änderungen – querencia-panel
 
+## 0.3.0 – 2026-10-22
+
+Englisch per gettext (QD-055), Muster wie Editor 0.2.0 und Desktop 0.2.5.
+
+- Alle sichtbaren Texte über GNU gettext: msgid englisch, Deutsch aus
+  `po/de.po` mit exakt dem bisherigen Wortlaut (Prüfung gegen panel/0.2.5:
+  alle 91 alten deutschen Nutzertexte stehen im Katalog). Menüs
+  Anwendungen/Orte/System mit Kategorien und Orten, Uhr (Format übersetzbar:
+  deutsch `%d.%m.%Y %H:%M`, englisch wie GNOME 2 „Thu Oct 22, 10:08 PM“),
+  Glocke (Pluralformen), Lautstärke, Netzwerk (Menü, Netzliste, Dialoge),
+  „Arbeitsfläche anzeigen“, Fensterliste, Arbeitsflächen, „Zum Panel
+  hinzufügen“, Programmauswahl, Kontextmenüs, Info-Dialog, Abmelden-Frage,
+  Tastennamen der Kürzel (`Strg`/`Ctrl`).
+- Modul `i18n.rs` (Textdomäne `querencia-panel`): Kataloge neben der Binary
+  (`share/locale`), dann im Präfix, dann `/usr/share/locale`;
+  `QUERENCIA_PANEL_LOCALEDIR` für Tests. Sprache wie üblich über `LANGUAGE`
+  vor `LANG`; die Sitzung setzt `LANGUAGE=de`.
+- Texte aus `querencia-lautstaerke` und `querencia-netzwerk` (Tooltips,
+  Netzliste, Verbindungsinformationen) haben eigene Textdomänen gleichen
+  Namens; das Panel liefert deren Kataloge mit und bindet sie.
+- `po/`, `werkzeug/i18n.py` (pot, update, mo, pruefen) je Crate; Tests
+  `german_catalog_is_complete`, `german_wording_is_the_old_one`.
+- Ohne Katalog (z. B. `LANGUAGE=fr`) erscheint Englisch. Protokollzeilen
+  bleiben deutsch.
+
 ## 0.2.5 – 2026-10-22
 
 Enthält 0.2.4 (nicht einzeln aktiviert) und die App-ID von Querencia Files

@@ -8,6 +8,7 @@
 //! - [`service`]: one shared connection per process on the GTK main thread;
 //! - [`icons`]: the own SVG icons.
 
+pub mod i18n;
 pub mod icons;
 pub mod model;
 pub mod pulse;

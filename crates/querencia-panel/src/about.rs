@@ -15,13 +15,12 @@ use std::path::Path;
 use gtk4::prelude::*;
 use gtk4::{Align, Box as GtkBox, Label, Orientation, Window, glib};
 
+use crate::i18n::{gettext, gettext_f};
 use crate::{add_dialog, links, logo, session};
 
-const TITLE: &str = "Informationen über Querencia";
 /// Size of the logo at the top of the window.
 const LOGO_SIZE: i32 = 64;
 const PRODUCT: &str = "Querencia Desktop";
-const DESCRIPTION: &str = "Ein klassischer Desktop im Stil von GNOME 2 für Wayland und labwc";
 /// Installed by the `querencia-desktop` package; fixed paths, no override.
 pub const RELEASE_FILE: &str = "/usr/share/querencia/release";
 pub const VERSION_FILE: &str = "/usr/share/querencia/version";
@@ -68,10 +67,13 @@ pub fn about_from(root: &Path) -> About {
     About {
         product: PRODUCT.to_string(),
         release,
-        panel: format!("Panel {}", env!("CARGO_PKG_VERSION")),
-        description: DESCRIPTION.to_string(),
+        panel: gettext_f("Panel {version}", &[("version", env!("CARGO_PKG_VERSION"))]),
+        description: gettext("A classic desktop in the style of GNOME 2 for Wayland and labwc"),
         home_url,
-        license: format!("Lizenz: {}", env!("CARGO_PKG_LICENSE")),
+        license: gettext_f(
+            "License: {license}",
+            &[("license", env!("CARGO_PKG_LICENSE"))],
+        ),
     }
 }
 
@@ -129,7 +131,10 @@ pub fn present(slot: &glib::WeakRef<Window>) {
         window.present();
         return;
     }
-    let window = Window::builder().title(TITLE).resizable(false).build();
+    let window = Window::builder()
+        .title(gettext("About Querencia"))
+        .resizable(false)
+        .build();
     window.set_application(session::panel_application().as_ref());
     let about = about();
 
@@ -168,7 +173,7 @@ pub fn present(slot: &glib::WeakRef<Window>) {
     content.append(&text(&about.description));
     content.append(&link(&about.home_url));
     content.append(&text(&about.license));
-    let close = add_dialog::stock_button("_Schließen", "window-close");
+    let close = add_dialog::stock_button(&gettext("_Close"), "window-close");
     close.set_halign(Align::End);
     close.set_margin_top(12);
     close.connect_clicked(glib::clone!(
@@ -244,7 +249,8 @@ mod tests {
             about.description
         );
         assert_eq!(about.home_url, "https://querencialinux.org");
-        assert_eq!(about.license, "Lizenz: GPL-3.0-or-later");
+        // without a catalog in the test: the English msgid
+        assert_eq!(about.license, "License: GPL-3.0-or-later");
         let _ = std::fs::remove_dir_all(dir);
     }
 

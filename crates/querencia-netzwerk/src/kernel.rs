@@ -16,6 +16,7 @@
 //! environment `QUERENCIA_NETZWERK_WURZEL`); IPv4 addresses then come from
 //! the file `<root>/ipv4` (`eth0 192.0.2.23/24` per line).
 
+use crate::i18n::gettext_f;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::{Path, PathBuf};
@@ -289,8 +290,15 @@ pub fn read_links(
     networkd: &HashMap<u32, String>,
     dns: Option<&HashMap<u32, Vec<IpAddr>>>,
 ) -> Result<Vec<Link>, String> {
-    let dir = std::fs::read_dir(&sources.sys_class_net)
-        .map_err(|e| format!("{} nicht lesbar: {e}", sources.sys_class_net.display()))?;
+    let dir = std::fs::read_dir(&sources.sys_class_net).map_err(|e| {
+        gettext_f(
+            "{path} not readable: {error}",
+            &[
+                ("path", &sources.sys_class_net.display().to_string()),
+                ("error", &e.to_string()),
+            ],
+        )
+    })?;
     let ipv4 = match &sources.ipv4_file {
         Some(file) => parse_ipv4_file(&std::fs::read_to_string(file).unwrap_or_default()),
         None => ipv4_addresses(),
@@ -612,13 +620,13 @@ fe8000000000000002005efffe0053df 02 40 20 80     eth0
         let links = read_links(&sources, &HashMap::new(), None).unwrap();
         let eth = &links[0].device;
         assert_eq!(eth.state, DeviceState::Unavailable);
-        assert_eq!(eth.state_text(), "Kabel nicht angeschlossen");
+        assert_eq!(eth.state_text(), "Cable unplugged");
         assert_eq!(eth.speed_mbit, None);
         assert!(!eth.primary && eth.gateway4.is_none());
         std::fs::remove_dir_all(&root).unwrap();
 
         let missing = read_links(&Sources::below(&root), &HashMap::new(), None);
-        assert!(missing.unwrap_err().contains("nicht lesbar"));
+        assert!(missing.unwrap_err().contains("not readable"));
     }
 
     #[test]

@@ -1,0 +1,272 @@
+# Querencia Desktop – querencia-netzwerk: Übersetzung (de).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-netzwerk\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-22 22:00+0200\n"
+"Last-Translator: Querencia Desktop\n"
+"Language-Team: Deutsch\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/kernel.rs:294
+#, no-c-format
+msgid "{path} not readable: {error}"
+msgstr "{path} nicht lesbar: {error}"
+
+#: src/model.rs:40
+msgid "Managed by systemd-networkd, display only"
+msgstr "Verwaltet von systemd-networkd, nur Anzeige"
+
+#: src/model.rs:43
+msgid "No NetworkManager found, display only"
+msgstr "Kein NetworkManager gefunden, nur Anzeige"
+
+#. TRANSLATORS: security of a wireless network
+#: src/model.rs:162
+msgid "none"
+msgstr "keine"
+
+#: src/model.rs:164
+msgid "WPA/WPA2 Personal"
+msgstr "WPA/WPA2 Personal"
+
+#: src/model.rs:165
+msgid "WPA3 Personal"
+msgstr "WPA3 Personal"
+
+#: src/model.rs:166
+msgid "WPA/WPA2 Enterprise"
+msgstr "WPA/WPA2 Enterprise"
+
+#: src/model.rs:297
+#, no-c-format
+msgid "Wired Network ({interface})"
+msgstr "Kabelnetzwerk ({interface})"
+
+#: src/model.rs:302
+#, no-c-format
+msgid "Wireless ({interface})"
+msgstr "WLAN ({interface})"
+
+#: src/model.rs:310
+msgid "connected"
+msgstr "verbunden"
+
+#: src/model.rs:311
+msgid "connecting…"
+msgstr "verbindet …"
+
+#: src/model.rs:312
+msgid "disconnecting…"
+msgstr "trennt …"
+
+#: src/model.rs:313
+msgid "Connection failed"
+msgstr "Verbindung fehlgeschlagen"
+
+#: src/model.rs:314
+msgid "not managed"
+msgstr "nicht verwaltet"
+
+#: src/model.rs:316
+msgid "Cable unplugged"
+msgstr "Kabel nicht angeschlossen"
+
+#: src/model.rs:318
+msgid "not available"
+msgstr "nicht verfügbar"
+
+#: src/model.rs:319
+msgid "disconnected"
+msgstr "nicht verbunden"
+
+#: src/model.rs:477
+msgid "No network service"
+msgstr "Kein Netzwerkdienst"
+
+#: src/model.rs:483
+msgid "Network: reading…"
+msgstr "Netzwerk: wird gelesen …"
+
+#: src/model.rs:497
+#, no-c-format
+msgid "Connecting to the wireless network “{ssid}”…"
+msgstr "Verbindung mit WLAN „{ssid}“ wird hergestellt …"
+
+#: src/model.rs:501
+#, no-c-format
+msgid "{device}: connecting…"
+msgstr "{device}: Verbindung wird hergestellt …"
+
+#: src/model.rs:507
+#, no-c-format
+msgid "Wired network “{name}” connected ({interface})"
+msgstr "Kabelnetzwerk „{name}“ verbunden ({interface})"
+
+#: src/model.rs:511
+#, no-c-format
+msgid "Wired network {interface} connected"
+msgstr "Kabelnetzwerk {interface} verbunden"
+
+#: src/model.rs:521
+#, no-c-format
+msgid "Wireless network “{name}” connected, signal {signal} %"
+msgstr "WLAN „{name}“ verbunden, Signal {signal} %"
+
+#: src/model.rs:525
+#, no-c-format
+msgid "Wireless network connected, signal {signal} %"
+msgstr "WLAN verbunden, Signal {signal} %"
+
+#: src/model.rs:529
+#, no-c-format
+msgid "Wireless network “{name}” connected ({interface})"
+msgstr "WLAN „{name}“ verbunden ({interface})"
+
+#: src/model.rs:533
+#, no-c-format
+msgid "Wireless network connected ({interface})"
+msgstr "WLAN verbunden ({interface})"
+
+#: src/model.rs:541
+#, no-c-format
+msgid "Address: {address}"
+msgstr "Adresse: {address}"
+
+#: src/model.rs:549
+msgid "No network cable plugged in"
+msgstr "Kein Netzwerkkabel angeschlossen"
+
+#: src/model.rs:550
+msgid "Airplane mode is on"
+msgstr "Flugmodus ist an"
+
+#: src/model.rs:551
+msgid "Wireless is disabled"
+msgstr "WLAN ist ausgeschaltet"
+
+#: src/model.rs:552
+msgid "Networking is disabled"
+msgstr "Netzwerk ist ausgeschaltet"
+
+#: src/model.rs:553
+msgid "No network device"
+msgstr "Kein Netzwerkgerät"
+
+#: src/model.rs:554
+msgid "No network connection"
+msgstr "Keine Netzwerkverbindung"
+
+#: src/model.rs:569
+#, no-c-format
+msgid "{gbit} Gbit/s"
+msgstr "{gbit} Gbit/s"
+
+#. TRANSLATORS: a speed with one decimal; German writes a comma
+#: src/model.rs:572
+#, no-c-format
+msgid "{whole}.{tenth} Gbit/s"
+msgstr "{whole},{tenth} Gbit/s"
+
+#: src/model.rs:581
+#, no-c-format
+msgid "{mbit} Mbit/s"
+msgstr "{mbit} Mbit/s"
+
+#. TRANSLATORS: a frequency band; German writes a decimal comma
+#: src/model.rs:589
+msgid "2.4 GHz"
+msgstr "2,4 GHz"
+
+#: src/model.rs:666
+msgid "Interface"
+msgstr "Schnittstelle"
+
+#: src/model.rs:669
+#, no-c-format
+msgid "{interface} (wired)"
+msgstr "{interface} (Kabel)"
+
+#: src/model.rs:671
+#, no-c-format
+msgid "{interface} (wireless)"
+msgstr "{interface} (WLAN)"
+
+#: src/model.rs:677
+msgid "State"
+msgstr "Zustand"
+
+#: src/model.rs:680
+msgid "Connection"
+msgstr "Verbindung"
+
+#: src/model.rs:683
+msgid "Hardware Address"
+msgstr "Hardware-Adresse"
+
+#: src/model.rs:686
+msgid "Driver"
+msgstr "Treiber"
+
+#: src/model.rs:689
+msgid "Speed"
+msgstr "Geschwindigkeit"
+
+#: src/model.rs:693
+msgid "Network"
+msgstr "Netz"
+
+#: src/model.rs:696
+msgid "Security"
+msgstr "Sicherheit"
+
+#: src/model.rs:699
+msgid "Frequency Band"
+msgstr "Frequenzband"
+
+#: src/model.rs:703
+msgid "Signal"
+msgstr "Signal"
+
+#: src/model.rs:710
+msgid "Managed by"
+msgstr "Verwaltet von"
+
+#: src/model.rs:713
+msgid "systemd-networkd (display only)"
+msgstr "systemd-networkd (nur Anzeige)"
+
+#: src/model.rs:714
+msgid "unknown (display only)"
+msgstr "unbekannt (nur Anzeige)"
+
+#: src/model.rs:721 src/model.rs:724 src/model.rs:750 src/model.rs:758
+msgid "Address"
+msgstr "Adresse"
+
+#: src/model.rs:726
+msgid "Netmask"
+msgstr "Netzmaske"
+
+#: src/model.rs:730 src/model.rs:761
+msgid "Default Gateway"
+msgstr "Standard-Gateway"
+
+#: src/model.rs:756
+#, no-c-format
+msgid "{address} (local)"
+msgstr "{address} (lokal)"
+
+#: src/model.rs:774
+msgid "General"
+msgstr "Allgemein"
+
+#: src/service.rs:257
+msgid "Nothing can be changed without NetworkManager"
+msgstr "Ohne NetworkManager kann nichts geändert werden"

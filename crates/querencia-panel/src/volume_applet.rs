@@ -32,6 +32,7 @@ use querencia_lautstaerke::model::{self, Look};
 use querencia_lautstaerke::service::{self, Service};
 use querencia_lautstaerke::{MIXER_APP_ID, MIXER_PROGRAM, icons};
 
+use crate::i18n::gettext;
 use crate::{app_menu, logo};
 
 /// CSS class of the applet's button. Its look is the one of all status
@@ -55,14 +56,17 @@ const LOG: &str = "querencia-panel";
 /// „Lautstärkeregler öffnen …“, then the panel object entry.
 pub fn menu() -> gio::Menu {
     let menu = gio::Menu::new();
-    menu.append(Some("_Stumm"), Some(&format!("{ACTION_GROUP}.{MUTE}")));
     menu.append(
-        Some("_Lautstärkeregler öffnen …"),
+        Some(&gettext("_Mute")),
+        Some(&format!("{ACTION_GROUP}.{MUTE}")),
+    );
+    menu.append(
+        Some(&gettext("_Open Volume Control…")),
         Some(&format!("{ACTION_GROUP}.{MIXER}")),
     );
     let object = gio::Menu::new();
     object.append(
-        Some("Aus dem Panel entfernen"),
+        Some(&gettext("Remove From Panel")),
         Some(crate::panel_menu::REMOVE_ACTION),
     );
     menu.append_section(None, &object);
@@ -272,7 +276,7 @@ impl Popup {
         scale.set_increments(1.0, f64::from(model::SCROLL_STEP));
         scale.set_height_request(SLIDER_HEIGHT);
         scale.set_halign(gtk4::Align::Center);
-        let mute = CheckButton::with_label("Stumm");
+        let mute = CheckButton::with_label(&gettext("Mute"));
         let content = GtkBox::new(Orientation::Vertical, 6);
         content.set_margin_top(6);
         content.set_margin_bottom(6);
@@ -431,18 +435,12 @@ mod tests {
     #[test]
     fn menu_mutes_opens_the_mixer_and_removes() {
         let menu = menu().upcast::<gio::MenuModel>();
-        assert_eq!(label(&menu, 0).as_deref(), Some("_Stumm"));
+        assert_eq!(label(&menu, 0).as_deref(), Some("_Mute"));
         assert_eq!(action(&menu, 0).as_deref(), Some("volume.mute"));
-        assert_eq!(
-            label(&menu, 1).as_deref(),
-            Some("_Lautstärkeregler öffnen …")
-        );
+        assert_eq!(label(&menu, 1).as_deref(), Some("_Open Volume Control…"));
         assert_eq!(action(&menu, 1).as_deref(), Some("volume.mixer"));
         let section = menu.item_link(2, "section").expect("Abschnitt");
-        assert_eq!(
-            label(&section, 0).as_deref(),
-            Some("Aus dem Panel entfernen")
-        );
+        assert_eq!(label(&section, 0).as_deref(), Some("Remove From Panel"));
         assert_eq!(action(&section, 0).as_deref(), Some("panel.applet-remove"));
     }
 
