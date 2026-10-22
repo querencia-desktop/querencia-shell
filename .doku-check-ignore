@@ -1,0 +1,8 @@
+# Begründete Ausnahmen vom Doku-Standard (Freigabe pottrauschen 22.10.2026, Startsession).
+# CHANGELOG je Crate: Cargo-Konvention neben Cargo.toml; Packaging und Release-Notes lesen sie dort.
+crates/*/CHANGELOG.md
+# HERKUNFT.md liegt bei den Bilddaten, auf die es sich bezieht; erzeugen.py und Paketpatch verweisen darauf.
+data/hintergruende/HERKUNFT.md
+# Nachweise der Integrationen (13 §4 Nr. 13): Belege gehören zum Integrationsordner, nicht in docs/.
+integration/*/nachweis/*
+nachweis/
