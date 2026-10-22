@@ -98,12 +98,31 @@ impl Overview {
     }
 }
 
+/// Colours as named colours of the GTK theme or mixed from them, so the
+/// window follows the dark style without an `@media` block of its own
+/// (QD-109). Under Querencia-Klassisch light they stay at or near the former
+/// fixed values: key boxes #fafaf9 (was #fbfaf9) with border #c7c2be and
+/// text #3c3c3c, source line #6d6d6c (was #6e6e6e); the warning becomes a
+/// darker red #672a2a (was #a0331a) so that it stays readable in both.
 const CSS: &str = "
 window.querencia-kuerzel .kuerzel-titel { font-weight: bold; margin-top: 6px; }
-window.querencia-kuerzel label.tasten { border: 1px solid #c7c2be; border-radius: 3px; background-color: #fbfaf9; color: #3c3c3c; padding: 0 6px; }
-window.querencia-kuerzel .kuerzel-quelle { color: #6e6e6e; font-size: smaller; }
-window.querencia-kuerzel .kuerzel-warnung { color: #a0331a; }
+window.querencia-kuerzel label.tasten { border: 1px solid @borders; border-radius: 3px; background-color: mix(@theme_base_color, @theme_bg_color, 0.35); color: @theme_fg_color; padding: 0 6px; }
+window.querencia-kuerzel .kuerzel-quelle { color: mix(@theme_fg_color, @theme_bg_color, 0.27); font-size: smaller; }
+window.querencia-kuerzel .kuerzel-warnung { color: mix(@error_color, @theme_fg_color, 0.7); }
 ";
+
+/// GTK 4.22 shows the light theme in a program started while the colour
+/// scheme is already dark, until the setting is announced again (QD-081,
+/// as in querencia-panel `farbschema::startfehler_beheben`); once after start.
+fn refresh_color_scheme() {
+    if let Some(settings) = gtk4::Settings::default()
+        && settings
+            .find_property("gtk-interface-color-scheme")
+            .is_some()
+    {
+        settings.notify("gtk-interface-color-scheme");
+    }
+}
 
 fn heading(text: &str) -> gtk4::Label {
     let label = gtk4::Label::new(Some(text));
@@ -327,6 +346,7 @@ fn main() -> glib::ExitCode {
                 gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
         }
+        refresh_color_scheme();
     });
     let overview = std::rc::Rc::new(overview);
     app.connect_activate(move |app| {
@@ -338,4 +358,20 @@ fn main() -> glib::ExitCode {
     });
     // the options above are ours; GApplication gets none
     app.run_with_args(&args[..1])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CSS;
+
+    /// No fixed light values for surfaces and text (QD-109): they come from
+    /// the theme, so the window follows the dark style.
+    #[test]
+    fn css_takes_colours_from_the_theme() {
+        for fixed in ["#c7c2be", "#fbfaf9", "#3c3c3c", "#6e6e6e", "#a0331a"] {
+            assert!(!CSS.contains(fixed), "fixed light value {fixed}");
+        }
+        assert!(!CSS.contains("@media"));
+        assert!(CSS.contains("label.tasten { border: 1px solid @borders;"));
+    }
 }

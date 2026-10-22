@@ -1,5 +1,19 @@
 # Änderungen – querencia-kuerzel
 
+## 0.2.1 – 2026-10-22
+
+Dunkelmodus (QD-109):
+
+- Die Übersicht folgt der dunklen Darstellung: Nach dem Start meldet das
+  Programm das Farbschema einmal neu (GTK 4.22 zeigte ein bei „dunkel“
+  frisch gestartetes Fenster sonst hell, QD-081).
+- Tastenkästchen, Quellzeile und Warnung nehmen ihre Farben aus dem Thema
+  (`@borders`, `@theme_fg_color`, Mischungen aus `@theme_base_color`,
+  `@theme_bg_color`, `@error_color`), ohne eigenen `@media`-Block. Hell
+  bleiben Rand und Schrift gleich, das Kästchen ist #fafaf9 statt #fbfaf9,
+  die Quellzeile #6d6d6c statt #6e6e6e; die Warnung ist ein dunkleres Rot
+  (#672a2a statt #a0331a), das auch dunkel lesbar bleibt.
+
 ## 0.2.0 – 2026-10-21
 
 Nachtrag der seit 0.1.0 live gegangenen Kürzel (Auftrag kuerzel-reiter):
