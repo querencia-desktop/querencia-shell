@@ -245,3 +245,24 @@ PANEL_024_FREIGABE=ja bash $I panel-neustart-zurueck
 `panel-neustart` tauscht mit `tausch-panel-3.py`. Es läuft auch mit
 Wachhund, und die Art bleibt erhalten. Gewartet wird nach PID und bis beide
 Busnamen frei sind. Die Record-Datei der Sitzung wird nachgeführt.
+
+## 9. Panel 0.2.5: Files-App-ID, korrigiertes Integrationsskript
+
+Stand 22.10.2026, 21:43. 0.2.4 ist seit 21:22:40 aktiviert (Link), der Live-Tausch scheiterte aber an `panel-024-integrieren.sh` (siehe unten); live lief weiter 0.2.3 unter dem Wachhund. 0.2.5 setzt auf runtime main `307ff47` (Desktop 0.2.5) auf: Merge `1cf8176`, `crates/querencia-desktop` gleich main, Cargo.lock nur mit der Panel-Version, `cargo build --locked` grün. Tag `panel/0.2.5` → `1cf8176`; Release `117df958…`, auf `869ff26` und auf dem Merge-Stand nach `cargo clean` byte-gleich.
+
+**Files-App-ID (QD-059, QF-0t).** Querencia Files bekommt `org.querencia.Files`; der alte Starter `io.github.lgse.Strata.desktop` bleibt vorerst als unsichtbare Brücke.
+- Fensterliste (`window_icons.rs`): Tabelle `RENAMED` (`org.querencia.Files` → `io.github.lgse.Strata`); die neue ID findet zuerst den neuen Starter nach den Regeln 1–6, sonst den Starter der alten ID; die alte ID findet weiter den alten Starter.
+- Orte (`places_menu.rs`): Querencia Files zuerst an `org.querencia.Files.desktop`, dann `io.github.lgse.Strata.desktop`, dann am Namen.
+- Tests für beide Fälle; isoliert (`fotos`, Bild 12): neue ID zeigt bei nur altem Starter dasselbe Symbol wie die alte, nicht das allgemeine; geeicht mit 0.2.4 (dort allgemeines Symbol, Prüffall FAIL).
+- Weitere Stellen mit der alten ID: `apps/tests.rs` (Starter der Sitzung unter `session/querencia/applications`, unverändert) und `crates/querencia-desktop/src/desktop_view.rs` `FILES_APP` (Desktop-Worker).
+
+**Fehler in `panel-024-integrieren.sh` (gefunden von der Status-Session).** Unter `set -o pipefail` endet `laufend | grep -q …` nach dem ersten Treffer (Wachhund); `laufend` bekommt beim Ausgeben der Kind-Zeile SIGPIPE, die Pipeline 141 – `panel-neustart` verweigerte („laufendes Panel ist nicht 0.2.3“), `art()` hätte „einfach“ geliefert. Dasselbe Muster steckte in `laufend` selbst (`tr … | grep -qx`). Die Probe hatte `panel-neustart` nur im verweigerten Probemodus geprüft. `panel-024-integrieren.sh` bleibt byte-gleich (Rückfallpfad → 0.2.3).
+
+`panel-025-integrieren.sh` (neue Datei, Ausgang „alt“ = 0.2.4 `448ded49`, Rückfall `zurueck` → 0.2.4):
+- liest die Panel-Prozesse einmal in eine Variable (Umgebung und Befehlszeile je Prozess ganz gelesen, Prüfung mit `case`), keine Pipe mit `grep -q`;
+- `lage()` bewertet die Liste: eine Überwachung mit höchstens einem Panel (Art `ueberwacht`, alte PID = Wachhund) oder ein Panel allein (`einfach`); alle aus einer erlaubten Fassung, sonst verweigert;
+- `panel-neustart` von laufendem 0.2.3 oder 0.2.4, `panel-neustart-zurueck` von laufendem 0.2.5, jeweils mit gleicher Art;
+- `panel-neustart-pruefen`: nur lesend, meldet alte PID, Art und den Aufruf von `tausch-panel-3.py` (unverändert, `5974d5a7`);
+- in der Probe ersetzt `QP25_LAUFEND` die Prozessliste, und `panel-neustart(-zurueck)` ist ein Trockenlauf. Probe 60/60, darunter Wachhund mit Kind (beide Reihenfolgen), Wachhund ohne Kind, Panel allein, zwei Wachhunde, Wachhund mit zwei Panels, fremde und gemischte Fassungen, leere Liste, Trockenläufe in beide Richtungen.
+
+Integration: `integration/panel-025/` (Kopie von `~/projects/panel-024-arbeit/integration-025`).

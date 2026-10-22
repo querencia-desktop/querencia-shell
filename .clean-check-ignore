@@ -79,3 +79,9 @@
 #      integration/desktop-025 (Kopie der Prüfwerkzeuge wie
 #      integration/desktop-024) und die höhere Zählung bei P002; sie fallen
 #      unter die Ausnahmen oben.
+# panel-0.2.5 (22.10.2026): neu nur S004/S005/H003 in integration/panel-025
+#      (Kopie der Prüfwerkzeuge wie integration/panel-024, dazu
+#      symbolvergleich.py), Q002 in integration/panel-024/nachweis/
+#      clean-check-repo.txt (Prüfprotokoll, zitiert die Marker anderer Dateien,
+#      wie integration/welle-dunkel) und die höhere Zählung bei P002; sie
+#      fallen unter die Ausnahmen oben.
