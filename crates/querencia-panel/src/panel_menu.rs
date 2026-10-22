@@ -46,6 +46,7 @@ use gtk4::{
     PopoverMenu, PositionType, Window, gdk, gio, glib,
 };
 
+use crate::i18n::{gettext, gettext_f};
 use crate::layout::{Edge, Move, PanelSpec, Region};
 use crate::layout_editor::Editor;
 use crate::{add_dialog, app_menu, applet_move, applets, panel};
@@ -66,13 +67,25 @@ const LAUNCH: &str = "launcher-start";
 const REMOVE: &str = "applet-remove";
 /// Full name of the „Aus dem Panel entfernen“ action, for applet menus.
 pub const REMOVE_ACTION: &str = "panel.applet-remove";
-/// The moving actions (Teil 5), with their labels and moves.
-const MOVES: [(&str, &str, Move); 4] = [
-    ("applet-move-left", "Nach _links", Move::Left),
-    ("applet-move-right", "Nach _rechts", Move::Right),
-    ("applet-move-start", "An den linken _Rand", Move::StartEdge),
-    ("applet-move-end", "An den rechten R_and", Move::EndEdge),
+/// The moving actions (Teil 5) and their moves; labels in [`move_label`].
+const MOVES: [(&str, Move); 4] = [
+    ("applet-move-left", Move::Left),
+    ("applet-move-right", Move::Right),
+    ("applet-move-start", Move::StartEdge),
+    ("applet-move-end", Move::EndEdge),
 ];
+
+/// The menu label of a move (translated).
+fn move_label(how: Move) -> String {
+    match how {
+        Move::Left => gettext("Move _Left"),
+        Move::Right => gettext("Move _Right"),
+        Move::StartEdge => gettext("To the Left _Edge"),
+        Move::EndEdge => gettext("To the Right E_dge"),
+        // a drag, never a menu entry
+        Move::To(..) => String::new(),
+    }
+}
 
 /// Name of the „Verschieben“ action (the applet follows the pointer).
 const FOLLOW: &str = "applet-follow";
@@ -81,11 +94,14 @@ const FOLLOW: &str = "applet-follow";
 pub fn move_section() -> gio::Menu {
     let menu = gio::Menu::new();
     menu.append(
-        Some("_Verschieben"),
+        Some(&gettext("_Move")),
         Some(&format!("{ACTION_GROUP}.{FOLLOW}")),
     );
-    for (name, label, _) in MOVES {
-        menu.append(Some(label), Some(&format!("{ACTION_GROUP}.{name}")));
+    for (name, how) in MOVES {
+        menu.append(
+            Some(&move_label(how)),
+            Some(&format!("{ACTION_GROUP}.{name}")),
+        );
     }
     menu
 }
@@ -116,7 +132,7 @@ fn with_moves(own: &gio::Menu) -> gio::Menu {
 pub fn model() -> gio::Menu {
     let menu = gio::Menu::new();
     menu.append(
-        Some("Zum Panel hinzufügen …"),
+        Some(&gettext("Add to Panel…")),
         Some(&format!("{ACTION_GROUP}.{ADD}")),
     );
     menu
@@ -127,9 +143,12 @@ pub fn model() -> gio::Menu {
 /// yet).
 pub fn launcher_model() -> gio::Menu {
     let menu = gio::Menu::new();
-    menu.append(Some("Starten"), Some(&format!("{ACTION_GROUP}.{LAUNCH}")));
+    menu.append(
+        Some(&gettext("Launch")),
+        Some(&format!("{ACTION_GROUP}.{LAUNCH}")),
+    );
     let object = gio::Menu::new();
-    object.append(Some("Aus dem Panel entfernen"), Some(REMOVE_ACTION));
+    object.append(Some(&gettext("Remove From Panel")), Some(REMOVE_ACTION));
     menu.append_section(None, &object);
     menu.append_section(None, &move_section());
     menu
@@ -139,7 +158,7 @@ pub fn launcher_model() -> gio::Menu {
 /// clock): "Aus dem Panel entfernen".
 pub fn applet_model() -> gio::Menu {
     let menu = gio::Menu::new();
-    menu.append(Some("Aus dem Panel entfernen"), Some(REMOVE_ACTION));
+    menu.append(Some(&gettext("Remove From Panel")), Some(REMOVE_ACTION));
     menu.append_section(None, &move_section());
     menu
 }
@@ -171,7 +190,7 @@ pub fn attach(
             #[weak]
             bar,
             #[upgrade_or_else]
-            || Err("Das Panel gibt es nicht mehr".to_string()),
+            || Err(gettext("The panel no longer exists")),
             move |applet, app| add_applet(&editor, &bar, &panel_id, applet, app, target.get())
         )),
     });
@@ -249,7 +268,7 @@ pub fn attach(
     // first, then moved on screen, after the menu has closed (it may be
     // parented to the applet).
     let mut moves = Vec::new();
-    for (name, _, how) in MOVES {
+    for (name, how) in MOVES {
         let action = gio::SimpleAction::new(name, None);
         action.connect_activate(glib::clone!(
             #[strong]
@@ -483,7 +502,12 @@ fn add_applet(
             Some(app) if applet == crate::layout::LAUNCHER => {
                 editor.add_launcher(panel_id, app, region)?
             }
-            Some(app) => return Err(format!("{applet} braucht keine Anwendung ({app})")),
+            Some(app) => {
+                return Err(gettext_f(
+                    "{applet} needs no application ({app})",
+                    &[("applet", applet), ("app", app)],
+                ));
+            }
             None => editor.add(panel_id, applet, region)?,
         };
         (change, editor.path().to_path_buf(), height)
@@ -497,9 +521,9 @@ fn add_applet(
     }
     let added = &change.added;
     if !panel::insert_applet(bar, added.region, added.index, &added.instance, height) {
-        return Err(format!(
-            "gespeichert, aber nicht angezeigt: Applet-Typ {} unbekannt",
-            added.instance.applet
+        return Err(gettext_f(
+            "saved, but not shown: unknown applet type {applet}",
+            &[("applet", &added.instance.applet)],
         ));
     }
     eprintln!(
@@ -565,7 +589,7 @@ fn remove_applet(
         );
     }
     if !panel::remove_applet(bar, instance_id) {
-        return Err("gespeichert, aber nicht in diesem Panel angezeigt".to_string());
+        return Err(gettext("saved, but not shown in this panel"));
     }
     eprintln!(
         "querencia-panel: {instance_id} ({}) aus dem Panel entfernt; gespeichert in {}",
@@ -606,7 +630,7 @@ mod tests {
         let label = menu.item_attribute_value(0, "label", Some(glib::VariantTy::STRING));
         assert_eq!(
             label.and_then(|v| v.get::<String>()).as_deref(),
-            Some("Zum Panel hinzufügen …")
+            Some("Add to Panel…")
         );
         let action = menu.item_attribute_value(0, "action", Some(glib::VariantTy::STRING));
         assert_eq!(
@@ -626,16 +650,13 @@ mod tests {
             menu.item_attribute_value(i, "action", Some(glib::VariantTy::STRING))
                 .and_then(|v| v.get::<String>())
         };
-        assert_eq!(label(&menu, 0).as_deref(), Some("Starten"));
+        assert_eq!(label(&menu, 0).as_deref(), Some("Launch"));
         assert_eq!(action(&menu, 0).as_deref(), Some("panel.launcher-start"));
         let section = menu
             .item_link(1, "section")
             .and_downcast::<gio::Menu>()
             .expect("Abschnitt");
-        assert_eq!(
-            label(&section, 0).as_deref(),
-            Some("Aus dem Panel entfernen")
-        );
+        assert_eq!(label(&section, 0).as_deref(), Some("Remove From Panel"));
         assert_eq!(action(&section, 0).as_deref(), Some("panel.applet-remove"));
     }
 
@@ -657,23 +678,14 @@ mod tests {
         assert_eq!(
             moves,
             [
+                ("_Move".to_string(), "panel.applet-follow".to_string()),
                 (
-                    "_Verschieben".to_string(),
-                    "panel.applet-follow".to_string()
-                ),
-                (
-                    "Nach _links".to_string(),
+                    "Move _Left".to_string(),
                     "panel.applet-move-left".to_string()
                 ),
-                ("Nach _rechts".into(), "panel.applet-move-right".into()),
-                (
-                    "An den linken _Rand".into(),
-                    "panel.applet-move-start".into()
-                ),
-                (
-                    "An den rechten R_and".into(),
-                    "panel.applet-move-end".into()
-                ),
+                ("Move _Right".into(), "panel.applet-move-right".into()),
+                ("To the Left _Edge".into(), "panel.applet-move-start".into()),
+                ("To the Right E_dge".into(), "panel.applet-move-end".into()),
             ]
         );
         for menu in [
@@ -720,7 +732,7 @@ mod tests {
         let label = menu
             .item_attribute_value(0, "label", Some(glib::VariantTy::STRING))
             .and_then(|v| v.get::<String>());
-        assert_eq!(label.as_deref(), Some("Aus dem Panel entfernen"));
+        assert_eq!(label.as_deref(), Some("Remove From Panel"));
         let action = menu
             .item_attribute_value(0, "action", Some(glib::VariantTy::STRING))
             .and_then(|v| v.get::<String>());

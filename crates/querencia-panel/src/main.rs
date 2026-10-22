@@ -12,6 +12,7 @@ mod ergaenzung;
 mod farbschema;
 mod fensterliste;
 mod glocke;
+mod i18n;
 mod icon_reload;
 mod icon_theme;
 mod launcher;
@@ -269,6 +270,8 @@ fn main() -> glib::ExitCode {
         return glib::ExitCode::FAILURE;
     }
     portal::follow_gsettings("querencia-panel", portal_mode);
+    // after gtk4::init, which set the locale from the environment
+    i18n::init();
     if !gtk4_layer_shell::is_supported() {
         eprintln!(
             "querencia-panel: Der Compositor bietet kein wlr-layer-shell an. \

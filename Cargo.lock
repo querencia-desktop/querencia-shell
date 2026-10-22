@@ -725,6 +725,7 @@ dependencies = [
 name = "querencia-lautstaerke"
 version = "0.1.0"
 dependencies = [
+ "gettext-rs",
  "gtk4",
  "libc",
 ]
@@ -733,6 +734,7 @@ dependencies = [
 name = "querencia-netzwerk"
 version = "0.1.0"
 dependencies = [
+ "gettext-rs",
  "glib-unix",
  "gtk4",
  "libc",
@@ -740,8 +742,9 @@ dependencies = [
 
 [[package]]
 name = "querencia-panel"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
+ "gettext-rs",
  "gio-unix",
  "glib-unix",
  "gtk4",

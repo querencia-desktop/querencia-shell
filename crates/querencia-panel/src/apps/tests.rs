@@ -219,19 +219,19 @@ fn groups_are_listed_in_menu_order() {
     assert_eq!(
         labels,
         // Ubuntu 10.04 order (English names alphabetical), German labels
-        // as in gnome-menus; "Sonstige" last
+        // as in gnome-menus; "Other" last
         [
-            "Zubehör",
-            "Bildung",
-            "Spiele",
-            "Grafik",
+            "Accessories",
+            "Education",
+            "Games",
+            "Graphics",
             "Internet",
-            "Büro",
-            "Entwicklung",
-            "Unterhaltungsmedien",
-            "Systemwerkzeuge",
-            "Barrierefreiheit",
-            "Sonstige"
+            "Office",
+            "Programming",
+            "Sound & Video",
+            "System Tools",
+            "Universal Access",
+            "Other"
         ]
     );
     assert!(ALL_GROUPS.is_sorted());
@@ -549,7 +549,7 @@ fn owner_hidden_entries_leave_the_menus_and_nothing_else() {
         ]
     );
     let groups: Vec<&str> = run.records("entry").iter().map(|f| f[1]).collect();
-    assert!(groups.iter().all(|g| *g == "Zubehör"), "{groups:?}");
+    assert!(groups.iter().all(|g| *g == "Accessories"), "{groups:?}");
 }
 
 fn sorted(mut ids: Vec<&str>) -> Vec<&str> {
@@ -590,33 +590,30 @@ fn fixtures_in_classic2_session() {
     assert_eq!(
         entries["c2-normal.desktop"],
         [
-            "Zubehör",
+            "Accessories",
             "Normal",
             "utilities-terminal",
             "Utility",
             "false"
         ]
     );
-    assert_eq!(field("c2-ohne-kategorie.desktop", 0), "Sonstige");
+    assert_eq!(field("c2-ohne-kategorie.desktop", 0), "Other");
     assert_eq!(field("c2-ohne-kategorie.desktop", 2), "-");
     assert_eq!(field("c2-ohne-kategorie.desktop", 3), "");
-    assert_eq!(field("c2-mehrfach-buero-grafik.desktop", 0), "Grafik");
-    assert_eq!(
-        field("c2-mehrfach-netz-medien.desktop", 0),
-        "Unterhaltungsmedien"
-    );
-    assert_eq!(field("c2-basis.desktop", 0), "Entwicklung");
+    assert_eq!(field("c2-mehrfach-buero-grafik.desktop", 0), "Graphics");
+    assert_eq!(field("c2-mehrfach-netz-medien.desktop", 0), "Sound & Video");
+    assert_eq!(field("c2-basis.desktop", 0), "Programming");
     // Utility;Accessibility: Barrierefreiheit, as in GNOME 2
-    assert_eq!(field("c2-doppelt.desktop", 0), "Barrierefreiheit");
+    assert_eq!(field("c2-doppelt.desktop", 0), "Universal Access");
     assert_eq!(field("c2-umlaut.desktop", 1), "Ölwechsel");
     assert_eq!(field("c2-doppelt.desktop", 1), "Doppelt aus daten-home");
     assert_eq!(
         field("c2-icon-fehlt.desktop", 2),
         "classic2-nicht-vorhandenes-icon"
     );
-    assert_eq!(field("c2-einstellung.desktop", 0), "Sonstige");
+    assert_eq!(field("c2-einstellung.desktop", 0), "Other");
     assert_eq!(field("c2-einstellung.desktop", 4), "true");
-    assert_eq!(field("c2-systemeinstellung.desktop", 0), "Systemwerkzeuge");
+    assert_eq!(field("c2-systemeinstellung.desktop", 0), "System Tools");
     assert_eq!(field("c2-systemeinstellung.desktop", 4), "true");
 
     let excluded = run.by_id("excluded");
@@ -672,7 +669,7 @@ fn entries_are_grouped_and_sorted_for_the_locale() {
     // en_US collation puts "Ö" next to "O"; byte order would put it last.
     let accessories: Vec<_> = entries
         .iter()
-        .filter(|f| f[1] == "Zubehör")
+        .filter(|f| f[1] == "Accessories")
         .map(|f| f[2])
         .collect();
     assert_eq!(
@@ -698,15 +695,15 @@ fn settings_are_split_for_the_system_menu() {
     assert_eq!(
         run.records("system"),
         [
-            ["Einstellungen", "c2-einstellung.desktop", "Einstellung"],
-            ["Einstellungen", "c2-einstellung-oel.desktop", "Ölfarben"],
+            ["Preferences", "c2-einstellung.desktop", "Einstellung"],
+            ["Preferences", "c2-einstellung-oel.desktop", "Ölfarben"],
             [
-                "Einstellungen",
+                "Preferences",
                 "c2-einstellung-papier.desktop",
                 "Papierformat"
             ],
             [
-                "Systemverwaltung",
+                "Administration",
                 "c2-systemeinstellung.desktop",
                 "Systemeinstellung"
             ],
@@ -1031,18 +1028,18 @@ fn monitor_reports_installed_removed_and_changed_applications() {
             assert_ne!(fields[0], "0", "kein changed-Signal nach Schritt {step}");
         }
     }
-    let basis = "c2-mon-basis.desktop=Basis@Zubehör";
-    let neu = "c2-mon-neu.desktop=Aaa neu@Zubehör";
+    let basis = "c2-mon-basis.desktop=Basis@Accessories";
+    let neu = "c2-mon-neu.desktop=Aaa neu@Accessories";
     assert_eq!(entries("start"), basis);
     assert_eq!(
         entries("hinzu"),
-        format!("{basis},c2-mon-neu.desktop=Neu@Zubehör")
+        format!("{basis},c2-mon-neu.desktop=Neu@Accessories")
     );
     // The new name sorts it before Basis.
     assert_eq!(entries("umbenannt"), format!("{neu},{basis}"));
     assert_eq!(
         entries("kategorie"),
-        format!("{basis},c2-mon-neu.desktop=Aaa neu@Entwicklung")
+        format!("{basis},c2-mon-neu.desktop=Aaa neu@Programming")
     );
     assert_eq!(entries("nodisplay"), basis);
     assert_eq!(excluded("nodisplay"), "c2-mon-neu.desktop=NoDisplay");
@@ -1054,13 +1051,14 @@ fn monitor_reports_installed_removed_and_changed_applications() {
     assert_eq!(entries("onlyshowin-classic2"), format!("{neu},{basis}"));
     assert_eq!(
         entries("zwei"),
-        format!("{neu},{basis},c2-mon-eins.desktop=Neu@Zubehör,c2-mon-zwei.desktop=Neu@Zubehör")
+        format!(
+            "{neu},{basis},c2-mon-eins.desktop=Neu@Accessories,c2-mon-zwei.desktop=Neu@Accessories"
+        )
     );
-    assert!(entries("unterordner").contains("c2sub-eintrag.desktop=Neu@Zubehör"));
+    assert!(entries("unterordner").contains("c2sub-eintrag.desktop=Neu@Accessories"));
     // A new setting reaches the catalog with its section of the system menu.
     assert!(
-        entries("einstellung")
-            .contains("c2-mon-einst.desktop=Drucker@Systemwerkzeuge/Systemverwaltung")
+        entries("einstellung").contains("c2-mon-einst.desktop=Drucker@System Tools/Administration")
     );
     assert!(!entries("entfernt").contains("c2-mon-neu"));
     assert_eq!(entries("leer"), "");
@@ -1068,6 +1066,6 @@ fn monitor_reports_installed_removed_and_changed_applications() {
     // Both unread changes are in the catalog once it is read again.
     assert_eq!(
         entries("ungelesen-gelesen"),
-        "c2-mon-ungelesen-1.desktop=Neu@Zubehör,c2-mon-ungelesen-2.desktop=Neu@Zubehör"
+        "c2-mon-ungelesen-1.desktop=Neu@Accessories,c2-mon-ungelesen-2.desktop=Neu@Accessories"
     );
 }

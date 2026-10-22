@@ -13,6 +13,7 @@
 
 pub mod agent;
 pub mod fallback;
+pub mod i18n;
 pub mod icons;
 pub mod kernel;
 pub mod model;

@@ -41,6 +41,8 @@ use wayland_protocols::ext::workspace::v1::client::{
     ext_workspace_manager_v1::{self as manager, ExtWorkspaceManagerV1},
 };
 
+use crate::i18n::gettext_f;
+
 const ACTIVE: u32 = workspace::State::Active.bits();
 const HIDDEN: u32 = workspace::State::Hidden.bits();
 const CAN_ACTIVATE: u32 = workspace::WorkspaceCapabilities::Activate.bits();
@@ -251,7 +253,7 @@ fn cell_size(height: i32, monitor: Option<(i32, i32)>) -> (i32, i32) {
 /// has a real one (labwc's default names are just the numbers).
 fn cell_tooltip(number: usize, name: &str) -> String {
     if name.is_empty() || name.chars().all(|c| c.is_ascii_digit()) {
-        format!("Arbeitsfläche {number}")
+        gettext_f("Workspace {number}", &[("number", &number.to_string())])
     } else {
         name.to_owned()
     }
@@ -683,10 +685,10 @@ mod tests {
 
     #[test]
     fn tooltip_names_the_workspace() {
-        assert_eq!(cell_tooltip(1, "1"), "Arbeitsfläche 1");
-        assert_eq!(cell_tooltip(3, ""), "Arbeitsfläche 3");
+        assert_eq!(cell_tooltip(1, "1"), "Workspace 1");
+        assert_eq!(cell_tooltip(3, ""), "Workspace 3");
         assert_eq!(cell_tooltip(2, "Workspace 2"), "Workspace 2");
-        assert_eq!(cell_tooltip(2, "Büro"), "Büro");
+        assert_eq!(cell_tooltip(2, "Office"), "Office");
     }
 
     #[test]

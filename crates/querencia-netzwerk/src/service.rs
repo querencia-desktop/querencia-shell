@@ -12,6 +12,7 @@
 //! without restarting the panel. Without a system bus at all the fallback
 //! runs too.
 
+use crate::i18n::gettext;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -253,7 +254,9 @@ impl Service {
         Fut: std::future::Future<Output = Result<(), String>> + 'static,
     {
         let Some(nm) = self.nm() else {
-            done(Err("Ohne NetworkManager kann nichts geändert werden".into()));
+            done(Err(gettext(
+                "Nothing can be changed without NetworkManager",
+            )));
             return;
         };
         let log = self.log.clone();

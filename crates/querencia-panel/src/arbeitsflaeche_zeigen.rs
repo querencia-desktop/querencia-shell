@@ -28,16 +28,13 @@ use gtk4::prelude::*;
 use gtk4::{ToggleButton, glib};
 
 use crate::fensterliste::Ereignis;
+use crate::i18n::gettext;
 use crate::logo;
 
 /// CSS class of the button (style in `main.rs`).
 pub const CLASS: &str = "querencia-show-desktop";
 /// Theme icon of the button, as in the GNOME 2 panel.
 pub const ICON: &str = "user-desktop";
-/// Tooltip while windows are shown.
-pub const ANZEIGEN: &str = "Arbeitsfläche anzeigen";
-/// Tooltip while the windows of the last click are minimized.
-pub const WIEDERHERSTELLEN: &str = "Fenster wiederherstellen";
 
 /// What a click asks of the window list, in this order.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -164,11 +161,13 @@ impl<K: Copy + Eq + Hash> Merkliste<K> {
 }
 
 /// The tooltip for the state.
-pub fn tooltip(zeigt_arbeitsflaeche: bool) -> &'static str {
+/// The tooltip for the state: "Show Desktop" while windows are shown,
+/// "Restore Windows" while the windows of the last click are minimized.
+pub fn tooltip(zeigt_arbeitsflaeche: bool) -> String {
     if zeigt_arbeitsflaeche {
-        WIEDERHERSTELLEN
+        gettext("Restore Windows")
     } else {
-        ANZEIGEN
+        gettext("Show Desktop")
     }
 }
 
@@ -195,7 +194,7 @@ pub fn melden(zeigt_arbeitsflaeche: bool) {
 fn zeigen(button: &ToggleButton, zeigt_arbeitsflaeche: bool) {
     // set_active emits "toggled", not "clicked": no new switch
     button.set_active(zeigt_arbeitsflaeche);
-    button.set_tooltip_text(Some(tooltip(zeigt_arbeitsflaeche)));
+    button.set_tooltip_text(Some(&tooltip(zeigt_arbeitsflaeche)));
 }
 
 /// The button for a panel `panel_height` pixels high.
@@ -376,7 +375,7 @@ mod tests {
 
     #[test]
     fn tooltip_follows_the_state() {
-        assert_eq!(tooltip(false), "Arbeitsfläche anzeigen");
-        assert_eq!(tooltip(true), "Fenster wiederherstellen");
+        assert_eq!(tooltip(false), "Show Desktop");
+        assert_eq!(tooltip(true), "Restore Windows");
     }
 }
