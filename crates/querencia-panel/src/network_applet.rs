@@ -19,8 +19,9 @@
 //!
 //! „Netzwerkeinstellungen …“ starts the desktop action `netzwerk` of
 //! Querencia Einstellungen (`org.querencia.Einstellungen.desktop`, Exec
-//! `querencia-einstellungen --netzwerk`); until G2-O brings that page the
-//! entry is greyed out with „kommt mit G2-O“.
+//! `querencia-einstellungen --netzwerk`); while Einstellungen has no such
+//! page the entry is greyed out as „Netzwerkeinstellungen (noch nicht
+//! verfügbar)“.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -53,7 +54,7 @@ const AIRPLANE: &str = "airplane";
 const INFO: &str = "info";
 const SETTINGS: &str = "settings";
 /// Desktop ID of Querencia Einstellungen and the action of its network
-/// page (G2-O).
+/// page (not there yet in Einstellungen 0.1.4).
 pub const SETTINGS_APP: &str = "org.querencia.Einstellungen.desktop";
 pub const SETTINGS_ACTION: &str = "netzwerk";
 /// WLANs shown before „Weitere Netze …“.
@@ -73,7 +74,7 @@ fn settings_label(available: bool) -> &'static str {
     if available {
         "_Netzwerkeinstellungen …"
     } else {
-        "Netzwerkeinstellungen … (kommt mit G2-O)"
+        "Netzwerkeinstellungen (noch nicht verfügbar)"
     }
 }
 
@@ -527,7 +528,7 @@ pub fn widget(panel_height: i32) -> Button {
         ),
     );
     // Querencia Einstellungen with its network page may be installed or
-    // removed while the panel runs (G2-O): follow the installed
+    // removed while the panel runs: follow the installed
     // applications, as the menus do.
     let monitor = gio::AppInfoMonitor::get();
     let installed = Cell::new(Some(monitor.connect_changed(glib::clone!(
@@ -659,7 +660,7 @@ fn open_settings() {
     };
     if !app.list_actions().iter().any(|a| a == SETTINGS_ACTION) {
         querencia_netzwerk::say!(
-            "querencia-panel: Netzwerk: {SETTINGS_APP} hat keine Aktion {SETTINGS_ACTION} (kommt mit G2-O)"
+            "querencia-panel: Netzwerk: {SETTINGS_APP} hat keine Aktion {SETTINGS_ACTION} (noch nicht verfügbar)"
         );
         return;
     }
@@ -1040,11 +1041,11 @@ mod tests {
     }
 
     #[test]
-    fn settings_entry_says_when_it_comes() {
+    fn settings_entry_says_it_is_not_there_yet() {
         assert_eq!(settings_label(true), "_Netzwerkeinstellungen …");
         assert_eq!(
             settings_label(false),
-            "Netzwerkeinstellungen … (kommt mit G2-O)"
+            "Netzwerkeinstellungen (noch nicht verfügbar)"
         );
     }
 
@@ -1118,7 +1119,7 @@ mod tests {
                 "Flugmodus –",
                 "—",
                 "Verbindungsinformationen …",
-                "Netzwerkeinstellungen … (kommt mit G2-O) –"
+                "Netzwerkeinstellungen (noch nicht verfügbar) –"
             ]
         );
         match &rows[3] {
@@ -1306,7 +1307,7 @@ mod tests {
         assert_eq!(text[0], "[WLAN-Netze]");
         assert_eq!(text[1], "{3} Heimnetz 🔒");
         assert!(text.contains(&"☑ WLAN aktiviert".to_string()));
-        assert!(text.contains(&"Netzwerkeinstellungen … (kommt mit G2-O) –".to_string()));
+        assert!(text.contains(&"Netzwerkeinstellungen (noch nicht verfügbar) –".to_string()));
     }
 
     #[test]
