@@ -195,6 +195,17 @@ pub fn is_empty_document(content_type: Option<&str>) -> bool {
     content_type == Some("application/x-zerosize")
 }
 
+/// Desktop 0.2.2: the type a file opens as when no program handles GIO's
+/// own type for it. An empty file is `application/x-zerosize`, which no
+/// program takes; as Nautilus does, the file name decides then
+/// (`leer.txt` → `text/plain`). `None` when the name says nothing
+/// either (no or an unknown extension): then nothing is started.
+pub fn type_from_name(file_name: &str) -> Option<String> {
+    let (guess, _) = gtk4::gio::content_type_guess(Some(file_name), None);
+    (!gtk4::gio::content_type_is_unknown(&guess) && !is_empty_document(Some(&guess)))
+        .then(|| guess.to_string())
+}
+
 /// The saved order: one key per line.
 pub fn parse_order(text: &str) -> Vec<String> {
     text.lines()
@@ -240,6 +251,20 @@ mod tests {
         assert!(is_empty_document(Some("application/x-zerosize")));
         assert!(!is_empty_document(Some("text/plain")));
         assert!(!is_empty_document(None));
+    }
+
+    /// Desktop 0.2.2: an empty file opens by its name; without a telling
+    /// name nothing is guessed (shared-mime-info of the system).
+    #[test]
+    fn an_empty_file_opens_as_the_type_of_its_name() {
+        assert_eq!(
+            type_from_name("leer.txt").as_deref(),
+            Some("text/plain")
+        );
+        assert_eq!(type_from_name("Notiz.TXT").as_deref(), Some("text/plain"));
+        assert_eq!(type_from_name("bild.png").as_deref(), Some("image/png"));
+        assert_eq!(type_from_name("Leere Datei"), None);
+        assert_eq!(type_from_name("notiz"), None);
     }
 
     #[test]
