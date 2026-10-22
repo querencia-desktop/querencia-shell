@@ -75,7 +75,24 @@ use crate::volumes::{self, Picture, Removal, Volume};
 
 mod transfer;
 
-pub const FILES_APP: &str = "io.github.lgse.Strata.desktop";
+/// Querencia Files: the new desktop ID first, then the one of Files up to
+/// QF-0s (kept as a hidden bridge for a while), so that Rechner,
+/// Persönlicher Ordner, Papierkorb and volumes open in Files whichever of
+/// the two is installed.
+pub const FILES_APPS: [&str; 2] = [
+    "org.querencia.Files.desktop",
+    "io.github.lgse.Strata.desktop",
+];
+
+/// Without GIO, so that the order is tested without installed starters.
+fn first_found<T>(ids: &[&str], lookup: impl Fn(&str) -> Option<T>) -> Option<T> {
+    ids.iter().find_map(|id| lookup(id))
+}
+
+/// Querencia Files' starter (`FILES_APPS`), if installed.
+pub fn files_app() -> Option<DesktopAppInfo> {
+    first_found(&FILES_APPS, DesktopAppInfo::new)
+}
 pub const TERMINAL_APP: &str = "org.example.Querencia.Terminal.desktop";
 // Grid cell at the reference font (11 pt, as HMP-10b measured): wide
 // enough for "Persönlicher" on one line (GNOME 2 broke labels between
@@ -405,6 +422,12 @@ impl Icons {
             }
             glib::ControlFlow::Continue
         });
+        log(&format!(
+            "Dateiverwaltung: {}",
+            files_app()
+                .and_then(|app| app.id())
+                .map_or("keine".to_owned(), |id| id.to_string())
+        ));
         icons.update_font();
         icons.watch_font();
         icons.watch();
@@ -2678,7 +2701,7 @@ fn show_error(title: &str, detail: &str) {
 /// `desktop.ini` `[Icons]` keeps them (they keep their places when hidden).
 fn load_items(settings: &config::IconSettings) -> (Vec<Item>, bool) {
     let mut items = Vec::new();
-    let files = DesktopAppInfo::new(FILES_APP);
+    let files = files_app();
     if files.is_some() && settings.computer {
         items.push(Item::new(Kind::Computer, &gettext("Computer")));
     }
@@ -2966,7 +2989,7 @@ fn icon_widget(item: &Item, trash_full: bool, icon_px: i32, cell: (i32, i32)) ->
 fn open(item: &Item, window: &ApplicationWindow) {
     let context = WidgetExt::display(window).app_launch_context();
     crate::portal::for_children(&context);
-    let with_files = |uri: &str| match DesktopAppInfo::new(FILES_APP) {
+    let with_files = |uri: &str| match files_app() {
         Some(app) => app.launch_uris(&[uri], Some(&context)),
         None => Err(glib::Error::new(
             gio::IOErrorEnum::NotFound,
@@ -3011,7 +3034,7 @@ fn open(item: &Item, window: &ApplicationWindow) {
             gio::AppInfo::launch_default_for_uri(&gio::File::for_path(path).uri(), Some(&context))
         }
         // QE-03: in Querencia Files, as GNOME 2 opened volumes in Nautilus
-        Kind::Volume(volume) => match DesktopAppInfo::new(FILES_APP) {
+        Kind::Volume(volume) => match files_app() {
             Some(_) => with_files(&volume.uri),
             None => gio::AppInfo::launch_default_for_uri(&volume.uri, Some(&context)),
         },
@@ -3394,5 +3417,31 @@ mod tests {
         };
         assert_eq!(cell_for(32, tiny), (100, 72));
         assert_eq!(cell_for(72, tiny), (110, 112));
+    }
+
+    #[test]
+    fn files_is_found_by_its_new_id_then_by_the_old_one() {
+        let only = |installed: &'static [&'static str]| {
+            move |id: &str| installed.contains(&id).then(|| id.to_owned())
+        };
+        let both = only(&[
+            "org.querencia.Files.desktop",
+            "io.github.lgse.Strata.desktop",
+        ]);
+        assert_eq!(
+            first_found(&FILES_APPS, both).as_deref(),
+            Some("org.querencia.Files.desktop")
+        );
+        let old = only(&["io.github.lgse.Strata.desktop"]);
+        assert_eq!(
+            first_found(&FILES_APPS, old).as_deref(),
+            Some("io.github.lgse.Strata.desktop")
+        );
+        let new = only(&["org.querencia.Files.desktop"]);
+        assert_eq!(
+            first_found(&FILES_APPS, new).as_deref(),
+            Some("org.querencia.Files.desktop")
+        );
+        assert_eq!(first_found(&FILES_APPS, only(&[])), None);
     }
 }
