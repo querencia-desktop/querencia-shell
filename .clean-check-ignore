@@ -85,3 +85,10 @@
 #      clean-check-repo.txt (Prüfprotokoll, zitiert die Marker anderer Dateien,
 #      wie integration/welle-dunkel) und die höhere Zählung bei P002; sie
 #      fallen unter die Ausnahmen oben.
+# panel-0.3.0 (22.10.2026): neu nur S003/S004/S005 in crates/querencia-panel/
+#      src/i18n.rs, crates/querencia-{lautstaerke,netzwerk}/src/i18n.rs und
+#      werkzeug/i18n.py (aus dem Desktop-/Editor-Muster übernommen,
+#      Übersetzungstexte mit Anführungszeichen und Auslassung sind Daten),
+#      S004/S005/H003 in integration/panel-030 (Kopie der Prüfwerkzeuge wie
+#      integration/panel-025, dazu werkzeug-030/) und die höhere Zählung bei
+#      P002; sie fallen unter die Ausnahmen oben.
