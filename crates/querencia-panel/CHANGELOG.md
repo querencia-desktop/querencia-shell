@@ -2,6 +2,11 @@
 
 ## 0.3.0 – 2026-10-22
 
+Integrationsstand 0.3.0-2 (Tags `panel/0.3.0-2`, `panel/0.3.0-2-int`):
+derselbe Code, gemergt auf runtime main `52935d0` (Desktop 0.2.6-2). Binary
+und Kataloge sind byte-gleich mit 0.3.0; aktiviert wird über
+`integration/panel-030-2/`, `integration/panel-030/` wurde nie aktiviert.
+
 Englisch per gettext (QD-055), Muster wie Editor 0.2.0 und Desktop 0.2.5.
 
 - Alle sichtbaren Texte über GNU gettext: msgid englisch, Deutsch aus
