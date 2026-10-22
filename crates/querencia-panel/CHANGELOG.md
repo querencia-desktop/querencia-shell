@@ -1,5 +1,30 @@
 # Änderungen – querencia-panel
 
+## 0.2.3 – 2026-10-22
+
+Absturz beim ersten Öffnen von Anwendungen (QD-106) und Neustart-Schutz.
+
+- Neuer Modus `querencia-panel --ueberwacht` (Modul `ueberwachung.rs`): ein
+  kleiner Elternprozess ohne GTK und ohne Display startet das Panel als
+  Kind und startet es nach einem Absturz neu – höchstens 3-mal in
+  10 Minuten, nach 1 s Pause, je mit einer Zeile im Protokoll
+  („Überwachung: Panel PID … abgestürzt durch Signal 11 (SIGSEGV) nach … s –
+  Neustart 1 von 3 in 10 Minuten“). Als Absturz gelten SIGSEGV, SIGABRT,
+  SIGBUS, SIGILL, SIGFPE, SIGTRAP, SIGSYS und Status 101 (Rust-Panic).
+  Kein Neustart bei jedem anderen Ende (kein Layer Shell, zweite Instanz,
+  SIGTERM), wenn die Überwachung selbst SIGTERM/SIGINT/SIGHUP bekommt (wird
+  ans Panel weitergegeben, nach 5 s SIGKILL) oder wenn die Sitzung vorbei ist
+  (kein Wayland-Socket, `LABWC_PID` beendet). Exit-Status der Überwachung =
+  der des Panels (Signal: 128 + Nummer).
+- `querencia-panel --faehigkeiten` gibt `ueberwacht` aus, damit der
+  Sitzungsstarter `--ueberwacht` nur an Panels gibt, die es kennen.
+- Ohne `--ueberwacht` startet das Panel wie bisher; eingeschaltet wird der
+  Schutz im Sitzungsstarter (`session/`, eigener Schritt).
+- Absturzursache: in 160 isolierten Kaltstarts mit sofortigem Öffnen von
+  Anwendungen → Zubehör nicht nachgestellt (auch nicht mit Symbolen, die nur
+  als SVG mit Text vorliegen); Befund und Verdacht in
+  `docs/panel-023-absturz-und-ueberwachung.md`.
+
 ## 0.2.2 – 2026-10-22
 
 Nutzertexte für Alpha 2.1 (QD-110/QD-115, QD-116).

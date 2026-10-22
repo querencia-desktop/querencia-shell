@@ -31,6 +31,7 @@ mod session;
 mod sitzung_start;
 mod symbol_farbe;
 mod system_menu;
+mod ueberwachung;
 mod volume_applet;
 mod window_icons;
 mod window_list;
@@ -238,11 +239,25 @@ const PANEL_CSS_DUNKEL: &str = "
 }
 ";
 
+/// What this panel can do beyond 0.2.2, for the session's starter
+/// (`querencia-panel --faehigkeiten`): `ueberwacht` = the watchdog
+/// `--ueberwacht` (`ueberwachung.rs`).
+const CAPABILITIES: &str = "ueberwacht";
+
 fn main() -> glib::ExitCode {
     // G2-AL: the integration's panel.ini step, without GTK or a display
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("--panel-ini") {
         return glib::ExitCode::from(ergaenzung::kommandozeile(&args[1..]));
+    }
+    // for the session's starter: whether this panel knows --ueberwacht
+    if args.iter().any(|a| a == "--faehigkeiten") {
+        println!("{CAPABILITIES}");
+        return glib::ExitCode::SUCCESS;
+    }
+    // the watchdog: no GTK, no portal, no display in this process
+    if args.iter().any(|a| a == ueberwachung::OPTION) {
+        return ueberwachung::laufen(&args);
     }
     // before GTK and any thread (QD-062): no long wait for a stale portal
     let portal_mode = portal::prepare("querencia-panel");
