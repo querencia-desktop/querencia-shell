@@ -1,7 +1,9 @@
-# Desktop 0.2.5 – Raster nach der Schrift, später angelegter Ordner, Hinweis ohne Programm, Englisch
+# Desktop 0.2.5/0.2.6 – Raster nach der Schrift, später angelegter Ordner, Hinweis ohne Programm, Englisch, neue Files-Kennung
 
 Stand 22.10.2026, Zweig `desktop-025` ab main `7356f64` (Desktop 0.2.4).
-Nur `crates/querencia-desktop`; Panel und Kürzel unverändert.
+Nur `crates/querencia-desktop`; Panel und Kürzel unverändert. 0.2.5 (Tags
+`desktop/0.2.5`, `desktop/0.2.5-int`) wurde nicht ausgeliefert; 0.2.6 enthält
+es und dazu §7.
 
 ## 1. Laufwerkssymbole im Raster (QD-091)
 
@@ -107,3 +109,18 @@ Netzlaufwerk-Attrappe `werkzeug/qattrappe.c` (GIO-Modul, Freigaben aus einer
   ausgewählt ist (wie Nautilus 2).
 - Englische Datums- und Zahlenformate kommen aus dem Katalog bzw. aus
   `LANG`; die Größe „1.2 kB“ formatiert GLib nach `LC_NUMERIC`.
+
+## 7. Querencia Files unter neuer Kennung (0.2.6, QD-059)
+
+Files bekommt mit QF-0t die Kennung `org.querencia.Files`; der alte Starter
+`io.github.lgse.Strata.desktop` bleibt eine Weile als unsichtbare Brücke.
+`FILES_APPS` nennt beide, `files_app()` nimmt den ersten vorhandenen
+(`first_found`, Test `files_is_found_by_its_new_id_then_by_the_old_one`).
+Davon hängen ab: ob Rechner und Papierkorb erscheinen (`load_items`) und
+womit Rechner, Papierkorb und Datenträger geöffnet werden (`open`). Beim
+Start steht „Dateiverwaltung: <starter>“ im Log.
+
+Weitere Stellen mit der alten Kennung außerhalb des Desktops (nicht
+geändert): `crates/querencia-panel/src/places_menu.rs` (`QUERENCIA_FILES_ID`),
+`crates/querencia-panel/src/window_icons.rs` und `apps/tests.rs`,
+`session/querencia/applications/io.github.lgse.Strata.desktop`.

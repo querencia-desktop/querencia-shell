@@ -14,142 +14,142 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/desktop_view.rs:296
+#: src/desktop_view.rs:315
 msgid "Desktop – Icons"
 msgstr "Arbeitsfläche – Symbole"
 
-#: src/desktop_view.rs:1334 src/desktop_view.rs:1377
+#: src/desktop_view.rs:1366 src/desktop_view.rs:1410
 msgid "Open"
 msgstr "Öffnen"
 
-#: src/desktop_view.rs:1357
+#: src/desktop_view.rs:1389
 msgid "Open Trash"
 msgstr "Papierkorb öffnen"
 
-#: src/desktop_view.rs:1366
+#: src/desktop_view.rs:1398
 msgid "Empty Trash…"
 msgstr "Papierkorb leeren…"
 
-#: src/desktop_view.rs:1388 src/desktop_view/transfer.rs:1195
+#: src/desktop_view.rs:1422 src/desktop_view/transfer.rs:1197
 msgid "Open With"
 msgstr "Öffnen mit"
 
-#: src/desktop_view.rs:1393
+#: src/desktop_view.rs:1427
 msgid "Cut"
 msgstr "Ausschneiden"
 
-#: src/desktop_view.rs:1394
+#: src/desktop_view.rs:1428
 msgid "Copy"
 msgstr "Kopieren"
 
-#: src/desktop_view.rs:1396
+#: src/desktop_view.rs:1430
 msgid "Paste Into Folder"
 msgstr "Einfügen in den Ordner"
 
-#: src/desktop_view.rs:1417
+#: src/desktop_view.rs:1451
 msgid "Rename…"
 msgstr "Umbenennen …"
 
-#: src/desktop_view.rs:1423
+#: src/desktop_view.rs:1457
 msgid "Move to Trash"
 msgstr "In den Papierkorb verschieben"
 
-#: src/desktop_view.rs:1427
+#: src/desktop_view.rs:1461
 msgid "Properties"
 msgstr "Eigenschaften"
 
-#: src/desktop_view.rs:1442
+#: src/desktop_view.rs:1476
 msgid "Create Folder"
 msgstr "Ordner anlegen"
 
-#: src/desktop_view.rs:1445
+#: src/desktop_view.rs:1479
 msgid "Empty File"
 msgstr "Leere Datei"
 
-#: src/desktop_view.rs:1463
+#: src/desktop_view.rs:1497
 msgid "Create Document"
 msgstr "Dokument anlegen"
 
-#: src/desktop_view.rs:1470
+#: src/desktop_view.rs:1504
 msgid "Clean Up by Name"
 msgstr "Nach Namen aufräumen"
 
-#: src/desktop_view.rs:1476
+#: src/desktop_view.rs:1510
 msgid "Align Icons to Grid"
 msgstr "Symbole am Raster ausrichten"
 
-#: src/desktop_view.rs:1480
+#: src/desktop_view.rs:1514
 msgid "Keep Aligned"
 msgstr "Am Raster ausrichten"
 
-#: src/desktop_view.rs:1494
+#: src/desktop_view.rs:1526
 msgid "Paste"
 msgstr "Einfügen"
 
-#: src/desktop_view.rs:1505
+#: src/desktop_view.rs:1537
 msgid "Change Desktop Background…"
 msgstr "Hintergrund der Arbeitsfläche ändern …"
 
-#: src/desktop_view.rs:1640
+#: src/desktop_view.rs:1672
 msgid "New Folder"
 msgstr "Neuer Ordner"
 
-#: src/desktop_view.rs:1726
+#: src/desktop_view.rs:1758
 msgid "Empty all items from the trash?"
 msgstr "Möchten Sie alle Dateien im Papierkorb endgültig löschen?"
 
-#: src/desktop_view.rs:1729
+#: src/desktop_view.rs:1759
 msgid "If you empty the trash, all items in it will be permanently lost."
 msgstr ""
 "Wenn Sie den Papierkorb leeren, werden alle darin befindlichen Objekte unwiderruflich gelöscht."
 
-#: src/desktop_view.rs:1732 src/desktop_view.rs:3136 src/desktop_view/transfer.rs:425 src/volumes.rs:386
+#: src/desktop_view.rs:1762 src/desktop_view.rs:3167 src/desktop_view/transfer.rs:427 src/volumes.rs:386
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: src/desktop_view.rs:1732
+#: src/desktop_view.rs:1762
 msgid "Empty Trash"
 msgstr "Papierkorb leeren"
 
-#: src/desktop_view.rs:1778
+#: src/desktop_view.rs:1808
 msgid "The trash could not be emptied."
 msgstr "Der Papierkorb konnte nicht geleert werden."
 
-#: src/desktop_view.rs:1779
+#: src/desktop_view.rs:1809
 #, no-c-format
 msgid "The trash cannot be reached: {why}"
 msgstr "Der Papierkorb ist nicht erreichbar: {why}"
 
-#: src/desktop_view.rs:2167
+#: src/desktop_view.rs:2197
 #, no-c-format
 msgid "“{name}” cannot be renamed."
 msgstr "„{name}“ kann nicht umbenannt werden."
 
-#: src/desktop_view.rs:2279
+#: src/desktop_view.rs:2309
 #, no-c-format
 msgid "“{name}” could not be renamed to “{new}”."
 msgstr "„{name}“ konnte nicht in „{new}“ umbenannt werden."
 
-#: src/desktop_view.rs:2294
+#: src/desktop_view.rs:2324
 #, no-c-format
 msgid ""
 "“{name}” no longer exists. Perhaps it was deleted or moved in the meantime."
 msgstr ""
 "„{name}“ gibt es nicht mehr. Vielleicht wurde es inzwischen gelöscht oder verschoben."
 
-#: src/desktop_view.rs:2303
+#: src/desktop_view.rs:2333
 #, no-c-format
 msgid ""
 "The name “{new}” is already used in this folder. Please use a different name."
 msgstr ""
 "Der Name „{new}“ wird in diesem Ordner bereits verwendet. Bitte verwenden Sie einen anderen Namen."
 
-#: src/desktop_view.rs:2320 src/desktop_view.rs:2638
+#: src/desktop_view.rs:2349 src/desktop_view.rs:2665
 #, no-c-format
 msgid "You do not have the permissions to rename “{name}”."
 msgstr "Sie haben keine Berechtigung, „{name}“ umzubenennen."
 
-#: src/desktop_view.rs:2479
+#: src/desktop_view.rs:2507
 #, no-c-format
 msgid "{n} of {total} items could not be deleted and is still in the trash:"
 msgid_plural "{n} of {total} items could not be deleted and are still in the trash:"
@@ -158,128 +158,128 @@ msgstr[0] ""
 msgstr[1] ""
 "{n} von {total} Objekten konnten nicht gelöscht werden und sind noch im Papierkorb:"
 
-#: src/desktop_view.rs:2487
+#: src/desktop_view.rs:2515
 #, no-c-format
 msgid "• {name}: {why}"
 msgstr "• {name}: {why}"
 
-#: src/desktop_view.rs:2495 src/fileops.rs:194 src/i18n.rs:137 src/volumes.rs:361
+#: src/desktop_view.rs:2523 src/fileops.rs:194 src/i18n.rs:137 src/volumes.rs:361
 #, no-c-format
 msgid "… and {n} more"
 msgid_plural "… and {n} more"
 msgstr[0] "… und {n} weitere"
 msgstr[1] "… und {n} weitere"
 
-#: src/desktop_view.rs:2497
+#: src/desktop_view.rs:2526
 msgid "The trash could not be emptied completely."
 msgstr "Der Papierkorb konnte nicht vollständig geleert werden."
 
-#: src/desktop_view.rs:2511 src/fileops.rs:344
+#: src/desktop_view.rs:2542 src/fileops.rs:346
 msgid "permission denied"
 msgstr "keine Berechtigung"
 
-#: src/desktop_view.rs:2512 src/fileops.rs:254 src/fileops.rs:270 src/fileops.rs:345
+#: src/desktop_view.rs:2543 src/fileops.rs:254 src/fileops.rs:270 src/fileops.rs:347
 msgid "no longer there"
 msgstr "nicht mehr vorhanden"
 
-#: src/desktop_view.rs:2518
+#: src/desktop_view.rs:2549
 msgid "volume not reachable"
 msgstr "Datenträger nicht erreichbar"
 
-#: src/desktop_view.rs:2519
+#: src/desktop_view.rs:2550
 #, no-c-format
 msgid "cannot be deleted (GVfs: {why})"
 msgstr "nicht löschbar (GVfs: {why})"
 
-#: src/desktop_view.rs:2586
+#: src/desktop_view.rs:2614
 msgid "The launcher file is not valid text."
 msgstr "Die Starter-Datei ist kein gültiger Text."
 
-#: src/desktop_view.rs:2590
+#: src/desktop_view.rs:2618
 #, no-c-format
 msgid "The launcher file is not valid: {why}"
 msgstr "Die Starter-Datei ist ungültig: {why}"
 
-#: src/desktop_view.rs:2600
+#: src/desktop_view.rs:2628
 msgid "The launcher file has no group [Desktop Entry]."
 msgstr "Die Starter-Datei hat keine Gruppe [Desktop Entry]."
 
-#: src/desktop_view.rs:2613
+#: src/desktop_view.rs:2641
 msgid "The launcher file was changed in the meantime. Please try again."
 msgstr ""
 "Die Starter-Datei wurde inzwischen verändert. Bitte versuchen Sie es erneut."
 
-#: src/desktop_view.rs:2642
+#: src/desktop_view.rs:2669
 #, no-c-format
 msgid "“{name}” no longer exists."
 msgstr "„{name}“ gibt es nicht mehr."
 
-#: src/desktop_view.rs:2655
+#: src/desktop_view.rs:2682
 msgid "Volumes keep their own names."
 msgstr "Datenträger behalten ihren eigenen Namen."
 
-#: src/desktop_view.rs:2662 src/desktop_view.rs:3081 src/desktop_view/transfer.rs:1120
+#: src/desktop_view.rs:2689 src/desktop_view.rs:3108 src/desktop_view/transfer.rs:1122
 msgid "Close"
 msgstr "Schließen"
 
-#: src/desktop_view.rs:2679
+#: src/desktop_view.rs:2706
 msgid "Computer"
 msgstr "Rechner"
 
-#: src/desktop_view.rs:2682
+#: src/desktop_view.rs:2709
 msgid "Home Folder"
 msgstr "Persönlicher Ordner"
 
-#: src/desktop_view.rs:2685
+#: src/desktop_view.rs:2712
 msgid "Trash"
 msgstr "Papierkorb"
 
-#: src/desktop_view.rs:3073 src/i18n.rs:141
+#: src/desktop_view.rs:3100 src/i18n.rs:141
 #, no-c-format
 msgid "“{name}” cannot be opened."
 msgstr "„{name}“ kann nicht geöffnet werden."
 
-#: src/desktop_view.rs:3077
+#: src/desktop_view.rs:3104
 #, no-c-format
 msgid "There is no application installed for “{type}” files ({mime})."
 msgstr "Für Dateien vom Typ „{type}“ ({mime}) ist kein Programm installiert."
 
-#: src/desktop_view.rs:3081
+#: src/desktop_view.rs:3108
 msgid "Open With Other Application…"
 msgstr "Mit Programm öffnen …"
 
-#: src/desktop_view.rs:3129
+#: src/desktop_view.rs:3160
 msgid "Untrusted application launcher"
 msgstr "Nicht vertrauenswürdiger Anwendungsstarter"
 
-#: src/desktop_view.rs:3130
+#: src/desktop_view.rs:3161
 #, no-c-format
 msgid ""
 "The application launcher “{name}” has not been marked as trusted. If you do not know the source of this file, launching it may be unsafe."
 msgstr ""
 "Der Anwendungsstarter „{name}“ wurde nicht als vertrauenswürdig markiert. Wenn Sie die Herkunft dieser Datei nicht kennen, kann ihr Start unsicher sein."
 
-#: src/desktop_view.rs:3137
+#: src/desktop_view.rs:3168
 msgid "Mark as Trusted"
 msgstr "Als vertrauenswürdig markieren"
 
-#: src/desktop_view.rs:3138
+#: src/desktop_view.rs:3169
 msgid "Launch Anyway"
 msgstr "Trotzdem starten"
 
-#: src/desktop_view.rs:3181
+#: src/desktop_view.rs:3212
 msgid "New Document"
 msgstr "Neues Dokument"
 
-#: src/desktop_view.rs:3197
+#: src/desktop_view.rs:3228
 msgid "Template"
 msgstr "Vorlage"
 
-#: src/desktop_view.rs:3276
+#: src/desktop_view.rs:3307
 msgid "Images"
 msgstr "Bilder"
 
-#: src/desktop_view.rs:3281
+#: src/desktop_view.rs:3312
 msgid "Change Desktop Background"
 msgstr "Hintergrund der Arbeitsfläche ändern"
 
@@ -299,71 +299,71 @@ msgstr[1] "Möchten Sie die {n} ausgewählten Objekte wirklich endgültig lösch
 msgid "If you delete an item, it will be permanently lost."
 msgstr "Wenn Sie ein Objekt löschen, ist es unwiderruflich verloren."
 
-#: src/desktop_view/transfer.rs:425
+#: src/desktop_view/transfer.rs:427
 msgid "Delete"
 msgstr "Löschen"
 
-#: src/desktop_view/transfer.rs:983
+#: src/desktop_view/transfer.rs:985
 msgid "Other Application…"
 msgstr "Andere Anwendung …"
 
-#: src/desktop_view/transfer.rs:1012 src/desktop_view/transfer.rs:1213
+#: src/desktop_view/transfer.rs:1014 src/desktop_view/transfer.rs:1215
 #, no-c-format
 msgid "“{name}” could not be opened."
 msgstr "„{name}“ konnte nicht geöffnet werden."
 
-#: src/desktop_view/transfer.rs:1034
+#: src/desktop_view/transfer.rs:1036
 #, no-c-format
 msgid "The properties of “{name}” cannot be read."
 msgstr "Die Eigenschaften von „{name}“ sind nicht lesbar."
 
-#: src/desktop_view/transfer.rs:1046
+#: src/desktop_view/transfer.rs:1048
 #, no-c-format
 msgid "Link to {target}"
 msgstr "Verknüpfung auf {target}"
 
-#: src/desktop_view/transfer.rs:1063
+#: src/desktop_view/transfer.rs:1065
 msgid "counting …"
 msgstr "wird gezählt …"
 
 #. TRANSLATORS: date and time of the last change (strftime format of GLib's GDateTime)
-#: src/desktop_view/transfer.rs:1072
+#: src/desktop_view/transfer.rs:1074
 msgid "%Y-%m-%d %H:%M"
 msgstr "%d.%m.%Y %H:%M"
 
-#: src/desktop_view/transfer.rs:1081
+#: src/desktop_view/transfer.rs:1083
 #, no-c-format
 msgid "“{name}” Properties"
 msgstr "Eigenschaften von „{name}“"
 
-#: src/desktop_view/transfer.rs:1098
+#: src/desktop_view/transfer.rs:1100
 msgid "Name:"
 msgstr "Name:"
 
-#: src/desktop_view/transfer.rs:1099
+#: src/desktop_view/transfer.rs:1101
 msgid "Type:"
 msgstr "Typ:"
 
-#: src/desktop_view/transfer.rs:1100
+#: src/desktop_view/transfer.rs:1102
 msgid "Size:"
 msgstr "Größe:"
 
-#: src/desktop_view/transfer.rs:1101
+#: src/desktop_view/transfer.rs:1103
 msgid "Location:"
 msgstr "Ort:"
 
-#: src/desktop_view/transfer.rs:1102
+#: src/desktop_view/transfer.rs:1104
 msgid "Modified:"
 msgstr "Geändert:"
 
-#: src/desktop_view/transfer.rs:1151
+#: src/desktop_view/transfer.rs:1153
 #, no-c-format
 msgid "{n} item, totalling {size}"
 msgid_plural "{n} items, totalling {size}"
 msgstr[0] "{n} Objekt, insgesamt {size}"
 msgstr[1] "{n} Objekte, insgesamt {size}"
 
-#: src/desktop_view/transfer.rs:1196
+#: src/desktop_view/transfer.rs:1198
 #, no-c-format
 msgid "Select an application to open “{name}”"
 msgstr "Wählen Sie ein Programm, um „{name}“ zu öffnen"
@@ -442,38 +442,38 @@ msgstr "Ein Ordner kann nicht in sich selbst kopiert werden."
 msgid "A folder cannot be moved into itself."
 msgstr "Ein Ordner kann nicht in sich selbst verschoben werden."
 
-#: src/fileops.rs:281 src/fileops.rs:347
+#: src/fileops.rs:281 src/fileops.rs:349
 msgid "There is already an item with this name at the target."
 msgstr "Am Ziel gibt es schon ein Objekt mit diesem Namen."
 
-#: src/fileops.rs:291
+#: src/fileops.rs:293
 #, no-c-format
 msgid "copied, but the original remained: {why}"
 msgstr "kopiert, aber das Original blieb: {why}"
 
-#: src/fileops.rs:349
+#: src/fileops.rs:351
 msgid "There is no space left at the target."
 msgstr "Auf dem Ziel ist kein Platz mehr."
 
-#: src/fileops.rs:350
+#: src/fileops.rs:352
 msgid "The target is read-only."
 msgstr "Das Ziel ist schreibgeschützt."
 
-#: src/fileops.rs:351
+#: src/fileops.rs:354
 msgid "The name is not allowed at the target."
 msgstr "Der Name ist am Ziel nicht erlaubt."
 
-#: src/fileops.rs:353
+#: src/fileops.rs:357
 msgid "There is no trash at this location."
 msgstr "An diesem Ort gibt es keinen Papierkorb."
 
 #. TRANSLATORS: digit group separator in "1.2 kB (1,234 bytes)"
-#: src/fileops.rs:393
+#: src/fileops.rs:397
 msgctxt "thousands separator"
 msgid ","
 msgstr "."
 
-#: src/fileops.rs:401
+#: src/fileops.rs:405
 #, no-c-format
 msgid "{size} ({bytes} bytes)"
 msgstr "{size} ({bytes} Bytes)"

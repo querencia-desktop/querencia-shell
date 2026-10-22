@@ -1,6 +1,17 @@
 # Änderungen – querencia-desktop
 
-## 0.2.5 – 2026-10-22
+## 0.2.6 – 2026-10-22
+
+**Querencia Files unter neuer Kennung.** Rechner, Persönlicher Ordner,
+Papierkorb und Datenträger öffnen in Querencia Files über dessen neuen
+Starter `org.querencia.Files.desktop`; fehlt er, über den bisherigen
+`io.github.lgse.Strata.desktop`. Damit gehen beide Reihenfolgen beim
+Einspielen von Files und Desktop. Das Log nennt beim Start, welcher Starter
+gefunden wurde („Dateiverwaltung: …“).
+
+Enthält alles aus 0.2.5 (0.2.5 wurde nicht ausgeliefert).
+
+## 0.2.5 – 2026-10-22 (nicht ausgeliefert, ganz in 0.2.6 enthalten)
 
 **Raster nach der Schrift.** Die Zellen der Arbeitsfläche richten sich nach
 der Schrift der Sitzung (Name, Größe, Skalierung) statt nach festen 100 × 88
