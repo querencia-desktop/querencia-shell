@@ -11,6 +11,8 @@
 //!   get a name of the user's own in the state file (`store.rs`); their
 //!   function never depends on the name.
 
+use crate::i18n::{gettext, gettext_f};
+
 /// Why a name cannot be a file name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Problem {
@@ -24,15 +26,17 @@ impl Problem {
     /// The explanation shown to the user (GNOME 2's wording).
     pub fn text(self, name: &str) -> String {
         match self {
-            Problem::Empty => "Der Name darf nicht leer sein.".to_owned(),
-            Problem::Slash => format!(
-                "Der Name „{name}“ ist ungültig, weil er das Zeichen „/“ enthält. \
-                 Bitte verwenden Sie einen anderen Namen."
+            Problem::Empty => gettext("The name cannot be empty."),
+            Problem::Slash => gettext_f(
+                "The name “{name}” is not valid because it contains the character “/”. \
+                 Please use a different name.",
+                &[("name", name)],
             ),
-            Problem::Dots => format!(
-                "„{name}“ ist kein gültiger Dateiname. Bitte verwenden Sie einen anderen Namen."
+            Problem::Dots => gettext_f(
+                "“{name}” is not a valid file name. Please use a different name.",
+                &[("name", name)],
             ),
-            Problem::Nul => "Der Name enthält ein ungültiges Zeichen.".to_owned(),
+            Problem::Nul => gettext("The name contains an invalid character."),
         }
     }
 }
@@ -210,7 +214,8 @@ mod tests {
         assert_eq!(check_file_name("."), Err(Problem::Dots));
         assert_eq!(check_label("Internet/Web"), Ok(()));
         assert_eq!(check_label(" "), Err(Problem::Empty));
-        assert!(Problem::Slash.text("a/b").contains("„a/b“"));
+        // without a catalog (tests): the English msgid
+        assert!(Problem::Slash.text("a/b").contains("“a/b”"));
     }
 
     #[test]
