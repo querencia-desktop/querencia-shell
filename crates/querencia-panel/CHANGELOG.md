@@ -1,5 +1,34 @@
 # Änderungen – querencia-panel
 
+## 0.2.2 – 2026-10-22
+
+Nutzertexte für Alpha 2.1 (QD-110/QD-115, QD-116).
+
+- Netzwerk-Applet: Solange Querencia Einstellungen keine Netzwerkseite hat
+  (Desktop-Aktion `netzwerk`; Einstellungen 0.1.4 hat keine), heißt der
+  ausgegraute Eintrag „Netzwerkeinstellungen (noch nicht verfügbar)“ statt
+  „Netzwerkeinstellungen … (kommt mit G2-O)“, im Linksklick- und im
+  Rechtsklickmenü. Gibt es die Aktion, bleibt es „Netzwerkeinstellungen …“.
+- „Informationen über Querencia“: Produktname „Querencia Desktop“, darunter
+  die Ausgabe aus `/usr/share/querencia/release` (`VERSION`, Format
+  os-release(5)), sonst aus der ersten Zeile von `/usr/share/querencia/version`;
+  ohne beide (Entwicklungsstand, Einzelpakete) keine Ausgabe. Immer
+  „Panel <Version>“ aus `Cargo.toml`, die Beschreibung, der Link
+  „querencialinux.org“ (`HOME_URL` aus der Datei, nur `https://`, sonst die
+  feste Adresse; geöffnet mit `xdg-open`) und „Lizenz: GPL-3.0-or-later“.
+  Feste Pfade, keine Umgebungsvariable (Vorgabe der Paketierung).
+- System-Menü: nach „Informationen über Querencia“ die Einträge
+  „Online-Hilfe“ (https://querencialinux.org/de/docs/ bei deutscher
+  Oberfläche, sonst /en/docs/; Sprache nach den Regeln von gettext) und
+  „Fehler melden“ (Auswahlseite für neue Meldungen im GitHub-Repository
+  querencia-desktop/querencia), beide mit `xdg-open` (gesucht wie alle
+  Programme des Panels: `XDG_OPEN`, `PATH`, `~/opt/querencia/bin`,
+  `/usr/bin`). Symbole `help-browser` und `tools-report-bug` (Ersatz
+  `dialog-warning`).
+- Interne Kennungen aus allen sichtbaren Texten des Panels entfernt (auch
+  aus einer Protokollzeile und den Beschreibungen der Glockensymbole).
+- Neues Modul `links.rs` (Adressen, Sprache der Hilfe, Öffnen).
+
 ## 0.2.1 – 2026-10-21
 
 Statussymbole auf dem dunklen Panel (QD-081, Entscheidung der Startsession
