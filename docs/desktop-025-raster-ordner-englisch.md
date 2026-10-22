@@ -2,8 +2,9 @@
 
 Stand 22.10.2026, Zweig `desktop-025` ab main `7356f64` (Desktop 0.2.4).
 Nur `crates/querencia-desktop`; Panel und Kürzel unverändert. 0.2.5 (Tags
-`desktop/0.2.5`, `desktop/0.2.5-int`) wurde nicht ausgeliefert; 0.2.6 enthält
-es und dazu §7.
+`desktop/0.2.5`, `desktop/0.2.5-int`) ist seit 22.10.2026 21:28 live; 0.2.6
+enthält es und dazu §7. 0.2.6-2 ist 0.2.6 auf main mit Panel 0.2.5 (Zweig
+`desktop-026`, geteilte `classic_menu.rs`).
 
 ## 1. Laufwerkssymbole im Raster (QD-091)
 
