@@ -1,5 +1,23 @@
 # Änderungen – querencia-desktop
 
+## 0.2.6-2 – 2026-10-22
+
+Neubau von 0.2.6 auf dem Stand von main mit Panel 0.2.5. Die mit dem Panel
+geteilte Menüdatei `classic_menu.rs` setzt Symbole jetzt über eine eigene
+Funktion; der Desktop nimmt darin weiter GTKs eigenen Weg (`cfg(querencia_desktop)`).
+Sichtbar ändert sich nichts gegenüber 0.2.6.
+
+## 0.2.6 – 2026-10-22
+
+**Querencia Files unter neuer Kennung.** Rechner, Persönlicher Ordner,
+Papierkorb und Datenträger öffnen in Querencia Files über dessen neuen
+Starter `org.querencia.Files.desktop`; fehlt er, über den bisherigen
+`io.github.lgse.Strata.desktop`. Damit gehen beide Reihenfolgen beim
+Einspielen von Files und Desktop. Das Log nennt beim Start, welcher Starter
+gefunden wurde („Dateiverwaltung: …“).
+
+Enthält alles aus 0.2.5.
+
 ## 0.2.5 – 2026-10-22
 
 **Raster nach der Schrift.** Die Zellen der Arbeitsfläche richten sich nach
