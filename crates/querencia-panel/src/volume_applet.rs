@@ -235,7 +235,7 @@ fn show(button: &Button, image: &Image, size: i32, look: &Look) {
     let pixels = size * image.scale_factor().max(1);
     match symbol(look.level, pixels) {
         Some(texture) => image.set_paintable(Some(&texture)),
-        None => image.set_icon_name(Some("audio-volume-muted")),
+        None => crate::symbole::set_named(image, "audio-volume-muted"),
     }
     button.set_tooltip_text(Some(&look.tooltip));
     if look.available {

@@ -134,7 +134,7 @@ fn refresh(button: &Button, image: &Image, app: &str) {
         .as_deref()
         .and_then(|icon| gio::Icon::for_string(icon).ok())
         .unwrap_or_else(|| gio::ThemedIcon::new(GENERIC_ICON).upcast());
-    image.set_from_gicon(&icon);
+    crate::symbole::set(image, &icon);
     button.set_tooltip_text(Some(&look.tooltip));
     if look.available {
         button.remove_css_class(MISSING_CLASS);

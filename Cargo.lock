@@ -740,7 +740,7 @@ dependencies = [
 
 [[package]]
 name = "querencia-panel"
-version = "0.2.3"
+version = "0.2.5"
 dependencies = [
  "gio-unix",
  "glib-unix",

@@ -30,6 +30,7 @@ mod portal;
 mod session;
 mod sitzung_start;
 mod symbol_farbe;
+mod symbole;
 mod system_menu;
 mod ueberwachung;
 mod volume_applet;
@@ -45,7 +46,9 @@ use gtk4::{Application, gio, glib};
 
 use crate::layout_editor::Editor;
 
-pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
+/// Application ID, D-Bus name and app ID of the panel's windows (QD-059;
+/// `org.example.Querencia.Panel` until 0.2.3, see [`neuladen::ALTER_BUSNAME`]).
+pub(crate) const APP_ID: &str = "org.querencia.Panel";
 
 // GTK's default button min-height plus padding is 34 px and would push a
 // panel of layout::DEFAULT_HEIGHT past its height; panel buttons fill the
@@ -304,6 +307,10 @@ fn build_panels(app: &Application) {
     }
 
     install_panel_style();
+    // QD-129: the logo as icon of the info dialog and the other windows
+    if let Some(display) = gtk4::gdk::Display::default() {
+        logo::set_window_icon(&display);
+    }
     farbschema::startfehler_beheben();
     // Teil 6: icons the user gets later appear without a restart.
     icon_reload::start();
