@@ -85,6 +85,14 @@
 #      clean-check-repo.txt (Prüfprotokoll, zitiert die Marker anderer Dateien,
 #      wie integration/welle-dunkel) und die höhere Zählung bei P002; sie
 #      fallen unter die Ausnahmen oben.
+# desktop-026 (22.10.2026): neu nur die Kopie integration/desktop-026
+#      (Prüfwerkzeuge wie integration/desktop-025, dazu der Ablauf files)
+#      mit S003/S004/S005/H003 wie dort und die höhere Zählung bei P002; sie
+#      fallen unter die Ausnahmen oben.
+# desktop-026-2 (22.10.2026): neu nur die Kopie integration/desktop-026-2
+#      (Prüfwerkzeuge wie integration/desktop-026) mit S003/S004/S005/H003
+#      wie dort und die höhere Zählung bei P002; sie fallen unter die
+#      Ausnahmen oben.
 # panel-0.3.0 (22.10.2026): neu nur S003/S004/S005 in crates/querencia-panel/
 #      src/i18n.rs, crates/querencia-{lautstaerke,netzwerk}/src/i18n.rs und
 #      werkzeug/i18n.py (aus dem Desktop-/Editor-Muster übernommen,
