@@ -66,8 +66,8 @@ fi
 # Flächen anlegen. Läuft synchron (labwc antwortet sofort, Zeitgrenze 5 s im
 # Programm). Ohne Datei, ohne installierte Einstellungen oder bei Fehler
 # bleibt alles wie von labwc eingerichtet; Ausgabe in bildschirm.log.
-if [ -x /home/user/opt/querencia/bin/querencia-einstellungen ]; then
-    /home/user/opt/querencia/bin/querencia-einstellungen --bildschirm-anwenden \
+if [ -x ~/opt/querencia/bin/querencia-einstellungen ]; then
+    ~/opt/querencia/bin/querencia-einstellungen --bildschirm-anwenden \
         </dev/null >>"$QUERENCIA_STATE_DIR/bildschirm.log" 2>&1 || true
 fi
 
@@ -82,9 +82,18 @@ if [ -n "${QUERENCIA_DESKTOP-}" ] && [ -x "$QUERENCIA_DESKTOP" ]; then
     fi
 fi
 
-gtk_exec "$QUERENCIA_PANEL" </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
+# Panel 0.2.3 and later: under its watchdog (--ueberwacht), which starts a
+# crashed panel again, at most 3 times in 10 minutes, with a log line
+# (docs/panel-023-absturz-und-ueberwachung.md). Only for a panel that names
+# the capability; an older one starts as before.
+if "$QUERENCIA_PANEL" --faehigkeiten 2>/dev/null </dev/null | grep -qw ueberwacht; then
+    gtk_exec "$QUERENCIA_PANEL" --ueberwacht </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
+else
+    gtk_exec "$QUERENCIA_PANEL" </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
+fi
 
-# Record "PID STARTTIME" for the starter's cleanup (see starttime() there).
+# Record "PID STARTTIME" for the starter's cleanup (see starttime() there);
+# with the watchdog it is the watchdog's PID: its SIGTERM ends the panel too.
 pid=$!
 if stat=$(cat "/proc/$pid/stat" 2>/dev/null); then
     set -- ${stat##*) }
@@ -95,7 +104,7 @@ fi
 # ohne installierten Dienst bleibt die Sitzung wie bisher. Belegt ein anderer
 # Dienst den Namen schon, beendet er sich selbst mit einer Meldung im Log.
 # Bewusst nach dem Panel-Eintrag, damit "$!" oben weiter das Panel ist.
-BENACHRICHTIGUNGEN=${QUERENCIA_BENACHRICHTIGUNGEN:-/home/user/opt/querencia/bin/querencia-benachrichtigungen}
+BENACHRICHTIGUNGEN=${QUERENCIA_BENACHRICHTIGUNGEN:-~/opt/querencia/bin/querencia-benachrichtigungen}
 if [ -x "$BENACHRICHTIGUNGEN" ]; then
     gtk_exec "$BENACHRICHTIGUNGEN" </dev/null >>"$QUERENCIA_STATE_DIR/benachrichtigungen.log" 2>&1 &
 fi
