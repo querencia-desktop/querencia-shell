@@ -57,3 +57,8 @@
 #      H003 in integration/desktop-023 (Kopie der Prüfwerkzeuge wie
 #      integration/desktop-022) und die höhere Zählung bei P002; sie fallen
 #      unter die Ausnahmen oben.
+# desktop-0.2.4 (22.10.2026): neu nur S004/S005/H003 in integration/desktop-024
+#      (Kopie der Prüfwerkzeuge wie integration/desktop-023, dazu
+#      lesbarkeit.py) und die höhere Zählung bei P002; crates/querencia-desktop/
+#      src/main.rs unverändert in S003/S004/S005; sie fallen unter die
+#      Ausnahmen oben.
