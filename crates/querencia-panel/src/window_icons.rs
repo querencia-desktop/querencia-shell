@@ -18,6 +18,10 @@
 //! 6. the program of `Exec` is named like the app ID.
 //!
 //! The title is never used: it is the document, not the application.
+//!
+//! Renamed app IDs ([`RENAMED`], QD-059): a window with a new ID that no
+//! installed entry matches gets the icon of the entry of its old ID, which
+//! the program keeps as a hidden bridge (`NoDisplay`) for a while.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -122,6 +126,20 @@ pub fn icon_for(app_id: &str) -> gio::Icon {
     found.unwrap_or_else(|| gio::ThemedIcon::new(FALLBACK_ICON).upcast())
 }
 
+/// App IDs of Querencia programs, new and old: Querencia Files (QF-0t,
+/// before that the ID of its Strata origin).
+pub const RENAMED: [(&str, &str); 1] = [("org.querencia.Files", "io.github.lgse.Strata")];
+
+/// [`best_match`] for `app_id`, else for its old ID from [`RENAMED`].
+pub fn best_match_or_renamed(app_id: &str, candidates: &[Candidate]) -> Option<usize> {
+    best_match(app_id, candidates).or_else(|| {
+        RENAMED
+            .iter()
+            .find(|(new, _)| *new == app_id)
+            .and_then(|(_, old)| best_match(old, candidates))
+    })
+}
+
 fn lookup(app_id: &str) -> Option<gio::Icon> {
     if app_id.is_empty() {
         return None;
@@ -140,7 +158,7 @@ fn lookup(app_id: &str) -> Option<gio::Icon> {
                 .and_then(|c| program_of(&c.to_string_lossy())),
         })
         .collect();
-    let index = best_match(app_id, &candidates)?;
+    let index = best_match_or_renamed(app_id, &candidates)?;
     apps[index].icon()
 }
 
@@ -207,6 +225,39 @@ mod tests {
             found("org.querencia.Screenshot").as_deref(),
             Some("org.querencia.Screenshot.desktop")
         );
+    }
+
+    /// QD-059: Querencia Files with its new app ID finds its new entry, and
+    /// the old (bridge) entry while only that one is installed; the old ID
+    /// still finds the old entry.
+    #[test]
+    fn renamed_files_id_finds_new_entry_else_the_old_one() {
+        let new = entry(
+            "org.querencia.Files.desktop",
+            Some("org.querencia.Files"),
+            Some("querencia-files"),
+        );
+        let mut both = catalog();
+        both.push(new);
+        let id = |list: &[Candidate], app_id: &str| {
+            best_match_or_renamed(app_id, list).map(|i| list[i].id.clone())
+        };
+        assert_eq!(
+            id(&both, "org.querencia.Files").as_deref(),
+            Some("org.querencia.Files.desktop")
+        );
+        assert_eq!(
+            id(&both, "io.github.lgse.Strata").as_deref(),
+            Some("io.github.lgse.Strata.desktop")
+        );
+        let only_old = catalog();
+        assert_eq!(
+            id(&only_old, "org.querencia.Files").as_deref(),
+            Some("io.github.lgse.Strata.desktop")
+        );
+        assert_eq!(best_match("org.querencia.Files", &only_old), None);
+        // other unknown IDs get no renamed fallback
+        assert_eq!(id(&only_old, "org.querencia.Unbekannt"), None);
     }
 
     #[test]
