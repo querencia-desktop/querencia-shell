@@ -298,6 +298,7 @@ start "$B"
 marke; aktion anordnen groesse; q "wait 400"
 marke; strg 2; q "wait 800"
 fall A17 "Liste nach Sortierung in der Symbolansicht angelegt: Pfeil auf „Größe“" im_log 'Spaltenkopf: Pfeil groesse'
+foto a17-liste-ein-pfeil
 stopp
 
 # --- A16 Zusatzzeilen und Spalten nach Einstellung -------------------------
