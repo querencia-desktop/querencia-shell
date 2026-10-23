@@ -2,6 +2,11 @@
 
 ## 0.3.2 – 2026-10-24
 
+Integrationsstand 0.3.2-2 (Tags `panel/0.3.2-2`, `panel/0.3.2-2-int`):
+derselbe Code, gemergt auf runtime main `5510fc4` (Welle C3). Binary und
+Kataloge sind byte-gleich mit 0.3.2; `integration/panel-032/` wird nicht
+aktiviert, sondern `integration/panel-032-2/`.
+
 Migration M3 der Welle C (Querencia Dateien löst Querencia Files ab,
 Folgezug „Runtime nach der Ablösung“, 08 QD-168):
 

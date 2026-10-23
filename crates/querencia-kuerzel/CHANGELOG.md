@@ -2,6 +2,11 @@
 
 ## 0.2.2 – 2026-10-24
 
+Integrationsstand 0.2.2-2 (Tags `kuerzel/0.2.2-2`, `kuerzel/0.2.2-2-int`):
+derselbe Code, gemergt auf runtime main `5510fc4` (Welle C3; Kürzel von
+Dateien dort unverändert gegenüber `dateien/reiter-1`). Binary byte-gleich mit
+0.2.2; aktiviert wird über `integration/kuerzel-022-2/`.
+
 Querencia Dateien statt Querencia Files (Welle C, Folgezug „Runtime nach
 der Ablösung“, 08 QD-168):
 

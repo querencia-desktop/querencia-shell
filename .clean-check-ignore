@@ -173,3 +173,8 @@
 #      des Wayland-Protokolls); security 0; P002 nur, weil die Basis ohne .git
 #      geprüft wurde. Sie fallen unter die Ausnahmen oben
 #     .
+# runtime-abloesung -2 (24.10.2026, nach Merge main 5510fc4): gegenüber
+#      main 5510fc4 dieselben Klassen wie oben, dazu die Kopien
+#      integration/panel-032-2 und integration/kuerzel-022-2 (S004 in den
+#      Skripten, H001 für nachweis/orte/*/geoeffnet.log); security 0. Sie
+#      fallen unter die Ausnahmen oben.
