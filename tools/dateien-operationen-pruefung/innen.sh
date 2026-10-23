@@ -71,7 +71,14 @@ umgebung() {
   } >> "$QD_AUS/innen.log"
 }
 
+# Ausgabegröße: 1280x720 ist die des headless labwc, andere über qausgabe
+W=${QD_AUFLOESUNG%x*}; H=${QD_AUFLOESUNG#*x}
+if [ "$QD_AUFLOESUNG" != 1280x720 ]; then
+  "$QD_QA" "$QD_AUFLOESUNG" >> "$QD_AUS/innen.log" 2>&1 || echo "qausgabe fehlgeschlagen" >> "$QD_AUS/innen.log"
+fi
+export QE_W=$W QE_H=$H
 umgebung
+echo "Auflösung $QD_AUFLOESUNG, Stufe ${GIO_USE_VFS:+L}${GIO_USE_VFS:-G}" >> "$QD_AUS/innen.log"
 # shellcheck disable=SC1090
 source "$QD_SZ"
 beende

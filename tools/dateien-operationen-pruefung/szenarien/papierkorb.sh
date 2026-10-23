@@ -3,7 +3,7 @@ source "$(dirname "$QD_SZ")/hilfen.sh"
 T=$HOME/Test; mkdir -p "$T"
 for n in 1 2 3; do echo "inhalt $n" > "$T/d$n.txt"; done; echo bleibt > "$T/keep.txt"
 TR=$(papierkorb_ordner)
-drei_waehlen() { q "move 950 $(zeile 0)" "click" "wait 200" "keydown Shift_L" "move 950 $(zeile 2)" "click" "keyup Shift_L" "wait 300"; }
+drei_waehlen() { q "move $((950 + OX)) $(( $(zeile 0) + OY ))" "click" "wait 200" "keydown Shift_L" "move $((950 + OX)) $(( $(zeile 2) + OY ))" "click" "keyup Shift_L" "wait 300"; }
 start_app "$T"
 # d1, d2, d3, keep
 drei_waehlen; q "key Delete" "wait 300"

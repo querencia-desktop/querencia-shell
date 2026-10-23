@@ -3,13 +3,15 @@
 # Ersatzansicht bzw. Liste: Zeile n bei y = 229 + 52 n, x = 450.
 # Seitenleiste „Orte“: Persönlicher Ordner (320,260), Dateisystem (320,285), Papierkorb (315,310).
 # Knopfpfad: erster Knopf (285,182), zweiter (367,182).
+# Andere Auflösungen: das Fenster bleibt mittig, alle Fensterkoordinaten verschieben sich.
+OX=$(( (W - 1280) / 2 )); OY=$(( (H - 720) / 2 ))
 zeile() { echo $((229 + 52 * $1)); }
 q() { printf '%s\n' "$@" | eingabe; }
 strg() { q "keydown Control_L" "type $1" "keyup Control_L" "wait 400"; }
 alt() { q "keydown Alt_L" "type $1" "keyup Alt_L" "wait 400"; }
-klick() { q "move $1 $2" "wait 200" "click" "wait 400"; }
-zklick() { q "wait 300" "move 950 $(zeile $1)" "click" "wait 400"; }  # rechts: neben Fortschritts- und Dialogfenstern
-doppel() { q "wait 300" "move 450 $(zeile $1)" "dclick" "wait 800"; }
+klick() { q "move $(( $1 + OX )) $(( $2 + OY ))" "wait 200" "click" "wait 400"; }
+zklick() { q "wait 300" "move $(( 950 + OX )) $(( $(zeile $1) + OY ))" "click" "wait 400"; }  # rechts: neben Fortschritts- und Dialogfenstern
+doppel() { q "wait 300" "move $(( 450 + OX )) $(( $(zeile $1) + OY ))" "dclick" "wait 800"; }
 titel() { klick 640 85; }
 # Fensteraktion über den privaten Sitzungsbus der Hülle (derselbe Weg wie Menü und Tasten)
 aktion() { # NAME [GVARIANT-PARAMETER]
@@ -29,8 +31,8 @@ warte_frage() { # ANZAHL_VORHER
 }
 ziehe_nach() { # X1 Y1 X2 Y2 [Taste]
   { [ -n "${5:-}" ] && echo "keydown $5"
-    echo "move $1 $2"; echo "wait 200"; echo "down left"; echo "wait 100"
-    echo "glide $(( $1 + 20 )) $(( $2 + 10 )) 200"; echo "glide $3 $4 500"; echo "wait 400"
+    echo "move $(( $1 + OX )) $(( $2 + OY ))"; echo "wait 200"; echo "down left"; echo "wait 100"
+    echo "glide $(( $1 + OX + 20 )) $(( $2 + OY + 10 )) 200"; echo "glide $(( $3 + OX )) $(( $4 + OY )) 500"; echo "wait 400"
     echo "up left"; echo "wait 400"
     [ -n "${5:-}" ] && echo "keyup $5"; } | eingabe
 }

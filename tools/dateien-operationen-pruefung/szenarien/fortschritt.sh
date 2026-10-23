@@ -17,7 +17,7 @@ abbrechen_klick() { # AUFTRAG – Fenster mittig (labwc), Titelleiste 26 px, Lag
   z=$(grep -a "Abbrechen für Auftrag $1 bei" "$LOG" | tail -1)
   x=$(sed -E 's/.* bei ([0-9-]+),([0-9-]+) .*/\1/' <<< "$z"); y=$(sed -E 's/.* bei ([0-9-]+),([0-9-]+) .*/\2/' <<< "$z")
   w=$(sed -E 's/.*Fenster ([0-9]+)x([0-9]+).*/\1/' <<< "$z"); h0=$(sed -E 's/.*Fenster ([0-9]+)x([0-9]+).*/\2/' <<< "$z")
-  sx=$(( (1280 - w) / 2 + x )); sy=$(( (720 - h0 - 26) / 2 + 26 + y ))
+  sx=$(( (W - w) / 2 + x )); sy=$(( (H - h0 - 26) / 2 + 26 + y ))
   echo "Abbrechen $1 → $sx,$sy" >> "$QD_AUS/innen.log"
   q "move $sx $sy" "wait 100" "click" "wait 300"
 }

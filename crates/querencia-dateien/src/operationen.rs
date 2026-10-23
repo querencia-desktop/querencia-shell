@@ -14,10 +14,10 @@
 //! | `win.ordner-anlegen` | "Neuer Ordner", then renaming in the view | Umschalt+Strg+N |
 //! | `win.dokument-anlegen` (s) | a copy of the template (URI), `""`: "Leere Datei" | – |
 //!
-//! Öffnen, Öffnen mit and Eigenschaften are actions of the window (B1).
-//! This module offers [`anderes_programm`] ("Mit anderer Anwendung öffnen
-//! …", for the beta) and `eigenschaften_dialog::zeigen` as functions the
-//! window hangs on its actions; it registers neither.
+//! Öffnen, Öffnen mit and Eigenschaften are actions of the window (B1);
+//! `eigenschaften_dialog::zeigen` is the function B1 hangs on
+//! `win.eigenschaften`. "Mit anderer Anwendung öffnen …" comes with the beta
+//! (B §1.10).
 //!
 //! Every change of files is a job of the process's queue (`App::queue`,
 //! its own thread) with progress (`fortschritt`), cancel and questions
@@ -387,46 +387,6 @@ pub fn fehler(parent: Option<&gtk4::Window>, titel: &str, text: &str) {
 /// nachfragen“ (`dateien.ini`, Vorgabe an).
 fn nachfragen() -> bool {
     app::app_wenn().is_none_or(|a| a.konfig().werte().nachfragen)
-}
-
-/// "Mit anderer Anwendung öffnen …" for the selection of `fenster` (GTK's
-/// app chooser); B1 hangs it on `win.oeffnen-mit` with the target `""`
-/// (beta, `docs/dateien.md` §3.6).
-#[allow(dead_code)] // a function for B1's action, not registered here
-pub fn anderes_programm(fenster: &Rc<Fenster>) {
-    let ops = Operationen::fuer(fenster);
-    let dateien: Vec<gio::File> = ops.auswahl().iter().map(Eintrag::ziel).collect();
-    if !dateien.is_empty() {
-        ops.programm_waehlen(&dateien);
-    }
-}
-
-/// The one content type of `dateien` (the chooser is for one type, as
-/// Nautilus 2.30); an empty file counts by its name (Desktop 0.2.2).
-fn gemeinsamer_typ(dateien: &[gio::File]) -> Option<String> {
-    let typ_von = |file: &gio::File| -> Option<String> {
-        let info = file
-            .query_info(
-                "standard::content-type",
-                gio::FileQueryInfoFlags::NONE,
-                gio::Cancellable::NONE,
-            )
-            .ok()?;
-        let found = info.content_type().map(|t| t.to_string());
-        if querencia_dateiarbeit::typ::is_empty_document(found.as_deref())
-            && let Some(by_name) = file
-                .basename()
-                .and_then(|n| querencia_dateiarbeit::typ::type_from_name(&n.to_string_lossy()))
-        {
-            return Some(by_name);
-        }
-        found
-    };
-    let mut types = dateien.iter().map(typ_von);
-    let first = types.next()??;
-    types
-        .all(|t| t.as_deref() == Some(first.as_str()))
-        .then_some(first)
 }
 
 /// The actions of this module.
@@ -929,85 +889,6 @@ impl Operationen {
             }),
         );
     }
-
-    /// "Mit anderer Anwendung öffnen …": GTK's app chooser for the type;
-    /// the default program stays (Nautilus 2.30).
-    #[allow(deprecated)] // GtkAppChooserDialog: GTK 4 has no replacement yet
-    fn programm_waehlen(self: &Rc<Self>, dateien: &[gio::File]) {
-        let content_type =
-            gemeinsamer_typ(dateien).unwrap_or_else(|| "application/octet-stream".to_owned());
-        let parent = self.window();
-        let dialog = gtk4::AppChooserDialog::for_content_type(
-            parent.as_ref(),
-            gtk4::DialogFlags::MODAL | gtk4::DialogFlags::DESTROY_WITH_PARENT,
-            &content_type,
-        );
-        dialog.set_title(Some(&gettext("Open With")));
-        let erster = dateien.first().map(anzeigename).unwrap_or_default();
-        dialog.set_heading(&match dateien.len() {
-            1 => gettext_f(
-                "Select an application to open “{name}”",
-                &[("name", &erster)],
-            ),
-            n => ngettext_f(
-                "Select an application to open {n} file",
-                "Select an application to open {n} files",
-                u32::try_from(n).unwrap_or(u32::MAX),
-                &[],
-            ),
-        });
-        let window = self.window.clone();
-        let dateien = dateien.to_vec();
-        dialog.connect_response(move |dialog, response| {
-            if response == gtk4::ResponseType::Ok
-                && let Some(app) = dialog.app_info()
-            {
-                starten_mit(&app, &dateien, window.upgrade().map(|w| w.upcast()));
-            } else {
-                protokoll("Öffnen mit abgebrochen");
-            }
-            dialog.destroy();
-        });
-        dialog.present();
-        protokoll(&format!("Öffnen mit: Auswahl für {content_type}"));
-    }
-}
-
-/// Starts `app` with `dateien` (URIs when it takes them), with the display's
-/// launch context (xdg-activation token) and without portal variables.
-fn starten_mit(app: &gio::AppInfo, dateien: &[gio::File], window: Option<gtk4::Window>) {
-    let context: gio::AppLaunchContext = match window
-        .as_ref()
-        .map(WidgetExt::display)
-        .or_else(gdk::Display::default)
-    {
-        Some(display) => display.app_launch_context().upcast(),
-        None => gio::AppLaunchContext::new(),
-    };
-    querencia_oberflaeche::portal::for_children(&context);
-    let uris: Vec<String> = dateien.iter().map(|f| f.uri().to_string()).collect();
-    let refs: Vec<&str> = uris.iter().map(String::as_str).collect();
-    let ergebnis = if app.supports_uris() {
-        app.launch_uris(&refs, Some(&context))
-    } else {
-        app.launch(dateien, Some(&context))
-    };
-    let namen: Vec<String> = dateien.iter().map(anzeigename).collect();
-    match ergebnis {
-        Ok(()) => protokoll(&format!(
-            "geöffnet mit {}: {}",
-            app.id().unwrap_or_default(),
-            namen.join(", ")
-        )),
-        Err(err) => fehler(
-            window.as_ref(),
-            &gettext_f(
-                "“{name}” could not be opened.",
-                &[("name", &namen.join(", "))],
-            ),
-            err.message(),
-        ),
-    }
 }
 
 /// For the views (B2): whether `uri` was cut and waits (shown faded).
@@ -1053,27 +934,5 @@ mod tests {
                 "{name}"
             );
         }
-    }
-
-    #[test]
-    fn one_type_for_the_chooser() {
-        let basis = std::env::current_dir()
-            .unwrap()
-            .join("target/tmp/operationen-typ");
-        let _ = std::fs::remove_dir_all(&basis);
-        std::fs::create_dir_all(&basis).unwrap();
-        std::fs::write(basis.join("a.txt"), b"hallo").unwrap();
-        std::fs::write(basis.join("b.txt"), b"welt").unwrap();
-        // an empty file counts by its name
-        std::fs::write(basis.join("leer.txt"), b"").unwrap();
-        std::fs::write(basis.join("c.png"), b"\x89PNG\r\n\x1a\n").unwrap();
-        let f = |n: &str| gio::File::for_path(basis.join(n));
-        assert_eq!(
-            gemeinsamer_typ(&[f("a.txt"), f("b.txt"), f("leer.txt")]).as_deref(),
-            Some("text/plain")
-        );
-        assert_eq!(gemeinsamer_typ(&[f("a.txt"), f("c.png")]), None);
-        assert_eq!(gemeinsamer_typ(&[]), None);
-        let _ = std::fs::remove_dir_all(&basis);
     }
 }

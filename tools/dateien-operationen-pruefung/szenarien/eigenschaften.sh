@@ -1,4 +1,5 @@
-# Eigenschaften (Grundlegend mit Ordnergröße, Zugriffsrechte, Öffnen mit), Öffnen mit anderer Anwendung, Anlegen.
+# Eigenschaften (Grundlegend mit Ordnergröße, Zugriffsrechte, Öffnen mit) über win.eigenschaften mit
+# b1-anhaengen.patch (Integrationsprobe), Anlegen.
 source "$(dirname "$QD_SZ")/hilfen.sh"
 T=$HOME/Test; mkdir -p "$T/ordner/unter"
 for i in $(seq 1 40); do head -c 1000 /dev/zero > "$T/ordner/unter/f$i"; done
@@ -26,11 +27,6 @@ klick 663 221; foto eigenschaften-oeffnen-mit
 klick 430 346
 pruefe E3 "Öffnen mit: Vim statt Testanzeige" "wird Standard (mimeapps.list)" 'grep -q "application/x-shellscript=vim.desktop" "${XDG_CONFIG_HOME:-$HOME/.config}/mimeapps.list"' "$(grep -a 'Standardprogramm' "$LOG" | tail -1)"
 q "key Escape" "wait 500"
-titel; zklick 1; aktion oeffnen-mit "''"
-warte_log 'Öffnen mit: Auswahl für' 5; eingabe <<< "wait 800"
-foto oeffnen-mit-anderer
-pruefe E4 "„Mit anderer Anwendung öffnen …“" "Auswahl von GTK für den Typ" 'grep -a -q "Öffnen mit: Auswahl für application/x-shellscript" "$LOG"'
-q "key Escape" "wait 600"
 titel; zklick 0; q "keydown Control_L" "keydown Shift_L" "type n" "keyup Shift_L" "keyup Control_L" "wait 800"
 warte_bis '[ -d "$T/Neuer Ordner" ]' 10
 pruefe N1 "Umschalt+Strg+N" "„Neuer Ordner“" '[ -d "$T/Neuer Ordner" ]' "$(ls "$T" | tr '\n' ' ')"

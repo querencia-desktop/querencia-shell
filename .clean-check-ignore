@@ -127,3 +127,13 @@
 #      integration/panel-030-2 und desktop-026-2) und die höhere Zählung bei
 #      P002; sie fallen unter die Ausnahmen oben
 #     .
+# dateien-operationen (23.10.2026): neu nur S003/S004/S005 in
+#      crates/querencia-dateien/src/{operationen,zwischenablage,ziehen,
+#      fortschritt,konflikt,eigenschaften_dialog}.rs (Rust englisch
+#      kommentiert mit Backticks wie dateiarbeit und Desktop, Typografie in
+#      Oberflächentexten), S005 in tools/dateien-operationen-pruefung
+#      (qeingabe.c englisch wie die Vorlage, Szenarien deutsch mit englischen
+#      Befehlswörtern) und H003 für
+#      tools/dateien-operationen-pruefung/virtual-keyboard-unstable-v1.xml
+#      (Protokolldatei unter ihrem Namen); sie fallen unter die Ausnahmen oben
+#     .
