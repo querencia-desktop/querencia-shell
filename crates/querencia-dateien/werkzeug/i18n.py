@@ -16,6 +16,12 @@ Aufruf (im Repo-Wurzelverzeichnis):
   i18n.py desktop <ein.in> <aus>  Desktop-Datei mit Name[lang]= usw. (wie msgfmt --desktop)
   i18n.py pruefen                 .pot aktuell, alle .po vollständig, Platzhalter und Zugriffstasten stimmen
 
+Querencia Dateien (Welle B): Neben po/<lang>.po gibt es Teilkataloge
+po/<lang>.<teil>.po der parallel arbeitenden Worker (nur msgid/msgstr). mo,
+desktop und pruefen lesen sie zusammen mit po/<lang>.po; update übernimmt
+ihre Übersetzungen in po/<lang>.po (danach können sie entfallen). Solange es
+Teilkataloge gibt, ist eine veraltete .pot nur ein Hinweis.
+
 Erkannte Aufrufe in Rust: gettext("…"), gettext_f("…", …), ngettext("…", "…", n),
 ngettext_f("…", "…", n, …), pgettext("ctx", "…"). Ein Kommentar
 `// TRANSLATORS: …` in der Zeile davor landet als Übersetzerhinweis in der .pot.
@@ -39,6 +45,8 @@ KEYWORDS = {  # Name -> (Zahl der Text-Argumente, Kontext zuerst?)
     "ngettext": ("p", False),
     "ngettext_f": ("p", False),
     "pgettext": ("c", True),
+    # Markierung in Tabellen (menue.rs), übersetzt erst beim Anzeigen
+    "N_": ("s", False),
 }
 HEADER_PLURALS = {
     "de": "nplurals=2; plural=(n != 1);",
@@ -93,7 +101,7 @@ def skip_ws(text, i, comments=None):
         return i
 
 
-CALL = re.compile(r"(?<![\w:.])(?:i18n::)?(gettext_f|gettext|ngettext_f|ngettext|pgettext)\s*\(")
+CALL = re.compile(r"(?<![\w:.])(?:i18n::)?(gettext_f|gettext|ngettext_f|ngettext|pgettext|N_)\s*\(")
 
 
 def extract_rust(path, rel):
@@ -315,6 +323,28 @@ def read_po(path):
     return header, entries
 
 
+def teilkataloge(root, lang):
+    return sorted(glob.glob(os.path.join(root, "po", lang + ".*.po")))
+
+
+def read_lang(root, lang):
+    """po/<lang>.po plus Teilkataloge: (Kopf, Einträge); Teile füllen Lücken."""
+    header, entries = read_po(os.path.join(root, "po", lang + ".po"))
+    by_key = {(e["ctxt"], e["id"]): e for e in entries}
+    for teil in teilkataloge(root, lang):
+        _, extra = read_po(teil)
+        for e in extra:
+            k = (e["ctxt"], e["id"])
+            if k in by_key and translated(by_key[k]):
+                continue
+            if k in by_key:
+                by_key[k].update({x: e[x] for x in ("str", "strs", "fuzzy") if x in e})
+            else:
+                entries.append(e)
+                by_key[k] = e
+    return header, entries
+
+
 def pot_header():
     return {
         "comments": [
@@ -379,6 +409,12 @@ def cmd_update(root):
         header["fields"] = [(k, fields[k]) for k in order if k in fields] + \
             [(k, v) for k, v in fields.items() if k not in order]
         by_key = {(e["ctxt"], e["id"]): e for e in old}
+        for teil in teilkataloge(root, lang):
+            _, extra = read_po(teil)
+            for e in extra:
+                k = (e["ctxt"], e["id"])
+                if k not in by_key or not translated(by_key[k]):
+                    by_key[k] = e
         merged, used = [], set()
         for p in pot:
             e = dict(p)
@@ -445,7 +481,7 @@ def mo_bytes(header, entries):
 
 def cmd_mo(root, target):
     for lang in linguas(root):
-        header, entries = read_po(os.path.join(root, "po", lang + ".po"))
+        header, entries = read_lang(root, lang)
         d = os.path.join(target, lang, "LC_MESSAGES")
         os.makedirs(d, exist_ok=True)
         path = os.path.join(d, DOMAIN + ".mo")
@@ -459,7 +495,7 @@ def cmd_mo(root, target):
 def cmd_desktop(root, src, dst):
     cats = {}
     for lang in linguas(root):
-        _, entries = read_po(os.path.join(root, "po", lang + ".po"))
+        _, entries = read_lang(root, lang)
         cats[lang] = {e["id"]: e["str"] for e in entries
                       if e["ctxt"] is None and e.get("plural") is None and translated(e)}
     out = []
@@ -494,10 +530,13 @@ def cmd_pruefen(root):
     fresh = extract(root)
     key = lambda e: (e["ctxt"], e["id"], e.get("plural"))
     if sorted(map(key, pot), key=str) != sorted(map(key, fresh), key=str):
-        fehler.append("po/%s.pot ist nicht aktuell (werkzeug/i18n.py pot)" % DOMAIN)
+        if any(teilkataloge(root, lang) for lang in linguas(root)):
+            print("Hinweis: po/%s.pot ist nicht aktuell (Teilkataloge vorhanden)" % DOMAIN)
+        else:
+            fehler.append("po/%s.pot ist nicht aktuell (werkzeug/i18n.py pot)" % DOMAIN)
     want = {(e["ctxt"], e["id"]) for e in fresh}
     for lang in linguas(root):
-        _, entries = read_po(os.path.join(root, "po", lang + ".po"))
+        _, entries = read_lang(root, lang)
         have = {(e["ctxt"], e["id"]): e for e in entries}
         for k in sorted(want - set(have), key=str):
             fehler.append(f"{lang}: fehlt: {k[1]!r}")
