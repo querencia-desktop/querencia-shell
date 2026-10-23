@@ -14,6 +14,15 @@
 # Dieser Helfer legt den aktuellen Inhalt erneut in die Zwischenablage, sobald
 # ein X11-Fenster den Fokus bekommt. Dann bekommt Wine ein neues XFixes-Ereignis
 # und darf lesen. Nur ein Typ wird nachgereicht (Text bevorzugt, sonst PNG).
+#
+# Grenzen (QD-155): Nachgereicht wird nur ein Typ, der Rest geht verloren.
+# Deshalb bleibt die Zwischenablage unangetastet, sobald Dateien darin liegen
+# (text/uri-list, x-special/gnome-copied-files, application/x-kde-cutselection):
+# Dateien in Desktop, Files oder Dateien kopieren oder ausschneiden und danach
+# ein X11-Fenster anklicken darf das Einfügen dort nicht kaputt machen.
+# HTML-Formatierung (Thunderbird) geht beim Nachreichen verloren; der Text
+# bleibt. Die Abfrage läuft alle 0,5 s über xdotool; eine ereignisgesteuerte
+# Fassung gehört in Querencia Sitzung (foreign-toplevel).
 
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
@@ -32,6 +41,12 @@ nachreichen() {
     fi
     local typen typ="" inhalt
     typen=$(wl-paste -l 2>/dev/null) || return
+    # Dateien (kopiert oder ausgeschnitten): nicht anfassen.
+    if grep -qxF -e text/uri-list -e x-special/gnome-copied-files \
+            -e application/x-kde-cutselection <<< "$typen"; then
+        meldung "übersprungen: Dateien in der Zwischenablage"
+        return
+    fi
     for t in 'text/plain;charset=utf-8' 'text/plain' 'UTF8_STRING' 'image/png'; do
         if grep -qxF -- "$t" <<< "$typen"; then typ=$t; break; fi
     done
@@ -49,7 +64,7 @@ meldung "gestartet (PID $$)"
 trap 'meldung "beendet"; [ -n "$eigener_pid" ] && kill "$eigener_pid" 2>/dev/null; exit 0' TERM INT
 
 vorher=0
-while sleep 0.3; do
+while sleep 0.5; do
     if xdotool getactivewindow >/dev/null 2>&1; then aktiv=1; else aktiv=0; fi
     if (( aktiv && ! vorher )); then nachreichen; fi
     vorher=$aktiv
