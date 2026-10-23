@@ -8,6 +8,7 @@
 #   LAUF_BIN (Programm, Vorgabe target/debug/querencia-dateien des Worktrees),
 #   LAUF_FILES_TOML (Files-settings.toml für M6), LAUF_THEMA (Ordner des
 #   GTK-Themas, Vorgabe ~/.local/share/themes/Querencia-Klassisch),
+#   LAUF_STUFE (L|G, Vorgabe L: G startet gvfsd im Wegwerf-Bus, trash:///),
 #   LAUF_ATTRAPPEN (Laufwerks-Attrappen des Prüfrahmens, z. B.
 #   "schreibbar eingehaengt nicht-eingehaengt").
 # Ausgabe: ${DATEIEN_ARBEIT:-~/projects/dateien-arbeit}/laeufe/NAME/
@@ -70,9 +71,9 @@ bash "$REPO/werkzeug/dateien-pruefrahmen/huelle.sh" "${ATT[@]}" --profil "$PROFI
   --setenv "LANGUAGE=$LANGU" --setenv "QUERENCIA_DATEIEN_LOCALEDIR=$PROFIL/locale" \
   --setenv "LAUF_GROESSE=$GROESSE" --setenv "LAUF_OUT=$OUT" --setenv "LAUF_PROG=$BIN" \
   --setenv "LAUF_QE=$A/bin/qeingabe" --setenv "LAUF_QA=$A/bin/qausgabe" --setenv "LAUF_DUNKEL=$DUNKEL" \
-  --setenv "LAUF_SPRACHE=$SPRACHE" --setenv "PATH=$PROFIL/heim/.local/bin:/usr/local/bin:/usr/bin:/bin" \
+  --setenv "LAUF_SPRACHE=$SPRACHE" --setenv "LAUF_STUFE=${LAUF_STUFE:-L}" --setenv "PATH=$PROFIL/heim/.local/bin:/usr/local/bin:/usr/bin:/bin" \
   "${M6[@]}" --zeitlimit "${LAUF_ZEITLIMIT:-600}" --protokoll "$OUT/huelle.json" \
-  L -- bash "$HIER/innen.sh" "$SZENARIO" > "$OUT/huelle.log" 2>&1
+  "${LAUF_STUFE:-L}" -- bash "$HIER/innen.sh" "$SZENARIO" > "$OUT/huelle.log" 2>&1
 STATUS=$?
 set -e
 cp -f "$PROFIL/heim/aufrufe.log" "$OUT/" 2>/dev/null || true

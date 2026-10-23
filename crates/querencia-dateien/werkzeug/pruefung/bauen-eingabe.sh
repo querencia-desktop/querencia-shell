@@ -1,11 +1,11 @@
 #!/bin/bash
 # Querencia Dateien: baut die Prüfwerkzeuge qeingabe (virtuelle Maus und
 # Tastatur) und qausgabe (Auflösung des headless labwc) nach
-# ${DATEIEN_ARBEIT:-~/projects/dateien-arbeit}/bin. Beide verweigern jede
+# ZIEL (1. Argument), sonst ${DATEIEN_ARBEIT:-~/projects/dateien-arbeit}/bin. Beide verweigern jede
 # Sitzung außerhalb des Prüfrahmens (XDG_RUNTIME_DIR=/tmp/qd-*, QD_HUELLE).
 set -euo pipefail
 HIER="$(cd "$(dirname "$0")" && pwd)"
-OUT=${DATEIEN_ARBEIT:-$HOME/projects/dateien-arbeit}/bin
+OUT=${1:-${DATEIEN_ARBEIT:-$HOME/projects/dateien-arbeit}/bin}
 mkdir -p "$OUT"
 VP=$(ls -d ~/.cargo/registry/src/*/wayland-protocols-wlr-0.3.*/wlr-protocols/unstable/wlr-virtual-pointer-unstable-v1.xml | head -1)
 OM=$(dirname "$VP")/wlr-output-management-unstable-v1.xml
