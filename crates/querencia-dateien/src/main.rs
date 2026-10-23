@@ -36,6 +36,7 @@ mod werkzeugleiste;
 // Welle B2 (dateien-ansichten): mod-Zeilen unter dieser Zeile.
 
 // Welle B3 (dateien-operationen): mod-Zeilen unter dieser Zeile.
+#[allow(dead_code)] // eigenschaften_dialog::zeigen hängt B1 an win.eigenschaften (Integration)
 mod eigenschaften_dialog;
 mod fortschritt;
 mod konflikt;

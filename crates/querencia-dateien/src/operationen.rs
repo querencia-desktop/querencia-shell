@@ -14,11 +14,10 @@
 //! | `win.ordner-anlegen` | "Neuer Ordner", then renaming in the view | Umschalt+Strg+N |
 //! | `win.dokument-anlegen` (s) | a copy of the template (URI), `""`: "Leere Datei" | – |
 //!
-//! It also replaces two actions of the window: `win.eigenschaften` with
-//! the dialog of `eigenschaften_dialog` (Zugriffsrechte, Öffnen mit,
-//! folder size) and `win.oeffnen-mit`, which with the target `""` opens
-//! "Mit anderer Anwendung öffnen …" (GTK's app chooser); other targets go
-//! on to `oeffnen::oeffnen_mit` of the window.
+//! Öffnen, Öffnen mit and Eigenschaften are actions of the window (B1).
+//! This module offers [`anderes_programm`] ("Mit anderer Anwendung öffnen
+//! …", for the beta) and `eigenschaften_dialog::zeigen` as functions the
+//! window hangs on its actions; it registers neither.
 //!
 //! Every change of files is a job of the process's queue (`App::queue`,
 //! its own thread) with progress (`fortschritt`), cancel and questions
@@ -47,7 +46,7 @@ use crate::zwischenablage::Zwischenablage;
 
 /// A log line on stderr.
 pub fn protokoll(text: &str) {
-    querencia_dateiarbeit::say!("querencia-dateien: {text}");
+    crate::log(text);
 }
 
 /// `QUERENCIA_DATEIEN_DEBUG=1`: more log lines (positions for the isolated
@@ -384,6 +383,24 @@ pub fn fehler(parent: Option<&gtk4::Window>, titel: &str, text: &str) {
     dialog.show(parent);
 }
 
+/// Einstellungen → Verhalten „Vor dem Leeren des Papierkorbs oder Löschen
+/// nachfragen“ (`dateien.ini`, Vorgabe an).
+fn nachfragen() -> bool {
+    app::app_wenn().is_none_or(|a| a.konfig().werte().nachfragen)
+}
+
+/// "Mit anderer Anwendung öffnen …" for the selection of `fenster` (GTK's
+/// app chooser); B1 hangs it on `win.oeffnen-mit` with the target `""`
+/// (beta, `docs/dateien.md` §3.6).
+#[allow(dead_code)] // a function for B1's action, not registered here
+pub fn anderes_programm(fenster: &Rc<Fenster>) {
+    let ops = Operationen::fuer(fenster);
+    let dateien: Vec<gio::File> = ops.auswahl().iter().map(Eintrag::ziel).collect();
+    if !dateien.is_empty() {
+        ops.programm_waehlen(&dateien);
+    }
+}
+
 /// The one content type of `dateien` (the chooser is for one type, as
 /// Nautilus 2.30); an empty file counts by its name (Desktop 0.2.2).
 fn gemeinsamer_typ(dateien: &[gio::File]) -> Option<String> {
@@ -511,25 +528,6 @@ impl Operationen {
             window.add_action(&action);
             self.aktionen.borrow_mut().insert(name, action);
         }
-        // replaces the window's "Eigenschaften" (Grundlegend only) and
-        // "Öffnen mit" (without the chooser)
-        let eigenschaften = gio::SimpleAction::new("eigenschaften", None);
-        let weak = Rc::downgrade(self);
-        eigenschaften.connect_activate(move |_, _| {
-            if let Some(ops) = weak.upgrade() {
-                ops.eigenschaften();
-            }
-        });
-        window.add_action(&eigenschaften);
-        let mit = gio::SimpleAction::new("oeffnen-mit", Some(glib::VariantTy::STRING));
-        let weak = Rc::downgrade(self);
-        mit.connect_activate(move |_, value| {
-            let id = value.and_then(|v| v.str()).unwrap_or_default().to_owned();
-            if let Some(ops) = weak.upgrade() {
-                ops.oeffnen_mit(&id);
-            }
-        });
-        window.add_action(&mit);
     }
 
     fn fenster(&self) -> Option<Rc<Fenster>> {
@@ -803,6 +801,10 @@ impl Operationen {
         if dateien.is_empty() {
             return;
         }
+        if !nachfragen() {
+            self.starten(Auftrag::new(Op::Delete, dateien, None));
+            return;
+        }
         let message = match dateien.as_slice() {
             [one] => gettext_f(
                 "Are you sure you want to permanently delete “{name}”?",
@@ -844,6 +846,10 @@ impl Operationen {
     /// "Papierkorb leeren": asks first (texts as the desktop), Abbrechen is
     /// the default.
     pub fn leeren_fragen(self: &Rc<Self>) {
+        if !nachfragen() {
+            self.starten(Auftrag::new(Op::EmptyTrash, Vec::new(), None));
+            return;
+        }
         let dialog = gtk4::AlertDialog::builder()
             .message(gettext("Empty all items from the trash?"))
             .detail(gettext(
@@ -922,36 +928,6 @@ impl Operationen {
                 }
             }),
         );
-    }
-
-    /// `win.eigenschaften`: the selection's properties, else the folder's.
-    fn eigenschaften(self: &Rc<Self>) {
-        let mut ziele = self.auswahl_dateien();
-        if ziele.is_empty() {
-            ziele.extend(self.ordner());
-        }
-        // one window each, as Nautilus 2.30; at most eight at once
-        for datei in ziele.into_iter().take(8) {
-            crate::eigenschaften_dialog::zeigen(self.window().as_ref(), datei, self);
-        }
-    }
-
-    /// `win.oeffnen-mit`: a program ID goes to the window's opening; `""`
-    /// opens the chooser.
-    fn oeffnen_mit(self: &Rc<Self>, id: &str) {
-        let Some(fenster) = self.fenster() else {
-            return;
-        };
-        let auswahl = self.auswahl();
-        if auswahl.is_empty() {
-            return;
-        }
-        if id.is_empty() {
-            let dateien: Vec<gio::File> = auswahl.iter().map(Eintrag::ziel).collect();
-            self.programm_waehlen(&dateien);
-        } else {
-            crate::oeffnen::oeffnen_mit(&fenster, &auswahl, id);
-        }
     }
 
     /// "Mit anderer Anwendung öffnen …": GTK's app chooser for the type;
