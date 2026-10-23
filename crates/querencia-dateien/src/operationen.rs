@@ -127,6 +127,17 @@ impl Auftrag {
     }
 }
 
+/// An entry of `Outcome::arrived` as a file: the jobs report names in the
+/// target folder (restoring: full paths), not always full paths as the
+/// crate's text says (measured; handover §6).
+pub fn angekommen(ordner: &gio::File, eintrag: &str) -> gio::File {
+    if eintrag.starts_with('/') {
+        gio::File::for_path(eintrag)
+    } else {
+        ordner.child(eintrag)
+    }
+}
+
 fn anzeigename(file: &gio::File) -> String {
     file.query_info(
         "standard::display-name",
@@ -654,6 +665,16 @@ impl Operationen {
                 ops.aktualisieren();
             }
         });
+        // Wayland hands the clipboard to a window only with the keyboard:
+        // "Einfügen" is checked again when the window becomes active
+        let weak = Rc::downgrade(&ops);
+        fenster
+            .upcast_ref::<gtk4::ApplicationWindow>()
+            .connect_is_active_notify(move |_| {
+                if let Some(ops) = weak.upgrade() {
+                    ops.aktualisieren();
+                }
+            });
         // the queue and its windows exist before the first job
         Dienst::get();
         ops.aktualisieren();
@@ -684,6 +705,15 @@ impl Operationen {
         let papierkorb = self.im_papierkorb();
         let leer = self.papierkorb.anzahl().is_some_and(|n| n == 0);
         let einfuegen = Zwischenablage::get().kann_einfuegen() && !papierkorb;
+        if debugging() {
+            let formate = gdk::Display::default()
+                .map(|d| d.clipboard().formats().to_str().to_string())
+                .unwrap_or_default();
+            protokoll(&format!(
+                "Aktionen: {} gewählt, Einfügen {einfuegen} (Zwischenablage {formate})",
+                auswahl.len()
+            ));
+        }
         let aktionen = self.aktionen.borrow();
         let setzen = |name: &str, an: bool| {
             if let Some(action) = aktionen.get(name) {
@@ -1173,6 +1203,7 @@ impl Operationen {
             .filter(|q| ziehen::im_papierkorb(q) && q.is_native())
             .cloned()
             .collect();
+        let ziel = ordner.clone();
         let auftrag = self
             .auftrag(op, quellen, Some(ordner))
             .nachher(move |outcome, _| {
@@ -1186,8 +1217,11 @@ impl Operationen {
                     }
                 }
                 if let Some(ops) = weak.upgrade() {
-                    let neu: Vec<gio::File> =
-                        outcome.arrived.iter().map(gio::File::for_path).collect();
+                    let neu: Vec<gio::File> = outcome
+                        .arrived
+                        .iter()
+                        .map(|a| angekommen(&ziel, a))
+                        .collect();
                     if !neu.is_empty() {
                         ops.kontext.auswaehlen(&neu);
                     }
@@ -1239,6 +1273,7 @@ impl Operationen {
         }
         let weak = Rc::downgrade(self);
         let neu_name = neu.to_owned();
+        let eltern = datei.parent();
         let auftrag = self
             .auftrag(
                 Op::Rename {
@@ -1249,8 +1284,8 @@ impl Operationen {
             )
             .nachher(move |outcome, cancelled| {
                 let Some(ops) = weak.upgrade() else { return };
-                if let Some(neu) = outcome.arrived.first() {
-                    ops.kontext.auswaehlen(&[gio::File::for_path(neu)]);
+                if let (Some(neu), Some(eltern)) = (outcome.arrived.first(), &eltern) {
+                    ops.kontext.auswaehlen(&[angekommen(eltern, neu)]);
                 } else if !cancelled && !outcome.failed.is_empty() {
                     fehler(
                         ops.fenster().as_ref(),
@@ -1469,12 +1504,13 @@ impl Operationen {
 
     fn neu_anlegen(self: &Rc<Self>, op: Op, ordner: gio::File) {
         let weak = Rc::downgrade(self);
+        let ziel = ordner.clone();
         let auftrag = self
             .auftrag(op, Vec::new(), Some(ordner))
             .nachher(move |outcome, _| {
                 let Some(ops) = weak.upgrade() else { return };
                 if let Some(neu) = outcome.arrived.first() {
-                    let neu = gio::File::for_path(neu);
+                    let neu = angekommen(&ziel, neu);
                     ops.kontext.auswaehlen(std::slice::from_ref(&neu));
                     ops.umbenennen_beginnen(&neu);
                 }
@@ -1525,6 +1561,20 @@ mod tests {
         assert!(vorlagen(Some(&basis.join("fehlt")), &basis).is_empty());
         assert_eq!(vorlagen_name(&dir.join("Brief.odt")), "Brief.odt");
         let _ = std::fs::remove_dir_all(&basis);
+    }
+
+    #[test]
+    fn arrived_names_become_files_of_the_target() {
+        let ordner = gio::File::for_path("/tmp/ziel");
+        assert_eq!(
+            angekommen(&ordner, "x (Kopie).txt").path().unwrap(),
+            std::path::PathBuf::from("/tmp/ziel/x (Kopie).txt")
+        );
+        // restoring reports where the object went back to
+        assert_eq!(
+            angekommen(&ordner, "/home/a/b.txt").path().unwrap(),
+            std::path::PathBuf::from("/home/a/b.txt")
+        );
     }
 
     #[test]

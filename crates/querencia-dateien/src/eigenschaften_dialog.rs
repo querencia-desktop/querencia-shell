@@ -614,7 +614,9 @@ fn oeffnen_mit(content_type: &str) -> gtk4::Box {
     list.set_selection_mode(gtk4::SelectionMode::None);
     list.add_css_class("frame");
     let standard = gio::AppInfo::default_for_type(content_type, false).and_then(|a| a.id());
-    let mut gruppe: Option<gtk4::CheckButton> = None;
+    // radio buttons need a group, also with a single program: an unshown
+    // leader holds it
+    let gruppe = gtk4::CheckButton::new();
     let apps: Vec<gio::AppInfo> = oeffnen::apps_for(content_type)
         .into_iter()
         .filter(|a| a.should_show())
@@ -626,22 +628,18 @@ fn oeffnen_mit(content_type: &str) -> gtk4::Box {
         return outer;
     }
     for app in apps {
-        let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
-        row.set_margin_top(3);
-        row.set_margin_bottom(3);
-        row.set_margin_start(6);
         let radio = gtk4::CheckButton::new();
-        if let Some(first) = &gruppe {
-            radio.set_group(Some(first));
-        } else {
-            gruppe = Some(radio.clone());
-        }
+        radio.set_group(Some(&gruppe));
         radio.set_active(app.id().is_some() && app.id() == standard);
+        radio.set_margin_top(3);
+        radio.set_margin_bottom(3);
+        radio.set_margin_start(6);
+        let inhalt = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
         if let Some(icon) = app.icon() {
-            row.append(&symbole::image(&icon, 16));
+            inhalt.append(&symbole::image(&icon, 16));
         }
-        let label = gtk4::Label::new(Some(&app.display_name()));
-        radio.set_child(Some(&label));
+        inhalt.append(&gtk4::Label::new(Some(&app.display_name())));
+        radio.set_child(Some(&inhalt));
         let content_type = content_type.to_owned();
         radio.connect_toggled(move |radio| {
             if !radio.is_active() {
@@ -655,8 +653,7 @@ fn oeffnen_mit(content_type: &str) -> gtk4::Box {
                 Err(err) => protokoll(&format!("Standard nicht gesetzt: {err}")),
             }
         });
-        row.prepend(&radio);
-        list.append(&row);
+        list.append(&radio);
     }
     let scroll = gtk4::ScrolledWindow::builder()
         .min_content_height(160)
