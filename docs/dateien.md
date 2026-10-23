@@ -347,8 +347,9 @@ ebenso.
 |---|---|
 | `miniaturen/mod.rs` | Regeln, Zustand im Hauptfaden (Bindungen, wartende Zellen, LRU 48 MB der fertigen Texturen), `bildquelle`, `registrieren` |
 | `miniaturen/cache.rs` | Thumbnail Managing Standard 0.9: `$XDG_CACHE_HOME/thumbnails/{normal,large}/<MD5 der URI>.png`, `fail/querencia-dateien/`, PNG-`tEXt` lesen und schreiben (CRC selbst), Lesen ohne Symlinks/FIFOs mit Größengrenze (Prüfung nach Files, MIT-Vermerk), Schreiben atomar 0600 in Ordnern 0700 |
-| `miniaturen/erzeuger.rs` | Erzeugen: GdkPixbuf, GTK-Lader, `*.thumbnailer` (`TryExec`, `Exec` mit `%u %i %o %s`, Zeitlimit 20 s) |
-| `miniaturen/warteschlange.rs` | Arbeitsfäden (Kerne/2, 2–4), Warteschlange in Ankunftsfolge, Zurücknehmen, Auslieferung über `glib::idle_add_once` |
+| `miniaturen/erzeuger.rs` | Erzeugen: GdkPixbuf, GTK-Lader, `*.thumbnailer` (`TryExec`, `Exec` mit `%u %i %o %s`, Zeitlimit 20 s, je Auftrag ein eigener Ordner 0700) |
+| `miniaturen/sandkasten.rs` | fremde Thumbnailer in bwrap wie GNOME: `--unshare-all` (kein Netz), `--clearenv`, `/usr` und wenige `/etc`-Dateien lesend, Eingabe lesend als `/tmp/eingabe.<ext>`, Auftragsordner als `/tmp`, `--die-with-parent`; ohne funktionierendes bwrap laufen keine fremden Thumbnailer (Ausnahme: in der Prüfhülle, die selbst ohne Netz im eigenen Namensraum läuft und keinen verschachtelten erlaubt) |
+| `miniaturen/warteschlange.rs` | Arbeitsfäden (Kerne/2, 2–4: höchstens so viele Aufträge zugleich), Warteschlange in Ankunftsfolge, Zurücknehmen (wartend: entfernt; laufend: Abbruch-Merker, ein Thumbnailer wird beendet), Auslieferung über `glib::idle_add_once` |
 | `miniaturen/bild.rs` | Pixel: Verkleinern über Flächenmittel, Rahmen, Textur |
 
 Regeln (Nautilus 2.30, Einstellungen → Vorschau): „Vorschaubilder
@@ -384,11 +385,11 @@ zurückgenommen …“, „Miniaturen: Regel …“.
 | Datei | Inhalt |
 |---|---|
 | `suche/mod.rs` | Suchleiste je Fenster (über der Ansicht im Ansichtsbereich), Aktion `win.suchen` (Zustand: Leiste offen; Strg+F, Knopf „Suchen“ der Werkzeugleiste, Gehe zu → „Suchen …“), Ablauf, Statusleiste, „Erweiterte Suche …“ |
-| `suche/sucher.rs` | Suchfaden: `enumerate_children` in Breitensuche ab dem gezeigten Ordner, Vergleich nach 2.30 (NFD, klein, jedes Wort im Anzeigenamen), verborgene nach der Einstellung des Fensters (Strg+H), `id::file` gegen doppelte Ordner, Verweise auf Ordner nicht verfolgt, Treffer in Blöcken (500 oder 150 ms) |
+| `suche/sucher.rs` | Suchfaden: `enumerate_children` in Breitensuche ab dem gezeigten Ordner, Vergleich nach 2.30 (NFD, klein, jedes Wort im Anzeigenamen), verborgene nach der Einstellung des Fensters (Strg+H), symbolische Verweise nie betreten (`NOFOLLOW_SYMLINKS`), `id::file` gegen doppelte Ordner (auch der Startordner), Grenzen 64 Ebenen und 50.000 Treffer (`Grenzen`, Statusleiste „(Grenze erreicht)“), Treffer in Blöcken (500 oder 150 ms) |
 | `suche/ergebnisse.rs` | Ansicht „Suchergebnisse“: Spalten Name, Ort, Größe, Typ, Änderungsdatum (Klick sortiert), Doppelklick/Eingabe öffnet, Kontextmenü „Öffnen“, „Im Ordner anzeigen“ |
 
-Eingabe startet die Suche; Esc hält eine laufende Suche an (Treffer
-bleiben), ein zweites Esc, der Knopf, Strg+F oder jeder Ortswechsel
+Eingabe startet die Suche; jede Änderung im Suchfeld und Esc halten eine
+laufende Suche an (Treffer bleiben), ein zweites Esc, der Knopf, Strg+F oder jeder Ortswechsel
 beendet sie und zeigt den Ordner wieder. Während der Suche heißt das
 Fenster „Suchergebnisse“, die Statusleiste zählt die Treffer. Die Tasten,
 die das Fenster für Dateien bindet (Entf, Strg+X/C/V, F2), wirken in den
@@ -406,18 +407,18 @@ Bild, drei PDF, 10.092 Einträge für die Suche), `lauf.sh` (Prüfrahmen
 Stufe L wie `../pruefung/lauf.sh`, dazu Material, PDF-Thumbnailer-
 Stellvertreter `qd-pdf-miniatur`, Attrappe `querencia-dateisuche`,
 `QUERENCIA_DATEIEN_DEBUG=1`), `cache-pruefen.py` (Cache gegen die
-Spezifikation), Szenarien `pruefung` (24 Fälle M01–M10, S01–S14),
+Spezifikation), Szenarien `pruefung` (26 Fälle M01–M11, S01–S15),
 `messung`, `messung-ohne`, `plateau`, `fotos`. Belege unter
 `crates/querencia-dateien/nachweis/miniaturen/`, Fotos (nie ins Repo)
 unter .
 
 Messung (Release, Prüfrahmen L, headless labwc mit Software-Rendering,
 1920×1080, 16 Kerne; `nachweis/miniaturen/laeufe/messung-1920/messung.csv`,
-Spannen aus mehreren Läufen):
+Spannen aus vier Läufen):
 
 | Messung | Wert |
 |---|---|
-| 200 Miniaturen neu (JPEG 1920×1080, Symbolansicht 100 %, 4 Fäden) | 1,0–1,2 s |
+| 200 Miniaturen neu (JPEG 1920×1080, Symbolansicht 100 %, 4 Fäden) | 1,0–1,8 s (je nach Last der VM durch parallele Bauten) |
 | 200 Miniaturen aus dem Cache (neuer Prozess) | 79–141 ms |
 | dieselben im selben Prozess (Speicher) | sofort, kein Auftrag |
 | Zoom 200 % (128 px aus `normal`) / Liste (24 px) | 52–123 ms / 82–105 ms |
@@ -426,7 +427,7 @@ Spannen aus mehreren Läufen):
 | Suche „datei“ (9.942 Treffer) | Faden 185–198 ms, Anzeige ≤ 213 ms |
 | VmRSS Start (Ordner ohne Bilder) | 230 MB (ohne Miniaturen auch 230/235 MB) |
 | nach 200 neuen Miniaturen | VmRSS ±0, VmHWM +28 MB (vorübergehend) |
-| nach 600 neuen Miniaturen (`plateau`) | +7 MB |
+| nach 600 neuen Miniaturen (`plateau`) | +7–9 MB |
 | GTK-Lader statt GdkPixbuf (Gegenversuch) | +54 MB nach 200, danach Plateau |
 | nach der Suche mit 9.942 Treffern | +36 MB |
 
@@ -435,8 +436,12 @@ Spannen aus mehreren Läufen):
 - Kein PDF-/Dokument-Thumbnailer auf der VM: geprüft ist der Weg mit dem
   Stellvertreter `qd-pdf-miniatur`; echte PDF-Miniaturen brauchen einen
   installierten Thumbnailer.
-- glycin läuft in der Prüfhülle ohne Sandbox („Glycin running without
-  sandbox“); in der Sitzung mit bwrap-Sandbox nicht gemessen.
+- In der Prüfhülle erlaubt der Kern keinen verschachtelten
+  Nutzer-Namensraum: glycin läuft dort ohne Sandbox („Glycin running
+  without sandbox“), fremde Thumbnailer laufen im Sandkasten der Hülle
+  (kein Netz) statt in eigenem bwrap. Der bwrap-Weg ist im Unit-Test auf
+  der VM belegt (nur `lo`, kein `/home`, leere Umgebung, Zeitlimit,
+  Abbruch); in der Sitzung nicht gemessen.
 - Auch eine verdeckte Ansicht (Liste neben der Symbolansicht) bindet ihre
   Zellen und fragt Miniaturen an (Cache-Lesen, kein zweites Erzeugen).
 - „Immer“ für entfernte Orte (sftp, smb) liest die Datei über GIO; im

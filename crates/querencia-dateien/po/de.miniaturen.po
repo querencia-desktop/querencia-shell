@@ -48,3 +48,6 @@ msgstr "Querencia Dateisuche konnte nicht gestartet werden: {error}"
 
 msgid "Show in _Folder"
 msgstr "Im _Ordner anzeigen"
+
+msgid "{matches} (limit reached)"
+msgstr "{matches} (Grenze erreicht)"

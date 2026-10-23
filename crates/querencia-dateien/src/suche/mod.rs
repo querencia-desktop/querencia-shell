@@ -3,7 +3,8 @@
 //! toolbar, Gehe zu → „Suchen …“ and Strg+F open a search bar above the
 //! view, as Nautilus 2.30; Enter searches in a background thread
 //! (`sucher.rs`), the hits replace the view as „Suchergebnisse“ with a
-//! location column (`ergebnisse.rs`). Esc stops a running search, a second
+//! location column (`ergebnisse.rs`). Any change of the text stops a
+//! running search; Esc stops it too, a second
 //! Esc (or the button, Strg+F, any change of folder) ends it and shows the
 //! folder again. Hidden files are searched when the window shows them.
 //! „Erweiterte Suche …“ starts Querencia Dateisuche with folder and name.
@@ -160,6 +161,17 @@ impl Suche {
         suche.leiste.set_visible(false);
         suche.ergebnisse.widget().set_visible(false);
 
+        // every change of the text stops a running search (the hits of the
+        // old text would not match the field any more)
+        let weak = Rc::downgrade(&suche);
+        suche.feld.connect_changed(move |_| {
+            if let Some(s) = weak.upgrade()
+                && s.laeuft.get()
+            {
+                protokoll("Suche bei Eingabe angehalten");
+                s.stoppen();
+            }
+        });
         let weak = Rc::downgrade(&suche);
         suche.feld.connect_activate(move |feld| {
             if let Some(s) = weak.upgrade() {
@@ -318,6 +330,7 @@ impl Suche {
                 fehler,
                 ms,
                 abgebrochen,
+                begrenzt,
             } => {
                 self.laeuft.set(false);
                 self.abbruch.replace(None);
@@ -327,15 +340,18 @@ impl Suche {
                 let treffer = ngettext_f("{n} match", "{n} matches", n, &[]);
                 f.melden(&if abgebrochen {
                     gettext_f("{matches} (search stopped)", &[("matches", &treffer)])
+                } else if begrenzt {
+                    gettext_f("{matches} (limit reached)", &[("matches", &treffer)])
                 } else {
                     treffer
                 });
                 let gesamt = self.beginn.take().map_or(0, |b| b.elapsed().as_millis());
                 protokoll(&format!(
                     "Suche {} fertig: {n} Treffer, {eintraege} Einträge in {ordner} Ordnern \
-                     ({fehler} nicht lesbar), Faden {ms} ms, bis zur Anzeige {gesamt} ms{}",
+                     ({fehler} nicht lesbar), Faden {ms} ms, bis zur Anzeige {gesamt} ms{}{}",
                     self.nummer.get(),
-                    if abgebrochen { ", angehalten" } else { "" }
+                    if abgebrochen { ", angehalten" } else { "" },
+                    if begrenzt { ", Grenze erreicht" } else { "" }
                 ));
             }
         }

@@ -13,6 +13,7 @@
 pub mod bild;
 pub mod cache;
 pub mod erzeuger;
+pub mod sandkasten;
 pub mod warteschlange;
 
 use std::cell::RefCell;
@@ -468,10 +469,15 @@ pub fn registrieren(register: &mut Register) {
             }));
         });
         protokoll(&format!(
-            "Miniaturen: {:?}, bis {} MB, {} Thumbnailer, {} Fäden",
+            "Miniaturen: {:?}, bis {} MB, {} Thumbnailer ({}), {} Fäden",
             regel.wo,
             regel.max_bytes / 1024 / 1024,
             erzeuger::alle().len(),
+            match sandkasten::huelle() {
+                sandkasten::Huelle::Bwrap(_) => "in bwrap",
+                sandkasten::Huelle::Pruefrahmen => "in der Prüfhülle ohne eigenes bwrap",
+                sandkasten::Huelle::Keine => "aus: kein bwrap",
+            },
             faeden()
         ));
         app.konfig().bei_aenderung(|w| regel_setzen(Regel::aus(w)));
@@ -481,7 +487,6 @@ pub fn registrieren(register: &mut Register) {
                     z.pool = None;
                 }
             });
-            erzeuger::aufraeumen();
         });
     });
     register.fenster(|f| {
