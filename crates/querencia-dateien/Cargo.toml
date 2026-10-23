@@ -1,0 +1,27 @@
+[package]
+name = "querencia-dateien"
+version = "0.1.0"
+description = "Querencia Dateien: klassischer Dateimanager für Querencia Desktop nach dem Vorbild von Nautilus 2.30"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "querencia-dateien"
+path = "src/main.rs"
+
+[dependencies]
+# Translations through GNU gettext (text domain querencia-dateien, po/), as
+# the other Querencia programs: gettext-system uses the gettext of glibc.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
+# DesktopAppInfo for starters (.desktop files), as querencia-desktop.
+gio-unix = "0.22"
+# Same crate and features as querencia-panel and querencia-desktop.
+gtk4 = { version = "0.11", features = ["v4_10"] }
+# File operations with progress, cancel and conflict questions, volumes,
+# trash, folder monitors and the open plan (Welle A).
+querencia-dateiarbeit = { path = "../querencia-dateiarbeit" }
+# Classic menus, theme icons without preloading (QD-106), icon theme, colour
+# scheme and settings portal, shared with panel and desktop (Welle A).
+querencia-oberflaeche = { path = "../querencia-oberflaeche" }

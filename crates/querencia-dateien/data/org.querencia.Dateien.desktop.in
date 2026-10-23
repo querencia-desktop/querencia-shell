@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Files
+GenericName=File Manager
+Comment=Browse folders and manage files
+Keywords=folder;file manager;files;explorer;
+Exec=querencia-dateien %U
+Icon=org.querencia.Dateien
+Terminal=false
+Categories=GTK;Utility;FileTools;FileManager;
+StartupNotify=true
+StartupWMClass=org.querencia.Dateien
