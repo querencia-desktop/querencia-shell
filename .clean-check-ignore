@@ -160,3 +160,16 @@
 #      netzwerk/ (deutsche Kommentare und Fallnamen mit „“ und →); security 0,
 #      keine neuen Hygiene- oder Qualitätsbefunde; sie fallen unter die
 #      Ausnahmen oben ( §8).
+# runtime-abloesung (24.10.2026, Panel 0.3.2 M3, Kürzel 0.2.2): neu gegenüber
+#      main 72a7a64 (git archive, clean-diff.py) sind S004 in
+#      crates/querencia-panel/src/places_menu.rs („Files“ im Kommentar) und
+#      crates/querencia-kuerzel/src/programme.rs („…“ und → in Kürzeltexten),
+#      S004/S005 in integration/panel-032 und integration/kuerzel-022 (Kopien
+#      der Skripte von panel-031/kuerzel-021 und ihres Prüfrahmens, deutsch
+#      kommentiert, Typografie in Meldungen), H001 für
+#      integration/panel-032/nachweis/orte/*/geoeffnet.log (Protokoll der
+#      Test-Starter, Beleg der Orte-Läufe), H003 für
+#      integration/panel-032/werkzeug/virtual-keyboard-unstable-v1.xml (Name
+#      des Wayland-Protokolls); security 0; P002 nur, weil die Basis ohne .git
+#      geprüft wurde. Sie fallen unter die Ausnahmen oben
+#     .
