@@ -42,6 +42,9 @@ mod operationen;
 mod ziehen;
 mod zwischenablage;
 
+// Welle C1 (dateien-netzwerk): mod-Zeilen unter dieser Zeile.
+mod netzwerk;
+
 use std::rc::Rc;
 
 use gtk4::prelude::*;
@@ -62,6 +65,9 @@ fn erweiterungen(register: &mut app::Register) {
 
     // Welle B3: Aufrufe unter dieser Zeile.
     operationen::registrieren(register);
+
+    // Welle C1 (dateien-netzwerk): Aufrufe unter dieser Zeile.
+    netzwerk::registrieren(register);
 }
 
 /// One log line on stderr ("querencia-dateien: …"), as the other programs.
