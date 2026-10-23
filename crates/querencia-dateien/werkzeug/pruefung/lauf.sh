@@ -51,8 +51,10 @@ cat > "$PROFIL/config/labwc/rc.xml" <<'XML'
   </windowRules>
 </labwc_config>
 XML
-TOML=()
-[ -n "${LAUF_FILES_TOML:-}" ] && TOML=(--files-toml "$LAUF_FILES_TOML")
+TOML=(); M6=()
+if [ -n "${LAUF_FILES_TOML:-}" ]; then
+  TOML=(--files-toml "$LAUF_FILES_TOML"); M6=(--setenv "LAUF_M6=$LAUF_FILES_TOML" --lesen "$LAUF_FILES_TOML")
+fi
 python3 -I "$HIER/testbaum.py" "$PROFIL/heim" "$PROFIL/config" "$PROFIL/data" "${TOML[@]}" > "$OUT/testbaum.log"
 case $SPRACHE in de) LOC=de_DE.UTF-8; LANGU=de ;; *) LOC=en_US.UTF-8; LANGU=en ;; esac
 set +e
@@ -62,7 +64,7 @@ bash "$REPO/werkzeug/dateien-pruefrahmen/huelle.sh" --profil "$PROFIL" --labwc -
   --setenv "LAUF_GROESSE=$GROESSE" --setenv "LAUF_OUT=$OUT" --setenv "LAUF_PROG=$BIN" \
   --setenv "LAUF_QE=$A/bin/qeingabe" --setenv "LAUF_QA=$A/bin/qausgabe" --setenv "LAUF_DUNKEL=$DUNKEL" \
   --setenv "LAUF_SPRACHE=$SPRACHE" --setenv "PATH=$PROFIL/heim/.local/bin:/usr/local/bin:/usr/bin:/bin" \
-  --zeitlimit "${LAUF_ZEITLIMIT:-600}" --protokoll "$OUT/huelle.json" \
+  "${M6[@]}" --zeitlimit "${LAUF_ZEITLIMIT:-600}" --protokoll "$OUT/huelle.json" \
   L -- bash "$HIER/innen.sh" "$SZENARIO" > "$OUT/huelle.log" 2>&1
 STATUS=$?
 set -e
