@@ -210,7 +210,9 @@ marke
 q "move ${LAUF_PFADKNOPF:-48 105}" "mclick" "wait 600"
 warte_log "neu: 2/2 file://" 5 && p1=1 || p1=0
 marke
-q "move ${LAUF_ORT:-60 304}" "mclick" "wait 600"
+# „Musik“ in der Seitenleiste; Stufe G zeigt zusätzlich „Netzwerk“ (eine Zeile tiefer)
+ORT=${LAUF_ORT:-60 304}; [ "${LAUF_STUFE:-L}" = G ] && ORT=${LAUF_ORT:-60 327}
+q "move $ORT" "mclick" "wait 600"
 warte_log "neu: 2/3 file://$HEIM/Musik\$" 5 && p2=1 || p2=0
 [ "$p1$p2" = 11 ] && fall R16 "Mitteltaste auf Pfadknopf und auf „Musik“ in der Seitenleiste: je ein Reiter" 1 "neu 2/2, neu 2/3 …/Musik" \
   || fall R16 "Mitteltaste Pfadknopf/Seitenleiste" 0 "$p1$p2 $(grep -a 'neu:' "$LOG" | tail -n 2 | tr '\n' ' ')"
