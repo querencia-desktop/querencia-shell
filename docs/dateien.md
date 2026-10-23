@@ -405,9 +405,11 @@ Files). Isoliert (`werkzeug/pruefung/`,
 `lauf.sh NAME szenarien/X.sh`): `reiter` (20 Fälle), `kompakt` (14),
 `migration` (mit `LAUF_FILES_TOML=…/daten/files-settings.toml` und ohne,
 je 3), `kompakt-messung` (10 000 Einträge). Die Probe `daten/files-settings.toml` hat seit C3
-`list_file_clicks`. Umschaltskript `integration/dateien-010/dateien-standard.sh` (M2, von der
-Status-Session, unverändert) mit Probe `integration/dateien-010/werkzeug/probe-dateien-standard.sh`
-im Prüfrahmen (Ergebnis `nachweis/probe-dateien-standard.txt`).
+`list_file_clicks`. Umschaltskript `integration/dateien-010/dateien-standard.sh` (M2; Fassung 2: legt fehlenden
+Abschnitt bzw. fehlende `mimeapps.list` an, blendet ohne Files-Starter nur nicht aus, misst die Zeile
+nach, `zurueck` entfernt genau das Angelegte; Live-Kopie unverändert) mit Probe
+`integration/dateien-010/werkzeug/probe-dateien-standard.sh` im Prüfrahmen (15 Fälle, Ergebnis
+`nachweis/probe-dateien-standard.txt`, Diff gegen Fassung 1 `nachweis/dateien-standard-diff.txt`).
 
 ### 7.6 Grenzen
 
