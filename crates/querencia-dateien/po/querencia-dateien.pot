@@ -1,0 +1,192 @@
+# Übersetzungsvorlage für Querencia Dateien.
+# Copyright (C) 2026 Querencia
+# Diese Datei steht unter derselben Lizenz wie Querencia Dateien (GPL-3.0-or-later).
+# Erzeugt mit werkzeug/i18n.py pot – nicht von Hand bearbeiten.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-dateien\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#. TRANSLATORS: zoom level in the tool bar; German puts a space before %
+#: src/ansichtsregeln.rs:38
+#, no-c-format
+msgid "{percent}%"
+msgstr ""
+
+#: src/ansichtsregeln.rs:189
+msgid "Name"
+msgstr ""
+
+#: src/ansichtsregeln.rs:190
+msgid "Size"
+msgstr ""
+
+#: src/ansichtsregeln.rs:191
+msgid "Type"
+msgstr ""
+
+#: src/ansichtsregeln.rs:192
+msgid "Date Modified"
+msgstr ""
+
+#: src/ansichtsregeln.rs:193
+msgid "Permissions"
+msgstr ""
+
+#: src/ansichtsregeln.rs:194
+msgid "Owner"
+msgstr ""
+
+#: src/ansichtsregeln.rs:195
+msgid "Group"
+msgstr ""
+
+#: src/i18n.rs:133 src/kontextmenue.rs:115
+#, no-c-format
+msgid "Open with “{app}”"
+msgstr ""
+
+#: src/kontextmenue.rs:119
+msgid "Open"
+msgstr ""
+
+#: src/kontextmenue.rs:123
+msgid "Open in New Window"
+msgstr ""
+
+#: src/kontextmenue.rs:148
+msgid "Other Application…"
+msgstr ""
+
+#: src/kontextmenue.rs:152
+msgid "Open With"
+msgstr ""
+
+#: src/kontextmenue.rs:157
+msgid "Cut"
+msgstr ""
+
+#: src/kontextmenue.rs:158
+msgid "Copy"
+msgstr ""
+
+#: src/kontextmenue.rs:162
+msgid "Paste Into Folder"
+msgstr ""
+
+#: src/kontextmenue.rs:167 src/kontextmenue.rs:169
+msgid "Rename…"
+msgstr ""
+
+#: src/kontextmenue.rs:175
+msgid "Move to Trash"
+msgstr ""
+
+#: src/kontextmenue.rs:176 src/kontextmenue.rs:184 src/kontextmenue.rs:251
+msgid "Properties"
+msgstr ""
+
+#: src/kontextmenue.rs:182
+msgid "Restore"
+msgstr ""
+
+#: src/kontextmenue.rs:183
+msgid "Delete…"
+msgstr ""
+
+#: src/kontextmenue.rs:193
+msgid "No templates installed"
+msgstr ""
+
+#: src/kontextmenue.rs:203
+msgid "Empty File"
+msgstr ""
+
+#: src/kontextmenue.rs:208
+msgid "Create Folder"
+msgstr ""
+
+#: src/kontextmenue.rs:210
+msgid "Create Document"
+msgstr ""
+
+#: src/kontextmenue.rs:220
+msgid "By _Name"
+msgstr ""
+
+#: src/kontextmenue.rs:221
+msgid "By _Size"
+msgstr ""
+
+#: src/kontextmenue.rs:222
+msgid "By _Type"
+msgstr ""
+
+#: src/kontextmenue.rs:223
+msgid "By Modification _Date"
+msgstr ""
+
+#: src/kontextmenue.rs:232
+msgid "Arrange Items"
+msgstr ""
+
+#: src/kontextmenue.rs:236
+msgid "Re_versed Order"
+msgstr ""
+
+#: src/kontextmenue.rs:244
+msgid "Paste"
+msgstr ""
+
+#: src/kontextmenue.rs:247 src/main.rs:146
+msgid "Zoom In"
+msgstr ""
+
+#: src/kontextmenue.rs:248 src/main.rs:147
+msgid "Zoom Out"
+msgstr ""
+
+#: src/kontextmenue.rs:249 src/main.rs:148
+msgid "Normal Size"
+msgstr ""
+
+#: src/main.rs:119
+msgid "_View"
+msgstr ""
+
+#: src/main.rs:151
+msgid "Icons"
+msgstr ""
+
+#: src/main.rs:152
+msgid "List"
+msgstr ""
+
+#: src/main.rs:365
+msgid "New Folder"
+msgstr ""
+
+#: src/umbenennen.rs:39
+#, no-c-format
+msgid ""
+"The name “{name}” is already used in this folder. Please use a different name."
+msgstr ""
+
+#: src/umbenennen.rs:231
+msgid "The item could not be renamed."
+msgstr ""
+
+#: src/umbenennen.rs:233
+msgctxt "dialog"
+msgid "_Close"
+msgstr ""

@@ -1,0 +1,18 @@
+[package]
+name = "querencia-dateien"
+version = "0.1.0"
+description = "Querencia Dateien: klassischer Dateimanager nach Nautilus 2.30"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+# Provisional manifest of the views worker (B2) until the frame of B1
+# (tag dateien/geruest-1) arrives; the same crates and features as the
+# panel, the desktop and the prototype, nothing new in Cargo.lock.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
+gio-unix = "0.22"
+gtk4 = { version = "0.11", features = ["v4_10"] }
+querencia-dateiarbeit = { path = "../querencia-dateiarbeit" }
+querencia-oberflaeche = { path = "../querencia-oberflaeche" }
