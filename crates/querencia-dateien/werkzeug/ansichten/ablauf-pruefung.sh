@@ -179,9 +179,10 @@ marke; taste BackSpace; warte_log 5 'vollständig gezeigt'; q "wait 300"
 # --- A11 mittlere Taste, „/“ -----------------------------------------------
 read -r X Y < <(mitte_von 1 0)
 marke; q "move $X $Y" "down middle" "up middle" "wait 400"
-fall A11 "mittlere Taste auf Ordner: neues Fenster" im_log 'aktiviert (neues Fenster): Ablage'
-# das neue Fenster (Gerüst) hat den Fokus; schließen, zurück ins erste
-q "wait 1500"; foto a11-neues-fenster 100; strg w; q "wait 800"
+# Welle C3: die mittlere Taste öffnet einen Reiter dahinter (Nautilus 2.30;
+# in 0.1 ein neues Fenster); zeigen, Foto, schließen, zurück in den ersten
+fall A11 "mittlere Taste auf Ordner: neuer Reiter dahinter" im_log 'Reiter 2 neu: 2/2 .*Ablage'
+aktion reiter 2; q "wait 800"; foto a11-neuer-reiter 100; strg w; q "wait 800"
 q "move $((BX / 2)) $((BY - 150))" "click" "wait 300"
 marke; tippe /
 fall A11 "„/“ öffnet das Ortsfeld" im_log 'Ortsfeld mit „/“'
@@ -206,8 +207,9 @@ M=$(zeile 'Kontextmenü:' | sed 's/.*Kontextmenü: //')
 # gesperrte Einträge stehen in [ ]; Aktionen von B3 fehlen vor dem Zusammenbau
 MO=$(printf '%s' "$M" | tr -d '[]')
 info "A12 Ordner: $M"
-fall A12 "Ordner: Öffnen, In neuem Fenster öffnen, In Ordner einfügen" bash -c \
-    'case $1 in "Öffnen In neuem Fenster öffnen"*"In Ordner einfügen"*) exit 0 ;; esac; exit 1' _ "$MO"
+# Welle C3: „In neuem Reiter öffnen“ steht vor „In neuem Fenster öffnen“ (Nautilus 2.30)
+fall A12 "Ordner: Öffnen, In neuem Reiter öffnen, In neuem Fenster öffnen, In Ordner einfügen" bash -c \
+    'case $1 in "Öffnen In neuem Reiter öffnen In neuem Fenster öffnen"*"In Ordner einfügen"*) exit 0 ;; esac; exit 1' _ "$MO"
 taste Escape; q "wait 300"
 read -r X Y < <(mitte_von 0 1); klick "$X" "$Y"
 read -r X2 Y2 < <(mitte_von 2 1); q "move $X2 $Y2" "keydown Control_L" "click" "keyup Control_L" "wait 300"

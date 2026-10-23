@@ -531,6 +531,10 @@ impl Operationen {
     /// the trash (the menus show only enabled actions, `docs/dateien.md`
     /// §3.6).
     pub fn aktualisieren(&self) {
+        // a closed window is freed now (Welle C3): its actions stay alone
+        if self.fenster.upgrade().is_none() || self.window.upgrade().is_none() {
+            return;
+        }
         let auswahl = self.auswahl();
         let eine_ordner = matches!(auswahl.as_slice(), [e] if e.ist_ordner());
         let etwas = !auswahl.is_empty();

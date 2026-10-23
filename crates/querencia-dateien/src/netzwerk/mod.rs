@@ -44,7 +44,11 @@ pub fn registrieren(register: &mut Register) {
     register.fenster(|fenster| {
         aktionen(fenster);
         einhaengen::beobachten(fenster);
-        netzansicht::beobachten(fenster);
+    });
+    // Welle C3: what hangs on a folder model, per tab
+    register.reiter(|fenster, reiter| {
+        einhaengen::reiter_beobachten(reiter);
+        netzansicht::beobachten(fenster, reiter);
     });
 }
 

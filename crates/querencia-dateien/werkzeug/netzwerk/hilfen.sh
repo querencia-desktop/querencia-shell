@@ -89,7 +89,7 @@ verbinden_oeffnen() {
   for n in 1 2 3; do
     markiere
     menue datei
-    q "wait 300" "move 120 231" "click"
+    q "wait 300" "move 120 279" "click"  # Welle C3: zwei Einträge mehr im Menü Datei
     warte_log "Verbinden-Dialog offen" 5 && { q "wait 600"; return 0; }
     q "key Escape" "wait 500"
   done

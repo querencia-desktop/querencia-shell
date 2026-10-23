@@ -130,6 +130,10 @@ fn objekte(a: &Auswahlinfo, u: &Umgebung) -> Vec<Vec<Zeile>> {
     }
     if nur_ordner {
         oeffnen.push(eintrag(
+            t(gettext("Open in New _Tab")),
+            "win.oeffnen-neuer-reiter",
+        ));
+        oeffnen.push(eintrag(
             t(gettext("Open in New _Window")),
             "win.oeffnen-neues-fenster",
         ));
@@ -619,7 +623,7 @@ mod tests {
         u.programme.truncate(1);
         assert_eq!(
             beschreibung(&zeilen(&ordner, &u)),
-            "Open, Open in New Window, Open With ▸ {Editor} \
+            "Open, Open in New Tab, Open in New Window, Open With ▸ {Editor} \
              | Cut, Copy, Paste Into Folder | Rename… | Move to Trash | Properties"
         );
     }

@@ -15,7 +15,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. TRANSLATORS: Desktop-Datei, Schlüssel Name
-#: data/org.querencia.Dateien.desktop.in:4 src/main.rs:114
+#: data/org.querencia.Dateien.desktop.in:4 src/main.rs:135
 msgid "Files"
 msgstr "Querencia Dateien"
 
@@ -46,36 +46,36 @@ msgstr "Die Ordner danach zeigen"
 msgid "Location:"
 msgstr "Ort:"
 
-#: src/adressleiste.rs:444 src/orte.rs:20 src/regeln.rs:325 src/seitenleiste.rs:83
+#: src/adressleiste.rs:456 src/orte.rs:20 src/regeln.rs:325 src/seitenleiste.rs:83
 msgid "File System"
 msgstr "Dateisystem"
 
-#: src/adressleiste.rs:522
+#: src/adressleiste.rs:534
 #, no-c-format
 msgid "The location “{location}” could not be found."
 msgstr "Der Ort „{location}“ wurde nicht gefunden."
 
-#: src/ansicht.rs:519
+#: src/ansicht.rs:518
 msgid "Renaming is not possible in this view."
 msgstr "In dieser Ansicht ist Umbenennen nicht möglich."
 
-#: src/ansichtskern.rs:1368
+#: src/ansichtskern.rs:1372
 msgid "Only one item can be renamed at a time."
 msgstr "Es kann nur ein Objekt auf einmal umbenannt werden."
 
-#: src/ansichtsregeln.rs:173
+#: src/ansichtsregeln.rs:173 src/suche/ergebnisse.rs:48
 msgid "Name"
 msgstr "Name"
 
-#: src/ansichtsregeln.rs:174 src/einstellungen.rs:232
+#: src/ansichtsregeln.rs:174 src/einstellungen.rs:232 src/suche/ergebnisse.rs:51
 msgid "Size"
 msgstr "Größe"
 
-#: src/ansichtsregeln.rs:175 src/einstellungen.rs:234
+#: src/ansichtsregeln.rs:175 src/einstellungen.rs:234 src/suche/ergebnisse.rs:52
 msgid "Type"
 msgstr "Typ"
 
-#: src/ansichtsregeln.rs:176 src/einstellungen.rs:233
+#: src/ansichtsregeln.rs:176 src/einstellungen.rs:233 src/suche/ergebnisse.rs:53
 msgid "Date Modified"
 msgstr "Änderungsdatum"
 
@@ -156,7 +156,7 @@ msgstr "Grundlegend"
 msgid "Open With"
 msgstr "Öffnen mit"
 
-#: src/eigenschaften_dialog.rs:322 src/einstellungen.rs:384 src/info.rs:186 src/menue.rs:260 src/umbenennen.rs:233
+#: src/eigenschaften_dialog.rs:322 src/einstellungen.rs:394 src/info.rs:186 src/menue.rs:301 src/umbenennen.rs:233
 msgid "_Close"
 msgstr "_Schließen"
 
@@ -304,7 +304,7 @@ msgstr "_Doppelklick zum Öffnen von Objekten"
 msgid "_Single click to open items"
 msgstr "_Einfacher Klick zum Öffnen von Objekten"
 
-#: src/einstellungen.rs:185 src/einstellungen.rs:376
+#: src/einstellungen.rs:185 src/einstellungen.rs:386
 msgid "Behavior"
 msgstr "Verhalten"
 
@@ -328,7 +328,7 @@ msgstr "Anzeigen"
 msgid "Run them"
 msgstr "Ausführen"
 
-#: src/einstellungen.rs:201 src/fenster.rs:183 src/orte.rs:13 src/seitenleiste.rs:95
+#: src/einstellungen.rs:201 src/orte.rs:13 src/reiter/mod.rs:191 src/seitenleiste.rs:95
 msgid "Trash"
 msgstr "Papierkorb"
 
@@ -340,7 +340,8 @@ msgstr "Vor dem _Leeren des Papierkorbs und vor dem Löschen nachfragen"
 msgid "Include a Dele_te command that bypasses the trash"
 msgstr "Befehl „_Löschen“ anbieten, der den Papierkorb umgeht"
 
-#: src/einstellungen.rs:218
+#. TRANSLATORS: column of the search results: the folder of a hit
+#: src/einstellungen.rs:218 src/suche/ergebnisse.rs:50
 msgid "Location"
 msgstr "Ort"
 
@@ -380,93 +381,97 @@ msgstr "Wie die Region"
 msgid "ISO 8601"
 msgstr "ISO 8601"
 
-#: src/einstellungen.rs:276 src/einstellungen.rs:378
+#: src/einstellungen.rs:273 src/regeln.rs:96
+msgid "Compact View"
+msgstr "Kompaktansicht"
+
+#: src/einstellungen.rs:275
+msgid "A_ll columns have the same width"
+msgstr "Alle S_palten haben dieselbe Breite"
+
+#: src/einstellungen.rs:286 src/einstellungen.rs:388
 msgid "List Columns"
 msgstr "Listenspalten"
 
-#: src/einstellungen.rs:278
+#: src/einstellungen.rs:288
 msgid "_Size"
 msgstr "_Größe"
 
-#: src/einstellungen.rs:282
+#: src/einstellungen.rs:292
 msgid "_Type"
 msgstr "_Typ"
 
-#: src/einstellungen.rs:283
+#: src/einstellungen.rs:293
 msgid "_Date Modified"
 msgstr "Ä_nderungsdatum"
 
-#: src/einstellungen.rs:287
+#: src/einstellungen.rs:297
 msgid "_Permissions"
 msgstr "_Zugriffsrechte"
 
-#: src/einstellungen.rs:291
+#: src/einstellungen.rs:301
 msgid "_Owner"
 msgstr "_Eigentümer"
 
-#: src/einstellungen.rs:295
+#: src/einstellungen.rs:305
 msgid "_Group"
 msgstr "G_ruppe"
 
-#: src/einstellungen.rs:301
+#: src/einstellungen.rs:311
 msgid "The name is always shown."
 msgstr "Der Name wird immer angezeigt."
 
-#: src/einstellungen.rs:311
+#: src/einstellungen.rs:321
 msgid "Always"
 msgstr "Immer"
 
-#: src/einstellungen.rs:312
+#: src/einstellungen.rs:322
 msgid "Local files only"
 msgstr "Nur lokale Dateien"
 
-#: src/einstellungen.rs:313
+#: src/einstellungen.rs:323
 msgid "Never"
 msgstr "Nie"
 
-#: src/einstellungen.rs:319
+#: src/einstellungen.rs:329
 msgid "Thumbnails"
 msgstr "Vorschaubilder"
 
-#: src/einstellungen.rs:322
+#: src/einstellungen.rs:332
 msgid "_Show thumbnails:"
 msgstr "Vorschaubilder _anzeigen:"
 
-#: src/einstellungen.rs:329
+#: src/einstellungen.rs:339
 msgid "_Only for files smaller than:"
 msgstr "_Nur für Dateien bis:"
 
-#: src/einstellungen.rs:341
+#: src/einstellungen.rs:351
 msgid "Folders"
 msgstr "Ordner"
 
-#: src/einstellungen.rs:343
+#: src/einstellungen.rs:353
 msgid "_Count number of items:"
 msgstr "Anzahl der Objekte in Ordnern _zählen:"
 
-#: src/einstellungen.rs:366
+#: src/einstellungen.rs:376
 msgid "File Management Preferences"
 msgstr "Einstellungen zur Dateiverwaltung"
 
-#: src/einstellungen.rs:375
+#: src/einstellungen.rs:385
 msgid "Views"
 msgstr "Ansichten"
 
-#: src/einstellungen.rs:377
+#: src/einstellungen.rs:387
 msgid "Display"
 msgstr "Anzeige"
 
-#: src/einstellungen.rs:379
+#: src/einstellungen.rs:389
 msgid "Preview"
 msgstr "Vorschau"
 
-#: src/einstellungen.rs:383 src/menue.rs:688
+#: src/einstellungen.rs:393 src/menue.rs:749 src/netzwerk/verbinden_dialog.rs:219
 msgid "_Help"
 msgstr "_Hilfe"
-
-#: src/fenster.rs:187
-msgid "Empty Trash…"
-msgstr "Papierkorb leeren …"
 
 #: src/fortschritt.rs:54
 #, no-c-format
@@ -587,7 +592,7 @@ msgstr "Papierkorb wird geleert …"
 msgid "File Operations"
 msgstr "Dateioperationen"
 
-#: src/fortschritt.rs:411 src/operationen.rs:785 src/operationen.rs:818
+#: src/fortschritt.rs:411 src/operationen.rs:789 src/operationen.rs:822
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -743,7 +748,7 @@ msgstr "Einen neuen _Namen für das Ziel wählen"
 msgid "Apply this action to all _files"
 msgstr "Diese Aktion auf alle _Dateien anwenden"
 
-#: src/konflikt.rs:254 src/oeffnen.rs:212 src/oeffnen.rs:293 src/oeffnen.rs:298
+#: src/konflikt.rs:254 src/netzwerk/anmeldung.rs:347 src/netzwerk/verbinden_dialog.rs:220 src/oeffnen.rs:246 src/oeffnen.rs:327 src/oeffnen.rs:332
 msgid "_Cancel"
 msgstr "_Abbrechen"
 
@@ -776,303 +781,714 @@ msgstr "_Wiederholen"
 msgid "Open with “{app}”"
 msgstr "Mit „{app}“ öffnen"
 
-#: src/kontextmenue.rs:129 src/menue.rs:227 src/seitenleiste.rs:557
+#: src/kontextmenue.rs:129 src/menue.rs:255 src/seitenleiste.rs:559 src/suche/ergebnisse.rs:321
 msgid "_Open"
 msgstr "Ö_ffnen"
 
-#: src/kontextmenue.rs:133 src/menue.rs:233 src/seitenleiste.rs:564
+#: src/kontextmenue.rs:133 src/menue.rs:261 src/seitenleiste.rs:566
+msgid "Open in New _Tab"
+msgstr "In neuem _Reiter öffnen"
+
+#: src/kontextmenue.rs:137 src/menue.rs:267 src/seitenleiste.rs:573
 msgid "Open in New _Window"
 msgstr "In neuem F_enster öffnen"
 
-#: src/kontextmenue.rs:150 src/menue.rs:238
+#: src/kontextmenue.rs:154 src/menue.rs:272
 msgid "Open Wit_h"
 msgstr "Öffnen _mit"
 
-#: src/kontextmenue.rs:156 src/menue.rs:273
+#: src/kontextmenue.rs:160 src/menue.rs:314
 msgid "Cu_t"
 msgstr "_Ausschneiden"
 
-#: src/kontextmenue.rs:157 src/menue.rs:279
+#: src/kontextmenue.rs:161 src/menue.rs:320
 msgid "_Copy"
 msgstr "_Kopieren"
 
-#: src/kontextmenue.rs:161
+#: src/kontextmenue.rs:165
 msgid "Paste Into Folder"
 msgstr "In Ordner einfügen"
 
-#: src/kontextmenue.rs:166 src/kontextmenue.rs:168 src/menue.rs:305
+#: src/kontextmenue.rs:170 src/kontextmenue.rs:172 src/menue.rs:346
 msgid "_Rename…"
 msgstr "_Umbenennen …"
 
-#: src/kontextmenue.rs:174 src/menue.rs:308
+#: src/kontextmenue.rs:178 src/menue.rs:349
 msgid "Mo_ve to Trash"
 msgstr "In den _Papierkorb verschieben"
 
-#: src/kontextmenue.rs:175 src/kontextmenue.rs:183 src/kontextmenue.rs:250 src/menue.rs:241
+#: src/kontextmenue.rs:179 src/kontextmenue.rs:187 src/kontextmenue.rs:254 src/menue.rs:282
 msgid "_Properties"
 msgstr "Ei_genschaften"
 
-#: src/kontextmenue.rs:181 src/menue.rs:319
+#: src/kontextmenue.rs:185 src/menue.rs:360
 msgid "_Restore"
 msgstr "_Wiederherstellen"
 
-#: src/kontextmenue.rs:182 src/menue.rs:314
+#: src/kontextmenue.rs:186 src/menue.rs:355
 msgid "_Delete…"
 msgstr "_Löschen …"
 
-#: src/kontextmenue.rs:192 src/menue.rs:594
+#: src/kontextmenue.rs:196 src/menue.rs:652
 msgid "No templates installed"
 msgstr "Keine Vorlagen installiert"
 
-#: src/kontextmenue.rs:202 src/menue.rs:604
+#: src/kontextmenue.rs:206 src/menue.rs:662
 msgid "Empty File"
 msgstr "Leere Datei"
 
-#: src/kontextmenue.rs:207 src/menue.rs:217
+#: src/kontextmenue.rs:211 src/menue.rs:245
 msgid "Create _Folder"
 msgstr "_Ordner anlegen"
 
-#: src/kontextmenue.rs:209 src/menue.rs:223
+#: src/kontextmenue.rs:213 src/menue.rs:251
 msgid "Create _Document"
 msgstr "_Dokument anlegen"
 
-#: src/kontextmenue.rs:219 src/menue.rs:390
+#: src/kontextmenue.rs:223 src/menue.rs:432
 msgid "By _Name"
 msgstr "Nach _Name"
 
-#: src/kontextmenue.rs:220 src/menue.rs:391
+#: src/kontextmenue.rs:224 src/menue.rs:433
 msgid "By _Size"
 msgstr "Nach _Größe"
 
-#: src/kontextmenue.rs:221 src/menue.rs:392
+#: src/kontextmenue.rs:225 src/menue.rs:434
 msgid "By _Type"
 msgstr "Nach _Typ"
 
-#: src/kontextmenue.rs:222 src/menue.rs:393
+#: src/kontextmenue.rs:226 src/menue.rs:435
 msgid "By Modification _Date"
 msgstr "Nach Änderungs_datum"
 
-#: src/kontextmenue.rs:230 src/menue.rs:358
+#: src/kontextmenue.rs:234 src/menue.rs:399
 msgid "Arran_ge Items"
 msgstr "Objekte _anordnen"
 
-#: src/kontextmenue.rs:234 src/menue.rs:395
+#: src/kontextmenue.rs:238 src/menue.rs:437
 msgid "Re_versed Order"
 msgstr "Umge_kehrte Reihenfolge"
 
-#: src/kontextmenue.rs:242 src/menue.rs:285
+#: src/kontextmenue.rs:246 src/menue.rs:326
 msgid "_Paste"
 msgstr "_Einfügen"
 
-#: src/kontextmenue.rs:245 src/menue.rs:362
+#: src/kontextmenue.rs:249 src/menue.rs:403
 msgid "Zoom _In"
 msgstr "Ver_größern"
 
-#: src/kontextmenue.rs:246 src/menue.rs:368
+#: src/kontextmenue.rs:250 src/menue.rs:409
 msgid "Zoom _Out"
 msgstr "Ver_kleinern"
 
-#: src/kontextmenue.rs:247 src/menue.rs:374
+#: src/kontextmenue.rs:251 src/menue.rs:415
 msgid "Normal Si_ze"
 msgstr "_Normale Größe"
 
 #. TRANSLATORS: shortcut shown in the Go menu, deutsch „<Alt>Pos1“
-#: src/menue.rs:189
+#: src/menue.rs:209
 msgctxt "accel"
 msgid "<Alt>Home"
 msgstr "<Alt>Pos1"
 
-#: src/menue.rs:210
+#: src/menue.rs:231
+msgid "New _Tab"
+msgstr "Neuer _Reiter"
+
+#: src/menue.rs:237
 msgid "New _Window"
 msgstr "Neues _Fenster"
 
-#: src/menue.rs:247 src/seitenleiste.rs:613
+#: src/menue.rs:276 src/seitenleiste.rs:633
+msgid "Connect to _Server…"
+msgstr "Mit _Server verbinden …"
+
+#: src/menue.rs:288 src/seitenleiste.rs:622
 msgid "_Empty Trash…"
 msgstr "Papierkorb _leeren …"
 
-#: src/menue.rs:254
+#: src/menue.rs:295
 msgid "Close _All Windows"
 msgstr "_Alle Fenster schließen"
 
-#: src/menue.rs:293
+#: src/menue.rs:334
 msgid "Select _All"
 msgstr "Alles au_swählen"
 
-#: src/menue.rs:299
+#: src/menue.rs:340
 msgid "_Invert Selection"
 msgstr "Aus_wahl umkehren"
 
-#: src/menue.rs:322
+#: src/menue.rs:363
 msgid "Prefere_nces"
 msgstr "E_instellungen"
 
-#: src/menue.rs:334
+#: src/menue.rs:375
 msgid "_Stop"
 msgstr "_Stopp"
 
-#: src/menue.rs:340
+#: src/menue.rs:381
 msgid "_Reload"
 msgstr "A_ktualisieren"
 
-#: src/menue.rs:347
+#: src/menue.rs:388
 msgid "_Toolbar"
 msgstr "_Werkzeugleiste"
 
-#: src/menue.rs:348
+#: src/menue.rs:389
 msgid "Side _Pane"
 msgstr "S_eitenleiste"
 
-#: src/menue.rs:349
+#: src/menue.rs:390
 msgid "Location _Bar"
 msgstr "_Adressleiste"
 
-#: src/menue.rs:350
+#: src/menue.rs:391
 msgid "St_atusbar"
 msgstr "S_tatusleiste"
 
-#: src/menue.rs:354
+#: src/menue.rs:395
 msgid "Show _Hidden Files"
 msgstr "_Verborgene Dateien anzeigen"
 
-#: src/menue.rs:381
+#: src/menue.rs:422
 msgid "_Icons"
 msgstr "_Symbole"
 
-#: src/menue.rs:382
+#: src/menue.rs:423
 msgid "_List"
 msgstr "_Liste"
 
-#: src/menue.rs:403
+#: src/menue.rs:424
+msgid "_Compact"
+msgstr "_Kompakt"
+
+#: src/menue.rs:445
 msgid "Open _Parent"
 msgstr "_Nach oben"
 
-#: src/menue.rs:409
+#: src/menue.rs:451
 msgid "_Back"
 msgstr "_Zurück"
 
-#: src/menue.rs:414
+#: src/menue.rs:456
 msgid "_Forward"
 msgstr "_Vor"
 
-#: src/menue.rs:418
+#: src/menue.rs:460
 msgid "_Home Folder"
 msgstr "_Persönlicher Ordner"
 
-#: src/menue.rs:423
+#: src/menue.rs:465
 msgid "_Computer"
 msgstr "_Rechner"
 
-#: src/menue.rs:425
+#: src/menue.rs:467
 msgid "_Trash"
 msgstr "_Papierkorb"
 
-#: src/menue.rs:431
+#: src/menue.rs:474
+msgid "_Network"
+msgstr "_Netzwerk"
+
+#: src/menue.rs:481
 msgid "_Location…"
 msgstr "_Ort …"
 
-#: src/menue.rs:439
+#: src/menue.rs:484
+msgid "_Search…"
+msgstr "_Suchen …"
+
+#: src/menue.rs:497
 msgid "Online _Help"
 msgstr "_Online-Hilfe"
 
-#: src/menue.rs:444
+#: src/menue.rs:502
 msgid "_Report a Bug"
 msgstr "_Fehler melden"
 
-#: src/menue.rs:446
+#: src/menue.rs:504
 msgid "_About"
 msgstr "_Info"
 
-#: src/menue.rs:542
+#: src/menue.rs:600
 msgid "_Add Bookmark"
 msgstr "Lesezeichen _hinzufügen"
 
-#: src/menue.rs:683
+#: src/menue.rs:743
 msgid "_File"
 msgstr "_Datei"
 
-#: src/menue.rs:684
+#: src/menue.rs:744
 msgid "_Edit"
 msgstr "_Bearbeiten"
 
-#: src/menue.rs:685
+#: src/menue.rs:745
 msgid "_View"
 msgstr "_Ansicht"
 
-#: src/menue.rs:686
+#: src/menue.rs:746
 msgid "_Go"
 msgstr "_Gehe zu"
 
-#: src/menue.rs:687
+#: src/menue.rs:747
 msgid "_Bookmarks"
 msgstr "_Lesezeichen"
 
-#: src/oeffnen.rs:78 src/oeffnen.rs:120
+#: src/menue.rs:748
+msgid "_Tabs"
+msgstr "_Reiter"
+
+#: src/netzwerk/adresse.rs:36
+msgid "SSH (SFTP)"
+msgstr "SSH (SFTP)"
+
+#: src/netzwerk/adresse.rs:37
+msgid "Windows share (SMB)"
+msgstr "Windows-Freigabe (SMB)"
+
+#: src/netzwerk/adresse.rs:38
+msgid "FTP (with login)"
+msgstr "FTP (mit Anmeldung)"
+
+#: src/netzwerk/adresse.rs:39
+msgid "WebDAV (HTTP)"
+msgstr "WebDAV (HTTP)"
+
+#: src/netzwerk/adresse.rs:40
+msgid "Secure WebDAV (HTTPS)"
+msgstr "Sicheres WebDAV (HTTPS)"
+
+#: src/netzwerk/adresse.rs:41
+msgid "Custom location"
+msgstr "Eigene Adresse"
+
+#: src/netzwerk/adresse.rs:104
+msgid "Enter the name or the address of the server."
+msgstr "Geben Sie den Namen oder die Adresse des Servers ein."
+
+#: src/netzwerk/adresse.rs:105
+msgid ""
+"The server name must not contain spaces, slashes or “@”. Enter the user name in its own field."
+msgstr ""
+"Der Servername darf keine Leerzeichen, keine Schrägstriche und kein „@“ enthalten. Tragen Sie den Benutzernamen in sein eigenes Feld ein."
+
+#: src/netzwerk/adresse.rs:109
+msgid "The port must be a number from 1 to 65535."
+msgstr "Der Port muss eine Zahl von 1 bis 65535 sein."
+
+#: src/netzwerk/adresse.rs:110
+msgid "Enter the address of the server."
+msgstr "Geben Sie die Adresse des Servers ein."
+
+#: src/netzwerk/adresse.rs:111
+#, no-c-format
+msgid "The address needs a protocol at the start, for example “{example}”."
+msgstr "Die Adresse braucht am Anfang ein Protokoll, zum Beispiel „{example}“."
+
+#: src/netzwerk/adresse.rs:115
+msgid "That is not a valid server address."
+msgstr "Das ist keine gültige Serveradresse."
+
+#: src/netzwerk/adresse.rs:116
+msgid "The address does not name a server."
+msgstr "Die Adresse nennt keinen Server."
+
+#: src/netzwerk/adresse.rs:117
+#, no-c-format
+msgid ""
+"“{scheme}” is not a network protocol. Use smb://, sftp://, ftp:// or dav://."
+msgstr ""
+"„{scheme}“ ist kein Netzwerkprotokoll. Verwenden Sie smb://, sftp://, ftp:// oder dav://."
+
+#: src/netzwerk/adresse.rs:121
+#, no-c-format
+msgid ""
+"This system cannot connect to “{scheme}” servers. The package “gvfs-backends” provides them."
+msgstr ""
+"Dieses System kann sich nicht mit „{scheme}“-Servern verbinden. Das Paket „gvfs-backends“ bringt die Unterstützung mit."
+
+#: src/netzwerk/adresse.rs:126
+msgid ""
+"Do not write the password into the address. It is asked for when connecting."
+msgstr ""
+"Schreiben Sie das Kennwort nicht in die Adresse. Es wird beim Verbinden abgefragt."
+
+#: src/netzwerk/anmeldung.rs:269
+#, no-c-format
+msgid "You log in as “{user}”."
+msgstr "Sie melden sich als „{user}“ an."
+
+#: src/netzwerk/anmeldung.rs:272
+msgid "The login failed. Check the user name and the password."
+msgstr "Die Anmeldung ist gescheitert. Prüfen Sie Benutzername und Kennwort."
+
+#: src/netzwerk/anmeldung.rs:280
+msgid "Password Required"
+msgstr "Kennwort erforderlich"
+
+#: src/netzwerk/anmeldung.rs:288
+msgid "Connect _anonymously"
+msgstr "An_onym verbinden"
+
+#: src/netzwerk/anmeldung.rs:289
+msgid "Connect as u_ser:"
+msgstr "Als B_enutzer verbinden:"
+
+#: src/netzwerk/anmeldung.rs:315 src/netzwerk/verbinden_dialog.rs:156
+msgid "_User name:"
+msgstr "_Benutzername:"
+
+#: src/netzwerk/anmeldung.rs:322
+msgid "_Domain:"
+msgstr "_Domäne:"
+
+#: src/netzwerk/anmeldung.rs:329
+msgid "_Password:"
+msgstr "_Kennwort:"
+
+#: src/netzwerk/anmeldung.rs:332
+msgid "_Remember password"
+msgstr "Kennwort _merken"
+
+#: src/netzwerk/anmeldung.rs:335
+msgid ""
+"The password is kept in the keyring of your session and used for this server next time."
+msgstr ""
+"Das Kennwort wird im Schlüsselbund Ihrer Sitzung aufbewahrt und beim nächsten Mal für diesen Server verwendet."
+
+#: src/netzwerk/anmeldung.rs:348 src/netzwerk/verbinden_dialog.rs:221
+msgid "C_onnect"
+msgstr "_Verbinden"
+
+#: src/netzwerk/anmeldung.rs:474
+msgid "Verify Server Identity"
+msgstr "Identität des Servers prüfen"
+
+#: src/netzwerk/anmeldung.rs:476 src/netzwerk/verbinden_dialog.rs:77
+msgid "Connect to Server"
+msgstr "Mit Server verbinden"
+
+#: src/netzwerk/anmeldung.rs:589
+#, no-c-format
+msgid ""
+"The connection was stopped: while logging in, the server showed a different key than the fingerprint you confirmed ({fingerprint}). ssh has saved that other key. Remove it with “{command}” and ask the administrator of the server for the right fingerprint before you connect again."
+msgstr ""
+"Die Verbindung wurde abgebrochen: Bei der Anmeldung hat der Server einen anderen Schlüssel gezeigt als den Fingerabdruck, den Sie bestätigt haben ({fingerprint}). ssh hat diesen anderen Schlüssel gespeichert. Entfernen Sie ihn mit „{command}“ und fragen Sie den Verwalter des Servers nach dem richtigen Fingerabdruck, bevor Sie sich erneut verbinden."
+
+#: src/netzwerk/einhaengen.rs:201 src/netzwerk/mod.rs:81
+#, no-c-format
+msgid "Connecting to “{server}” …"
+msgstr "Verbindung zu „{server}“ wird hergestellt …"
+
+#: src/netzwerk/einhaengen.rs:280
+#, no-c-format
+msgid "Could not connect to “{server}”."
+msgstr "Verbindung zu „{server}“ nicht möglich."
+
+#: src/netzwerk/einhaengen.rs:319
+#, no-c-format
+msgid ""
+"The server did not answer within {seconds} seconds. Check that it is switched on and reachable, then try again."
+msgstr ""
+"Der Server hat nicht innerhalb von {seconds} Sekunden geantwortet. Prüfen Sie, ob er eingeschaltet und erreichbar ist, und versuchen Sie es erneut."
+
+#: src/netzwerk/einhaengen.rs:427 src/netzwerk/mod.rs:86
+#, no-c-format
+msgid "Not connected to “{server}”."
+msgstr "Nicht mit „{server}“ verbunden."
+
+#: src/netzwerk/gvfs_texte.rs:50
+#, no-c-format
+msgid "Message from the system: {message}"
+msgstr "Meldung des Systems: {message}"
+
+#: src/netzwerk/gvfs_texte.rs:76
+msgid ""
+"The identity of the server could not be confirmed, so no connection was made. Ask the administrator of the server for its key fingerprint before you try again."
+msgstr ""
+"Die Identität des Servers wurde nicht bestätigt, deshalb wurde keine Verbindung hergestellt. Fragen Sie den Verwalter des Servers nach dem Fingerabdruck seines Schlüssels, bevor Sie es erneut versuchen."
+
+#: src/netzwerk/gvfs_texte.rs:82
+msgid ""
+"The server did not accept the user name or the password. Check both and try again."
+msgstr ""
+"Der Server hat Benutzername oder Kennwort nicht angenommen. Prüfen Sie beides und versuchen Sie es erneut."
+
+#: src/netzwerk/gvfs_texte.rs:87
+msgid ""
+"This system cannot open this kind of server address. The package “gvfs-backends” provides the network protocols."
+msgstr ""
+"Dieses System kann diese Art von Serveradresse nicht öffnen. Das Paket „gvfs-backends“ bringt die Netzwerkprotokolle mit."
+
+#: src/netzwerk/gvfs_texte.rs:105
+msgid "The server could not be found. Check its name or address."
+msgstr ""
+"Der Server wurde nicht gefunden. Prüfen Sie seinen Namen oder seine Adresse."
+
+#: src/netzwerk/gvfs_texte.rs:113
+msgid ""
+"The server refused the connection. Check the type of service and the port, and whether the service runs on the server."
+msgstr ""
+"Der Server hat die Verbindung abgelehnt. Prüfen Sie die Art des Dienstes, den Port und ob der Dienst auf dem Server läuft."
+
+#: src/netzwerk/gvfs_texte.rs:124
+msgid ""
+"The server did not answer in time. Check that it is switched on and reachable."
+msgstr ""
+"Der Server hat nicht rechtzeitig geantwortet. Prüfen Sie, ob er eingeschaltet und erreichbar ist."
+
+#: src/netzwerk/gvfs_texte.rs:136
+msgid ""
+"The server cannot be reached. Check the network connection of this computer."
+msgstr ""
+"Der Server ist nicht erreichbar. Prüfen Sie die Netzwerkverbindung dieses Rechners."
+
+#: src/netzwerk/gvfs_texte.rs:141
+msgid ""
+"The server did not provide a list of its shared folders. Enter the name of the share in the dialog “Connect to Server”."
+msgstr ""
+"Der Server hat keine Liste seiner Freigaben geliefert. Geben Sie den Namen der Freigabe im Dialog „Mit Server verbinden“ ein."
+
+#: src/netzwerk/gvfs_texte.rs:153
+msgid ""
+"The shared folder or the folder does not exist on this server. Check the share and the folder."
+msgstr ""
+"Die Freigabe oder der Ordner existiert auf diesem Server nicht. Prüfen Sie Freigabe und Ordner."
+
+#: src/netzwerk/gvfs_texte.rs:157
+msgid "The connection to the server was closed. Connect again."
+msgstr "Die Verbindung zum Server wurde getrennt. Verbinden Sie sich erneut."
+
+#: src/netzwerk/gvfs_texte.rs:168
+msgid ""
+"The connection to the server broke off. Check the address, the port and whether the service runs on the server."
+msgstr ""
+"Die Verbindung zum Server ist abgebrochen. Prüfen Sie die Adresse, den Port und ob der Dienst auf dem Server läuft."
+
+#: src/netzwerk/gvfs_texte.rs:172
+msgid "The connection to the server failed."
+msgstr "Die Verbindung zum Server ist gescheitert."
+
+#: src/netzwerk/gvfs_texte.rs:223
+#, no-c-format
+msgid "The identity of the server “{host}” is not known yet."
+msgstr "Die Identität des Servers „{host}“ ist noch nicht bekannt."
+
+#: src/netzwerk/gvfs_texte.rs:230
+#, no-c-format
+msgid ""
+"The server sent this key fingerprint:\n"
+"{fingerprint}\n"
+"Compare it with the fingerprint you know from the administrator of the server."
+msgstr ""
+"Der Server hat diesen Fingerabdruck seines Schlüssels geschickt:\n"
+"{fingerprint}\n"
+"Vergleichen Sie ihn mit dem Fingerabdruck, den Sie vom Verwalter des Servers kennen."
+
+#: src/netzwerk/gvfs_texte.rs:238
+msgid ""
+"This is normal when you connect to this server for the first time. If you connected before, the server may have been replaced, or someone may be pretending to be the server."
+msgstr ""
+"Das ist normal, wenn Sie sich zum ersten Mal mit diesem Server verbinden. Waren Sie schon einmal verbunden, wurde der Server vielleicht ersetzt – oder jemand gibt sich als dieser Server aus."
+
+#: src/netzwerk/gvfs_texte.rs:260
+#, no-c-format
+msgid ""
+"Querencia Dateien read the key of the server over a separate connection. Fingerprint of the {key_type} key:\n"
+"{fingerprint}\n"
+"Compare it with the fingerprint you know from the administrator of the server."
+msgstr ""
+"Querencia Dateien hat den Schlüssel des Servers über eine eigene Verbindung gelesen. Fingerabdruck des {key_type}-Schlüssels:\n"
+"{fingerprint}\n"
+"Vergleichen Sie ihn mit dem Fingerabdruck, den Sie vom Verwalter des Servers kennen."
+
+#: src/netzwerk/gvfs_texte.rs:269
+msgid ""
+"The fingerprint of the server key could not be read, so it cannot be compared here. Confirm it with the administrator of the server before you connect."
+msgstr ""
+"Der Fingerabdruck des Serverschlüssels ließ sich nicht lesen und kann hier nicht verglichen werden. Bestätigen Sie ihn beim Verwalter des Servers, bevor Sie sich verbinden."
+
+#: src/netzwerk/gvfs_texte.rs:345
+#, no-c-format
+msgid ""
+"Enter the password for the shared folder “{share}” on the server “{host}”."
+msgstr ""
+"Geben Sie das Kennwort für die Freigabe „{share}“ auf dem Server „{host}“ ein."
+
+#: src/netzwerk/gvfs_texte.rs:349
+#, no-c-format
+msgid ""
+"Enter user name and password for the shared folder “{share}” on the server “{host}”."
+msgstr ""
+"Geben Sie Benutzername und Kennwort für die Freigabe „{share}“ auf dem Server „{host}“ ein."
+
+#: src/netzwerk/gvfs_texte.rs:354
+#, no-c-format
+msgid "Enter user name and password for “{name}”."
+msgstr "Geben Sie Benutzername und Kennwort für „{name}“ ein."
+
+#: src/netzwerk/gvfs_texte.rs:358
+#, no-c-format
+msgid "Enter the password of “{user}” on the server “{host}”."
+msgstr "Geben Sie das Kennwort von „{user}“ auf dem Server „{host}“ ein."
+
+#: src/netzwerk/gvfs_texte.rs:362
+#, no-c-format
+msgid "Enter the password for “{name}”."
+msgstr "Geben Sie das Kennwort für „{name}“ ein."
+
+#: src/netzwerk/gvfs_texte.rs:363
+msgid "Enter the password of the proxy server."
+msgstr "Geben Sie das Kennwort des Proxy-Servers ein."
+
+#: src/netzwerk/gvfs_texte.rs:394 src/netzwerk/gvfs_texte.rs:396
+msgid "Connect _Anyway"
+msgstr "_Trotzdem verbinden"
+
+#: src/netzwerk/gvfs_texte.rs:395 src/netzwerk/gvfs_texte.rs:397
+msgid "_Cancel Connection"
+msgstr "Verbindung _abbrechen"
+
+#: src/netzwerk/mod.rs:128
+#, no-c-format
+msgid "The bookmark could not be saved: {error}"
+msgstr "Das Lesezeichen konnte nicht gespeichert werden: {error}"
+
+#: src/netzwerk/netzansicht.rs:68
+msgid "No computers found in the network – File → Connect to Server…"
+msgstr "Keine Rechner im Netzwerk gefunden – Datei → Mit Server verbinden …"
+
+#: src/netzwerk/verbinden_dialog.rs:79
+msgid "Connect to a server"
+msgstr "Mit einem Server verbinden"
+
+#: src/netzwerk/verbinden_dialog.rs:80
+msgid ""
+"Choose the type of server and enter its name. The password is asked for when connecting."
+msgstr ""
+"Wählen Sie die Art des Servers und geben Sie seinen Namen ein. Das Kennwort wird beim Verbinden abgefragt."
+
+#: src/netzwerk/verbinden_dialog.rs:102
+msgid "Add _bookmark"
+msgstr "_Lesezeichen hinzufügen"
+
+#: src/netzwerk/verbinden_dialog.rs:109
+msgid "for example server.example or 192.0.2.7"
+msgstr "zum Beispiel server.example oder 192.0.2.7"
+
+#: src/netzwerk/verbinden_dialog.rs:110
+msgid "for example smb://server/share or \\\\server\\share"
+msgstr "zum Beispiel smb://server/freigabe oder \\\\server\\freigabe"
+
+#: src/netzwerk/verbinden_dialog.rs:136
+msgid "Service _type:"
+msgstr "Dienst-_Typ:"
+
+#: src/netzwerk/verbinden_dialog.rs:137
+msgid "_Server:"
+msgstr "_Server:"
+
+#: src/netzwerk/verbinden_dialog.rs:138
+msgid "_Location (URI):"
+msgstr "Adresse (_URI):"
+
+#: src/netzwerk/verbinden_dialog.rs:142
+msgid "Optional information:"
+msgstr "Optionale Angaben:"
+
+#: src/netzwerk/verbinden_dialog.rs:153
+msgid "_Port:"
+msgstr "_Port:"
+
+#: src/netzwerk/verbinden_dialog.rs:154
+msgid "Sh_are:"
+msgstr "_Freigabe:"
+
+#: src/netzwerk/verbinden_dialog.rs:155
+msgid "_Folder:"
+msgstr "_Ordner:"
+
+#: src/netzwerk/verbinden_dialog.rs:157
+msgid "_Domain name:"
+msgstr "_Domänenname:"
+
+#: src/netzwerk/verbinden_dialog.rs:167
+msgid "Bookmark _name:"
+msgstr "_Name des Lesezeichens:"
+
+#: src/netzwerk/verbinden_dialog.rs:317
+#, no-c-format
+msgid "{folder} on {server}"
+msgstr "{folder} auf {server}"
+
+#: src/oeffnen.rs:108 src/oeffnen.rs:154
 #, no-c-format
 msgid "“{name}” could not be opened."
 msgstr "„{name}“ konnte nicht geöffnet werden."
 
-#: src/oeffnen.rs:130 src/oeffnen.rs:266
+#: src/oeffnen.rs:164 src/oeffnen.rs:300
 #, no-c-format
 msgid "“{name}” cannot be opened."
 msgstr "„{name}“ kann nicht geöffnet werden."
 
-#: src/oeffnen.rs:131
+#: src/oeffnen.rs:165
 #, no-c-format
 msgid "There is no program installed for “{type}” files."
 msgstr "Für Dateien vom Typ „{type}“ ist kein Programm installiert."
 
-#: src/oeffnen.rs:150 src/oeffnen.rs:170 src/oeffnen.rs:191
+#: src/oeffnen.rs:184 src/oeffnen.rs:204 src/oeffnen.rs:225
 #, no-c-format
 msgid "“{program}” could not be started."
 msgstr "„{program}“ konnte nicht gestartet werden."
 
-#: src/oeffnen.rs:206
+#: src/oeffnen.rs:240
 msgid "Untrusted application launcher"
 msgstr "Nicht vertrauenswürdiger Anwendungsstarter"
 
-#: src/oeffnen.rs:207
+#: src/oeffnen.rs:241
 #, no-c-format
 msgid ""
 "The application launcher “{name}” has not been marked as trusted. If you do not know the source of this file, launching it may be unsafe."
 msgstr ""
 "Der Anwendungsstarter „{name}“ wurde nicht als vertrauenswürdig markiert. Wenn Sie die Herkunft dieser Datei nicht kennen, kann das Starten unsicher sein."
 
-#: src/oeffnen.rs:212
+#: src/oeffnen.rs:246
 msgid "_Trust and Launch"
 msgstr "_Vertrauen und starten"
 
-#: src/oeffnen.rs:229
+#: src/oeffnen.rs:263
 msgid "The launcher could not be marked as trusted."
 msgstr "Der Starter konnte nicht als vertrauenswürdig markiert werden."
 
-#: src/oeffnen.rs:251
+#: src/oeffnen.rs:285
 #, no-c-format
 msgid "“{name}” could not be run."
 msgstr "„{name}“ konnte nicht ausgeführt werden."
 
-#: src/oeffnen.rs:270
+#: src/oeffnen.rs:304
 msgid "There is no program installed for text files."
 msgstr "Für Textdateien ist kein Programm installiert."
 
-#: src/oeffnen.rs:289
+#: src/oeffnen.rs:323
 #, no-c-format
 msgid "Do you want to run “{name}”, or display its contents?"
 msgstr "Möchten Sie „{name}“ ausführen oder seinen Inhalt anzeigen?"
 
-#: src/oeffnen.rs:293
+#: src/oeffnen.rs:327
 msgid "_Display"
 msgstr "A_nzeigen"
 
-#: src/oeffnen.rs:293 src/oeffnen.rs:298
+#: src/oeffnen.rs:327 src/oeffnen.rs:332
 msgid "_Run"
 msgstr "A_usführen"
 
-#: src/oeffnen.rs:297
+#: src/oeffnen.rs:331
 #, no-c-format
 msgid "Do you want to run “{name}”?"
 msgstr "Möchten Sie „{name}“ ausführen?"
 
-#: src/oeffnen.rs:303
+#: src/oeffnen.rs:337
 #, no-c-format
 msgid "“{name}” is an executable file."
 msgstr "„{name}“ ist eine ausführbare Datei."
@@ -1081,53 +1497,53 @@ msgstr "„{name}“ ist eine ausführbare Datei."
 msgid "Close"
 msgstr "Schließen"
 
-#: src/operationen.rs:722
+#: src/operationen.rs:726
 #, no-c-format
 msgid "“{name}” cannot be renamed."
 msgstr "„{name}“ kann nicht umbenannt werden."
 
-#: src/operationen.rs:769
+#: src/operationen.rs:773
 #, no-c-format
 msgid "Are you sure you want to permanently delete “{name}”?"
 msgstr "Möchten Sie „{name}“ wirklich endgültig löschen?"
 
-#: src/operationen.rs:773
+#: src/operationen.rs:777
 #, no-c-format
 msgid "Are you sure you want to permanently delete the {n} selected item?"
 msgid_plural "Are you sure you want to permanently delete the {n} selected items?"
 msgstr[0] "Möchten Sie das {n} ausgewählte Objekt wirklich endgültig löschen?"
 msgstr[1] "Möchten Sie die {n} ausgewählten Objekte wirklich endgültig löschen?"
 
-#: src/operationen.rs:782
+#: src/operationen.rs:786
 msgid "If you delete an item, it will be permanently lost."
 msgstr "Wenn Sie ein Objekt löschen, ist es unwiderruflich verloren."
 
-#: src/operationen.rs:785
+#: src/operationen.rs:789
 msgid "Delete"
 msgstr "Löschen"
 
-#: src/operationen.rs:814
+#: src/operationen.rs:818
 msgid "Empty all items from the trash?"
 msgstr "Möchten Sie alle Dateien im Papierkorb endgültig löschen?"
 
-#: src/operationen.rs:815
+#: src/operationen.rs:819
 msgid "If you empty the trash, all items in it will be permanently lost."
 msgstr ""
 "Wenn Sie den Papierkorb leeren, werden alle darin befindlichen Objekte unwiderruflich gelöscht."
 
-#: src/operationen.rs:818
+#: src/operationen.rs:822
 msgid "Empty Trash"
 msgstr "Papierkorb leeren"
 
-#: src/operationen.rs:852
+#: src/operationen.rs:856
 msgid "New Folder"
 msgstr "Neuer Ordner"
 
-#: src/operationen.rs:861
+#: src/operationen.rs:865
 msgid "New Document"
 msgstr "Neues Dokument"
 
-#: src/operationen.rs:870
+#: src/operationen.rs:874
 msgid "Template"
 msgstr "Vorlage"
 
@@ -1156,10 +1572,6 @@ msgstr "Symbolansicht"
 #: src/regeln.rs:95
 msgid "List View"
 msgstr "Listenansicht"
-
-#: src/regeln.rs:96
-msgid "Compact View"
-msgstr "Kompaktansicht"
 
 #: src/regeln.rs:218
 #, no-c-format
@@ -1210,6 +1622,54 @@ msgstr[1] "{n} andere Objekte ausgewählt ({size})"
 msgid "{folders}, {others}"
 msgstr "{folders}, {others}"
 
+#: src/reiter/mod.rs:195
+msgid "Empty Trash…"
+msgstr "Papierkorb leeren …"
+
+#: src/reiter/mod.rs:316
+msgid "Close tab"
+msgstr "Reiter schließen"
+
+#: src/reiter/mod.rs:604
+msgid "_Previous Tab"
+msgstr "_Vorheriger Reiter"
+
+#. TRANSLATORS: shortcut shown in the Tabs menu, deutsch „<Control>Bild↑“
+#: src/reiter/mod.rs:607
+msgctxt "accel"
+msgid "<Control>PageUp"
+msgstr "<Control>Bild↑"
+
+#: src/reiter/mod.rs:610
+msgid "_Next Tab"
+msgstr "_Nächster Reiter"
+
+#. TRANSLATORS: shortcut shown in the Tabs menu, deutsch „<Control>Bild↓“
+#: src/reiter/mod.rs:613
+msgctxt "accel"
+msgid "<Control>PageDown"
+msgstr "<Control>Bild↓"
+
+#: src/reiter/mod.rs:618
+msgid "Move Tab _Left"
+msgstr "Reiter nach _links verschieben"
+
+#. TRANSLATORS: shortcut shown in the Tabs menu
+#: src/reiter/mod.rs:621
+msgctxt "accel"
+msgid "<Shift><Control>PageUp"
+msgstr "<Shift><Control>Bild↑"
+
+#: src/reiter/mod.rs:624
+msgid "Move Tab _Right"
+msgstr "Reiter nach _rechts verschieben"
+
+#. TRANSLATORS: shortcut shown in the Tabs menu
+#: src/reiter/mod.rs:627
+msgctxt "accel"
+msgid "<Shift><Control>PageDown"
+msgstr "<Shift><Control>Bild↓"
+
 #: src/seitenleiste.rs:77
 msgid "Desktop"
 msgstr "Arbeitsfläche"
@@ -1222,19 +1682,19 @@ msgstr "Orte"
 msgid "Close the side pane"
 msgstr "Die Seitenleiste schließen"
 
-#: src/seitenleiste.rs:575
+#: src/seitenleiste.rs:584
 msgid "_Remove Bookmark"
 msgstr "Lesezeichen _entfernen"
 
-#: src/seitenleiste.rs:585
+#: src/seitenleiste.rs:594
 msgid "_Mount"
 msgstr "_Einhängen"
 
-#: src/seitenleiste.rs:594
+#: src/seitenleiste.rs:603
 msgid "_Eject"
 msgstr "_Auswerfen"
 
-#: src/seitenleiste.rs:601
+#: src/seitenleiste.rs:610
 msgid "_Unmount"
 msgstr "_Aushängen"
 
@@ -1246,6 +1706,68 @@ msgstr "Der Ordner konnte nicht gelesen werden: {error}"
 #: src/statusleiste.rs:117
 msgid "Loading…"
 msgstr "Wird geladen …"
+
+#. TRANSLATORS: context menu of a search result
+#: src/suche/ergebnisse.rs:330
+msgid "Show in _Folder"
+msgstr "Im _Ordner anzeigen"
+
+#: src/suche/mod.rs:69
+msgid "Search documents and folders by name"
+msgstr "Dokumente und Ordner nach Namen durchsuchen"
+
+#: src/suche/mod.rs:123
+msgid "_Search for:"
+msgstr "_Suchen nach:"
+
+#: src/suche/mod.rs:146
+msgid "_Advanced Search…"
+msgstr "_Erweiterte Suche …"
+
+#: src/suche/mod.rs:147
+msgid "Search with more criteria in Querencia File Search"
+msgstr "Mit weiteren Kriterien in Querencia Dateisuche suchen"
+
+#: src/suche/mod.rs:161
+msgid "Close the search"
+msgstr "Suche schließen"
+
+#: src/suche/mod.rs:289
+msgid "Search results"
+msgstr "Suchergebnisse"
+
+#: src/suche/mod.rs:322
+msgid "Searching…"
+msgstr "Suche läuft …"
+
+#: src/suche/mod.rs:348
+#, no-c-format
+msgid "Searching… {n} match so far"
+msgid_plural "Searching… {n} matches so far"
+msgstr[0] "Suche läuft … bisher {n} Treffer"
+msgstr[1] "Suche läuft … bisher {n} Treffer"
+
+#: src/suche/mod.rs:368
+#, no-c-format
+msgid "{n} match"
+msgid_plural "{n} matches"
+msgstr[0] "{n} Treffer"
+msgstr[1] "{n} Treffer"
+
+#: src/suche/mod.rs:370
+#, no-c-format
+msgid "{matches} (search stopped)"
+msgstr "{matches} (Suche angehalten)"
+
+#: src/suche/mod.rs:372
+#, no-c-format
+msgid "{matches} (limit reached)"
+msgstr "{matches} (Grenze erreicht)"
+
+#: src/suche/mod.rs:405
+#, no-c-format
+msgid "Querencia File Search could not be started: {error}"
+msgstr "Querencia Dateisuche konnte nicht gestartet werden: {error}"
 
 #: src/umbenennen.rs:38
 #, no-c-format
@@ -1296,18 +1818,18 @@ msgid ""
 msgstr ""
 "Alle lokalen und entfernten Laufwerke und Ordner durchsuchen, auf die von diesem Rechner aus zugegriffen werden kann"
 
-#: src/werkzeugleiste.rs:103
+#: src/werkzeugleiste.rs:106
 msgid "Decrease the view size"
 msgstr "Die Ansicht verkleinern"
 
-#: src/werkzeugleiste.rs:112
+#: src/werkzeugleiste.rs:115
 msgid "Increase the view size"
 msgstr "Die Ansicht vergrößern"
 
-#: src/werkzeugleiste.rs:121
+#: src/werkzeugleiste.rs:124
 msgid "Use the normal view size"
 msgstr "Die normale Ansichtsgröße verwenden"
 
-#: src/werkzeugleiste.rs:132
+#: src/werkzeugleiste.rs:134
 msgid "Choose how the items are shown"
 msgstr "Wählen, wie die Objekte angezeigt werden"
