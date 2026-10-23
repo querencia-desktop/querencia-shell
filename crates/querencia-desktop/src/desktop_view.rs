@@ -652,6 +652,7 @@ impl Icons {
                     trash_full.unwrap_or(false),
                     self.settings.get().size,
                     self.geometry.get().tile,
+                    self.window.scale_factor(),
                 )
             })
             .collect();
@@ -2805,7 +2806,46 @@ fn label_lines(label: &Label) -> Vec<String> {
     lines
 }
 
-fn icon_widget(item: &Item, trash_full: bool, icon_px: i32, cell: (i32, i32)) -> gtk4::Box {
+/// 0.3.0: an image of Querencia's own volume picture at `size` pixels and
+/// `scale`. These pictures are SVG bytes (`gio::BytesIcon`), which
+/// `symbole` cannot key and would look up again at every rebuild; GTK then
+/// loads them anew on the main thread (glycin, a separate process: ~50 ms,
+/// seconds while the disk is busy, isolated test 23.10.2026). Loaded once
+/// per picture, size and scale, they are kept for the session.
+fn volume_image(picture: volumes::Picture, size: i32, scale: i32) -> Image {
+    /// Picture, size, scale.
+    type Key = (volumes::Picture, i32, i32);
+    thread_local! {
+        static KEPT: RefCell<Vec<(Key, gtk4::IconPaintable)>> = const { RefCell::new(Vec::new()) };
+    }
+    let key = (picture, size, scale);
+    let paintable = KEPT.with(|kept| {
+        if let Some((_, found)) = kept.borrow().iter().find(|(k, _)| *k == key) {
+            return found.clone();
+        }
+        let display = gdk::Display::default().expect("Anzeige");
+        let found = gtk4::IconTheme::for_display(&display).lookup_by_gicon(
+            &laufwerke::volume_icon(picture),
+            size,
+            scale,
+            gtk4::TextDirection::None,
+            gtk4::IconLookupFlags::empty(),
+        );
+        kept.borrow_mut().push((key, found.clone()));
+        found
+    });
+    let image = Image::from_paintable(Some(&paintable));
+    image.set_pixel_size(size);
+    image
+}
+
+fn icon_widget(
+    item: &Item,
+    trash_full: bool,
+    icon_px: i32,
+    cell: (i32, i32),
+    scale: i32,
+) -> gtk4::Box {
     let tile = gtk4::Box::new(Orientation::Vertical, 2);
     tile.add_css_class("desktop-icon");
     // HMP-10b: the tile spans the whole cell width (cells never overlap,
@@ -2814,8 +2854,14 @@ fn icon_widget(item: &Item, trash_full: bool, icon_px: i32, cell: (i32, i32)) ->
     // left for the text by one pixel and was split ("Persönliche" / "r").
     // QD-091: the cell follows the font (`cell_for`).
     tile.set_size_request(cell.0, cell.1 - TILE_GAP);
-    // QD-106: without GTK's preloading in the thread pool (0.3.0)
-    let image = symbole::image(&icon_for(item, trash_full), icon_px);
+    // QD-106: without GTK's preloading in the thread pool (0.3.0); the
+    // built-in volume pictures are kept loaded (see `volume_image`)
+    let image = match &item.kind {
+        Kind::Volume(volume) if volume.picture != volumes::Picture::Network => {
+            volume_image(volume.picture, icon_px, scale)
+        }
+        _ => symbole::image(&icon_for(item, trash_full), icon_px),
+    };
     image.set_halign(Align::Center);
     let label = Label::new(Some(&item.name));
     label.set_wrap(true);
