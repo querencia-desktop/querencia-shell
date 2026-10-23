@@ -204,7 +204,8 @@ neu_seit "Reiterleiste und Menü „Reiter“ aus" && k2=1 || k2=0
   || fall R15 "Schließen-Knopf" 0 "$k1$k2 $(tail -n 3 "$LOG" | tr '\n' ' ')"
 foto 10-wieder-einer
 
-# R16 Mitteltaste auf Pfadknopf und auf einen Ort der Seitenleiste
+# R16 Mitteltaste auf Pfadknopf und auf einen Ort der Seitenleiste (der
+# Reiter zeigt „Dokumente“, der Pfad ist „heim › Dokumente“)
 marke
 q "move ${LAUF_PFADKNOPF:-48 105}" "mclick" "wait 600"
 warte_log "neu: 2/2 file://" 5 && p1=1 || p1=0
@@ -214,6 +215,19 @@ warte_log "neu: 2/3 file://$HEIM/Musik\$" 5 && p2=1 || p2=0
 [ "$p1$p2" = 11 ] && fall R16 "Mitteltaste auf Pfadknopf und auf „Musik“ in der Seitenleiste: je ein Reiter" 1 "neu 2/2, neu 2/3 …/Musik" \
   || fall R16 "Mitteltaste Pfadknopf/Seitenleiste" 0 "$p1$p2 $(grep -a 'neu:' "$LOG" | tail -n 2 | tr '\n' ' ')"
 foto 11-pfad-und-ort
+
+# R19 Datei auf einen Reiterkopf ziehen (B03): Ablage im Ordner des Reiters.
+# Drei Reiter [Dokumente, Musik, heim]; der Kopf von „Musik“ ist der mittlere.
+q "move 700 500" "click" "wait 300" "type notiz" "wait 700"
+warte_log "Fokus Symbolansicht: notiz.txt |" 5
+read -r zx zy < <(fokus_punkt)
+q "key Escape" "wait 200"
+marke
+q "move $zx $zy" "wait 200" "down left" "wait 100" "glide $((zx + 20)) $((zy + 10)) 200" \
+  "glide ${LAUF_KOPF2:-476 145} 600" "wait 500" "up left" "wait 800"
+warte_log "Ablage: notiz.txt auf file://$HEIM/Musik" 5 && [ -e "$HEIM/Musik/notiz.txt" ] \
+  && fall R19 "Datei auf den Kopf des Reiters „Musik“ gezogen: dorthin verschoben" 1 "Ablage …/Musik; Musik/notiz.txt" \
+  || fall R19 "Ziehen auf Reiterkopf" 0 "Punkt $zx $zy: $(tail -n 3 "$LOG" | tr '\n' ' ')"
 
 # R17 Der letzte Reiter schließt das Fenster; alle Reiter freigegeben
 taste ctrl+w

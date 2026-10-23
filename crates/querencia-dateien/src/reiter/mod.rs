@@ -11,7 +11,8 @@
 //! and next tab, Umschalt+Strg+Bild↑/↓ moves the tab, Alt+1 … Alt+0 the
 //! first ten tabs. The middle button on a folder, a path button or a place
 //! and „In neuem Reiter öffnen“ open folders in new tabs behind the
-//! current one. No restore at start, no dragging of tabs, no detaching.
+//! current one; files dropped on a tab's head go into its folder. No
+//! restore at start, no dragging of tabs, no detaching.
 
 pub mod regeln;
 
@@ -219,6 +220,16 @@ impl Reiter {
         let a = reiter.ansichten.umschalten(art);
         if let Some(z) = zoom {
             a.zoom_setzen(z);
+        }
+        // B03: files dropped on the head go into the tab's folder (the drop
+        // rules of the path buttons, `register.ablage`)
+        if let Some(ablage) = app.register().ablage.clone() {
+            let weak = Rc::downgrade(&reiter);
+            ablage(
+                fenster,
+                reiter.kopf.upcast_ref(),
+                Rc::new(move |_, _| weak.upgrade().and_then(|r| r.ort())),
+            );
         }
         reiter
     }

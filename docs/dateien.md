@@ -307,3 +307,111 @@ nutzen können.
   gemessen.
 - Das Fortschrittsfenster nimmt beim Erscheinen die Tastatur (wie im
   Desktop 0.3.0).
+
+## 7. Welle C3: Reiter, Kompaktansicht, Migration (`dateien/reiter-1`)
+
+Zweig `dateien-reiter-kompakt`, Bericht .
+Ersetzt in §6 die Punkte „Reiter“ und „Kompaktansicht“.
+
+### 7.1 Reiter (`src/reiter/`)
+
+Schlank wie Nautilus 2.30 (B §3.8): Jeder Reiter (`reiter::Reiter`) hat
+eigenes `Ordnermodell`, eigene `Ansichten` und eigenen Verlauf; Menüleiste,
+Werkzeugleiste, Adressleiste, Seitenleiste und Statusleiste gehören dem
+Fenster und folgen dem gezeigten Reiter. Die Reiter liegen in einem
+`gtk::Notebook` (`reiter::Reiterliste`); die Reiterleiste und das Menü
+„Reiter“ erscheinen ab zwei Reitern. Kopf wie `nautilus-notebook.c`:
+Ladeanzeige, Name (gekürzt, `tab-expand`), Knopf „Reiter schließen“.
+
+| Bedienung | Wirkung |
+|---|---|
+| Strg+T (`win.neuer-reiter`), Datei → Neuer Reiter | neuer Reiter mit dem gezeigten Ort, Ansicht und Zoom, rechts vom aktuellen, wird gezeigt |
+| Strg+W (`win.schliessen`), Knopf im Kopf | schließt den Reiter; der letzte schließt das Fenster |
+| Strg+Bild↑/↓ (`win.reiter-vorheriger`/`-naechster`) | vorheriger/nächster Reiter, kein Umlauf |
+| Umschalt+Strg+Bild↑/↓ (`win.reiter-links`/`-rechts`) | Reiter verschieben |
+| Alt+1 … Alt+0 (`win.reiter`, Ziel `"1"`…`"0"`) | Reiter 1 bis 10 |
+| Mitteltaste auf Ordner, Pfadknopf, Ort der Seitenleiste; Umschalt+Strg+O und Kontextmenü „In neuem Reiter öffnen“ (`win.oeffnen-neuer-reiter`) | Ordner in neuem Reiter **dahinter** (Nautilus 2.30); mit Umschalt+Mitteltaste neues Fenster |
+| Eingabe auf mehreren Ordnern | je ein neuer Reiter (Nautilus 2.30, `nautilus-mime-actions.c`); 0.1 öffnete Fenster |
+| Dateien auf einen Reiterkopf ziehen (B03) | Ablage im Ordner des Reiters, Regeln wie beim Pfadknopf (`register.ablage`) |
+
+Keine Wiederherstellung beim Start, kein Ziehen von Reitern, kein Abtrennen,
+keine Einstellung für die Position neuer Reiter.
+
+Schnittstelle für die anderen Module (Änderung gegenüber §3.4):
+`Fenster::modell()` gibt jetzt ein `Ordnermodell` (billiger Handle) des
+aktuellen Reiters zurück, `ansichten()` ein `Rc<Ansichten>`; `ort()`,
+`ansicht()`, `gehe_zu`, `zurueck`, `vor`, `nach_oben` wirken auf den
+aktuellen Reiter. Neu: `reiterliste()`, `reiter_oeffnen(Some(&ort),
+zeigen, ansicht)`, `reiter_schliessen(&reiter)`. Die Haken `bei_ortswechsel`
+und `bei_auswahl` laufen auch beim Reiterwechsel. `register.neue_ansicht`
+läuft je Ansicht **und Reiter**. Ansichten melden sich über einen
+`Rueckruf` je Reiter (`reiter::ReiterRueckruf`); Umbenennen wählt den
+neuen Namen im Reiter, in dem umbenannt wurde.
+
+Logzeilen (immer, für die isolierten Läufe): `Reiter N neu: i/n URI`,
+`Reiter N gezeigt: i/n ansicht URI`, `Reiter N verschoben: i/n`,
+`Reiter N geschlossen, n offen`, `Reiter N freigegeben`,
+`Reiterleiste und Menü „Reiter“ an|aus`.
+
+### 7.2 Kompaktansicht (`src/kompaktansicht.rs`)
+
+Drittes Ansicht-Modul (`Ansichtsart::Kompakt`, Strg+3, Ansicht → Kompakt,
+Klappliste der Werkzeugleiste) am Trait `Ansicht` über `ansichtskern`
+(`Art::Kompakt`, `Modul<Kompaktansicht>`): Tastatur, Fokus, Tippsuche,
+Umbenennen (einzeilig), Auswahl, Gummiband und Kontextmenüs wie Symbol- und
+Listenansicht. Ein `GridView` mit waagrechter Ausrichtung: Einträge laufen
+eine Spalte hinunter und in die nächste, ↓/↑ in der Spalte, →/← eine Spalte
+weiter; das Mausrad blättert waagrecht (Strg+Rad zoomt). Zoom 50–200 %
+(`ansichtsregeln::STUFEN`), Vorgabe und Strg+0 folgen der Listenansicht
+(B §3.6). Breite nach `nautilus-icon-container.c`: „Alle Spalten haben
+dieselbe Breite“ (Einstellungen → Anzeige, `[Anzeige] KompaktGleichBreit`,
+Vorgabe an) macht jede Spalte so breit wie den breitesten Namen des Ordners,
+höchstens so viele Zeichen wie Nautilus bei 150 px × Zoom (8 bei 33 %, 13
+bei 50 %, 21 bei 100 %; gekürzte Namen stehen im Tooltip); ohne die
+Einstellung ist jede Spalte so breit wie ihr längster Name, nichts wird
+gekürzt. Der breiteste Name wird an den 48 längsten Namen gemessen
+(`GEMESSEN`), nicht an allen.
+
+### 7.3 Migration (B §4.2)
+
+| Nr. | Stand nach C3 |
+|---|---|
+| M1 Lesezeichen | unverändert `~/.config/gtk-3.0/bookmarks`, dieselbe Datei wie Files; geprüft (Szenario `migration`) |
+| M3 Panel, Desktop | Panel `places_menu.rs`: `org.querencia.Dateien.desktop` vor Files und der Strata-Brücke, Name „Querencia Dateien“ vor „Querencia Files“ (der englische Name „Files“ zählt nicht, er ist auch GNOMEs); Desktop nutzt seit 0.3.0 `querencia_dateiarbeit::oeffnen::FILE_MANAGERS` mit Dateien an erster Stelle (unverändert). `window_icons.rs` braucht keinen Eintrag in `RENAMED` (App-ID = Desktop-ID). GIO-Vorgabe gewinnt immer |
+| M6 Konfiguration | einmal beim ersten Start aus `~/.config/querencia-files/settings.toml`: `show_hidden`, `browser_mode` (`icons`/`grid` → Symbole, `list`/`explorer` → Liste, `columns` und Unbekanntes → Liste), `sort_key`, `folders_first`, `sidebar_expanded`, Klicks; Vermerk `[Migration] AusFiles=1`, die Files-Datei wird nur gelesen. **Klicks wie Files QF-0t** (`ui/preferences.rs`): die TOML-Schlüssel heißen nach den Ansichten des alten Strata – Symbole `grid_*_clicks`, Liste `explorer_*_clicks`, Spalten `list_*_clicks`; „Einfacher Klick“ nur, wenn im Modus Ordner **und** Dateien mit einem Klick öffnen. Der erste Start ohne Files-Datei schreibt `dateien.ini` sofort, eine später auftauchende `settings.toml` wird nicht übernommen. `tabs.toml` nie |
+| M8 Texte | Kürzelübersicht und Handbuch nennen noch Querencia Files: Textliste für C4 in  §6 |
+| M2, M4, M5, M7, M9 | Paketierung (C4) bzw. Ansicht je Ordner (später) |
+
+### 7.4 Befunde aus 0.1.0, in C3 behoben
+
+- **Fenster blieben bis zum Programmende im Speicher** (mit Ordnermodell
+  und Überwachung): `App` hält das `Fenster`, das `Fenster` das
+  `GtkWindow`, und GTK 4 sendet „destroy“ erst nach der letzten Referenz.
+  Jetzt nimmt `window-removed` der Anwendung das Fenster aus der Liste
+  (`app.rs`); `operationen.rs` lässt die Aktionen freigegebener Fenster in
+  Ruhe (sonst GIO-CRITICAL).
+- **Panik beim Programmende** nach Strg+W auf dem letzten Fenster (auch mit
+  dem Live-Binary 0.1.0 nachgestellt): die `App` im Thread-Local wurde erst
+  beim Abbau der TLS fallen gelassen, die GTK-Closures liefen dann in glibs
+  Thread-Wächter. `app::freigeben()` nach `run()`.
+- Umschalt+Strg+I (Auswahl umkehren) stand im Menü, war aber nicht gebunden.
+
+### 7.5 Prüfung
+
+`cargo test`: `reiter::regeln` (Position, Nachbarn ohne Umlauf, Alt+Ziffer,
+Leiste ab zwei), `kompaktansicht` (Grenzen in px und Zeichen, Breite je
+Einstellung, Kandidaten), `konfig` (M6-Klicks je Modus, erster Start ohne
+Files), Panel `places_menu` (Rangfolge). Isoliert (`werkzeug/pruefung/`,
+`lauf.sh NAME szenarien/X.sh`): `reiter` (20 Fälle), `kompakt` (14),
+`migration` (mit `LAUF_FILES_TOML=…/daten/files-settings.toml` und ohne,
+je 3). Die Probe `daten/files-settings.toml` hat seit C3 `list_file_clicks`.
+
+### 7.6 Grenzen
+
+- GTK 4.22 meldet beim ersten Einblenden der Reiterleiste je Fenster zwei
+  Warnungen „Trying to measure GtkImage … for width of 0“ (Schließen-Knöpfe
+  der Köpfe); sichtbar ist nichts (Fotos). Nach einem Klick auf den
+  Schließen-Knopf kam in einem Ablauf einmal pixman „Invalid rectangle“
+  (zehn Zeilen), ohne sichtbare Folge; nicht nachgestellt.
+- Die Kompaktansicht nutzt die Schrift der Sitzung in allen Zoomstufen
+  (Nautilus verkleinerte sie bei 33 und 50 % um 2 pt).
