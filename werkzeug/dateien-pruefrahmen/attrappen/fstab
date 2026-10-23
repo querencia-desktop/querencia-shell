@@ -1,0 +1,5 @@
+# Prüfrahmen Querencia Dateien: Attrappe „nicht eingehängtes Laufwerk“.
+# Nur über LIBMOUNT_FSTAB in huelle.sh (--fstab); das Gerät gibt es nicht.
+# noauto,user,x-gvfs-show ergibt in GIO (GIO_USE_VOLUME_MONITOR=unix) ein
+# GVolume „QD-Nicht“ mit can_mount = True.
+/dev/disk/by-label/QD-NICHT /media/QD-Nicht ext4 noauto,user,x-gvfs-show 0 0

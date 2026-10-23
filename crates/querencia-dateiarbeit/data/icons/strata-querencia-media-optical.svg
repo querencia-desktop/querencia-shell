@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Optisches Medium</title>
+  <circle cx="32" cy="32" r="28" fill="#c8c8c8" stroke="#3c3c3c" stroke-width="3"/>
+  <path d="M32 6 A26 26 0 0 1 58 32 L44 32 A12 12 0 0 0 32 20 Z" fill="#f07746"/>
+  <path d="M32 58 A26 26 0 0 1 6 32 L20 32 A12 12 0 0 0 32 44 Z" fill="#f07746"/>
+  <circle cx="32" cy="32" r="10" fill="#fff4ee" stroke="#3c3c3c" stroke-width="2.5"/>
+  <circle cx="32" cy="32" r="4" fill="#3c3c3c"/>
+</svg>

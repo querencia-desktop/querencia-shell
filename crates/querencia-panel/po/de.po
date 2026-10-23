@@ -261,31 +261,6 @@ msgstr "Systemverwaltung"
 msgid "Restore Windows"
 msgstr "Fenster wiederherstellen"
 
-#: src/classic_menu.rs:150
-msgctxt "keyboard key"
-msgid "Ctrl"
-msgstr "Strg"
-
-#: src/classic_menu.rs:152
-msgctxt "keyboard key"
-msgid "Shift"
-msgstr "Umschalt"
-
-#: src/classic_menu.rs:162
-msgctxt "keyboard key"
-msgid "Del"
-msgstr "Entf"
-
-#: src/classic_menu.rs:164
-msgctxt "keyboard key"
-msgid "Enter"
-msgstr "Eingabe"
-
-#: src/classic_menu.rs:165
-msgctxt "keyboard key"
-msgid "Print"
-msgstr "Druck"
-
 #. TRANSLATORS: format of the panel clock (glib::DateTime::format, i.e. strftime); day and month names come from the time locale
 #: src/clock.rs:64
 msgid "%a %b %e, %l:%M %p"
@@ -299,7 +274,7 @@ msgstr "Mitteilungszentrale nicht verfügbar"
 msgid "No unread notifications"
 msgstr "Keine ungelesenen Mitteilungen"
 
-#: src/glocke.rs:105 src/i18n.rs:188
+#: src/glocke.rs:105 src/i18n.rs:184
 #, no-c-format
 msgid "{n} unread notification"
 msgid_plural "{n} unread notifications"
@@ -322,7 +297,7 @@ msgstr "Alle als _gelesen markieren"
 msgid "Remove From Panel"
 msgstr "Aus dem Panel entfernen"
 
-#: src/i18n.rs:192 src/workspace_switcher.rs:256
+#: src/i18n.rs:193 src/workspace_switcher.rs:256
 #, no-c-format
 msgid "Workspace {number}"
 msgstr "Arbeitsfläche {number}"
@@ -423,7 +398,7 @@ msgstr "{security} – nicht unterstützt"
 msgid "More Networks…"
 msgstr "Weitere Netze …"
 
-#: src/network_applet.rs:381 src/network_applet.rs:1188
+#: src/network_applet.rs:381 src/network_applet.rs:1185
 msgid "Connect to Hidden Network…"
 msgstr "Mit verborgenem Netz verbinden …"
 
@@ -431,7 +406,7 @@ msgstr "Mit verborgenem Netz verbinden …"
 msgid "No network device"
 msgstr "Kein Netzwerkgerät"
 
-#: src/network_applet.rs:398 src/network_applet.rs:1190
+#: src/network_applet.rs:398 src/network_applet.rs:1187
 msgid "Wireless Enabled"
 msgstr "WLAN aktiviert"
 
@@ -439,7 +414,7 @@ msgstr "WLAN aktiviert"
 msgid "Airplane Mode"
 msgstr "Flugmodus"
 
-#: src/network_applet.rs:411 src/network_applet.rs:1141 src/network_applet.rs:1193
+#: src/network_applet.rs:411 src/network_applet.rs:1138 src/network_applet.rs:1190
 msgid "Connection Information…"
 msgstr "Verbindungsinformationen …"
 
