@@ -34,15 +34,22 @@
 //!   Entf and Umschalt+Entf, and go to and come from other programs by
 //!   clipboard and drag and drop (`transfer.rs`). Dragging icons is a real
 //!   drag now; inside the desktop it still only moves the icons.
-//! - New folders and documents are created with GIO calls that fail on an
-//!   existing name, after [`icons::unique_name`] picked a free one: nothing
-//!   is ever overwritten. The desktop directory itself is created only by
-//!   such a user action.
+//! - New folders and documents are jobs of `querencia_dateiarbeit` that
+//!   pick a free name and never replace: nothing is ever overwritten. The
+//!   desktop directory itself is created only by such a user action.
 //! - QE-03: mounted removable volumes (`volumes.rs`) appear below the trash
 //!   while they are mounted (GIO's volume monitor), open in Querencia Files
 //!   and offer "Auswerfen" or "Aushängen". They can be moved like any icon,
 //!   but their places are kept in memory only, never in `desktop-symbole`
 //!   (`QUERENCIA_DESKTOP_VOLUMES=0` leaves them out).
+//! - 0.3.0 (E3): removable media that are not mounted appear too; a double
+//!   click or "Einhängen" mounts them (passwords through GTK's mount
+//!   operation) and opens them. Media inserted while the desktop runs are
+//!   mounted at once when GIO says so (`should_automount`), as GNOME 2 did.
+//! - 0.3.0: copies, moves, the trash and new objects are jobs with the
+//!   window "Dateioperationen" and the question for taken names (E2,
+//!   `transfer.rs`, `fortschritt.rs`, `frage.rs`); the trash icon follows
+//!   `papierkorb::Papierkorb`, the folder `ueberwachung::FolderWatch`.
 //! - QE-04 (QD-042): `desktop.ini` `[Icons]` hides Rechner, Persönlicher
 //!   Ordner or Papierkorb and sets the icon size (32/48/72/96, the cell
 //!   grows with it); `[Volumes]` chooses the volume types (removable,
@@ -64,34 +71,30 @@ use gtk4::{
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
+use querencia_dateiarbeit::auftraege::{JobId, Op, Queue};
+use querencia_dateiarbeit::papierkorb::Papierkorb;
+use querencia_dateiarbeit::ueberwachung::{self, Aenderung, FolderWatch};
+use querencia_dateiarbeit::{laufwerke, namen, oeffnen, typ};
+use querencia_oberflaeche::symbole;
+
 use crate::classic_menu;
 use crate::config;
-use crate::i18n::{gettext, gettext_f, ngettext_f};
+use crate::i18n::{gettext, gettext_f};
 use crate::icons::{self, Item, Kind};
 use crate::layout::{self, Geometry, Point};
-use crate::rename;
 use crate::store::{self, Store};
-use crate::volumes::{self, Picture, Removal, Volume};
+use crate::volumes::{self, Removal, Volume};
 
+mod fortschritt;
+mod frage;
+mod kennwort;
 mod transfer;
 
-/// Querencia Files: the new desktop ID first, then the one of Files up to
-/// QF-0s (kept as a hidden bridge for a while), so that Rechner,
-/// Persönlicher Ordner, Papierkorb and volumes open in Files whichever of
-/// the two is installed.
-pub const FILES_APPS: [&str; 2] = [
-    "org.querencia.Files.desktop",
-    "io.github.lgse.Strata.desktop",
-];
-
-/// Without GIO, so that the order is tested without installed starters.
-fn first_found<T>(ids: &[&str], lookup: impl Fn(&str) -> Option<T>) -> Option<T> {
-    ids.iter().find_map(|id| lookup(id))
-}
-
-/// Querencia Files' starter (`FILES_APPS`), if installed.
+/// The program for Rechner, Papierkorb and volumes: Querencia Dateien, then
+/// Querencia Files under its new and its old desktop ID
+/// (`oeffnen::FILE_MANAGERS`, since 0.3.0 shared with the file manager).
 pub fn files_app() -> Option<DesktopAppInfo> {
-    first_found(&FILES_APPS, DesktopAppInfo::new)
+    oeffnen::file_manager()
 }
 pub const TERMINAL_APP: &str = "org.example.Querencia.Terminal.desktop";
 // Grid cell at the reference font (11 pt, as HMP-10b measured): wide
@@ -211,7 +214,9 @@ pub struct Icons {
     migrated_order: Vec<String>,
     /// HMP-10a: the HMP-10 state file was copied once before the first write.
     backed_up: Cell<bool>,
-    watches: RefCell<Vec<gio::FileMonitor>>,
+    /// 0.3.0: the desktop folder (`ueberwachung::FolderWatch`, waits for a
+    /// missing one, QD-112).
+    folder_watch: RefCell<Option<FolderWatch>>,
     /// Applies a new desktop.ini at once (main.rs `load`).
     background_changed: Rc<dyn Fn()>,
     drag: RefCell<Option<Drag>>,
@@ -232,15 +237,17 @@ pub struct Icons {
     editing: RefCell<Option<Editing>>,
     /// A refresh that waits for the end of a drag or rename.
     reload_waiting: Cell<bool>,
-    reload_timer: RefCell<Option<glib::SourceId>>,
-    /// QD-112: new monitors shortly after the desktop directory came or went.
-    rewatch_timer: RefCell<Option<glib::SourceId>>,
-    /// QE-02: what the trash icon shows (`Some(true)`: full); `None` before
-    /// the first count or without a trash icon.
+    /// QE-02: what the trash icon shows (`Some(true)`: full); `None` without
+    /// a trash icon.
     trash_full: Cell<Option<bool>>,
-    /// QE-02: a recount shortly after trash monitor events (they come in
-    /// bursts while a folder is thrown away or the trash is emptied).
-    trash_timer: RefCell<Option<glib::SourceId>>,
+    /// 0.3.0: the trash count (a monitor, counted off the main thread).
+    papierkorb: Papierkorb,
+    /// 0.3.0: the jobs (copy, move, trash, …), one thread each.
+    queue: Queue,
+    running: RefCell<std::collections::HashMap<JobId, transfer::Running>>,
+    /// 0.3.0: the window "Dateioperationen" and the open questions.
+    fortschritt: Rc<fortschritt::Fortschritt>,
+    fragen: Rc<frage::Fragen>,
     /// QE-03: `None` when volume icons are switched off.
     volume_monitor: Option<gio::VolumeMonitor>,
     /// QE-03: places of volume icons, for this session only.
@@ -345,7 +352,7 @@ impl Icons {
         )
         .0;
         log(&settings_text(&settings));
-        let icons = Rc::new(Self {
+        let icons = Rc::new_cyclic(|weak_icons: &std::rc::Weak<Self>| Self {
             window,
             fixed,
             anchor,
@@ -367,7 +374,7 @@ impl Icons {
             store: RefCell::new(store),
             migrated_order,
             backed_up: Cell::new(false),
-            watches: RefCell::default(),
+            folder_watch: RefCell::default(),
             background_changed,
             drag: RefCell::default(),
             own_drag: RefCell::default(),
@@ -380,10 +387,19 @@ impl Icons {
             press_swallowed: Cell::new(false),
             editing: RefCell::default(),
             reload_waiting: Cell::new(false),
-            reload_timer: RefCell::default(),
-            rewatch_timer: RefCell::default(),
             trash_full: Cell::new(None),
-            trash_timer: RefCell::default(),
+            papierkorb: Papierkorb::new(),
+            queue: Queue::new(),
+            running: RefCell::default(),
+            fortschritt: fortschritt::Fortschritt::new({
+                let weak = weak_icons.clone();
+                move |id| {
+                    if let Some(icons) = weak.upgrade() {
+                        icons.cancel_job(id);
+                    }
+                }
+            }),
+            fragen: Rc::default(),
             volume_monitor: crate::icons_enabled(
                 std::env::var("QUERENCIA_DESKTOP_VOLUMES").ok().as_deref(),
             )
@@ -395,6 +411,22 @@ impl Icons {
             last_logged: RefCell::default(),
             last_selection: RefCell::default(),
             check_tiles: Cell::new(false),
+        });
+        let weak = Rc::downgrade(&icons);
+        icons.queue.subscribe(move |event| {
+            if let Some(icons) = weak.upgrade() {
+                icons.job_event(event);
+            }
+        });
+        // QE-02: the trash icon follows the count, without polling
+        let weak = Rc::downgrade(&icons);
+        icons.papierkorb.connect_changed(move |count| {
+            if debugging() {
+                log(&format!("Papierkorb gezählt: {count:?}"));
+            }
+            if let Some(icons) = weak.upgrade() {
+                icons.show_trash_state(count);
+            }
         });
         icons.install_actions();
         icons.install_clicks();
@@ -552,44 +584,6 @@ impl Icons {
         self.check_tiles.set(true);
     }
 
-    /// A refresh shortly after file monitor events (they come in bursts).
-    fn reload_soon(self: &Rc<Self>) {
-        if let Some(id) = self.reload_timer.take() {
-            id.remove();
-        }
-        let weak = Rc::downgrade(self);
-        let id = glib::timeout_add_local_once(Duration::from_millis(120), move || {
-            if let Some(icons) = weak.upgrade() {
-                icons.reload_timer.take();
-                icons.reload();
-            }
-        });
-        *self.reload_timer.borrow_mut() = Some(id);
-    }
-
-    /// QE-02: a recount of the trash shortly after its monitor's events.
-    fn update_trash_soon(self: &Rc<Self>) {
-        if let Some(id) = self.trash_timer.take() {
-            id.remove();
-        }
-        let weak = Rc::downgrade(self);
-        let id = glib::timeout_add_local_once(Duration::from_millis(120), move || {
-            if let Some(icons) = weak.upgrade() {
-                icons.trash_timer.take();
-                icons.update_trash_icon();
-            }
-        });
-        *self.trash_timer.borrow_mut() = Some(id);
-    }
-
-    /// QE-02: counts the trash and shows "user-trash" or "user-trash-full".
-    fn update_trash_icon(&self) {
-        if self.trash_full.get().is_none() {
-            return; // no trash icon (Querencia Files missing)
-        }
-        self.show_trash_state(trash_count());
-    }
-
     /// QE-02: swaps the picture of the trash icon (and of nothing else)
     /// when the trash changed between empty and full.
     fn show_trash_state(&self, count: Option<u32>) {
@@ -608,7 +602,7 @@ impl Icons {
             .and_then(|tile| tile.first_child())
             .and_then(|child| child.downcast::<Image>().ok());
         if let Some(image) = image {
-            image.set_from_gicon(&trash_icon(full));
+            symbole::set(&image, &typ::trash_icon(full));
         }
         log(&format!(
             "Papierkorb jetzt {}",
@@ -639,10 +633,10 @@ impl Icons {
         for widget in self.widgets.borrow_mut().drain(..) {
             self.fixed.remove(&widget);
         }
-        // QE-02: the trash is counted once per rebuild; afterwards its
-        // monitor keeps the icon up to date (`update_trash_icon`).
+        // QE-02: the trash as last counted (0.3.0: `Papierkorb`, never
+        // counted on the main thread); its signal keeps the icon up to date.
         let trash_full = if items.iter().any(|item| item.kind == Kind::Trash) {
-            let count = trash_count();
+            let count = self.papierkorb.anzahl();
             let full = count.unwrap_or(0) > 0;
             log_trash_icon(full, count);
             Some(full)
@@ -658,6 +652,7 @@ impl Icons {
                     trash_full.unwrap_or(false),
                     self.settings.get().size,
                     self.geometry.get().tile,
+                    self.window.scale_factor(),
                 )
             })
             .collect();
@@ -1364,17 +1359,26 @@ impl Icons {
             // QE-03: GNOME 2's volume menu, without what Querencia lacks
             self.menu
                 .append(Some(&gettext("Open")), Some("desktop.open"));
-            if let Some(removal) = volume.removal {
-                let section = gio::Menu::new();
-                section.append(Some(&removal.menu_label()), Some(removal.action()));
+            let section = gio::Menu::new();
+            if volume.uri.is_none() {
+                // E3: a medium that is not mounted yet
+                section.append(Some(&gettext("Mount")), Some("desktop.mount"));
+            } else if let Some(removal) = volume.removal {
+                section.append(Some(&removal.menu_label()), Some(volumes::action(removal)));
+            }
+            if section.n_items() > 0 {
                 self.menu.append_section(None, &section);
             }
             if debugging() {
                 log(&format!(
                     "Menü Datenträger: Öffnen{}",
-                    volume
-                        .removal
-                        .map_or(String::new(), |r| format!(", {}", r.label()))
+                    if volume.uri.is_none() {
+                        ", Einhängen".to_owned()
+                    } else {
+                        volume
+                            .removal
+                            .map_or(String::new(), |r| format!(", {}", r.label()))
+                    }
                 ));
             }
         } else if let Some(index) = index {
@@ -1388,12 +1392,10 @@ impl Icons {
                 self.menu
                     .append(Some(&gettext("Open Trash")), Some("desktop.open"));
                 let empty = gio::Menu::new();
-                // insensitive while the trash is empty (or unreachable)
-                let count = trash_count();
+                // insensitive while the trash is empty (or unreachable), as
+                // last counted
+                let count = self.papierkorb.anzahl();
                 let full = count.unwrap_or(0) > 0;
-                // QE-02: the icon follows the same count (also without a
-                // working trash monitor)
-                self.show_trash_state(count);
                 empty.append(
                     Some(&gettext("Empty Trash…")),
                     full.then_some("desktop.empty-trash"),
@@ -1650,6 +1652,20 @@ impl Icons {
             Box::new(|icons, _| icons.remove_volume(Removal::Eject)),
         );
         add(
+            "mount",
+            None,
+            Box::new(|icons, _| {
+                if let Some(item) = icons
+                    .selected
+                    .get()
+                    .and_then(|i| icons.items.borrow().get(i).cloned())
+                    && let Kind::Volume(volume) = &item.kind
+                {
+                    mount_volume(&item.name, volume, &icons.window, false);
+                }
+            }),
+        );
+        add(
             "rename",
             None,
             Box::new(|icons, _| {
@@ -1669,14 +1685,14 @@ impl Icons {
             None,
             Box::new(|icons, _| {
                 if let Some(dir) = icons.ensure_desktop_dir() {
-                    let name = icons::unique_name(&gettext("New Folder"), |n| dir.join(n).exists());
-                    match gio::File::for_path(dir.join(&name))
-                        .make_directory(gio::Cancellable::NONE)
-                    {
-                        Ok(()) => log(&format!("Ordner angelegt: {name}")),
-                        Err(err) => log(&format!("Ordner {name} nicht angelegt: {err}")),
-                    }
-                    icons.reload();
+                    // a free name ("Neuer Ordner 2"), never an existing one
+                    icons.start_job(transfer::Job::new(
+                        Op::NewFolder {
+                            name: gettext("New Folder"),
+                        },
+                        Vec::new(),
+                        Some(dir),
+                    ));
                 }
             }),
         );
@@ -1686,8 +1702,7 @@ impl Icons {
             Box::new(|icons, value| {
                 let template = value.and_then(|v| v.str()).unwrap_or_default().to_owned();
                 if let Some(dir) = icons.ensure_desktop_dir() {
-                    new_document(&dir, &template);
-                    icons.reload();
+                    icons.start_job(new_document(dir, &template));
                 }
             }),
         );
@@ -1750,7 +1765,7 @@ impl Icons {
     /// "Abbrechen" is the default and Escape cancels); only "Papierkorb
     /// leeren" empties it.
     fn confirm_empty_trash(self: &Rc<Self>) {
-        if trash_count().unwrap_or(0) == 0 {
+        if self.papierkorb.anzahl().unwrap_or(0) == 0 {
             log("Papierkorb ist leer: nichts zu tun");
             return;
         }
@@ -1779,48 +1794,13 @@ impl Icons {
         );
     }
 
-    /// Empties the trash through GVfs (`trash:///`, every trash location
-    /// it knows): each top-level object is deleted with `g_file_delete`.
-    /// GVfs takes it out of the trash and removes it there, never
-    /// following links out of the trash; nothing here deletes paths itself.
-    /// One object after the other, asynchronously; afterwards the icon is
-    /// refreshed, and every object that could not be deleted is reported.
+    /// Empties the trash as a job (0.3.0): every top-level object of
+    /// `trash:///` (every trash location GVfs knows) is deleted through GIO,
+    /// never following links out of the trash; with progress and
+    /// "Abbrechen", and every object that could not be deleted is reported.
     fn empty_trash(self: &Rc<Self>) {
-        let trash = gio::File::for_uri("trash:///");
-        let listed = trash
-            .enumerate_children(
-                "standard::name,standard::display-name",
-                gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
-                gio::Cancellable::NONE,
-            )
-            .and_then(|objects| {
-                let mut found = std::collections::VecDeque::new();
-                while let Some(info) = objects.next_file(gio::Cancellable::NONE)? {
-                    found.push_back((objects.child(&info), info.display_name().to_string()));
-                }
-                Ok(found)
-            });
-        let objects = match listed {
-            Ok(objects) => objects,
-            Err(err) => {
-                log(&format!("Papierkorb nicht erreichbar: {err}"));
-                show_error(
-                    &gettext("The trash could not be emptied."),
-                    &gettext_f(
-                        "The trash cannot be reached: {why}",
-                        &[("why", err.message())],
-                    ),
-                );
-                return;
-            }
-        };
-        log(&format!("Papierkorb leeren: {} Objekte", objects.len()));
-        let run = Rc::new(RefCell::new(TrashRun {
-            total: objects.len(),
-            objects,
-            failed: Vec::new(),
-        }));
-        delete_next(Rc::downgrade(self), run);
+        log("Papierkorb leeren");
+        self.start_job(transfer::Job::new(Op::EmptyTrash, Vec::new(), None));
     }
 
     /// HMP-10a "Symbole am Raster ausrichten": every icon is put on the
@@ -1907,147 +1887,73 @@ impl Icons {
                 ));
                 return None;
             }
+            // the folder watch notices it (it waits in the parent, QD-112)
             log(&format!("Arbeitsflächen-Ordner {} angelegt", dir.display()));
-            self.watch();
         }
         Some(dir)
     }
 
-    /// Follows the desktop directory and the trash.
+    /// Follows the desktop directory (0.3.0: `FolderWatch`): a directory
+    /// made after the start (or removed) is awaited in its nearest existing
+    /// ancestor (QD-112). The trash has its own monitor (`Papierkorb`).
     fn watch(self: &Rc<Self>) {
-        let mut watches = Vec::new();
-        let mut targets = vec![gio::File::for_uri("trash:///")];
-        let desktop = desktop_dir();
-        if let Some(dir) = desktop.as_ref().filter(|d| d.is_dir()) {
-            targets.push(gio::File::for_path(dir));
-        }
-        // QD-112: a desktop directory made after the start (or removed) is
-        // awaited in its nearest existing ancestor
-        let waiting = desktop
-            .as_ref()
-            .and_then(|dir| icons::waiting_point(dir, Path::is_dir));
-        if let Some(point) = &waiting {
-            match gio::File::for_path(point)
-                .monitor_directory(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE)
-            {
-                Ok(monitor) => {
-                    log(&format!(
-                        "Arbeitsflächen-Ordner fehlt, warte in {}",
-                        point.display()
-                    ));
-                    let weak = Rc::downgrade(self);
-                    let dir = desktop.clone().unwrap_or_default();
-                    monitor.connect_changed(move |_, file, other, _| {
-                        let touched = [Some(file), other]
-                            .into_iter()
-                            .flatten()
-                            .filter_map(|f| f.path())
-                            .any(|path| icons::concerns_desktop(&dir, &path));
-                        if touched && let Some(icons) = weak.upgrade() {
-                            icons.rewatch_soon();
-                        }
-                    });
-                    watches.push(monitor);
-                }
-                Err(err) => log(&format!("keine Überwachung von {}: {err}", point.display())),
-            }
-        }
-        for target in targets {
-            let is_trash = target.uri_scheme().as_deref() == Some("trash");
-            // WATCH_MOVES: a rename inside the folder comes as one event with
-            // the old and the new name (HMP-10), not as delete and create.
-            match target
-                .monitor_directory(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE)
-            {
-                Ok(monitor) => {
-                    let weak = Rc::downgrade(self);
-                    monitor.connect_changed(move |_, file, other, event| {
-                        let Some(icons) = weak.upgrade() else { return };
-                        // QE-02: the trash only changes the trash icon; no
-                        // rebuild of all icons, no polling (GVfs reports
-                        // every change of every trash location)
-                        if is_trash {
-                            if !matches!(event, gio::FileMonitorEvent::PreUnmount) {
-                                icons.update_trash_soon();
-                            }
-                            return;
-                        }
-                        // QD-112: the desktop directory itself went away
-                        if matches!(
-                            event,
-                            gio::FileMonitorEvent::Deleted | gio::FileMonitorEvent::MovedOut
-                        ) && file.path().is_some_and(|p| Some(p) == desktop_dir())
-                        {
-                            icons.rewatch_soon();
-                        }
-                        // renamed elsewhere (a file manager): keep the place
-                        if event == gio::FileMonitorEvent::Renamed
-                            && let (Some(old), Some(new)) =
-                                (file.basename(), other.and_then(|o| o.basename()))
-                            && file.parent().is_some_and(|dir| {
-                                Some(dir.uri())
-                                    == desktop_dir().map(|d| gio::File::for_path(d).uri())
-                            })
-                        {
-                            let (old, new) = (old.to_string_lossy(), new.to_string_lossy());
-                            if icons
-                                .store
-                                .borrow()
-                                .place(&store::key(store::Art::File, &old))
-                                .is_some()
-                            {
-                                icons.store.borrow_mut().rename(&old, &new);
-                                icons.save();
-                                log(&format!("umbenannt (außerhalb): {old} → {new}"));
-                            }
-                        }
-                        // ChangesDoneHint: a starter edited elsewhere
-                        if matches!(
-                            event,
-                            gio::FileMonitorEvent::Created
-                                | gio::FileMonitorEvent::Deleted
-                                | gio::FileMonitorEvent::MovedIn
-                                | gio::FileMonitorEvent::MovedOut
-                                | gio::FileMonitorEvent::Renamed
-                                | gio::FileMonitorEvent::ChangesDoneHint
-                        ) {
-                            icons.reload_soon();
-                        }
-                    });
-                    watches.push(monitor);
-                }
-                Err(err) => log(&format!("keine Überwachung von {}: {err}", target.uri())),
-            }
-        }
-        *self.watches.borrow_mut() = watches;
-    }
-
-    /// QD-112: the desktop directory appeared or vanished: new monitors
-    /// (the directory itself, or the ancestor to wait in) and a refresh, so
-    /// that its files appear at once.
-    fn rewatch_soon(self: &Rc<Self>) {
-        if let Some(id) = self.rewatch_timer.take() {
-            id.remove();
+        let Some(dir) = desktop_dir() else {
+            return;
+        };
+        let watch = FolderWatch::new(&gio::File::for_path(&dir), true);
+        if !watch.watches_folder() {
+            log_waiting(&dir);
         }
         let weak = Rc::downgrade(self);
-        let id = glib::timeout_add_local_once(Duration::from_millis(120), move || {
+        watch.connect(move |changes| {
             if let Some(icons) = weak.upgrade() {
-                icons.rewatch_timer.take();
-                let dir = desktop_dir();
-                let present = dir.as_ref().is_some_and(|d| d.is_dir());
-                log(&format!(
-                    "Arbeitsflächen-Ordner {}: {}",
-                    if present { "da" } else { "weg" },
-                    dir.map(|d| d.display().to_string()).unwrap_or_default()
-                ));
-                icons.watch();
-                icons.reload();
+                icons.folder_changed(changes);
             }
         });
-        *self.rewatch_timer.borrow_mut() = Some(id);
+        *self.folder_watch.borrow_mut() = Some(watch);
     }
 
-    /// QE-03: follows mounts coming and going (and changing).
+    /// A bundle of changes of the desktop directory (already collected over
+    /// a short time): refresh, and a file renamed elsewhere (a file manager)
+    /// keeps its place.
+    fn folder_changed(self: &Rc<Self>, changes: &[Aenderung]) {
+        let dir = desktop_dir().unwrap_or_default();
+        for change in changes {
+            match change {
+                Aenderung::Umbenannt(old, new) => {
+                    let (Some(old), Some(new)) = (old.basename(), new.basename()) else {
+                        continue;
+                    };
+                    let (old, new) = (old.to_string_lossy(), new.to_string_lossy());
+                    if self
+                        .store
+                        .borrow()
+                        .place(&store::key(store::Art::File, &old))
+                        .is_some()
+                    {
+                        self.store.borrow_mut().rename(&old, &new);
+                        self.save();
+                        log(&format!("umbenannt (außerhalb): {old} → {new}"));
+                    }
+                }
+                Aenderung::OrdnerDa => {
+                    log(&format!("Arbeitsflächen-Ordner da: {}", dir.display()));
+                }
+                Aenderung::OrdnerWeg => {
+                    log(&format!("Arbeitsflächen-Ordner weg: {}", dir.display()));
+                    log_waiting(&dir);
+                }
+                Aenderung::Neu(_)
+                | Aenderung::Weg(_)
+                | Aenderung::Geaendert(_)
+                | Aenderung::NeuLaden => {}
+            }
+        }
+        self.reload();
+    }
+
+    /// QE-03: follows mounts coming and going (and changing); 0.3.0 (E3):
+    /// volumes too, and mounts media inserted now that GIO wants mounted.
     fn watch_volumes(self: &Rc<Self>) {
         let Some(monitor) = &self.volume_monitor else {
             log("Datenträger-Symbole aus (QUERENCIA_DESKTOP_VOLUMES=0)");
@@ -2065,6 +1971,22 @@ impl Icons {
         monitor.connect_mount_added(soon(&weak));
         monitor.connect_mount_removed(soon(&weak));
         monitor.connect_mount_changed(soon(&weak));
+        let soon = |icons: &std::rc::Weak<Self>| {
+            let weak = icons.clone();
+            move |_: &gio::VolumeMonitor, _: &gio::Volume| {
+                if let Some(icons) = weak.upgrade() {
+                    icons.update_volumes_soon();
+                }
+            }
+        };
+        monitor.connect_volume_removed(soon(&weak));
+        monitor.connect_volume_changed(soon(&weak));
+        let weak = Rc::downgrade(self);
+        monitor.connect_volume_added(move |_, volume| {
+            let Some(icons) = weak.upgrade() else { return };
+            icons.update_volumes_soon();
+            automount(volume);
+        });
     }
 
     /// QE-03: a look at the volumes shortly after monitor events (they
@@ -2125,11 +2047,16 @@ impl Icons {
         let (Kind::Volume(volume), Some(monitor)) = (&item.kind, &self.volume_monitor) else {
             return;
         };
-        let Some(mount) = volumes::find_mount(monitor, &volume.uri) else {
+        let Some(mount) = volume
+            .uri
+            .as_deref()
+            .and_then(|uri| laufwerke::find_mount(monitor, uri))
+        else {
             log(&format!("{} ist nicht mehr eingehängt", item.name));
             return;
         };
-        let operation = gtk4::MountOperation::new(Some(&self.window));
+        // 0.3.0: the desktop's own questions (`kennwort.rs`), not GTK's
+        let operation = kennwort::mount_operation();
         let question = ask_when_busy(&operation, removal, &item.name, mount.root().path());
         let name = item.name.clone();
         log(&format!("{}: {name}", removal.label()));
@@ -2141,7 +2068,7 @@ impl Icons {
                     Removal::Unmount => "ausgehängt",
                 }
             )),
-            Err(err) => match volumes::failure(
+            Err(err) => match laufwerke::failure(
                 err.kind::<gio::IOErrorEnum>(),
                 removal,
                 &name,
@@ -2157,20 +2084,10 @@ impl Icons {
                 }
             },
         };
-        match removal {
-            Removal::Eject => mount.eject_with_operation(
-                gio::MountUnmountFlags::NONE,
-                Some(&operation),
-                gio::Cancellable::NONE,
-                done,
-            ),
-            Removal::Unmount => mount.unmount_with_operation(
-                gio::MountUnmountFlags::NONE,
-                Some(&operation),
-                gio::Cancellable::NONE,
-                done,
-            ),
-        }
+        glib::MainContext::default().spawn_local(async move {
+            let result = laufwerke::entfernen(&mount, removal, &Rueckfrage(operation)).await;
+            done(result);
+        });
     }
 
     /// Edits the label of icon `index` in place (F2, "Umbenennen …").
@@ -2255,7 +2172,7 @@ impl Icons {
             entry: entry.clone(),
         });
         entry.grab_focus();
-        let selected = rename::selected_chars(&item.name, matches!(item.kind, Kind::File(_)));
+        let selected = namen::selected_chars(&item.name, matches!(item.kind, Kind::File(_)));
         entry.select_region(0, i32::try_from(selected).unwrap_or(-1));
         log(&format!("Umbenennen: {}", item.name));
     }
@@ -2303,7 +2220,9 @@ impl Icons {
     }
 
     /// Gives `item` the name `new`. Err: (title, explanation) for the user.
-    fn apply_rename(&self, item: &Item, new: &str) -> Result<(), (String, String)> {
+    /// Files and folders: checked here, renamed by a job that never replaces
+    /// (0.3.0, `RENAME_NOREPLACE`); its failure is reported when it ends.
+    fn apply_rename(self: &Rc<Self>, item: &Item, new: &str) -> Result<(), (String, String)> {
         let failed = |detail: String| {
             (
                 gettext_f(
@@ -2318,57 +2237,35 @@ impl Icons {
         }
         match &item.kind {
             Kind::File(path) | Kind::Folder(path) => {
-                rename::check_file_name(new).map_err(|p| failed(p.text(new)))?;
+                namen::check_file_name(new).map_err(|p| failed(p.text(new)))?;
                 let old = item.ident();
-                let gone = || {
-                    gettext_f(
+                if path.symlink_metadata().is_err() {
+                    return Err(failed(gettext_f(
                         "“{name}” no longer exists. Perhaps it was deleted or moved in the meantime.",
                         &[("name", &old)],
-                    )
-                };
-                if path.symlink_metadata().is_err() {
-                    return Err(failed(gone()));
+                    )));
                 }
-                let exists = || {
-                    gettext_f(
+                if path.with_file_name(new).symlink_metadata().is_ok() {
+                    return Err(failed(gettext_f(
                         "The name “{new}” is already used in this folder. \
                          Please use a different name.",
                         &[("new", new)],
-                    )
-                };
-                if path.with_file_name(new).symlink_metadata().is_ok() {
-                    return Err(failed(exists()));
+                    )));
                 }
-                // GIO refuses an existing name (G_IO_ERROR_EXISTS) itself.
-                let renamed = gio::File::for_path(path)
-                    .set_display_name(new, gio::Cancellable::NONE)
-                    .map_err(|err| {
-                        failed(match err.kind::<gio::IOErrorEnum>() {
-                            Some(gio::IOErrorEnum::Exists) => exists(),
-                            Some(gio::IOErrorEnum::NotFound) => gone(),
-                            Some(gio::IOErrorEnum::PermissionDenied) => gettext_f(
-                                "You do not have the permissions to rename “{name}”.",
-                                &[("name", &old)],
-                            ),
-                            Some(gio::IOErrorEnum::InvalidFilename) => {
-                                rename::Problem::Dots.text(new)
-                            }
-                            _ => err.message().to_owned(),
-                        })
-                    })?;
-                let new_name = renamed
-                    .basename()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| new.to_owned());
-                // the place goes with the name, before the file monitor
-                // reports the "new" file
-                self.store.borrow_mut().rename(&old, &new_name);
-                self.save();
-                log(&format!("umbenannt: {old} → {new_name}"));
+                self.start_job_renaming(
+                    transfer::Job::new(
+                        Op::Rename {
+                            new: new.to_owned(),
+                        },
+                        vec![gio::File::for_path(path).uri().to_string()],
+                        path.parent().map(Path::to_path_buf),
+                    ),
+                    Some((old, new.to_owned())),
+                );
                 Ok(())
             }
             Kind::Launcher(path) => {
-                rename::check_label(new).map_err(|p| failed(p.text(new)))?;
+                namen::check_label(new).map_err(|p| failed(p.text(new)))?;
                 if own_launcher(path) {
                     set_launcher_name(path, new).map_err(failed)?;
                     self.store
@@ -2385,7 +2282,7 @@ impl Icons {
                 Ok(())
             }
             Kind::Computer | Kind::Home | Kind::Trash | Kind::App(_) => {
-                rename::check_label(new).map_err(|p| failed(p.text(new)))?;
+                namen::check_label(new).map_err(|p| failed(p.text(new)))?;
                 self.set_alias(item, new);
                 Ok(())
             }
@@ -2438,35 +2335,6 @@ fn debugging() -> bool {
     std::env::var("QUERENCIA_DESKTOP_DEBUG").is_ok_and(|v| v == "1")
 }
 
-/// Objects in the trash (GVfs `trash:///`); `None` when it is not
-/// reachable.
-fn trash_count() -> Option<u32> {
-    let count = gio::File::for_uri("trash:///")
-        .query_info(
-            "trash::item-count",
-            gio::FileQueryInfoFlags::NONE,
-            gio::Cancellable::NONE,
-        )
-        .ok()
-        .map(|info| info.attribute_uint32("trash::item-count"));
-    if debugging() {
-        // QE-02: every count is logged, so a test can show that nothing
-        // counts while the trash is left alone (no polling)
-        log(&format!("Papierkorb gezählt: {count:?}"));
-    }
-    count
-}
-
-/// The trash icon of the theme: empty or full (GNOME 2's names).
-fn trash_icon(full: bool) -> gio::Icon {
-    gio::ThemedIcon::new(if full {
-        "user-trash-full"
-    } else {
-        "user-trash"
-    })
-    .upcast()
-}
-
 /// `QUERENCIA_DESKTOP_DEBUG=1`: the state the trash icon shows (HMP-10b
 /// tests read the last line).
 fn log_trash_icon(full: bool, count: Option<u32>) {
@@ -2476,84 +2344,6 @@ fn log_trash_icon(full: bool, count: Option<u32>) {
             if full { "voll" } else { "leer" }
         ));
     }
-}
-
-/// One "Papierkorb leeren": what is left to delete and what failed.
-struct TrashRun {
-    total: usize,
-    objects: std::collections::VecDeque<(gio::File, String)>,
-    failed: Vec<(String, String)>,
-}
-
-/// Deletes the next object of `run`, then the one after it; at the end
-/// refreshes the icons and reports failures (never a success that was not
-/// one).
-fn delete_next(icons: std::rc::Weak<Icons>, run: Rc<RefCell<TrashRun>>) {
-    let next = run.borrow_mut().objects.pop_front();
-    let Some((file, name)) = next else {
-        let run = run.borrow();
-        let deleted = run.total - run.failed.len();
-        log(&format!(
-            "Papierkorb geleert: {deleted} von {} gelöscht, {} nicht",
-            run.total,
-            run.failed.len()
-        ));
-        // QE-02: only the trash icon changes; it shows the result at once
-        // (the trash monitor's events follow and find nothing new).
-        if let Some(icons) = icons.upgrade() {
-            icons.update_trash_icon();
-        }
-        if !run.failed.is_empty() {
-            let mut detail = ngettext_f(
-                "{n} of {total} items could not be deleted and is still in the trash:",
-                "{n} of {total} items could not be deleted and are still in the trash:",
-                u32::try_from(run.failed.len()).unwrap_or(u32::MAX),
-                &[("total", &run.total.to_string())],
-            );
-            for (name, why) in run.failed.iter().take(5) {
-                detail.push('\n');
-                detail.push_str(&gettext_f(
-                    "• {name}: {why}",
-                    &[("name", name), ("why", why)],
-                ));
-            }
-            if run.failed.len() > 5 {
-                let more = u32::try_from(run.failed.len() - 5).unwrap_or(u32::MAX);
-                detail.push('\n');
-                detail.push_str(&ngettext_f("… and {n} more", "… and {n} more", more, &[]));
-            }
-            show_error(
-                &gettext("The trash could not be emptied completely."),
-                &detail,
-            );
-        }
-        return;
-    };
-    let file2 = file.clone();
-    file.delete_async(
-        glib::Priority::DEFAULT,
-        gio::Cancellable::NONE,
-        move |result| {
-            if let Err(err) = result {
-                log(&format!("nicht gelöscht: {name} ({}): {err}", file2.uri()));
-                // in the user's language first; GVfs' own text (often
-                // English) as detail
-                let why = match err.kind::<gio::IOErrorEnum>() {
-                    Some(gio::IOErrorEnum::PermissionDenied) => gettext("permission denied"),
-                    Some(gio::IOErrorEnum::NotFound) => gettext("no longer there"),
-                    Some(
-                        gio::IOErrorEnum::NotMounted
-                        | gio::IOErrorEnum::HostNotFound
-                        | gio::IOErrorEnum::HostUnreachable
-                        | gio::IOErrorEnum::TimedOut,
-                    ) => gettext("volume not reachable"),
-                    _ => gettext_f("cannot be deleted (GVfs: {why})", &[("why", err.message())]),
-                };
-                run.borrow_mut().failed.push((name, why));
-            }
-            delete_next(icons, run);
-        },
-    );
 }
 
 fn drag_threshold(window: &ApplicationWindow) -> i32 {
@@ -2620,11 +2410,11 @@ fn set_launcher_name(path: &Path, new: &str) -> Result<(), String> {
                 &[("why", err.message())],
             )
         })?;
-    let key = rename::name_key(
+    let key = namen::name_key(
         keys.locale_for_key("Desktop Entry", "Name", None)
             .as_deref(),
     );
-    let changed = rename::with_name(text, &key, new)
+    let changed = namen::with_name(text, &key, new)
         .ok_or_else(|| gettext("The launcher file has no group [Desktop Entry]."))?;
     let mode =
         std::fs::metadata(path).map(|m| std::os::unix::fs::PermissionsExt::mode(&m.permissions()));
@@ -2746,48 +2536,27 @@ fn icon_for(item: &Item, trash_full: bool) -> gio::Icon {
     match &item.kind {
         Kind::Computer => themed("computer"),
         Kind::Home => themed("user-home"),
-        Kind::Trash => trash_icon(trash_full),
-        Kind::Volume(volume) => volume_icon(volume.picture),
+        Kind::Trash => typ::trash_icon(trash_full),
+        Kind::Volume(volume) => laufwerke::volume_icon(volume.picture),
         Kind::App(id) => DesktopAppInfo::new(id)
             .and_then(|app| app.icon())
             .unwrap_or_else(|| themed("application-x-executable")),
         Kind::Launcher(path) => DesktopAppInfo::from_filename(path)
             .and_then(|app| app.icon())
             .unwrap_or_else(|| themed("application-x-executable")),
-        Kind::File(path) | Kind::Folder(path) => gio::File::for_path(path)
-            .query_info(
-                "standard::icon,standard::content-type",
+        // An empty file ("Leere Datei") is a blank page, as on GNOME 2, not
+        // the theme's grey "zero size" picture (`typ::icon_for`).
+        Kind::File(path) | Kind::Folder(path) => {
+            let file = gio::File::for_path(path);
+            file.query_info(
+                typ::ICON_ATTRIBUTES,
                 gio::FileQueryInfoFlags::NONE,
                 gio::Cancellable::NONE,
             )
-            .ok()
-            .and_then(|info| {
-                // An empty file ("Leere Datei") is a blank page, as on
-                // GNOME 2, not the theme's grey "zero size" picture.
-                if icons::is_empty_document(info.content_type().as_deref()) {
-                    Some(themed("text-x-generic"))
-                } else {
-                    info.icon()
-                }
-            })
-            .unwrap_or_else(|| themed("text-x-generic")),
-    }
-}
-
-/// QE-03: Querencia's own device icons, built in (no icon theme has them);
-/// QE-04: network shares with the theme's remote folder, as Nautilus 2.30.
-fn volume_icon(picture: Picture) -> gio::Icon {
-    let svg: &'static [u8] = match picture {
-        Picture::Network => {
-            return gio::ThemedIcon::from_names(&["folder-remote", "network-server", "folder"])
-                .upcast();
+            .map(|info| typ::icon_for(&file, &info))
+            .unwrap_or_else(|_| themed("text-x-generic"))
         }
-        Picture::Removable => include_bytes!("../data/icons/strata-querencia-drive-removable.svg"),
-        Picture::Harddisk => include_bytes!("../data/icons/strata-querencia-drive-harddisk.svg"),
-        Picture::Optical => include_bytes!("../data/icons/strata-querencia-media-optical.svg"),
-        Picture::Encrypted => include_bytes!("../data/icons/strata-querencia-drive-encrypted.svg"),
-    };
-    gio::BytesIcon::new(&glib::Bytes::from_static(svg)).upcast()
+    }
 }
 
 /// QE-03: an open busy question closes when the operation ends (GVfs does
@@ -2810,7 +2579,7 @@ fn finish_question(
 /// programs end, GVfs takes the volume away by itself and the question
 /// closes. Returns the open question's cancellable.
 fn ask_when_busy(
-    operation: &gtk4::MountOperation,
+    operation: &gio::MountOperation,
     removal: Removal,
     name: &str,
     root: Option<PathBuf>,
@@ -2826,7 +2595,7 @@ fn ask_when_busy(
         }
         let users = root
             .as_deref()
-            .map(|root| volumes::users_of(Path::new("/proc"), root))
+            .map(|root| laufwerke::users_of(Path::new("/proc"), root))
             .unwrap_or_default();
         log(&format!(
             "Datenträger {name} wird noch benutzt: {}",
@@ -2836,7 +2605,7 @@ fn ask_when_busy(
                 .collect::<Vec<_>>()
                 .join(", ")
         ));
-        let (message, detail, buttons) = volumes::busy_question(removal, &name, &users);
+        let (message, detail, buttons) = laufwerke::busy_question(removal, &name, &users);
         let dialog = gtk4::AlertDialog::builder()
             .message(message)
             .detail(detail)
@@ -2903,19 +2672,106 @@ fn log_volume(item: &Item) {
             "Datenträger da: {} ({}, {}, {})",
             item.name,
             volume.picture.name(),
-            volume.removal.map_or("nicht aushängbar", Removal::label),
-            volume.uri
+            match (&volume.uri, volume.removal) {
+                (None, _) => "nicht eingehängt",
+                (Some(_), Some(removal)) => removal.label(),
+                (Some(_), None) => "nicht aushängbar",
+            },
+            volume.uri.as_deref().unwrap_or(&volume.slot)
+        ));
+    }
+}
+
+/// QD-112: where the desktop waits for its missing directory.
+fn log_waiting(dir: &Path) {
+    if let Some(point) = ueberwachung::waiting_point(dir, Path::is_dir) {
+        log(&format!(
+            "Arbeitsflächen-Ordner fehlt, warte in {}",
+            point.display()
         ));
     }
 }
 
 /// QE-03: the icons of the volumes that are mounted now; QE-04: of the
-/// types `desktop.ini` `[Volumes]` asks for.
+/// types `desktop.ini` `[Volumes]` asks for; 0.3.0 (E3): and of removable
+/// media that are not mounted.
 fn volume_items(monitor: &gio::VolumeMonitor, settings: &config::IconSettings) -> Vec<Item> {
-    volumes::mounted(monitor, settings)
-        .iter()
-        .map(|facts| Item::new(Kind::Volume(Volume::from_facts(facts)), &facts.name))
+    volumes::listed(monitor, settings)
+        .into_iter()
+        .map(|(name, volume)| Item::new(Kind::Volume(volume), &name))
         .collect()
+}
+
+/// Questions while mounting or taking a volume away: the desktop's own
+/// password window (`kennwort.rs`) and German "still in use" question.
+struct Rueckfrage(gio::MountOperation);
+
+impl laufwerke::Rueckfrage for Rueckfrage {
+    fn mount_operation(&self) -> Option<gio::MountOperation> {
+        Some(self.0.clone())
+    }
+}
+
+/// E3: mounts the medium of icon `name`; `open`: then opens it in the file
+/// manager (a double click), as GNOME 2 did.
+fn mount_volume(name: &str, volume: &Volume, window: &ApplicationWindow, open: bool) {
+    let Some(gio_volume) = volumes::find_volume(&gio::VolumeMonitor::get(), &volume.slot) else {
+        log(&format!("{name}: Datenträger nicht mehr da"));
+        return;
+    };
+    let operation = kennwort::mount_operation();
+    // the launch context only after mounting: one made before a password
+    // dialog refers to it as the focused window
+    let display = WidgetExt::display(window);
+    let name = name.to_owned();
+    log(&format!("Einhängen: {name}"));
+    glib::MainContext::default().spawn_local(async move {
+        match laufwerke::einhaengen(&gio_volume, &Rueckfrage(operation)).await {
+            Ok(mount) => {
+                let root = mount.root().uri().to_string();
+                log(&format!("eingehängt: {name} ({root})"));
+                if open {
+                    let context = display.app_launch_context();
+                    crate::portal::for_children(&context);
+                    open_location(&name, &root, &context);
+                }
+            }
+            Err(err) => {
+                match laufwerke::mount_failure(err.kind::<gio::IOErrorEnum>(), &name, err.message())
+                {
+                    None => log(&format!("Einhängen abgebrochen: {name} ({err})")),
+                    Some((title, detail)) => {
+                        log(&format!("Einhängen fehlgeschlagen: {name}: {err}"));
+                        show_error(&title, &detail);
+                    }
+                }
+            }
+        }
+    });
+}
+
+/// E3: a medium inserted while the desktop runs is mounted when GIO wants
+/// it (`should_automount`), as GNOME 2's desktop did; nothing opens.
+fn automount(volume: &gio::Volume) {
+    let facts = laufwerke::volume_facts(volume);
+    let medium = matches!(
+        laufwerke::classify_unmounted(&facts),
+        Some(volumes::VolumeType::Removable | volumes::VolumeType::Optical)
+    );
+    if !medium || !volume.should_automount() || !volume.can_mount() || volume.get_mount().is_some()
+    {
+        return;
+    }
+    let operation = kennwort::mount_operation();
+    let volume = volume.clone();
+    let name = facts.name;
+    log(&format!("Einhängen (automatisch): {name}"));
+    glib::MainContext::default().spawn_local(async move {
+        match laufwerke::einhaengen(&volume, &Rueckfrage(operation)).await {
+            Ok(mount) => log(&format!("eingehängt: {name} ({})", mount.root().uri())),
+            Err(err) => log(&format!("automatisch nicht eingehängt: {name}: {err}")),
+        }
+    });
 }
 
 /// The lines a label shows right now (`QUERENCIA_DESKTOP_DEBUG=1`, for the
@@ -2950,7 +2806,46 @@ fn label_lines(label: &Label) -> Vec<String> {
     lines
 }
 
-fn icon_widget(item: &Item, trash_full: bool, icon_px: i32, cell: (i32, i32)) -> gtk4::Box {
+/// 0.3.0: an image of Querencia's own volume picture at `size` pixels and
+/// `scale`. These pictures are SVG bytes (`gio::BytesIcon`), which
+/// `symbole` cannot key and would look up again at every rebuild; GTK then
+/// loads them anew on the main thread (glycin, a separate process: ~50 ms,
+/// seconds while the disk is busy, isolated test 23.10.2026). Loaded once
+/// per picture, size and scale, they are kept for the session.
+fn volume_image(picture: volumes::Picture, size: i32, scale: i32) -> Image {
+    /// Picture, size, scale.
+    type Key = (volumes::Picture, i32, i32);
+    thread_local! {
+        static KEPT: RefCell<Vec<(Key, gtk4::IconPaintable)>> = const { RefCell::new(Vec::new()) };
+    }
+    let key = (picture, size, scale);
+    let paintable = KEPT.with(|kept| {
+        if let Some((_, found)) = kept.borrow().iter().find(|(k, _)| *k == key) {
+            return found.clone();
+        }
+        let display = gdk::Display::default().expect("Anzeige");
+        let found = gtk4::IconTheme::for_display(&display).lookup_by_gicon(
+            &laufwerke::volume_icon(picture),
+            size,
+            scale,
+            gtk4::TextDirection::None,
+            gtk4::IconLookupFlags::empty(),
+        );
+        kept.borrow_mut().push((key, found.clone()));
+        found
+    });
+    let image = Image::from_paintable(Some(&paintable));
+    image.set_pixel_size(size);
+    image
+}
+
+fn icon_widget(
+    item: &Item,
+    trash_full: bool,
+    icon_px: i32,
+    cell: (i32, i32),
+    scale: i32,
+) -> gtk4::Box {
     let tile = gtk4::Box::new(Orientation::Vertical, 2);
     tile.add_css_class("desktop-icon");
     // HMP-10b: the tile spans the whole cell width (cells never overlap,
@@ -2959,8 +2854,14 @@ fn icon_widget(item: &Item, trash_full: bool, icon_px: i32, cell: (i32, i32)) ->
     // left for the text by one pixel and was split ("Persönliche" / "r").
     // QD-091: the cell follows the font (`cell_for`).
     tile.set_size_request(cell.0, cell.1 - TILE_GAP);
-    let image = Image::from_gicon(&icon_for(item, trash_full));
-    image.set_pixel_size(icon_px);
+    // QD-106: without GTK's preloading in the thread pool (0.3.0); the
+    // built-in volume pictures are kept loaded (see `volume_image`)
+    let image = match &item.kind {
+        Kind::Volume(volume) if volume.picture != volumes::Picture::Network => {
+            volume_image(volume.picture, icon_px, scale)
+        }
+        _ => symbole::image(&icon_for(item, trash_full), icon_px),
+    };
     image.set_halign(Align::Center);
     let label = Label::new(Some(&item.name));
     label.set_wrap(true);
@@ -2993,7 +2894,7 @@ fn open(item: &Item, window: &ApplicationWindow) {
         Some(app) => app.launch_uris(&[uri], Some(&context)),
         None => Err(glib::Error::new(
             gio::IOErrorEnum::NotFound,
-            "Querencia Files fehlt",
+            "kein Dateimanager",
         )),
     };
     let result = match &item.kind {
@@ -3011,7 +2912,7 @@ fn open(item: &Item, window: &ApplicationWindow) {
             )),
         },
         Kind::Launcher(path) => {
-            if is_trusted(path) {
+            if oeffnen::is_trusted(path) {
                 launch_starter(path, &context)
             } else {
                 ask_trust(item, path.clone(), context.clone());
@@ -3033,15 +2934,34 @@ fn open(item: &Item, window: &ApplicationWindow) {
         Kind::Folder(path) => {
             gio::AppInfo::launch_default_for_uri(&gio::File::for_path(path).uri(), Some(&context))
         }
-        // QE-03: in Querencia Files, as GNOME 2 opened volumes in Nautilus
-        Kind::Volume(volume) => match files_app() {
-            Some(_) => with_files(&volume.uri),
-            None => gio::AppInfo::launch_default_for_uri(&volume.uri, Some(&context)),
+        // QE-03: in Querencia Files, as GNOME 2 opened volumes in Nautilus;
+        // E3: a medium that is not mounted is mounted first
+        Kind::Volume(volume) => match &volume.uri {
+            Some(uri) => {
+                open_location(&item.name, uri, &context);
+                return;
+            }
+            None => {
+                mount_volume(&item.name, volume, window, true);
+                return;
+            }
         },
     };
     match result {
         Ok(()) => log(&format!("geöffnet: {}", item.name)),
         Err(err) => log(&format!("{} nicht geöffnet: {err}", item.name)),
+    }
+}
+
+/// A volume's root in the file manager (else the default program).
+fn open_location(name: &str, uri: &str, context: &gdk::AppLaunchContext) {
+    let result = match files_app() {
+        Some(app) => app.launch_uris(&[uri], Some(context)),
+        None => gio::AppInfo::launch_default_for_uri(uri, Some(context)),
+    };
+    match result {
+        Ok(()) => log(&format!("geöffnet: {name}")),
+        Err(err) => log(&format!("{name} nicht geöffnet: {err}")),
     }
 }
 
@@ -3056,39 +2976,51 @@ enum OpenFailure {
 /// Desktop 0.2.2: a file opens with the default program for its type, as
 /// before. When that type has none (an empty file is
 /// `application/x-zerosize`), it opens with the default program for the
-/// type its name suggests (`icons::type_from_name`), as Nautilus does.
-/// QD-102: without one nothing is started and the caller shows a notice
-/// (`no_program`).
+/// type its name suggests, as Nautilus does. QD-102: without one nothing is
+/// started and the caller shows a notice (`no_program`). 0.3.0: decided by
+/// `oeffnen::plan_open`; an executable file opens like any other (the
+/// question "Ausführen oder anzeigen?" of Nautilus 2.30 is not built yet).
 fn open_file(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), OpenFailure> {
     let file = gio::File::for_path(path);
     let uri = file.uri();
-    let content_type = file
+    let info = file
         .query_info(
-            "standard::content-type",
+            oeffnen::OPEN_ATTRIBUTES,
             gio::FileQueryInfoFlags::NONE,
             gio::Cancellable::NONE,
         )
-        .map_err(OpenFailure::Gio)?
+        .map_err(OpenFailure::Gio)?;
+    let content_type = info
         .content_type()
         .map(|t| t.to_string())
         .unwrap_or_else(|| "application/octet-stream".to_owned());
-    if gio::AppInfo::default_for_type(&content_type, false).is_some() {
-        return gio::AppInfo::launch_default_for_uri(&uri, Some(context)).map_err(OpenFailure::Gio);
-    }
-    let by_name = path
-        .file_name()
-        .and_then(|name| icons::type_from_name(&name.to_string_lossy()));
-    match by_name.and_then(|t| gio::AppInfo::default_for_type(&t, false).map(|app| (t, app))) {
-        Some((t, app)) => {
-            log(&format!(
-                "{}: {content_type} ohne Programm, öffne als {t} mit {}",
-                path.display(),
-                app.id().unwrap_or_default()
-            ));
-            app.launch_uris(&[uri.as_str()], Some(context))
-                .map_err(OpenFailure::Gio)
+    let by_name = |app: &gio::AppInfo, t: &str| {
+        log(&format!(
+            "{}: {content_type} ohne Programm, öffne als {t} mit {}",
+            path.display(),
+            app.id().unwrap_or_default()
+        ));
+        app.launch_uris(&[uri.as_str()], Some(context))
+            .map_err(OpenFailure::Gio)
+    };
+    match oeffnen::plan_open(&file, &info) {
+        oeffnen::OpenPlan::ByName(t, app) => by_name(&app, &t),
+        oeffnen::OpenPlan::NoProgram(t) => Err(OpenFailure::NoProgram(t)),
+        oeffnen::OpenPlan::Executable { .. } => {
+            match gio::AppInfo::default_for_type(&content_type, false) {
+                Some(_) => gio::AppInfo::launch_default_for_uri(&uri, Some(context))
+                    .map_err(OpenFailure::Gio),
+                None => match path
+                    .file_name()
+                    .and_then(|n| typ::type_from_name(&n.to_string_lossy()))
+                    .and_then(|t| gio::AppInfo::default_for_type(&t, false).map(|a| (t, a)))
+                {
+                    Some((t, app)) => by_name(&app, &t),
+                    None => Err(OpenFailure::NoProgram(content_type.clone())),
+                },
+            }
         }
-        None => Err(OpenFailure::NoProgram(content_type)),
+        _ => gio::AppInfo::launch_default_for_uri(&uri, Some(context)).map_err(OpenFailure::Gio),
     }
 }
 
@@ -3138,22 +3070,6 @@ fn launch_starter(path: &Path, context: &gdk::AppLaunchContext) -> Result<(), gl
     }
 }
 
-/// A starter on the desktop runs only when it is executable for its owner,
-/// as Nautilus 2.30 required ("vertrauenswürdig").
-fn is_trusted(path: &Path) -> bool {
-    let executable = std::fs::metadata(path)
-        .is_ok_and(|m| std::os::unix::fs::PermissionsExt::mode(&m.permissions()) & 0o100 != 0);
-    // A link to an installed starter (…/applications of the XDG data
-    // directories) is trusted, as Nautilus 2.30 trusted system launchers.
-    let installed = std::fs::canonicalize(path).is_ok_and(|real| {
-        std::iter::once(glib::user_data_dir())
-            .chain(glib::system_data_dirs())
-            .filter_map(|dir| std::fs::canonicalize(dir.join("applications")).ok())
-            .any(|apps| real.starts_with(apps))
-    });
-    executable || installed
-}
-
 /// Nautilus 2.30's question for an untrusted starter.
 fn ask_trust(item: &Item, path: PathBuf, context: gdk::AppLaunchContext) {
     let dialog = gtk4::AlertDialog::builder()
@@ -3183,16 +3099,7 @@ fn ask_trust(item: &Item, path: PathBuf, context: gdk::AppLaunchContext) {
                 return;
             }
             if answer == 1 {
-                let mode = std::fs::metadata(&path)
-                    .map(|m| std::os::unix::fs::PermissionsExt::mode(&m.permissions()))
-                    .unwrap_or(0o644);
-                let marked = gio::File::for_path(&path).set_attribute_uint32(
-                    "unix::mode",
-                    (mode | 0o100) & 0o7777,
-                    gio::FileQueryInfoFlags::NONE,
-                    gio::Cancellable::NONE,
-                );
-                match marked {
+                match oeffnen::mark_trusted(&path) {
                     Ok(()) => log(&format!("Starter {name} als vertrauenswürdig markiert")),
                     Err(err) => log(&format!("Starter {name} nicht markiert: {err}")),
                 }
@@ -3205,37 +3112,25 @@ fn ask_trust(item: &Item, path: PathBuf, context: gdk::AppLaunchContext) {
     );
 }
 
-/// "Leere Datei" (`template` empty) or a copy of a template, under a free
-/// name; GIO's create/copy without overwrite flags fail on existing names.
-fn new_document(dir: &std::path::Path, template: &str) {
-    if template.is_empty() {
-        let name = icons::unique_name(&gettext("New Document"), |n| dir.join(n).exists());
-        match gio::File::for_path(dir.join(&name))
-            .create(gio::FileCreateFlags::NONE, gio::Cancellable::NONE)
-        {
-            Ok(stream) => {
-                let _ = stream.close(gio::Cancellable::NONE);
-                log(&format!("Dokument angelegt: {name}"));
-            }
-            Err(err) => log(&format!("Dokument {name} nicht angelegt: {err}")),
+/// "Leere Datei" (`template` empty) or a copy of a template in `dir`, as a
+/// job that picks a free name ("Neues Dokument 2") and never replaces.
+fn new_document(dir: PathBuf, template: &str) -> transfer::Job {
+    let op = if template.is_empty() {
+        Op::NewFile {
+            name: gettext("New Document"),
+            template: None,
         }
-        return;
-    }
-    let source = gio::File::for_path(template);
-    let base = source
-        .basename()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_else(|| gettext("Template"));
-    let name = icons::unique_name(&base, |n| dir.join(n).exists());
-    match source.copy(
-        &gio::File::for_path(dir.join(&name)),
-        gio::FileCopyFlags::NONE,
-        gio::Cancellable::NONE,
-        None,
-    ) {
-        Ok(()) => log(&format!("Dokument aus Vorlage angelegt: {name}")),
-        Err(err) => log(&format!("Vorlage {base} nicht kopiert: {err}")),
-    }
+    } else {
+        let source = gio::File::for_path(template);
+        Op::NewFile {
+            name: source
+                .basename()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| gettext("Template")),
+            template: Some(source.uri().to_string()),
+        }
+    };
+    transfer::Job::new(op, Vec::new(), Some(dir))
 }
 
 /// QE-01 A3: `querencia-einstellungen`, first on `PATH`, then in
@@ -3417,31 +3312,5 @@ mod tests {
         };
         assert_eq!(cell_for(32, tiny), (100, 72));
         assert_eq!(cell_for(72, tiny), (110, 112));
-    }
-
-    #[test]
-    fn files_is_found_by_its_new_id_then_by_the_old_one() {
-        let only = |installed: &'static [&'static str]| {
-            move |id: &str| installed.contains(&id).then(|| id.to_owned())
-        };
-        let both = only(&[
-            "org.querencia.Files.desktop",
-            "io.github.lgse.Strata.desktop",
-        ]);
-        assert_eq!(
-            first_found(&FILES_APPS, both).as_deref(),
-            Some("org.querencia.Files.desktop")
-        );
-        let old = only(&["io.github.lgse.Strata.desktop"]);
-        assert_eq!(
-            first_found(&FILES_APPS, old).as_deref(),
-            Some("io.github.lgse.Strata.desktop")
-        );
-        let new = only(&["org.querencia.Files.desktop"]);
-        assert_eq!(
-            first_found(&FILES_APPS, new).as_deref(),
-            Some("org.querencia.Files.desktop")
-        );
-        assert_eq!(first_found(&FILES_APPS, only(&[])), None);
     }
 }
