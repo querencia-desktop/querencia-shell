@@ -22,7 +22,8 @@ Einfügen in denselben Ordner legt wie bisher eine Kopie mit freiem Namen an.
   wohin, wie viel und wie lange noch, mit „Abbrechen“. Ein abgebrochener
   Auftrag hinterlässt keine halbe Datei und keinen halben Ordner unter
   echtem Namen. Solange ein Auftrag auf eine Antwort wartet, bleibt das
-  Fenster weg (es nähme der Frage die Tastatur).
+  Fenster weg (es nähme der Frage die Tastatur). Das Fenster hat eine feste
+  Breite, damit „Abbrechen“ nicht mit den wechselnden Zahlen wandert.
 - **Einhängen (E3):** Nicht eingehängte Wechseldatenträger und optische
   Medien erscheinen als Symbol; Doppelklick hängt ein und öffnet, das Menü
   bietet „Einhängen“. Ein während der Sitzung eingesteckter Datenträger wird

@@ -7,6 +7,8 @@
 //!   at hand, and "Abbrechen".
 //! - The window appears only when a job still runs after `SHOW_AFTER`
 //!   (short jobs show nothing, as on GNOME 2) and closes when no job runs.
+//! - The window keeps its width (`WIDTH`); long texts are shortened, so
+//!   "Abbrechen" stays where it is while the numbers change.
 //! - QD-076: closing destroys the window; the next job builds it anew.
 //!   Closed by hand while jobs run, it stays away until a new job starts.
 //! - A job that waits for an answer (`frage.rs`) is shown only after the
@@ -23,6 +25,9 @@ use querencia_dateiarbeit::auftraege::{JobId, Op};
 use querencia_oberflaeche::symbole;
 
 use crate::i18n::{gettext, gettext_f, ngettext_f};
+
+/// The window's width in pixels (as Nautilus 2.30's progress window).
+const WIDTH: i32 = 500;
 
 /// How long a job runs before the window shows it.
 pub const SHOW_AFTER: Duration = Duration::from_secs(1);
@@ -321,7 +326,7 @@ impl Fortschritt {
         }
         let window = gtk4::Window::builder()
             .title(gettext("File Operations"))
-            .default_width(440)
+            .default_width(WIDTH)
             .resizable(true)
             .build();
         window.add_css_class("querencia-desktop-progress");
@@ -375,8 +380,12 @@ impl Fortschritt {
         });
         line.append(&bar);
         line.append(&cancel);
+        // shortened, never wider than the window: a label of its natural
+        // width let the window grow and shrink with every update, and
+        // "Abbrechen" at the end of the bar moved with it
         let detail = gtk4::Label::new(None);
         detail.set_xalign(0.0);
+        detail.set_ellipsize(gtk4::pango::EllipsizeMode::End);
         detail.add_css_class("dim-label");
         let current = gtk4::Label::new(None);
         current.set_xalign(0.0);
