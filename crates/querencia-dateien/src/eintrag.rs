@@ -23,7 +23,7 @@ pub const ATTRIBUTE: &str = "standard::name,standard::display-name,standard::typ
 standard::size,standard::fast-content-type,standard::is-hidden,standard::is-backup,\
 standard::is-symlink,standard::symlink-target,time::modified,unix::mode,\
 access::can-read,access::can-write,access::can-execute,access::can-rename,\
-access::can-trash,access::can-delete";
+access::can-trash,access::can-delete,owner::user,owner::group";
 
 /// Additionally in places that are no plain folders (`trash:///`,
 /// `computer:///`, GVfs mounts): the backend's own icon, the real place
@@ -218,6 +218,12 @@ impl Eintrag {
             .attribute_string("standard::target-uri")
             .map(|uri| gio::File::for_uri(&uri))
             .unwrap_or_else(|| self.datei().clone())
+    }
+
+    /// The type description ("Ordner", "Textdokument"), as the Typ column
+    /// and the properties show it.
+    pub fn beschreibung(&self) -> String {
+        gio::content_type_get_description(&self.daten().typ).to_string()
     }
 
     /// The entry as a `regeln::Gewaehlt` for the status bar.
