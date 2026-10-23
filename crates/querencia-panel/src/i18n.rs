@@ -13,7 +13,8 @@
 //! `QUERENCIA_PANEL_LOCALEDIR` setzt das Verzeichnis ausdrücklich (Tests).
 //!
 //! Die Applets Lautstärke und Netzwerk zeigen Texte aus den Bibliotheken
-//! `querencia-lautstaerke` und `querencia-netzwerk`; die haben eigene
+//! `querencia-lautstaerke` und `querencia-netzwerk`, die Menüs die
+//! Tastennamen der Kürzel aus `querencia-oberflaeche`; die haben eigene
 //! Textdomänen gleichen Namens, deren Kataloge das Panel im selben
 //! Verzeichnis mitliefert und hier mit bindet.
 //!
@@ -26,7 +27,7 @@
 use std::path::{Path, PathBuf};
 
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
-pub use gettextrs::{gettext, ngettext, pgettext};
+pub use gettextrs::{gettext, ngettext};
 
 /// Textdomäne = Name der .mo-Dateien.
 pub const DOMAIN: &str = "querencia-panel";
@@ -47,6 +48,7 @@ pub fn init() {
     let _ = textdomain(DOMAIN);
     querencia_lautstaerke::i18n::bind(dir.as_path());
     querencia_netzwerk::i18n::bind(dir.as_path());
+    querencia_oberflaeche::i18n::bind(dir.as_path());
 }
 
 /// Verzeichnis der Kataloge (siehe Modulbeschreibung).
@@ -127,12 +129,6 @@ pub fn german(msgid: &str) -> String {
     german_in(include_str!("../po/de.po"), None, msgid)
 }
 
-/// Like [`german`] with the context `ctxt`.
-#[cfg(test)]
-pub fn german_ctx(ctxt: &str, msgid: &str) -> String {
-    german_in(include_str!("../po/de.po"), Some(ctxt), msgid)
-}
-
 #[cfg(test)]
 fn german_in(po: &str, ctxt: Option<&str>, msgid: &str) -> String {
     // the value of `key "…" "…"` lines of a block, unescaped
@@ -207,8 +203,8 @@ mod tests {
         assert_eq!(german("Accessories"), "Zubehör");
         assert_eq!(german("Log Out…"), "Abmelden …");
         assert_eq!(german("%a %b %e, %l:%M %p"), "%d.%m.%Y %H:%M");
-        assert_eq!(german_ctx("keyboard key", "Ctrl"), "Strg");
-        assert_eq!(german_ctx("keyboard key", "Del"), "Entf");
+        // Die Tastennamen ("keyboard key") stehen seit 0.3.1 in der Domäne
+        // querencia-oberflaeche (Test dort).
     }
 
     /// Deutsch hängt an `po/de.po`: jede msgid der Vorlage muss dort

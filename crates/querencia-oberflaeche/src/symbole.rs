@@ -14,7 +14,7 @@
 //! The window list and rebuilt menus look icons up all the time, and
 //! re-reading the icon theme makes every image look its icon up again.
 //!
-//! Here the panel looks icons up itself, without `PRELOAD`, and gives the
+//! Here the program looks icons up itself, without `PRELOAD`, and gives the
 //! image the paintable. GTK then starts no task: the icon is loaded when it
 //! is first drawn, on the main thread, and its last reference is always
 //! dropped there. The paintables are kept per icon, size and scale until

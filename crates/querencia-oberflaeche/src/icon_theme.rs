@@ -1,6 +1,5 @@
-//! The icon theme of panel and desktop (G2-AD; shared with
-//! querencia-desktop through `#[path]`): the user's choice, else GNOME
-//! Human.
+//! The icon theme of the Querencia programs (G2-AD, panel and desktop
+//! first): the user's choice, else GNOME Human.
 //!
 //! The session sets no icon theme, so GTK would use its default Adwaita.
 //! For the GNOME 2 look without a session-wide change, the panel (HMP-02)

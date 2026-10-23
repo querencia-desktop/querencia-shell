@@ -1,4 +1,5 @@
-//! Classic GNOME 2 menus for the three main panel menus (HMP-03).
+//! Classic GNOME 2 menus (HMP-03): the three main panel menus, the desktop
+//! menu and every menu bar or context menu of a Querencia program.
 //!
 //! GTK 4's `PopoverMenu` shows no icons next to text and either slides
 //! submenus in place or opens them beside the menu with an 80 ms timer
@@ -37,7 +38,11 @@
 //! of its CSS parent, and a submenu's parent is the highlighted row with
 //! white text: white on white. The popovers therefore keep their GTK
 //! classes ([`menu_popover`]; never `css_classes`, which replaces them),
-//! and the menu style also sets the text colour itself (`main.rs`).
+//! and the menu style of the program also sets the text colour itself.
+//!
+//! Icons of the rows are loaded without GTK's preloading in the thread pool
+//! ([`crate::symbole`], QD-106) unless a program chooses GTK's own way
+//! ([`set_icon_loading`]).
 //!
 //! The pure parts (rows, keyboard steps, hit test, aiming) are tested
 //! without a display; the widgets are thin on top of them.
@@ -138,8 +143,9 @@ pub fn rows(model: &gio::MenuModel) -> Vec<Row> {
 /// A GTK accelerator (`<Control><Alt>l`) as GTK 2's menus showed it
 /// (`Ctrl+Alt+L`, German `Strg+Alt+L` from the catalog); `None` for an empty
 /// or unreadable one. Parsed here, not by GTK, so the text does not depend
-/// on GTK's translations. Only the panel shows shortcuts; the desktop,
-/// which shares this file, never sets `accel`.
+/// on GTK's translations; the key names come from the text domain of this
+/// library (`crate::i18n`). Only the panel shows shortcuts so far; the
+/// desktop never sets `accel`.
 pub fn accel_label(accel: &str) -> Option<String> {
     use crate::i18n::pgettext;
     let mut parts = Vec::new();
@@ -297,7 +303,7 @@ pub fn aiming(apex: (f64, f64), pointer: (f64, f64), submenu: Rect) -> bool {
 
 // ---- Widgets ---------------------------------------------------------
 
-/// CSS class of every classic menu popover (style in `main.rs`).
+/// CSS class of every classic menu popover (style in the program).
 pub const MENU_CLASS: &str = "querencia-menu";
 /// CSS class of a menu row; [`ACTIVE_CLASS`] marks the highlighted one.
 pub const ITEM_CLASS: &str = "qmenu-item";
@@ -308,7 +314,7 @@ pub const ACCEL_CLASS: &str = "qmenu-accel";
 const ICON_SIZE: i32 = 16;
 /// Icon of an entry whose icon the theme does not have.
 const MISSING_ICON: &str = "application-x-executable";
-/// Padding plus border above the first row (CSS in `main.rs`): a submenu is
+/// Padding plus border above the first row (CSS of the program): a submenu is
 /// moved up by it, so its first row lines up with the row that opened it.
 const MENU_TOP_INSET: i32 = 3;
 
@@ -1198,14 +1204,36 @@ fn row_widget(row: &Row) -> Widget {
     line.upcast()
 }
 
-/// Shows `icon` on `image`. In the panel without GTK's preloading in the
-/// thread pool (QD-106, `crate::symbole`); the desktop, which shares this
-/// file, keeps GTK's own way.
+/// How the rows of the classic menus show their icons ([`set_icon_loading`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum IconLoading {
+    /// Without GTK's preloading in the thread pool ([`crate::symbole`],
+    /// QD-106): the way for every program, and a must for one that shows
+    /// many icons.
+    #[default]
+    WithoutPreload,
+    /// GTK's own way (`Image::set_from_gicon`), which the desktop kept up
+    /// to 0.2.7.
+    Gtk,
+}
+
+thread_local! {
+    /// The way chosen with [`set_icon_loading`]; GTK runs on one thread.
+    static ICON_LOADING: Cell<IconLoading> = const { Cell::new(IconLoading::WithoutPreload) };
+}
+
+/// Chooses how menu rows show their icons, for menus built from now on;
+/// call once at start, before the first menu opens.
+pub fn set_icon_loading(how: IconLoading) {
+    ICON_LOADING.with(|loading| loading.set(how));
+}
+
+/// Shows `icon` on `image` the way chosen with [`set_icon_loading`].
 fn show_icon(image: &Image, icon: &gio::Icon) {
-    #[cfg(not(querencia_desktop))]
-    crate::symbole::set(image, icon);
-    #[cfg(querencia_desktop)]
-    image.set_from_gicon(icon);
+    match ICON_LOADING.with(Cell::get) {
+        IconLoading::WithoutPreload => crate::symbole::set(image, icon),
+        IconLoading::Gtk => image.set_from_gicon(icon),
+    }
 }
 
 /// `icon`, or the generic one if the theme has none of a themed icon's
@@ -1221,11 +1249,10 @@ fn usable_icon(icon: &gio::Icon) -> gio::Icon {
     icon.clone()
 }
 
-// The panel's isolated GUI test needs the panel's own modules; the desktop
-// (HMP-09) shares this file for its context menu and builds without it.
-#[cfg(all(test, not(querencia_desktop)))]
-#[path = "classic_menu/gui_test.rs"]
-mod gui_test;
+// The isolated GUI test of the menus; a program's test enables the feature
+// and hands over its own menu buttons (the panel: `menu_gui_test.rs`).
+#[cfg(feature = "gui-test")]
+pub mod gui_test;
 
 #[cfg(test)]
 mod tests {
