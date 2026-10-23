@@ -1,6 +1,6 @@
 //! Thumbnails in the icon and list view (Welle C, M9 of B §4): the shared
 //! freedesktop.org cache (`cache.rs`, the same as Querencia Files'), made
-//! by GTK, GdkPixbuf or the installed thumbnailers (`erzeuger.rs`) in
+//! by GdkPixbuf, GTK or the installed thumbnailers (`erzeuger.rs`) in
 //! worker threads (`warteschlange.rs`), scaled and framed as Nautilus
 //! 2.30 showed them (`bild.rs`).
 //!
@@ -162,6 +162,8 @@ struct Statistik {
     cache: u32,
     erzeugt: u32,
     fehl: u32,
+    /// Requests withdrawn since the last change of folder.
+    zurueck: u32,
 }
 
 /// The state on the main thread.
@@ -175,6 +177,8 @@ struct Zustand {
     speicher: Speicher,
     pool: Option<Pool>,
     statistik: Statistik,
+    /// Whether a type can get a thumbnail at all.
+    typen: RefCell<HashMap<String, bool>>,
 }
 
 thread_local! {
@@ -278,6 +282,7 @@ fn weg_von(z: &mut Zustand, a: &Anfrage, k: usize) {
         z.wartende.remove(a);
         if let Some(p) = &z.pool {
             p.zuruecknehmen(a);
+            z.statistik.zurueck += 1;
         }
     }
 }
@@ -293,11 +298,21 @@ fn anfrage_fuer(z: &Zustand, e: &Eintrag, g: Groesse) -> Option<Anfrage> {
         typ: &d.typ,
         pfad: pfad.as_deref(),
     };
-    (erlaubt(z.regel, &k, &z.wurzel) && erzeuger::moeglich(&d.typ)).then(|| Anfrage {
+    (erlaubt(z.regel, &k, &z.wurzel) && moeglich(z, &d.typ)).then(|| Anfrage {
         uri: d.datei.uri().to_string(),
         mtime: d.sort.zeit,
         px: g.vorschau.max(1) as u32,
     })
+}
+
+/// [`erzeuger::moeglich`] once per type (it asks every thumbnailer).
+fn moeglich(z: &Zustand, typ: &str) -> bool {
+    if let Some(m) = z.typen.borrow().get(typ) {
+        return *m;
+    }
+    let m = erzeuger::moeglich(typ);
+    z.typen.borrow_mut().insert(typ.to_owned(), m);
+    m
 }
 
 fn einreihen(z: &mut Zustand, e: &Eintrag, anfrage: Anfrage) {
@@ -339,9 +354,12 @@ fn angekommen(e: Ergebnis) {
             Herkunft::Fehl => z.statistik.fehl += 1,
             Herkunft::KeinWeg | Herkunft::Abgebrochen => {}
         }
-        if e.herkunft != Herkunft::Abgebrochen {
-            z.speicher.ablegen(e.anfrage.clone(), e.textur.clone());
+        // a stopped job says nothing about the picture; cells that asked
+        // again since then wait for the new job
+        if e.herkunft == Herkunft::Abgebrochen {
+            return;
         }
+        z.speicher.ablegen(e.anfrage.clone(), e.textur.clone());
         for k in z.wartende.remove(&e.anfrage).unwrap_or_default() {
             let Some(b) = z.bindungen.get(&k) else {
                 continue;
@@ -357,7 +375,11 @@ fn angekommen(e: Ergebnis) {
             && z.pool.as_ref().is_some_and(|p| p.offen() == (0, 0))
             && let Some(beginn) = z.statistik.beginn.take()
         {
+            // the count of withdrawn jobs belongs to the change of folder
+            // (`aufraeumen`), not to this batch
+            let zurueck = z.statistik.zurueck;
             let s = std::mem::take(&mut z.statistik);
+            z.statistik.zurueck = zurueck;
             protokoll(&format!(
                 "Miniaturen fertig: {} aus dem Cache, {} erzeugt, {} fehlgeschlagen in {} ms",
                 s.cache,
@@ -371,20 +393,27 @@ fn angekommen(e: Ergebnis) {
 
 /// New settings: every bound cell is shown again under the new rule.
 fn regel_setzen(regel: Regel) {
-    let neu: Vec<(gtk4::Image, Eintrag, Groesse)> = ZUSTAND.with(|z| {
+    let neu: Option<Vec<(gtk4::Image, Eintrag, Groesse)>> = ZUSTAND.with(|z| {
         let mut z = z.borrow_mut();
-        let Some(z) = z.as_mut() else {
-            return Vec::new();
-        };
+        let z = z.as_mut()?;
         if z.regel == regel {
-            return Vec::new();
+            return None;
         }
         z.regel = regel;
-        z.bindungen
-            .values()
-            .filter_map(|b| Some((b.bild.upgrade()?, b.eintrag.clone(), b.groesse)))
-            .collect()
+        Some(
+            z.bindungen
+                .values()
+                .filter_map(|b| Some((b.bild.upgrade()?, b.eintrag.clone(), b.groesse)))
+                .collect(),
+        )
     });
+    let Some(neu) = neu else { return };
+    protokoll(&format!(
+        "Miniaturen: Regel {:?}, bis {} MB, {} Zellen neu",
+        regel.wo,
+        regel.max_bytes / 1024 / 1024,
+        neu.len()
+    ));
     for (bild, e, g) in neu {
         bildquelle::binden(&bild, &e, g);
     }
@@ -403,13 +432,19 @@ fn aufraeumen() {
             .filter_map(|b| b.anfrage.clone())
             .collect();
         z.wartende.retain(|a, _| lebend.contains(a));
-        if let Some(p) = &z.pool {
-            let n = p.sieben(|a| lebend.contains(a));
-            if n > 0 {
-                protokoll(&format!(
-                    "Miniaturen: {n} Aufträge verworfen (Ordnerwechsel)"
-                ));
-            }
+        let Some(p) = &z.pool else { return };
+        let n = p.sieben(|a| lebend.contains(a));
+        let zurueck = std::mem::take(&mut z.statistik.zurueck);
+        if n + zurueck as usize > 0 {
+            protokoll(&format!(
+                "Miniaturen nach Ordnerwechsel: {zurueck} zurückgenommen, {n} verworfen, \
+                 {} erzeugt bis dahin",
+                z.statistik.erzeugt
+            ));
+        }
+        // nothing left of the old folder: the next „fertig“ counts anew
+        if z.wartende.is_empty() && p.offen().0 == 0 {
+            z.statistik = Statistik::default();
         }
     });
 }
@@ -429,6 +464,7 @@ pub fn registrieren(register: &mut Register) {
                 speicher: Speicher::default(),
                 pool: None,
                 statistik: Statistik::default(),
+                typen: RefCell::default(),
             }));
         });
         protokoll(&format!(

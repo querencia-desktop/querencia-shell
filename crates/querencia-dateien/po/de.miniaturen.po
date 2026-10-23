@@ -1,0 +1,50 @@
+# Querencia Dateien: Teilkatalog der Welle C2 (dateien-miniaturen-suche),
+# Miniaturen und Suche. Nur msgid/msgstr; bei der Integration übernimmt
+# werkzeug/i18n.py update diese Einträge in po/de.po.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "_Search…"
+msgstr "_Suchen …"
+
+msgid "Search documents and folders by name"
+msgstr "Dokumente und Ordner nach Namen durchsuchen"
+
+msgid "_Search for:"
+msgstr "_Suchen nach:"
+
+msgid "_Advanced Search…"
+msgstr "_Erweiterte Suche …"
+
+msgid "Search with more criteria in Querencia File Search"
+msgstr "Mit weiteren Kriterien in Querencia Dateisuche suchen"
+
+msgid "Close the search"
+msgstr "Suche schließen"
+
+msgid "Search results"
+msgstr "Suchergebnisse"
+
+msgid "Searching…"
+msgstr "Suche läuft …"
+
+msgid "Searching… {n} match so far"
+msgid_plural "Searching… {n} matches so far"
+msgstr[0] "Suche läuft … bisher {n} Treffer"
+msgstr[1] "Suche läuft … bisher {n} Treffer"
+
+msgid "{n} match"
+msgid_plural "{n} matches"
+msgstr[0] "{n} Treffer"
+msgstr[1] "{n} Treffer"
+
+msgid "{matches} (search stopped)"
+msgstr "{matches} (Suche angehalten)"
+
+msgid "Querencia File Search could not be started: {error}"
+msgstr "Querencia Dateisuche konnte nicht gestartet werden: {error}"
+
+msgid "Show in _Folder"
+msgstr "Im _Ordner anzeigen"

@@ -63,7 +63,7 @@ fn dateisuche() -> Option<std::path::PathBuf> {
 pub fn werkzeugknopf() -> gtk4::ToggleButton {
     let k = gtk4::ToggleButton::new();
     k.set_child(Some(&symbole::image_named("system-search", 16)));
-    let tipp = gettext("Search for files by name");
+    let tipp = gettext("Search documents and folders by name");
     k.set_tooltip_text(Some(&tipp));
     k.set_action_name(Some("win.suchen"));
     k.set_has_frame(false);
@@ -208,6 +208,7 @@ impl Suche {
 
     /// Shows the search bar (Strg+F, the button).
     pub fn oeffnen(&self) {
+        protokoll("Suchleiste geöffnet");
         self.leiste.set_visible(true);
         self.feld.grab_focus();
         self.feld.select_region(0, -1);
@@ -216,7 +217,13 @@ impl Suche {
     /// Ends the search: bar and results go, the folder is shown again.
     pub fn beenden(&self) {
         self.stoppen();
+        // later reports of the stopped search are dropped
+        self.nummer.set(0);
+        self.laeuft.set(false);
+        self.drehen.set_spinning(false);
+        self.drehen.set_visible(false);
         let war_offen = self.leiste.is_visible();
+        protokoll("Suche beendet");
         self.leiste.set_visible(false);
         self.ergebnisse_zeigen(false);
         self.ergebnisse.leeren();

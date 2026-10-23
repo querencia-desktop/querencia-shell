@@ -1,5 +1,5 @@
 //! The toolbar (B §3.4): Zurück · Vor · Nach oben · Stopp · Aktualisieren |
-//! Persönlicher Ordner · Rechner | Suchen (`suche.rs`) — right: zoom
+//! Persönlicher Ordner · Rechner | Suchen (`suche/`) — right: zoom
 //! (−, percentage, +), the view drop-down and the busy indicator. 16 px
 //! icons, text only beside Zurück and Vor (GNOME 2 "important buttons
 //! labelled"), tooltips everywhere, `can_focus=false` as in Dokumente.

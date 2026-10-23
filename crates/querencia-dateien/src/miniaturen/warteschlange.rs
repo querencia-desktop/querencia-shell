@@ -217,7 +217,26 @@ impl Drop for Pool {
     }
 }
 
+#[cfg(target_env = "gnu")]
+unsafe extern "C" {
+    /// glibc: gives the free memory of every arena back to the system.
+    fn malloc_trim(pad: usize) -> i32;
+}
+
+/// Decoding a photo needs some MB per thread; glibc keeps them in the
+/// thread's arena after the job. When the queue runs dry they go back
+/// (GTK's loaders, the fallback: +54 MB after 200 photos, 15 MB less
+/// with the trim; docs/dateien.md).
+fn speicher_zurueckgeben() {
+    #[cfg(target_env = "gnu")]
+    // SAFETY: malloc_trim only walks glibc's own arenas.
+    unsafe {
+        malloc_trim(0);
+    }
+}
+
 fn arbeiten(g: &Geteilt, wurzel: &Path, ausliefern: &Ausliefern) {
+    let mut gearbeitet = false;
     loop {
         let (auftrag, abbruch) = {
             let mut s = sperren(g);
@@ -230,11 +249,19 @@ fn arbeiten(g: &Geteilt, wurzel: &Path, ausliefern: &Ausliefern) {
                     s.laufend.insert(a.anfrage.clone(), abbruch.clone());
                     break (a, abbruch);
                 }
+                if gearbeitet && s.laufend.is_empty() {
+                    gearbeitet = false;
+                    drop(s);
+                    speicher_zurueckgeben();
+                    s = sperren(g);
+                    continue;
+                }
                 s = g.signal.wait(s).unwrap_or_else(|e| e.into_inner());
             }
         };
         let ergebnis = bearbeiten(wurzel, &auftrag, &abbruch);
         sperren(g).laufend.remove(&auftrag.anfrage);
+        gearbeitet = true;
         ausliefern(ergebnis);
     }
 }
@@ -325,7 +352,8 @@ mod tests {
         a.anfrage.mtime = 1234;
         let nein = AtomicBool::new(false);
         let e = bearbeiten(&wurzel, &a, &nein);
-        assert_eq!(e.herkunft, Herkunft::Erzeugt(Weg::Gtk));
+        let erzeugt = [Herkunft::Erzeugt(Weg::Pixbuf), Herkunft::Erzeugt(Weg::Gtk)];
+        assert!(erzeugt.contains(&e.herkunft), "{:?}", e.herkunft);
         let t = e.textur.unwrap();
         assert_eq!(t.width(), 64);
         let png = std::fs::read(cache::pfad(&wurzel, Eimer::Normal, &uri)).unwrap();
@@ -338,10 +366,7 @@ mod tests {
         // a changed file (other mtime) is made again
         a.quelle.mtime = 1235;
         a.anfrage.mtime = 1235;
-        assert_eq!(
-            bearbeiten(&wurzel, &a, &nein).herkunft,
-            Herkunft::Erzeugt(Weg::Gtk)
-        );
+        assert!(erzeugt.contains(&bearbeiten(&wurzel, &a, &nein).herkunft));
         // a valid `large` thumbnail (as Querencia Files writes them) serves
         // a normal request
         let anderes = d.join("anderes.png");
