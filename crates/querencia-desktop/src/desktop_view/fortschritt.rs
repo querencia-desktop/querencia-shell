@@ -9,6 +9,8 @@
 //!   (short jobs show nothing, as on GNOME 2) and closes when no job runs.
 //! - QD-076: closing destroys the window; the next job builds it anew.
 //!   Closed by hand while jobs run, it stays away until a new job starts.
+//! - A job that waits for an answer (`frage.rs`) is shown only after the
+//!   answer: the window would otherwise take the keyboard from the question.
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -157,6 +159,10 @@ struct Eintrag {
     title: String,
     stand: Stand,
     zeile: Option<Zeile>,
+    /// A question of the job is open.
+    fragt: bool,
+    /// Its time to show came while it asked: show it after the answer.
+    nachher_zeigen: bool,
 }
 
 /// The window and its jobs.
@@ -192,6 +198,8 @@ impl Fortschritt {
                 title,
                 stand: Stand::default(),
                 zeile: None,
+                fragt: false,
+                nachher_zeigen: false,
             },
         );
         let weak = Rc::downgrade(self);
@@ -214,6 +222,21 @@ impl Fortschritt {
         change(&mut eintrag.stand);
         if let Some(zeile) = &eintrag.zeile {
             fill(zeile, &eintrag.title, &eintrag.stand);
+        }
+    }
+
+    /// A question of job `id` opened (`true`) or was answered (`false`).
+    pub fn frage(self: &Rc<Self>, id: JobId, offen: bool) {
+        let later = {
+            let mut eintraege = self.eintraege.borrow_mut();
+            let Some(eintrag) = eintraege.get_mut(&id) else {
+                return;
+            };
+            eintrag.fragt = offen;
+            !offen && std::mem::take(&mut eintrag.nachher_zeigen)
+        };
+        if later {
+            self.zeigen(id);
         }
     }
 
@@ -244,8 +267,13 @@ impl Fortschritt {
         if self.weggeklickt.get() {
             return;
         }
-        if !self.eintraege.borrow().contains_key(&id) {
-            return;
+        match self.eintraege.borrow_mut().get_mut(&id) {
+            None => return,
+            Some(eintrag) if eintrag.fragt => {
+                eintrag.nachher_zeigen = true;
+                return;
+            }
+            Some(_) => {}
         }
         let list = self.fenster();
         let mut eintraege = self.eintraege.borrow_mut();

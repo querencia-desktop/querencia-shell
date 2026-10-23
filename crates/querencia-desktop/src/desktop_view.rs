@@ -87,6 +87,7 @@ use crate::volumes::{self, Removal, Volume};
 
 mod fortschritt;
 mod frage;
+mod kennwort;
 mod transfer;
 
 /// The program for Rechner, Papierkorb and volumes: Querencia Dateien, then
@@ -1983,7 +1984,7 @@ impl Icons {
         monitor.connect_volume_added(move |_, volume| {
             let Some(icons) = weak.upgrade() else { return };
             icons.update_volumes_soon();
-            automount(volume, &icons.window);
+            automount(volume);
         });
     }
 
@@ -2053,7 +2054,8 @@ impl Icons {
             log(&format!("{} ist nicht mehr eingehängt", item.name));
             return;
         };
-        let operation = gtk4::MountOperation::new(Some(&self.window));
+        // 0.3.0: the desktop's own questions (`kennwort.rs`), not GTK's
+        let operation = kennwort::mount_operation();
         let question = ask_when_busy(&operation, removal, &item.name, mount.root().path());
         let name = item.name.clone();
         log(&format!("{}: {name}", removal.label()));
@@ -2082,8 +2084,7 @@ impl Icons {
             },
         };
         glib::MainContext::default().spawn_local(async move {
-            let result =
-                laufwerke::entfernen(&mount, removal, &Rueckfrage(operation.upcast())).await;
+            let result = laufwerke::entfernen(&mount, removal, &Rueckfrage(operation)).await;
             done(result);
         });
     }
@@ -2577,7 +2578,7 @@ fn finish_question(
 /// programs end, GVfs takes the volume away by itself and the question
 /// closes. Returns the open question's cancellable.
 fn ask_when_busy(
-    operation: &gtk4::MountOperation,
+    operation: &gio::MountOperation,
     removal: Removal,
     name: &str,
     root: Option<PathBuf>,
@@ -2700,8 +2701,8 @@ fn volume_items(monitor: &gio::VolumeMonitor, settings: &config::IconSettings) -
         .collect()
 }
 
-/// Questions while mounting or taking a volume away: GTK's mount operation
-/// (passwords) with the desktop's own German "still in use" question.
+/// Questions while mounting or taking a volume away: the desktop's own
+/// password window (`kennwort.rs`) and German "still in use" question.
 struct Rueckfrage(gio::MountOperation);
 
 impl laufwerke::Rueckfrage for Rueckfrage {
@@ -2717,16 +2718,19 @@ fn mount_volume(name: &str, volume: &Volume, window: &ApplicationWindow, open: b
         log(&format!("{name}: Datenträger nicht mehr da"));
         return;
     };
-    let operation = gtk4::MountOperation::new(Some(window));
-    let context = WidgetExt::display(window).app_launch_context();
+    let operation = kennwort::mount_operation();
+    // the launch context only after mounting: one made before a password
+    // dialog refers to it as the focused window
+    let display = WidgetExt::display(window);
     let name = name.to_owned();
     log(&format!("Einhängen: {name}"));
     glib::MainContext::default().spawn_local(async move {
-        match laufwerke::einhaengen(&gio_volume, &Rueckfrage(operation.upcast())).await {
+        match laufwerke::einhaengen(&gio_volume, &Rueckfrage(operation)).await {
             Ok(mount) => {
                 let root = mount.root().uri().to_string();
                 log(&format!("eingehängt: {name} ({root})"));
                 if open {
+                    let context = display.app_launch_context();
                     crate::portal::for_children(&context);
                     open_location(&name, &root, &context);
                 }
@@ -2747,7 +2751,7 @@ fn mount_volume(name: &str, volume: &Volume, window: &ApplicationWindow, open: b
 
 /// E3: a medium inserted while the desktop runs is mounted when GIO wants
 /// it (`should_automount`), as GNOME 2's desktop did; nothing opens.
-fn automount(volume: &gio::Volume, window: &ApplicationWindow) {
+fn automount(volume: &gio::Volume) {
     let facts = laufwerke::volume_facts(volume);
     let medium = matches!(
         laufwerke::classify_unmounted(&facts),
@@ -2757,12 +2761,12 @@ fn automount(volume: &gio::Volume, window: &ApplicationWindow) {
     {
         return;
     }
-    let operation = gtk4::MountOperation::new(Some(window));
+    let operation = kennwort::mount_operation();
     let volume = volume.clone();
     let name = facts.name;
     log(&format!("Einhängen (automatisch): {name}"));
     glib::MainContext::default().spawn_local(async move {
-        match laufwerke::einhaengen(&volume, &Rueckfrage(operation.upcast())).await {
+        match laufwerke::einhaengen(&volume, &Rueckfrage(operation)).await {
             Ok(mount) => log(&format!("eingehängt: {name} ({})", mount.root().uri())),
             Err(err) => log(&format!("automatisch nicht eingehängt: {name}: {err}")),
         }
