@@ -15,6 +15,7 @@ mod tippsuche;
 mod umbenennen;
 mod vorlauf_modell;
 
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -88,6 +89,7 @@ fn main() -> glib::ExitCode {
         ("win.verborgene", &["<Control>h"]),
         ("win.neu-laden", &["<Control>r", "F5"]),
         ("win.umbenennen", &["F2"]),
+        ("win.umbenennen-ganz", &["<Shift>F2"]),
         ("win.neuer-ordner", &["<Shift><Control>n"]),
         ("win.alles-auswaehlen", &["<Control>a"]),
         ("win.papierkorb", &["Delete"]),
@@ -142,6 +144,11 @@ impl Probe {
             probe.ansicht_waehlen("liste");
         }
         probe.oeffne(ordner, None);
+        // the window keeps its test window state alive until it closes
+        let halten = RefCell::new(Some(probe.clone()));
+        probe.fenster.connect_destroy(move |_| {
+            halten.borrow_mut().take();
+        });
         probe.fenster.present();
     }
 
@@ -163,11 +170,12 @@ impl Probe {
             self.symbole.datumsformat_setzen(true);
             self.liste.datumsformat_setzen(true);
         }
-        if let Some(i) = wert("QUERENCIA_DATEIEN_ZOOM")
-            .and_then(|z| z.parse().ok())
-            .and_then(ansichtsregeln::zoom_index)
-        {
-            self.symbole.zoom_setzen(i);
+        if let Some(prozent) = wert("QUERENCIA_DATEIEN_ZOOM").and_then(|z| z.parse().ok()) {
+            self.symbole.zoom_setzen(prozent);
+        }
+        if wert("QUERENCIA_DATEIEN_KLICK").as_deref() == Some("einfach") {
+            self.symbole.kern.einfacher_klick(true);
+            self.liste.kern.einfacher_klick(true);
         }
     }
 
@@ -196,16 +204,21 @@ impl Probe {
     fn verbinden(self: &Rc<Self>) {
         for kern in [self.symbole.kern.clone(), self.liste.kern.clone()] {
             let weak = Rc::downgrade(self);
-            *kern.rueckrufe.aktiviert.borrow_mut() = Some(Rc::new(move |liste: Vec<Eintrag>| {
-                let Some(p) = weak.upgrade() else { return };
-                let namen: Vec<&str> = liste.iter().map(|e| e.daten().name.as_str()).collect();
-                protokoll(&format!("aktiviert: {}", namen.join(", ")));
-                if let [e] = liste.as_slice()
-                    && e.daten().ist_ordner
-                {
-                    p.oeffne(e.daten().datei.clone(), None);
-                }
-            }));
+            *kern.rueckrufe.aktiviert.borrow_mut() =
+                Some(Rc::new(move |(liste, neu): (Vec<Eintrag>, bool)| {
+                    let Some(p) = weak.upgrade() else { return };
+                    let namen: Vec<&str> = liste.iter().map(|e| e.daten().name.as_str()).collect();
+                    protokoll(&format!(
+                        "aktiviert{}: {}",
+                        if neu { " (neues Fenster)" } else { "" },
+                        namen.join(", ")
+                    ));
+                    if let [e] = liste.as_slice()
+                        && e.daten().ist_ordner
+                    {
+                        p.oeffne(e.daten().datei.clone(), None);
+                    }
+                }));
             let weak = Rc::downgrade(self);
             *kern.rueckrufe.nach_oben.borrow_mut() = Some(Rc::new(move |()| {
                 let Some(p) = weak.upgrade() else { return };
@@ -217,30 +230,37 @@ impl Probe {
                     p.oeffne(eltern, name);
                 }
             }));
+            *kern.rueckrufe.melden.borrow_mut() = Some(Rc::new(|text: String| {
+                protokoll(&format!("Meldung: {text}"));
+            }));
             *kern.rueckrufe.ortsfeld.borrow_mut() = Some(Rc::new(|c: char| {
                 protokoll(&format!("Ortsfeld mit „{c}“"));
             }));
             let weak = Rc::downgrade(self);
-            *kern.rueckrufe.auswahl.borrow_mut() = Some(Rc::new(move |()| {
+            *kern.rueckrufe.umbenennen.borrow_mut() =
+                Some(Rc::new(move |(alt, neu): (Eintrag, String)| {
+                    let weak = weak.clone();
+                    glib::spawn_future_local(async move {
+                        let datei = alt.daten().datei.clone();
+                        match umbenennen::ausfuehren(datei, neu).await {
+                            Ok(datei) => {
+                                protokoll(&format!("umbenannt in {}", datei.parse_name()));
+                                if let Some(p) = weak.upgrade() {
+                                    p.neu_einlesen(Some(&alt), &datei);
+                                }
+                            }
+                            Err(e) => {
+                                protokoll(&format!("Umbenennen fehlgeschlagen: {}", e.message()))
+                            }
+                        }
+                    });
+                }));
+            let weak = Rc::downgrade(self);
+            *kern.rueckrufe.zoom.borrow_mut() = Some(Rc::new(move |schritt: i32| {
                 if let Some(p) = weak.upgrade() {
-                    let k = p.kern();
-                    protokoll(&format!(
-                        "Auswahl: {}",
-                        k.gewaehlte()
-                            .iter()
-                            .map(|e| e.daten().name.clone())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    ));
+                    p.zoom(Some(schritt));
                 }
             }));
-            let weak = Rc::downgrade(self);
-            *kern.rueckrufe.umbenannt.borrow_mut() =
-                Some(Rc::new(move |(alt, datei): (Eintrag, gio::File)| {
-                    if let Some(p) = weak.upgrade() {
-                        p.neu_einlesen(Some(&alt), &datei);
-                    }
-                }));
             let weak = Rc::downgrade(self);
             *kern.rueckrufe.umgebung.borrow_mut() = Some(Rc::new(move || {
                 weak.upgrade().map_or((None, Sortierung::default()), |p| {
@@ -382,7 +402,11 @@ impl Probe {
         einfach("vergroessern", mit(|p| p.zoom(Some(1))));
         einfach("verkleinern", mit(|p| p.zoom(Some(-1))));
         einfach("normale-groesse", mit(|p| p.zoom(None)));
-        einfach("umbenennen", mit(|p| p.kern().umbenennen_starten()));
+        einfach("umbenennen", mit(|p| p.kern().umbenennen_starten(false)));
+        einfach(
+            "umbenennen-ganz",
+            mit(|p| p.kern().umbenennen_starten(true)),
+        );
         einfach("alles-auswaehlen", mit(|p| p.kern().alles_auswaehlen()));
         einfach(
             "neu-laden",

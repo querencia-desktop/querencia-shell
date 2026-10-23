@@ -17,162 +17,166 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
+#: src/ansichtskern.rs:1007
+msgid "Only one item can be renamed at a time."
+msgstr ""
+
 #. TRANSLATORS: zoom level in the tool bar; German puts a space before %
-#: src/ansichtsregeln.rs:38
+#: src/ansichtsregeln.rs:51
 #, no-c-format
 msgid "{percent}%"
 msgstr ""
 
-#: src/ansichtsregeln.rs:189
+#: src/ansichtsregeln.rs:202
 msgid "Name"
 msgstr ""
 
-#: src/ansichtsregeln.rs:190
+#: src/ansichtsregeln.rs:203
 msgid "Size"
 msgstr ""
 
-#: src/ansichtsregeln.rs:191
+#: src/ansichtsregeln.rs:204
 msgid "Type"
 msgstr ""
 
-#: src/ansichtsregeln.rs:192
+#: src/ansichtsregeln.rs:205
 msgid "Date Modified"
 msgstr ""
 
-#: src/ansichtsregeln.rs:193
+#: src/ansichtsregeln.rs:206
 msgid "Permissions"
 msgstr ""
 
-#: src/ansichtsregeln.rs:194
+#: src/ansichtsregeln.rs:207
 msgid "Owner"
 msgstr ""
 
-#: src/ansichtsregeln.rs:195
+#: src/ansichtsregeln.rs:208
 msgid "Group"
 msgstr ""
 
-#: src/i18n.rs:133 src/kontextmenue.rs:115
+#: src/i18n.rs:133 src/kontextmenue.rs:118
 #, no-c-format
 msgid "Open with “{app}”"
 msgstr ""
 
-#: src/kontextmenue.rs:119
+#: src/kontextmenue.rs:122
 msgid "Open"
 msgstr ""
 
-#: src/kontextmenue.rs:123
+#: src/kontextmenue.rs:126
 msgid "Open in New Window"
 msgstr ""
 
-#: src/kontextmenue.rs:148
+#: src/kontextmenue.rs:151
 msgid "Other Application…"
 msgstr ""
 
-#: src/kontextmenue.rs:152
+#: src/kontextmenue.rs:155
 msgid "Open With"
 msgstr ""
 
-#: src/kontextmenue.rs:157
+#: src/kontextmenue.rs:160
 msgid "Cut"
 msgstr ""
 
-#: src/kontextmenue.rs:158
+#: src/kontextmenue.rs:161
 msgid "Copy"
 msgstr ""
 
-#: src/kontextmenue.rs:162
+#: src/kontextmenue.rs:165
 msgid "Paste Into Folder"
 msgstr ""
 
-#: src/kontextmenue.rs:167 src/kontextmenue.rs:169
+#: src/kontextmenue.rs:170 src/kontextmenue.rs:172
 msgid "Rename…"
 msgstr ""
 
-#: src/kontextmenue.rs:175
+#: src/kontextmenue.rs:178
 msgid "Move to Trash"
 msgstr ""
 
-#: src/kontextmenue.rs:176 src/kontextmenue.rs:184 src/kontextmenue.rs:251
+#: src/kontextmenue.rs:179 src/kontextmenue.rs:187 src/kontextmenue.rs:254
 msgid "Properties"
 msgstr ""
 
-#: src/kontextmenue.rs:182
+#: src/kontextmenue.rs:185
 msgid "Restore"
 msgstr ""
 
-#: src/kontextmenue.rs:183
+#: src/kontextmenue.rs:186
 msgid "Delete…"
 msgstr ""
 
-#: src/kontextmenue.rs:193
+#: src/kontextmenue.rs:196
 msgid "No templates installed"
 msgstr ""
 
-#: src/kontextmenue.rs:203
+#: src/kontextmenue.rs:206
 msgid "Empty File"
 msgstr ""
 
-#: src/kontextmenue.rs:208
+#: src/kontextmenue.rs:211
 msgid "Create Folder"
 msgstr ""
 
-#: src/kontextmenue.rs:210
+#: src/kontextmenue.rs:213
 msgid "Create Document"
 msgstr ""
 
-#: src/kontextmenue.rs:220
+#: src/kontextmenue.rs:223
 msgid "By _Name"
 msgstr ""
 
-#: src/kontextmenue.rs:221
+#: src/kontextmenue.rs:224
 msgid "By _Size"
 msgstr ""
 
-#: src/kontextmenue.rs:222
+#: src/kontextmenue.rs:225
 msgid "By _Type"
 msgstr ""
 
-#: src/kontextmenue.rs:223
+#: src/kontextmenue.rs:226
 msgid "By Modification _Date"
 msgstr ""
 
-#: src/kontextmenue.rs:232
+#: src/kontextmenue.rs:235
 msgid "Arrange Items"
 msgstr ""
 
-#: src/kontextmenue.rs:236
+#: src/kontextmenue.rs:239
 msgid "Re_versed Order"
 msgstr ""
 
-#: src/kontextmenue.rs:244
+#: src/kontextmenue.rs:247
 msgid "Paste"
 msgstr ""
 
-#: src/kontextmenue.rs:247 src/main.rs:146
+#: src/kontextmenue.rs:250 src/main.rs:185
 msgid "Zoom In"
 msgstr ""
 
-#: src/kontextmenue.rs:248 src/main.rs:147
+#: src/kontextmenue.rs:251 src/main.rs:186
 msgid "Zoom Out"
 msgstr ""
 
-#: src/kontextmenue.rs:249 src/main.rs:148
+#: src/kontextmenue.rs:252 src/main.rs:187
 msgid "Normal Size"
 msgstr ""
 
-#: src/main.rs:119
+#: src/main.rs:125
 msgid "_View"
 msgstr ""
 
-#: src/main.rs:151
+#: src/main.rs:190
 msgid "Icons"
 msgstr ""
 
-#: src/main.rs:152
+#: src/main.rs:191
 msgid "List"
 msgstr ""
 
-#: src/main.rs:365
+#: src/main.rs:446
 msgid "New Folder"
 msgstr ""
 
@@ -182,11 +186,11 @@ msgid ""
 "The name “{name}” is already used in this folder. Please use a different name."
 msgstr ""
 
-#: src/umbenennen.rs:231
+#: src/umbenennen.rs:239
 msgid "The item could not be renamed."
 msgstr ""
 
-#: src/umbenennen.rs:233
+#: src/umbenennen.rs:241
 msgctxt "dialog"
 msgid "_Close"
 msgstr ""

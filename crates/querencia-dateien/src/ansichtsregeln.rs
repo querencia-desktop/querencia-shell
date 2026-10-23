@@ -6,36 +6,49 @@
 use crate::ansichtskern::{Kriterium, Sortierung};
 use crate::i18n::{gettext, gettext_f};
 
-/// Zoom levels as (percent, icon size in px): Nautilus 2.30's levels
-/// smaller, small, standard, large and larger (`nautilus-icon-info.h`:
-/// 24, 32, 48, 72, 96 px). 33 % and 400 % stay out (B §5.1 D10).
-pub const ZOOM: [(u32, i32); 5] = [(50, 24), (66, 32), (100, 48), (150, 72), (200, 96)];
+/// The zoom levels of both views in percent: Nautilus 2.30's smaller,
+/// small, standard, large and larger (33 % and 400 % stay out, B §5.1 D10).
+pub const STUFEN: [u32; 5] = [50, 66, 100, 150, 200];
 /// Normal size of the icon view (Strg+0, Nautilus `default_zoom_level`).
-pub const ZOOM_SYMBOLE: usize = 2;
+pub const ZOOM_SYMBOLE: u32 = 100;
 /// Normal size of the list view (Nautilus list view: `smaller`, 50 %).
-pub const ZOOM_LISTE: usize = 0;
+pub const ZOOM_LISTE: u32 = 50;
 
-/// The zoom level after `schritt` steps (+1 larger, -1 smaller).
-pub fn zoom_schritt(index: usize, schritt: i32) -> usize {
-    let neu = index as i64 + i64::from(schritt);
-    neu.clamp(0, ZOOM.len() as i64 - 1) as usize
+/// The icon size at `prozent`, as Nautilus 2.30 (`nautilus-icon-info.h`):
+/// 16, 24, 32, 48, 72, 96, 192 px.
+pub fn symbolgroesse(prozent: u32) -> i32 {
+    match prozent {
+        0..=33 => 16,
+        34..=50 => 24,
+        51..=66 => 32,
+        67..=100 => 48,
+        101..=150 => 72,
+        151..=200 => 96,
+        _ => 192,
+    }
 }
 
-/// The level of `prozent`, if it is one.
-pub fn zoom_index(prozent: u32) -> Option<usize> {
-    ZOOM.iter().position(|(p, _)| *p == prozent)
+/// The level `schritt` steps (+1 larger, -1 smaller) from `prozent`,
+/// within [`STUFEN`]; a value between two levels counts as the next one up.
+pub fn zoom_schritt(prozent: u32, schritt: i32) -> u32 {
+    let jetzt = STUFEN
+        .iter()
+        .position(|p| *p >= prozent)
+        .unwrap_or(STUFEN.len() - 1) as i64;
+    let neu = (jetzt + i64::from(schritt)).clamp(0, STUFEN.len() as i64 - 1);
+    STUFEN[neu as usize]
 }
 
-/// The icon size of level `index` (clamped to the levels).
-pub fn symbolgroesse(index: usize) -> i32 {
-    ZOOM[index.min(ZOOM.len() - 1)].1
+/// The nearest level of [`STUFEN`] for `prozent` (settings may hold 33 or
+/// 400 %).
+pub fn zoom_stufe(prozent: u32) -> u32 {
+    zoom_schritt(prozent, 0)
 }
 
 /// "100 %" (German) or "100%" (English) for the zoom display.
-pub fn zoom_text(index: usize) -> String {
-    let prozent = ZOOM[index.min(ZOOM.len() - 1)].0.to_string();
+pub fn zoom_text(prozent: u32) -> String {
     // TRANSLATORS: zoom level in the tool bar; German puts a space before %
-    gettext_f("{percent}%", &[("percent", &prozent)])
+    gettext_f("{percent}%", &[("percent", &prozent.to_string())])
 }
 
 /// Width of an icon view cell at icon size `symbol`: room for about twelve
@@ -311,26 +324,38 @@ mod tests {
 
     #[test]
     fn zoom_levels_are_nautilus_sizes_and_steps_stay_inside() {
-        assert_eq!(ZOOM[ZOOM_SYMBOLE], (100, 48));
-        assert_eq!(ZOOM[ZOOM_LISTE], (50, 24));
-        assert_eq!(ZOOM.first().map(|z| z.1), Some(24));
-        assert_eq!(ZOOM.last().map(|z| z.1), Some(96));
-        assert_eq!(zoom_schritt(ZOOM_SYMBOLE, 1), 3);
-        assert_eq!(zoom_schritt(ZOOM_SYMBOLE, -1), 1);
-        assert_eq!(zoom_schritt(4, 1), 4);
-        assert_eq!(zoom_schritt(0, -1), 0);
-        assert_eq!(zoom_index(66), Some(1));
-        assert_eq!(zoom_index(75), None);
-        assert_eq!(symbolgroesse(99), 96);
-        let breiten: Vec<i32> = ZOOM.iter().map(|(_, s)| zellbreite(*s)).collect();
+        assert_eq!(symbolgroesse(ZOOM_SYMBOLE), 48);
+        assert_eq!(symbolgroesse(ZOOM_LISTE), 24);
+        let groessen: Vec<i32> = STUFEN.iter().map(|p| symbolgroesse(*p)).collect();
+        assert_eq!(groessen, [24, 32, 48, 72, 96]);
+        assert_eq!(zoom_schritt(100, 1), 150);
+        assert_eq!(zoom_schritt(100, -1), 66);
+        assert_eq!(zoom_schritt(200, 1), 200);
+        assert_eq!(zoom_schritt(50, -1), 50);
+        assert_eq!(
+            zoom_schritt(75, 0),
+            100,
+            "between two levels: the next one up"
+        );
+        assert_eq!(zoom_stufe(33), 50);
+        assert_eq!(zoom_stufe(400), 200);
+        assert_eq!(symbolgroesse(400), 192);
+        let breiten: Vec<i32> = STUFEN
+            .iter()
+            .map(|p| zellbreite(symbolgroesse(*p)))
+            .collect();
         assert!(breiten.windows(2).all(|w| w[0] < w[1]), "{breiten:?}");
-        assert!(ZOOM.iter().all(|(_, s)| zellbreite(*s) > *s));
+        assert!(
+            STUFEN
+                .iter()
+                .all(|p| zellbreite(symbolgroesse(*p)) > symbolgroesse(*p))
+        );
     }
 
     #[test]
     fn zoom_text_without_catalog_is_english() {
-        assert_eq!(zoom_text(ZOOM_SYMBOLE), "100%");
-        assert_eq!(zoom_text(0), "50%");
+        assert_eq!(zoom_text(100), "100%");
+        assert_eq!(zoom_text(50), "50%");
     }
 
     #[test]

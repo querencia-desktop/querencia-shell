@@ -19,8 +19,7 @@ use querencia_oberflaeche::symbole;
 
 use crate::ansichtskern::{Art, Eintrag, Kern, Sortierung, protokoll, teile};
 use crate::ansichtsregeln::{
-    self, Spalte, ZOOM, datumsmuster, groesse_text, rechte_text, sichtbare_spalten,
-    sortierung_nach_klick,
+    self, Spalte, datumsmuster, groesse_text, rechte_text, sichtbare_spalten, sortierung_nach_klick,
 };
 
 type SortRueckruf = Rc<dyn Fn(Sortierung)>;
@@ -289,22 +288,21 @@ impl Listenansicht {
         text.set_text(&e.daten().anzeige);
     }
 
-    pub fn zoom_setzen(self: &Rc<Self>, index: usize) {
-        let index = index.min(ZOOM.len() - 1);
-        if index == self.kern.zoom() {
+    pub fn zoom_setzen(self: &Rc<Self>, prozent: u32) {
+        let prozent = ansichtsregeln::zoom_stufe(prozent);
+        if prozent == self.kern.zoom() {
             return;
         }
         let t0 = Instant::now();
-        self.kern.zoom_merken(index);
+        self.kern.zoom_merken(prozent);
         for (zelle, li) in self.kern.lebende_zellen() {
             if let Some(e) = li.item().and_downcast::<Eintrag>() {
                 self.name_binden(&zelle, &e);
             }
         }
         protokoll(&format!(
-            "Zoom Listenansicht {} % ({} px) in {} ms",
-            ZOOM[index].0,
-            ZOOM[index].1,
+            "Zoom Listenansicht {prozent} % ({} px) in {} ms",
+            ansichtsregeln::symbolgroesse(prozent),
             t0.elapsed().as_millis()
         ));
         let kern = self.kern.clone();

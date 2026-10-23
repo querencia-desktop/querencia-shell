@@ -16,7 +16,7 @@ use querencia_oberflaeche::symbole;
 
 use crate::ansichtskern::{Art, Eintrag, Kern, protokoll, teile};
 use crate::ansichtsregeln::{
-    self, ZEILEN, ZOOM, ZUSATZ_VORGABE, Zusatz, datumsmuster, zellbreite, zusatzzeilen,
+    self, ZEILEN, ZUSATZ_VORGABE, Zusatz, datumsmuster, symbolgroesse, zellbreite, zusatzzeilen,
 };
 
 pub struct Symbolansicht {
@@ -64,9 +64,7 @@ impl Symbolansicht {
             &scroller,
         );
         kern.zoom_merken(ansichtsregeln::ZOOM_SYMBOLE);
-        kern.feldbreite_setzen(zellbreite(ansichtsregeln::symbolgroesse(
-            ansichtsregeln::ZOOM_SYMBOLE,
-        )));
+        kern.feldbreite_setzen(zellbreite(symbolgroesse(ansichtsregeln::ZOOM_SYMBOLE)));
         let ansicht = Rc::new(Self {
             kern,
             grid,
@@ -102,7 +100,7 @@ impl Symbolansicht {
     }
 
     fn symbolgroesse(&self) -> i32 {
-        ansichtsregeln::symbolgroesse(self.kern.zoom())
+        symbolgroesse(self.kern.zoom())
     }
 
     /// As many columns as cells of the current zoom fit into the width of
@@ -211,8 +209,7 @@ impl Symbolansicht {
     /// The extra lines of `eintrag` at the current zoom.
     fn zusatz_text(&self, eintrag: &Eintrag) -> String {
         let d = eintrag.daten();
-        let prozent = ZOOM[self.kern.zoom()].0;
-        zusatzzeilen(prozent, self.zusatz.get())
+        zusatzzeilen(self.kern.zoom(), self.zusatz.get())
             .into_iter()
             .filter_map(|z| match z {
                 Zusatz::Nichts => None,
@@ -241,14 +238,14 @@ impl Symbolansicht {
         }
     }
 
-    pub fn zoom_setzen(self: &Rc<Self>, index: usize) {
-        let index = index.min(ZOOM.len() - 1);
-        if index == self.kern.zoom() {
+    pub fn zoom_setzen(self: &Rc<Self>, prozent: u32) {
+        let prozent = ansichtsregeln::zoom_stufe(prozent);
+        if prozent == self.kern.zoom() {
             return;
         }
         let t0 = Instant::now();
-        self.kern.zoom_merken(index);
-        let groesse = ZOOM[index].1;
+        self.kern.zoom_merken(prozent);
+        let groesse = symbolgroesse(prozent);
         self.kern.feldbreite_setzen(zellbreite(groesse));
         for (zelle, li) in self.kern.lebende_zellen() {
             if let Some(e) = li.item().and_downcast::<Eintrag>() {
@@ -261,8 +258,7 @@ impl Symbolansicht {
         self.spalten_anpassen();
         self.grid.queue_resize();
         protokoll(&format!(
-            "Zoom Symbolansicht {} % ({groesse} px) in {} ms",
-            ZOOM[index].0,
+            "Zoom Symbolansicht {prozent} % ({groesse} px) in {} ms",
             t0.elapsed().as_millis()
         ));
         let kern = self.kern.clone();
