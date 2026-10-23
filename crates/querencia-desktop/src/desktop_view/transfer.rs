@@ -587,7 +587,17 @@ impl Icons {
                     .and_then(|t| t.file_name())
                     .map(|n| n.to_string_lossy().into_owned())
                     .unwrap_or_default();
-                self.fragen.fragen(*id, conflict, reply.clone(), &folder);
+                // the window "Dateioperationen" waits for the answer: it would
+                // take the keyboard from the question
+                self.fortschritt.frage(*id, true);
+                let fortschritt = Rc::downgrade(&self.fortschritt);
+                let job = *id;
+                self.fragen
+                    .fragen(*id, conflict, reply.clone(), &folder, move || {
+                        if let Some(fortschritt) = fortschritt.upgrade() {
+                            fortschritt.frage(job, false);
+                        }
+                    });
             }
             Event::Failed { id, name, why } => {
                 if debugging() {

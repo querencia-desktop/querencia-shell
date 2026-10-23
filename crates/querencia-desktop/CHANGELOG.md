@@ -1,5 +1,55 @@
 # Änderungen – querencia-desktop
 
+## 0.3.0 – 2026-10-23
+
+Welle A von „Querencia Dateien“ (QD-140): Der Desktop nutzt die Bibliothek
+`querencia-dateiarbeit` für alles, was er mit Dateien und Laufwerken tut.
+
+**Verhaltensänderung – Konfliktregel „fragen“ statt „nie überschreiben“
+(E2).** Bis 0.2.7 bekam eine Kopie auf einen belegten Namen still einen
+freien Namen („notiz (Kopie).txt“), ein Verschieben auf einen belegten Namen
+wurde abgelehnt. Jetzt fragt der Desktop wie Nautilus 2.30: „Datei „x“
+ersetzen?“ bzw. „Ordner „x“ zusammenführen?“ mit Größe und Datum beider
+Dateien und den Antworten Abbrechen, **Überspringen** (Vorgabe, Eingabetaste),
+Umbenennen (freier Name vorgeschlagen), Ersetzen bzw. Zusammenführen, dazu
+„Diese Aktion auf alle Dateien anwenden“. Ohne Klick auf Ersetzen wird nichts
+überschrieben; ersetzt wird erst, wenn das neue Objekt vollständig da ist.
+Einfügen in denselben Ordner legt wie bisher eine Kopie mit freiem Namen an.
+
+- **Fortschritt und Abbruch:** Kopieren, Verschieben, Papierkorb, endgültig
+  Löschen und Papierkorb leeren laufen als Aufträge in eigenen Fäden. Dauert
+  einer länger als eine Sekunde, zeigt das Fenster „Dateioperationen“ was,
+  wohin, wie viel und wie lange noch, mit „Abbrechen“. Ein abgebrochener
+  Auftrag hinterlässt keine halbe Datei und keinen halben Ordner unter
+  echtem Namen. Solange ein Auftrag auf eine Antwort wartet, bleibt das
+  Fenster weg (es nähme der Frage die Tastatur).
+- **Einhängen (E3):** Nicht eingehängte Wechseldatenträger und optische
+  Medien erscheinen als Symbol; Doppelklick hängt ein und öffnet, das Menü
+  bietet „Einhängen“. Ein während der Sitzung eingesteckter Datenträger wird
+  eingehängt, wenn GIO es vorsieht (Automount), ohne ein Fenster zu öffnen.
+  Kennwort- und Auswahlfragen stellt der Desktop selbst (nicht modal); GTKs
+  eigener modaler Kennwortdialog brachte gtk4-layer-shell beim Schließen
+  zum Absturz.
+- **Papierkorb:** gezählt über einen Monitor ohne Abfrage im Hauptfaden
+  (`papierkorb::Papierkorb`); „Papierkorb leeren“ ist ein Auftrag mit
+  Fortschritt und Abbruch.
+- **Überwachung** des Arbeitsflächen-Ordners über `FolderWatch` (gebündelte
+  Änderungen, Warten auf einen fehlenden Ordner wie seit 0.2.5).
+- **Neuer Ordner, neues Dokument, Umbenennen** als Aufträge, die nie
+  ersetzen (`RENAME_NOREPLACE`).
+- **Symbole ohne Vorladen (QD-106):** Arbeitsfläche, Eigenschaften und das
+  Desktop-Menü laden Symbole wie das Panel ohne GTKs Vorladen im
+  Thread-Pool (`symbole`, `IconLoading::WithoutPreload`). Gewollte
+  Verhaltensänderung gegenüber 0.2.7; belegt mit dem Belastungslauf.
+- Programm für Ordner, Rechner, Papierkorb und Datenträger aus
+  `oeffnen::FILE_MANAGERS`: Querencia Dateien zuerst, dann Querencia Files
+  (neue und alte Kennung).
+- Entfallen im Desktop (jetzt im Crate, Tests dort): `fileops.rs`,
+  `rename.rs`, große Teile von `volumes.rs` und `icons.rs`, die vier
+  Laufwerkssymbole unter `data/icons/`. Neue Module
+  `desktop_view/fortschritt.rs`, `frage.rs`, `kennwort.rs`.
+- Die Ablage enthält zusätzlich `querencia-dateiarbeit.mo`.
+
 ## 0.2.7 – 2026-10-23
 
 Integrationsstand 0.2.7-2 (Tags `desktop/0.2.7-2`, `desktop/0.2.7-2-int`):

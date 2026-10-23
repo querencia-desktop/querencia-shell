@@ -17,220 +17,220 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/desktop_view.rs:321
+#: src/desktop_view.rs:322
 msgid "Desktop – Icons"
 msgstr ""
 
-#: src/desktop_view.rs:1359 src/desktop_view.rs:1410
+#: src/desktop_view.rs:1360 src/desktop_view.rs:1411
 msgid "Open"
 msgstr ""
 
-#: src/desktop_view.rs:1363
+#: src/desktop_view.rs:1364
 msgid "Mount"
 msgstr ""
 
-#: src/desktop_view.rs:1391
+#: src/desktop_view.rs:1392
 msgid "Open Trash"
 msgstr ""
 
-#: src/desktop_view.rs:1398
+#: src/desktop_view.rs:1399
 msgid "Empty Trash…"
 msgstr ""
 
-#: src/desktop_view.rs:1422 src/desktop_view/transfer.rs:1370
+#: src/desktop_view.rs:1423 src/desktop_view/transfer.rs:1370
 msgid "Open With"
 msgstr ""
 
-#: src/desktop_view.rs:1427
+#: src/desktop_view.rs:1428
 msgid "Cut"
 msgstr ""
 
-#: src/desktop_view.rs:1428
+#: src/desktop_view.rs:1429
 msgid "Copy"
 msgstr ""
 
-#: src/desktop_view.rs:1430
+#: src/desktop_view.rs:1431
 msgid "Paste Into Folder"
 msgstr ""
 
-#: src/desktop_view.rs:1451
+#: src/desktop_view.rs:1452
 msgid "Rename…"
 msgstr ""
 
-#: src/desktop_view.rs:1457
+#: src/desktop_view.rs:1458
 msgid "Move to Trash"
 msgstr ""
 
-#: src/desktop_view.rs:1461
+#: src/desktop_view.rs:1462
 msgid "Properties"
 msgstr ""
 
-#: src/desktop_view.rs:1476
+#: src/desktop_view.rs:1477
 msgid "Create Folder"
 msgstr ""
 
-#: src/desktop_view.rs:1479
+#: src/desktop_view.rs:1480
 msgid "Empty File"
 msgstr ""
 
-#: src/desktop_view.rs:1497
+#: src/desktop_view.rs:1498
 msgid "Create Document"
 msgstr ""
 
-#: src/desktop_view.rs:1504
+#: src/desktop_view.rs:1505
 msgid "Clean Up by Name"
 msgstr ""
 
-#: src/desktop_view.rs:1510
+#: src/desktop_view.rs:1511
 msgid "Align Icons to Grid"
 msgstr ""
 
-#: src/desktop_view.rs:1514
+#: src/desktop_view.rs:1515
 msgid "Keep Aligned"
 msgstr ""
 
-#: src/desktop_view.rs:1526
+#: src/desktop_view.rs:1527
 msgid "Paste"
 msgstr ""
 
-#: src/desktop_view.rs:1537
+#: src/desktop_view.rs:1538
 msgid "Change Desktop Background…"
 msgstr ""
 
-#: src/desktop_view.rs:1689
+#: src/desktop_view.rs:1690
 msgid "New Folder"
 msgstr ""
 
-#: src/desktop_view.rs:1771
+#: src/desktop_view.rs:1772
 msgid "Empty all items from the trash?"
 msgstr ""
 
-#: src/desktop_view.rs:1772
+#: src/desktop_view.rs:1773
 msgid "If you empty the trash, all items in it will be permanently lost."
 msgstr ""
 
-#: src/desktop_view.rs:1775 src/desktop_view.rs:3033 src/desktop_view/fortschritt.rs:338 src/desktop_view/transfer.rs:459
+#: src/desktop_view.rs:1776 src/desktop_view.rs:3037 src/desktop_view/fortschritt.rs:338 src/desktop_view/transfer.rs:459
 msgid "Cancel"
 msgstr ""
 
-#: src/desktop_view.rs:1775
+#: src/desktop_view.rs:1776
 msgid "Empty Trash"
 msgstr ""
 
-#: src/desktop_view.rs:2112
+#: src/desktop_view.rs:2113
 #, no-c-format
 msgid "“{name}” cannot be renamed."
 msgstr ""
 
-#: src/desktop_view.rs:2226 src/desktop_view/transfer.rs:699
+#: src/desktop_view.rs:2227 src/desktop_view/transfer.rs:699
 #, no-c-format
 msgid "“{name}” could not be renamed to “{new}”."
 msgstr ""
 
-#: src/desktop_view.rs:2241
+#: src/desktop_view.rs:2242
 #, no-c-format
 msgid ""
 "“{name}” no longer exists. Perhaps it was deleted or moved in the meantime."
 msgstr ""
 
-#: src/desktop_view.rs:2247
+#: src/desktop_view.rs:2248
 #, no-c-format
 msgid ""
 "The name “{new}” is already used in this folder. Please use a different name."
 msgstr ""
 
-#: src/desktop_view.rs:2402
+#: src/desktop_view.rs:2403
 msgid "The launcher file is not valid text."
 msgstr ""
 
-#: src/desktop_view.rs:2406
+#: src/desktop_view.rs:2407
 #, no-c-format
 msgid "The launcher file is not valid: {why}"
 msgstr ""
 
-#: src/desktop_view.rs:2416
+#: src/desktop_view.rs:2417
 msgid "The launcher file has no group [Desktop Entry]."
 msgstr ""
 
-#: src/desktop_view.rs:2429
+#: src/desktop_view.rs:2430
 msgid "The launcher file was changed in the meantime. Please try again."
 msgstr ""
 
-#: src/desktop_view.rs:2453
+#: src/desktop_view.rs:2454
 #, no-c-format
 msgid "You do not have the permissions to rename “{name}”."
 msgstr ""
 
-#: src/desktop_view.rs:2457
+#: src/desktop_view.rs:2458
 #, no-c-format
 msgid "“{name}” no longer exists."
 msgstr ""
 
-#: src/desktop_view.rs:2470
+#: src/desktop_view.rs:2471
 msgid "Volumes keep their own names."
 msgstr ""
 
-#: src/desktop_view.rs:2477 src/desktop_view.rs:2990 src/desktop_view/transfer.rs:1295
+#: src/desktop_view.rs:2478 src/desktop_view.rs:2994 src/desktop_view/transfer.rs:1295
 msgid "Close"
 msgstr ""
 
-#: src/desktop_view.rs:2494
+#: src/desktop_view.rs:2495
 msgid "Computer"
 msgstr ""
 
-#: src/desktop_view.rs:2497
+#: src/desktop_view.rs:2498
 msgid "Home Folder"
 msgstr ""
 
-#: src/desktop_view.rs:2500
+#: src/desktop_view.rs:2501
 msgid "Trash"
 msgstr ""
 
-#: src/desktop_view.rs:2982 src/i18n.rs:147
+#: src/desktop_view.rs:2986 src/i18n.rs:147
 #, no-c-format
 msgid "“{name}” cannot be opened."
 msgstr ""
 
-#: src/desktop_view.rs:2986
+#: src/desktop_view.rs:2990
 #, no-c-format
 msgid "There is no application installed for “{type}” files ({mime})."
 msgstr ""
 
-#: src/desktop_view.rs:2990
+#: src/desktop_view.rs:2994
 msgid "Open With Other Application…"
 msgstr ""
 
-#: src/desktop_view.rs:3026
+#: src/desktop_view.rs:3030
 msgid "Untrusted application launcher"
 msgstr ""
 
-#: src/desktop_view.rs:3027
+#: src/desktop_view.rs:3031
 #, no-c-format
 msgid ""
 "The application launcher “{name}” has not been marked as trusted. If you do not know the source of this file, launching it may be unsafe."
 msgstr ""
 
-#: src/desktop_view.rs:3034
+#: src/desktop_view.rs:3038
 msgid "Mark as Trusted"
 msgstr ""
 
-#: src/desktop_view.rs:3035
+#: src/desktop_view.rs:3039
 msgid "Launch Anyway"
 msgstr ""
 
-#: src/desktop_view.rs:3070
+#: src/desktop_view.rs:3074
 msgid "New Document"
 msgstr ""
 
-#: src/desktop_view.rs:3079
+#: src/desktop_view.rs:3083
 msgid "Template"
 msgstr ""
 
-#: src/desktop_view.rs:3152
+#: src/desktop_view.rs:3156
 msgid "Images"
 msgstr ""
 
-#: src/desktop_view.rs:3157
+#: src/desktop_view.rs:3161
 msgid "Change Desktop Background"
 msgstr ""
 
@@ -433,7 +433,7 @@ msgstr ""
 msgid "Apply this action to all _files"
 msgstr ""
 
-#: src/desktop_view/frage.rs:235
+#: src/desktop_view/frage.rs:235 src/desktop_view/kennwort.rs:101
 msgid "_Cancel"
 msgstr ""
 
@@ -459,6 +459,14 @@ msgstr ""
 
 #: src/desktop_view/frage.rs:275
 msgid "_Retry"
+msgstr ""
+
+#: src/desktop_view/kennwort.rs:75
+msgid "Password"
+msgstr ""
+
+#: src/desktop_view/kennwort.rs:102
+msgid "C_onnect"
 msgstr ""
 
 #: src/desktop_view/transfer.rs:443

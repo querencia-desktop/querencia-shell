@@ -135,9 +135,16 @@ impl Fragen {
         }
     }
 
-    /// Asks `conflict` for job `id`; the answer goes to `reply`. `folder`:
-    /// the name of the target folder.
-    pub fn fragen(self: &Rc<Self>, id: JobId, conflict: &Conflict, reply: Reply, folder: &str) {
+    /// Asks `conflict` for job `id`; the answer goes to `reply`, then
+    /// `beantwortet` runs. `folder`: the name of the target folder.
+    pub fn fragen(
+        self: &Rc<Self>,
+        id: JobId,
+        conflict: &Conflict,
+        reply: Reply,
+        folder: &str,
+        beantwortet: impl Fn() + 'static,
+    ) {
         let (title, primary, secondary) = texts(conflict, folder);
         super::log(&format!("Frage zu Auftrag {id}: {primary}"));
         let window = gtk4::Window::builder()
@@ -304,6 +311,7 @@ impl Fragen {
                     if for_all { " (für alle)" } else { "" }
                 ));
                 reply.send(Answered { answer, for_all });
+                beantwortet();
                 if let Some(this) = this.upgrade() {
                     this.0.borrow_mut().retain(|(j, _)| *j != id);
                 }
