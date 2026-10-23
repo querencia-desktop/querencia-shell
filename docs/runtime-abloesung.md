@@ -2,8 +2,11 @@
 
 Folgezug der Welle C (Querencia Dateien löst Querencia Files ab, 08 QD-168),
 vereinbart mit der Status-Session, ausdrücklich nicht Teil von C3. Zwei
-kleine Stände auf runtime main `72a7a64`, Zweig `runtime-abloesung`,
-Tags `panel/0.3.2` und `kuerzel/0.2.2` (beide `d15e821`).
+kleine Stände, Zweig `runtime-abloesung`: zuerst auf main `72a7a64` (Tags
+`panel/0.3.2`, `kuerzel/0.2.2` = `d15e821`), nach dem Merge von C3 auf main
+`5510fc4` gemergt (Tags `panel/0.3.2-2`, `kuerzel/0.2.2-2` = `54de1de`,
+Binaries byte-gleich). Aktiviert wird nur der -2-Stand über
+`integration/panel-032-2/` und `integration/kuerzel-022-2/`.
 
 ## 1. Panel 0.3.2 – Migration M3 im Orte-Menü
 
@@ -89,17 +92,27 @@ Strg+, und Strg+Z fehlen.
 ## 4. Integration
 
 Arbeitsordner `~/projects/abloesung-arbeit` (maßgeblich, mit Binaries und
-Katalogen); Kopien ohne Binaries und Kataloge in `integration/panel-032/`
-und `integration/kuerzel-022/`.
+Katalogen); Kopien ohne Binaries und Kataloge in `integration/panel-032-2/`
+und `integration/kuerzel-022-2/` (die ersten Fassungen `panel-032/`,
+`kuerzel-022/` bleiben unverändert liegen und werden nicht aktiviert).
 
-- `panel-032-integrieren.sh pruefen | panel-neustart-pruefen | aktivieren |
-  panel-neustart | zurueck | panel-neustart-zurueck` (`PANEL_032_FREIGABE=ja`),
-  Muster panel-031. Ablage `~/opt/querencia/panel/e6da8f43a0fe2523/`
-  (Binary und vier Kataloge). `panel-neustart` tauscht das laufende Panel
-  0.3.1-2 oder – bis zur nächsten Anmeldung – das noch laufende 0.3.0-2
-  (`b6f9b2fa`).
-- `kuerzel-022-integrieren.sh pruefen | aktivieren | zurueck`
-  (`QK22_FREIGABE=ja`), Muster kuerzel-021. Ablage
+- `panel-032-2-integrieren.sh pruefen | panel-neustart-pruefen | aktivieren |
+  panel-neustart | zurueck | panel-neustart-zurueck`
+  (`PANEL_032_2_FREIGABE=ja`), Muster panel-031. Ablage
+  `~/opt/querencia/panel/e6da8f43a0fe2523/` (Binary und vier Kataloge).
+  `panel-neustart` tauscht das laufende Panel 0.3.1-2 oder – bis zur
+  nächsten Anmeldung – das noch laufende 0.3.0-2 (`b6f9b2fa`). **Nach einem
+  solchen Direkttausch 0.3.0-2 → 0.3.2 landet der Rückfall (`zurueck`, dann
+  `panel-neustart-zurueck`) auf dem verlinkten 0.3.1-2**, nicht auf 0.3.0-2;
+  genau 0.3.0-2 erst danach über `panel-031-integrieren.sh zurueck` und
+  `panel-neustart-zurueck`. Skript und Journalzeile sagen das.
+- Sperre: die -2-Fassung nimmt dieselben Sperrdateien wie panel-031 (das
+  Rückfallskript) und die erste Fassung panel-032; keines läuft neben einem
+  anderen. (Die erste Fassung `integration/panel-032/` hatte nur eine eigene
+  Sperrdatei; sie wird nicht aktiviert.)
+- `kuerzel-022-2-integrieren.sh pruefen | aktivieren | zurueck`
+  (`QK222_FREIGABE=ja`), Muster kuerzel-021, gemeinsame Sperrdatei
+  `kuerzel-integrieren.lock` mit allen Kürzel-Skripten. Ablage
   `~/opt/querencia/kuerzel/5372c22822acccf0/` (Programm und Symbol wie
   0.2.1); `pruefen` zeigt den Dateien-Link (nur gelesen).
 - Beide starten bei `aktivieren` nichts; das Panel gilt ab der nächsten
