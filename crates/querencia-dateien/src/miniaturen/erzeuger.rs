@@ -1,6 +1,7 @@
-//! Making a thumbnail for the cache (worker threads only): pictures GTK
-//! decodes itself (PNG, JPEG, TIFF) in the process, other pictures through
-//! GdkPixbuf, everything else (and pictures both fail on) through the
+//! Making a thumbnail for the cache (worker threads only): pictures through
+//! GdkPixbuf (with glycin: decoded in a loader process, scaled while
+//! decoding), PNG, JPEG and TIFF also by GTK's own loaders if GdkPixbuf
+//! fails, everything else (and pictures both fail on) through the
 //! installed thumbnailers of the freedesktop.org scheme
 //! (`$XDG_DATA_HOME/thumbnailers`, `$XDG_DATA_DIRS/thumbnailers`,
 //! `*.thumbnailer` with `TryExec`, `Exec` and `MimeType`). PDF and other
@@ -23,7 +24,7 @@ use gtk4::{gdk, gdk_pixbuf, gio, glib};
 use super::bild::Bild;
 use super::cache::{self, Eimer};
 
-/// What GTK's own loaders decode (no extra process, no sandbox).
+/// What GTK's own loaders decode (the fallback when GdkPixbuf fails).
 const GTK_TYPEN: [&str; 4] = ["image/png", "image/jpeg", "image/tiff", "image/x-tiff"];
 /// A thumbnailer that takes longer is stopped (a broken file must not
 /// hold a worker).
@@ -409,15 +410,19 @@ pub fn erzeugen(q: &Quelle, eimer: Eimer, abbruch: &AtomicBool) -> Result<(Vec<u
     let kante = eimer.kante();
     let mut fehler = Fehler::KeinWeg;
     let mut ergebnis: Option<(Vec<u8>, Weg)> = None;
-    if gtk_laedt(&q.typ) {
-        match ueber_gtk(q, kante) {
-            Ok(b) => ergebnis = Some((b.png(), Weg::Gtk)),
+    // GdkPixbuf first: it scales while decoding, and with glycin the
+    // decoder runs in its own process; GTK's loaders decode the whole
+    // picture in this process (measured: +54 MB after 200 photos against
+    // +4 MB, same time; docs/dateien.md)
+    if pixbuf_laedt(&q.typ) {
+        match ueber_pixbuf(q, kante) {
+            Ok(b) => ergebnis = Some((b.png(), Weg::Pixbuf)),
             Err(e) => fehler = e,
         }
     }
-    if ergebnis.is_none() && pixbuf_laedt(&q.typ) {
-        match ueber_pixbuf(q, kante) {
-            Ok(b) => ergebnis = Some((b.png(), Weg::Pixbuf)),
+    if ergebnis.is_none() && gtk_laedt(&q.typ) {
+        match ueber_gtk(q, kante) {
+            Ok(b) => ergebnis = Some((b.png(), Weg::Gtk)),
             Err(e) => fehler = e,
         }
     }

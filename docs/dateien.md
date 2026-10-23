@@ -307,3 +307,140 @@ nutzen können.
   gemessen.
 - Das Fortschrittsfenster nimmt beim Erscheinen die Tastatur (wie im
   Desktop 0.3.0).
+
+## 7. Welle C2: Miniaturen und Suche (`src/miniaturen/`, `src/suche/`)
+
+Zweig `dateien-miniaturen-suche`, Tag `dateien/miniaturen-1`. M9 aus
+ §4 (gleicher Cache wie Files) und B §1
+„Suche“ (nur Namen ab dem gezeigten Ordner, keine Kriterien, keine
+Volltextsuche, kein Index). Registrierung in `main.rs` im Block
+„Welle C2“, Übersetzungen im Teilkatalog `po/de.miniaturen.po`.
+
+### 7.1 Schnittstelle „Bildquelle je Eintrag“
+
+Die einzige Verbindung zwischen den Ansichten und den Miniaturen; das
+Trait `Ansicht` bleibt unverändert.
+
+```rust
+use crate::miniaturen::bildquelle;
+// im bind-Handler einer Zelle statt symbole::set(&bild, &d.symbol):
+bildquelle::binden(&bild, eintrag, bildquelle::Groesse::symbolansicht(px)); // Liste: Groesse::liste(px)
+// im unbind-Handler:
+bildquelle::loesen(&bild);
+```
+
+`binden` zeigt sofort die Miniatur aus dem Speicher oder das Themensymbol
+(weiter über `querencia_oberflaeche::symbole`, QD-106) und setzt die
+Miniatur, sobald ein Arbeitsfaden sie hat; `Groesse { symbol, vorschau }`
+gibt die Symbolgröße und die lange Kante der Miniatur samt Rahmen
+(Symbolansicht ein Drittel größer als das Symbol wie Nautilus 2.30:
+24→32, 32→43, 48→64, 72→96, 96→128 px; Liste und Suchergebnisse so groß
+wie das Symbol). `loesen` nimmt den Auftrag zurück, wenn keine andere
+Zelle auf ihn wartet. Ohne registriertes Modul verhält sich `binden` wie
+`symbole::set`. Genutzt von `symbolansicht.rs`, `listenansicht.rs` (je
+zwei Zeilen) und den Suchergebnissen; die Kompaktansicht (C3) bindet
+ebenso.
+
+### 7.2 Miniaturen
+
+| Datei | Inhalt |
+|---|---|
+| `miniaturen/mod.rs` | Regeln, Zustand im Hauptfaden (Bindungen, wartende Zellen, LRU 48 MB der fertigen Texturen), `bildquelle`, `registrieren` |
+| `miniaturen/cache.rs` | Thumbnail Managing Standard 0.9: `$XDG_CACHE_HOME/thumbnails/{normal,large}/<MD5 der URI>.png`, `fail/querencia-dateien/`, PNG-`tEXt` lesen und schreiben (CRC selbst), Lesen ohne Symlinks/FIFOs mit Größengrenze (Prüfung nach Files, MIT-Vermerk), Schreiben atomar 0600 in Ordnern 0700 |
+| `miniaturen/erzeuger.rs` | Erzeugen: GdkPixbuf, GTK-Lader, `*.thumbnailer` (`TryExec`, `Exec` mit `%u %i %o %s`, Zeitlimit 20 s) |
+| `miniaturen/warteschlange.rs` | Arbeitsfäden (Kerne/2, 2–4), Warteschlange in Ankunftsfolge, Zurücknehmen, Auslieferung über `glib::idle_add_once` |
+| `miniaturen/bild.rs` | Pixel: Verkleinern über Flächenmittel, Rahmen, Textur |
+
+Regeln (Nautilus 2.30, Einstellungen → Vorschau): „Vorschaubilder
+anzeigen“ Immer / Nur lokale Dateien (Vorgabe; `gio::File::is_native`) /
+Nie, „Nur für Dateien bis“ 1–100 MB (Vorgabe 10 MB; größere Dateien
+bekommen keine Miniatur, auch keine vorhandene). Ordner, Starter und
+Dateien im Miniaturen-Cache selbst bekommen keine. Eine Änderung wirkt
+sofort auf alle offenen Fenster.
+
+Ablauf je Auftrag (Arbeitsfaden): Cache des Eimers lesen (für `normal`
+auch ein gültiges `large`, wie Files es schreibt), sonst ein
+Fehleintrag → keine Miniatur, sonst erzeugen und in den Eimer schreiben
+(Fehlschlag → `fail/querencia-dateien/`, neuer Versuch erst nach einer
+Änderung der Datei). Eimer `normal` bis 128 px Anzeige, darüber `large`.
+Erzeugen: **GdkPixbuf zuerst** (mit glycin dekodiert ein Laderprozess
+und skaliert beim Dekodieren), PNG/JPEG/TIFF bei einem Fehler über GTKs
+eigene Lader, alle anderen Typen über einen installierten Thumbnailer.
+Auf der VM gibt es nur die glycin-Thumbnailer für Bilder; PDF bekommen
+eine Miniatur erst, wenn ein PDF-Thumbnailer (Poppler, Querencia
+Dokumente) installiert ist. Gezeigt wird verkleinert auf die Anzeige;
+undurchsichtige Bilder ab 48 px bekommen den Rahmen wie 2.30 (1 px Rand
+35 % Schwarz, Schatten rechts unten), Bilder mit Transparenz und kleine
+Symbole nicht. Ein Ordnerwechsel nimmt die offenen Aufträge zurück
+(Zellen werden gelöst; ein laufender Thumbnailer wird beendet).
+
+Protokoll mit `QUERENCIA_DATEIEN_DEBUG=1`: „Miniaturen: NurLokal, bis 10
+MB, … Thumbnailer, … Fäden“, „Miniaturen fertig: N aus dem Cache, N
+erzeugt, N fehlgeschlagen in N ms“, „Miniaturen nach Ordnerwechsel: N
+zurückgenommen …“, „Miniaturen: Regel …“.
+
+### 7.3 Suche
+
+| Datei | Inhalt |
+|---|---|
+| `suche/mod.rs` | Suchleiste je Fenster (über der Ansicht im Ansichtsbereich), Aktion `win.suchen` (Zustand: Leiste offen; Strg+F, Knopf „Suchen“ der Werkzeugleiste, Gehe zu → „Suchen …“), Ablauf, Statusleiste, „Erweiterte Suche …“ |
+| `suche/sucher.rs` | Suchfaden: `enumerate_children` in Breitensuche ab dem gezeigten Ordner, Vergleich nach 2.30 (NFD, klein, jedes Wort im Anzeigenamen), verborgene nach der Einstellung des Fensters (Strg+H), `id::file` gegen doppelte Ordner, Verweise auf Ordner nicht verfolgt, Treffer in Blöcken (500 oder 150 ms) |
+| `suche/ergebnisse.rs` | Ansicht „Suchergebnisse“: Spalten Name, Ort, Größe, Typ, Änderungsdatum (Klick sortiert), Doppelklick/Eingabe öffnet, Kontextmenü „Öffnen“, „Im Ordner anzeigen“ |
+
+Eingabe startet die Suche; Esc hält eine laufende Suche an (Treffer
+bleiben), ein zweites Esc, der Knopf, Strg+F oder jeder Ortswechsel
+beendet sie und zeigt den Ordner wieder. Während der Suche heißt das
+Fenster „Suchergebnisse“, die Statusleiste zählt die Treffer. Die Tasten,
+die das Fenster für Dateien bindet (Entf, Strg+X/C/V, F2), wirken in den
+Suchergebnissen nicht (sie gälten der Auswahl des verdeckten Ordners);
+Strg+A wählt alle Treffer. „Erweiterte Suche …“ erscheint, wenn
+`querencia-dateisuche` gefunden wird (PATH, `~/opt/querencia/bin`), und
+startet es mit `--ordner` und `--name *Text*`. ↓ im Suchfeld führt in die
+Treffer.
+
+### 7.4 Prüfung und Messwerte
+
+`crates/querencia-dateien/werkzeug/miniaturen/`: `material.sh`
+(Testmaterial: 200 Fotos 1920×1080, Bildarten, kaputtes und zu großes
+Bild, drei PDF, 10.092 Einträge für die Suche), `lauf.sh` (Prüfrahmen
+Stufe L wie `../pruefung/lauf.sh`, dazu Material, PDF-Thumbnailer-
+Stellvertreter `qd-pdf-miniatur`, Attrappe `querencia-dateisuche`,
+`QUERENCIA_DATEIEN_DEBUG=1`), `cache-pruefen.py` (Cache gegen die
+Spezifikation), Szenarien `pruefung` (24 Fälle M01–M10, S01–S14),
+`messung`, `messung-ohne`, `plateau`, `fotos`. Belege unter
+`crates/querencia-dateien/nachweis/miniaturen/`, Fotos (nie ins Repo)
+unter .
+
+Messung (Release, Prüfrahmen L, headless labwc mit Software-Rendering,
+1920×1080, 16 Kerne; `nachweis/miniaturen/laeufe/messung-1920/messung.csv`,
+Spannen aus mehreren Läufen):
+
+| Messung | Wert |
+|---|---|
+| 200 Miniaturen neu (JPEG 1920×1080, Symbolansicht 100 %, 4 Fäden) | 1,0–1,2 s |
+| 200 Miniaturen aus dem Cache (neuer Prozess) | 79–141 ms |
+| dieselben im selben Prozess (Speicher) | sofort, kein Auftrag |
+| Zoom 200 % (128 px aus `normal`) / Liste (24 px) | 52–123 ms / 82–105 ms |
+| Ordnerwechsel 150 ms nach dem Lesen von 200 neuen Fotos | 339–400 Aufträge zurückgenommen, 0–66 erzeugt |
+| Suche „rechnung“ über 10.092 Einträge (111 Ordner, 37 Treffer) | Faden 143–165 ms, Anzeige ≤ 185 ms |
+| Suche „datei“ (9.942 Treffer) | Faden 185–198 ms, Anzeige ≤ 213 ms |
+| VmRSS Start (Ordner ohne Bilder) | 230 MB (ohne Miniaturen auch 230/235 MB) |
+| nach 200 neuen Miniaturen | VmRSS ±0, VmHWM +28 MB (vorübergehend) |
+| nach 600 neuen Miniaturen (`plateau`) | +7 MB |
+| GTK-Lader statt GdkPixbuf (Gegenversuch) | +54 MB nach 200, danach Plateau |
+| nach der Suche mit 9.942 Treffern | +36 MB |
+
+### 7.5 Grenzen (Stand dateien/miniaturen-1)
+
+- Kein PDF-/Dokument-Thumbnailer auf der VM: geprüft ist der Weg mit dem
+  Stellvertreter `qd-pdf-miniatur`; echte PDF-Miniaturen brauchen einen
+  installierten Thumbnailer.
+- glycin läuft in der Prüfhülle ohne Sandbox („Glycin running without
+  sandbox“); in der Sitzung mit bwrap-Sandbox nicht gemessen.
+- Auch eine verdeckte Ansicht (Liste neben der Symbolansicht) bindet ihre
+  Zellen und fragt Miniaturen an (Cache-Lesen, kein zweites Erzeugen).
+- „Immer“ für entfernte Orte (sftp, smb) liest die Datei über GIO; im
+  Prüfrahmen L nicht prüfbar (Stufe G mit `--sshd`: Folgepunkt).
+- Suche ohne Kriterien und ohne Speichern (B §1: Rest über Querencia
+  Dateisuche); keine Treffer-Aktualisierung bei Änderungen während der
+  Anzeige; Kopieren/Ziehen aus den Suchergebnissen: Folgepunkt.
