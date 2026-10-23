@@ -1,160 +1,160 @@
-# Desktop 0.3.0: Dateiarbeit mit Fortschritt, Abbruch und Konfliktfrage
+# Desktop 0.3.0: Dateiarbeit mit Fortschritt, Abbruch, Konfliktfrage und Einhängen
 
-**Stand:** Entwurf vom 23.10.2026 (Worker desktop-030, Welle A von „Querencia
-Dateien“, QD-140). Dieser Entwurf entstand vor dem Merge der Crates
-`querencia-oberflaeche` und `querencia-dateiarbeit`. Abschnitte mit „(offen)“
-werden nach dem Merge mit der echten API und den Messwerten gefüllt.
+**Stand:** 23.10.2026, Worker desktop-030 (Welle A von „Querencia Dateien“,
+QD-140, Schritt 5). Code: Tag `desktop/0.3.0`, Integration:
+`desktop/0.3.0-int`, Arbeitsordner `~/projects/querencia-desktop-030`.
+Grundlage: Machbarkeitsvorlage , Inventur A
+§3, Übergaben  §6 und
+ §6.
 
 ## 1. Ausgangslage
 
 | Was | Stand |
 |---|---|
-| Live | Desktop 0.2.6-2, Ablage `a9e3600107c1cd53` (PID 2556, gemessen über `/proc/<pid>/exe`, 23.10.) |
-| Code | main `a1b3e53`; Desktop-Crate unverändert seit `desktop/0.2.6-2` |
-| Dateioperationen | `fileops.rs` blockierend im Arbeitsthread (`gio::spawn_blocking`), 12 GIO-Aufrufe mit `Cancellable::NONE`, kein Fortschritt, kein Abbruch |
-| Konflikte | Kopie auf belegten Namen: still freier Name („(Kopie)“); Verschieben auf belegten Namen: abgelehnt („nie überschreiben“, Test `a_move_never_overwrites…`) |
-| Laufwerke | nur eingehängte Mounts als Symbol; Einhängen gibt es nicht |
-| Papierkorb | Zähler `trash::item-count` synchron im Hauptthread, Monitor auf `trash:///` |
-| Überwachung | `desktop_view.rs` `watch`/`rewatch_soon` mit eigener Entprellung und Warten auf den Arbeitsflächen-Ordner (QD-112) |
-| Geteilte GTK-Bausteine | `classic_menu.rs`, `farbschema.rs`, `icon_theme.rs`, `portal.rs` über `#[path]` aus dem Panel |
-| GUI-Regression | `gesamt` (48 Fälle) lief zuletzt mit 0.2.3; die 0.2.6-Werkzeuge kannten sie nicht (QD-144) |
+| Live (gemessen über `/proc/<pid>/exe`) | Desktop 0.2.6-2 `a9e36001` läuft (PID 2556); der Link zeigt seit der Aktivierung von 0.2.7-2 auf `e193b23d` |
+| Rückfall- und Ausgangsstand von 0.3.0 | Desktop 0.2.7-2 `e193b23d` (Tag `desktop/0.2.7-2`) |
+| Code-Basis | main `f57ce46` (Merge oberflaeche und dateiarbeit 0.1.1), in `desktop-030` gemergt |
+| Dateioperationen bis 0.2.7 | `fileops.rs` blockierend im GIO-Thread-Pool, ohne Fortschritt und Abbruch; Kopie auf belegten Namen still mit freiem Namen, Verschieben abgelehnt („nie überschreiben“) |
+| Laufwerke bis 0.2.7 | nur eingehängte Mounts; Einhängen gab es nicht |
 
 ## 2. Entscheidungen, die gelten
 
-- **E2:** Konfliktregel „fragen“: Ersetzen, Überspringen, Umbenennen, „Für alle
-  übernehmen“; Vorgabeknopf **Überspringen**. Ersetzt wird atomar (erst unter
-  Hilfsnamen kopieren, dann umbenennen), wo das Crate es anbietet.
-- **E3:** Einhängen und Automount gehören in den Desktop. Ein Doppelklick auf
-  ein nicht eingehängtes Laufwerk hängt es ein; Rückfragen (Kennwort,
-  Verschlüsselung) über `gtk4::MountOperation`.
-- **E8:** Rückgängig kommt erst nach der Beta.
-- Fortschritt nach Variante A der Inventur: Bibliothek im Prozess, ein
-  eigenes Fenster je Programm; ein gemeinsamer D-Bus-Dienst folgt in Welle C.
+- **E2:** Konfliktregel „fragen“ mit Vorgabeknopf **Überspringen**.
+- **E3:** Einhängen und Automount gehören in den Desktop.
+- **E8:** Rückgängig erst nach der Beta.
+- Fortschritt nach Variante A der Inventur (Bibliothek im Prozess, eigenes
+  Fenster je Programm); ein gemeinsamer Dienst folgt in Welle C.
+- Status-Session 23.10.: `IconLoading::WithoutPreload` ist eine gewollte
+  Verhaltensänderung, belegt mit QD-106-Belastung und Fotos.
 
-## 3. Umbau
+## 3. Was sich geändert hat
 
-Reihenfolge nach dem Merge (oberflaeche → dateiarbeit):
+| Bereich | 0.3.0 |
+|---|---|
+| Aufträge | `transfer.rs` gibt Kopieren, Verschieben, Papierkorb, Löschen, Papierkorb leeren, Neuer Ordner, Neues Dokument und Umbenennen an `auftraege::Queue` (ein Faden je Auftrag, nie GLibs Thread-Pool); `job_event` setzt Fortschritt, Fragen und Abschluss um; nach dem Abschluss wie bisher Platzieren an der Ablagestelle, Neuaufbau, Fehlerdialog (nicht nach Abbruch) |
+| Fortschrittsfenster | `desktop_view/fortschritt.rs`: Fenster „Dateioperationen“ nach 1 s Laufzeit, je Auftrag Titel („Kopieren von 3 Dateien nach „Ordner A““), Balken, „x von y – noch n Sekunden (Rate/s)“, aktuelle Datei, Abbrechen; schließt sich ohne Aufträge; QD-076: zerstören statt verstecken; wartet, solange eine Frage des Auftrags offen ist |
+| Konfliktfrage | `desktop_view/frage.rs`: „Datei „x“ ersetzen?“ / „Ordner „x“ ersetzen?“ / „Ordner „x“ zusammenführen?“, Größe und Datum beider Seiten, neuer Name (Vorschlag aus dem Crate), „Diese Aktion auf alle Dateien anwenden“, Abbrechen / **Überspringen** (Vorgabe) / Umbenennen / Ersetzen (/ Zusammenführen); Escape = Abbrechen; ohne Papierkorb: „sofort löschen?“ mit Vorgabe Abbrechen |
+| Einhängen (E3) | nicht eingehängte Wechsel- und optische Medien als Symbol (`volumes::listed`, eingebaute Partitionen nie); Doppelklick hängt ein und öffnet, Menü „Einhängen“; Automount bei `volume-added` mit `should_automount`; Platz bleibt beim Einhängen (`Volume::slot`) |
+| Kennwortfrage | `desktop_view/kennwort.rs`: eigene, nicht modale Fenster für `ask-password`/`ask-question` auf einer `gio::MountOperation` (siehe §6 Befund) |
+| Papierkorb | `papierkorb::Papierkorb` (Monitor, Zählung außerhalb des Hauptfadens, Signal); Leeren als Auftrag |
+| Überwachung | `ueberwachung::FolderWatch` mit Warten auf einen fehlenden Ordner; eigene Entprellung und Neuanmeldung entfallen |
+| Öffnen | `oeffnen::plan_open`, `is_trusted`, `mark_trusted`, `file_manager()` (Dateien vor Files); „Öffnen mit“ zeigt wie bisher Standard- und empfohlene Programme |
+| Symbole (QD-106) | Arbeitsfläche, Eigenschaften und Desktop-Menü ohne GTKs Vorladen (`symbole`, `IconLoading::WithoutPreload`) |
+| Entfallen | `fileops.rs`, `rename.rs`, Teile von `volumes.rs`/`icons.rs`, `data/icons/` (jetzt im Crate) |
+| Texte | 118 msgids in `querencia-desktop` (de vollständig); Fehlergründe und Kopienamen aus `querencia-dateiarbeit.mo`, die die Ablage mitbringt |
 
-1. **Crates einbinden.** `Cargo.toml` des Desktops: `querencia-oberflaeche`
-   und `querencia-dateiarbeit` als `path`-Abhängigkeit (Workspace). Die vier
-   `#[path]`-Module und `cfg(querencia_desktop)` in `build.rs` entfallen. Hat
-   der oberflaeche-Merge den Desktop schon umgestellt (0.2.7), setzt 0.3.0
-   darauf auf und doppelt nichts.
-2. **`fileops.rs` ersetzen.** URI-Liste, Zwischenablage-Formate, Kopienamen,
-   `tally`, `size_text` und Fehlertexte kommen aus dem Crate (`uri`, `namen`,
-   `auftraege`). Im Desktop bleibt nur, was die Arbeitsfläche betrifft
-   (Ablegen an der Stelle des Loslassens, `place_arrived`).
-3. **Jobs über `auftraege::Queue`.** `transfer.rs` `start_job`/`job_done`
-   werden zu: Job an die Queue geben, Ereignisse abonnieren. `Finished` löst
-   wie bisher `place_arrived`, `reload`, Papierkorb-Aktualisierung und den
-   Fehlerdialog aus. Abgebrochene Jobs zeigen keinen Fehlerdialog.
-4. **Fortschrittsfenster** (neues Modul `desktop_view/fortschritt.rs`):
-   eigenes Toplevel „Dateioperationen“ wie Nautilus 2.30; je Job eine Zeile
-   mit Text („Kopieren von 3 Dateien nach »Schreibtisch«“), Fortschrittsbalken,
-   aktuellem Dateinamen, „12,4 MB von 100 MB – 1 Minute verbleibend“ und
-   Knopf **Abbrechen**. Erscheint erst nach 1 s Laufzeit (kurze Jobs ohne
-   Fenster, wie 2.30), schließt sich, wenn kein Job mehr läuft. QD-076: beim
-   Schließen zerstören, beim nächsten Job neu bauen.
-5. **Konfliktdialog** (neues Modul `desktop_view/konflikt.rs`): Wortlaut nach
-   Nautilus 2.30 de: „Datei »x« ersetzen?“ bzw. „Ordner »x« zusammenführen?“,
-   Erklärzeile mit Größe und Änderungsdatum beider Dateien, Knöpfe
-   **Abbrechen**, **Überspringen** (Vorgabe, Eingabetaste und Escape-freie
-   Wahl), **Umbenennen** (Namensfeld vorbelegt mit freiem Namen), **Ersetzen**
-   bzw. **Zusammenführen**; Kontrollkästchen „Diese Aktion auf alle Dateien
-   anwenden“. Escape = Abbrechen des ganzen Jobs. Die Antwort geht über den
-   `Reply` des `Ask`-Ereignisses an den Job zurück.
-6. **Duplizieren bleibt still.** Einfügen in denselben Ordner (Quelle =
-   Ziel-Ordner) erzeugt wie bisher „notiz (Kopie).txt“ ohne Frage, wie 2.30.
-7. **`volumes.rs` ersetzen.** Einordnung, Bildwahl, Aushängen/Auswerfen,
-   „Programme halten Dateien offen“ aus `laufwerke`. Die Desktop-Einstellung
-   `shown()` (welche Typen gezeigt werden) und die Platzierung bleiben im
-   Desktop.
-8. **Einhängen (E3).** Nicht eingehängte Wechsel- und optische Datenträger
-   (`can_mount`, Typ nach `laufwerke`) erscheinen als Symbol, eingebaute
-   Partitionen nicht (sonst stünden Systempartitionen auf der Fläche).
-   Doppelklick oder Menü „Einhängen“ hängt ein und öffnet danach im
-   Ordnerprogramm. Automount neu eingesteckter Wechseldatenträger
-   (`volume-added` mit `should_automount`), ohne Ordner zu öffnen (E10: „beim
-   Einhängen öffnen“ entfällt).
-9. **Papierkorb-Zähler** über `papierkorb::Papierkorb` (Signal statt
-   synchroner Abfrage im Hauptthread). „Papierkorb leeren“ läuft als Job
-   (Fortschritt und Abbruch), Fehlerliste wie bisher.
-10. **Überwachung** über `ueberwachung::FolderWatch` mit `warten = true`
-    (QD-112); die eigene Entprellung in `watch`/`rewatch_soon` entfällt.
-11. **`icons.rs`/`rename.rs`:** `type_from_name`, `split_extension`,
-    `unique_name`, `check_file_name`, `selected_chars` aus dem Crate; Reihenfolge,
-    Vorlagen, `Kind` und das Ändern von `Name[xx]` im Starter bleiben.
-12. **Texte:** neue msgids englisch, `po/de.po` vollständig (Test
-    `german_catalog_is_complete`); Texte der Crates in deren Domänen.
-13. **Version und Doku:** 0.3.0, CHANGELOG-Abschnitt „Verhaltensänderung“,
-    Release-Notes-Satz (§6), Doc-Map.
-
-## 4. Testplan
+## 4. Prüfung
 
 ### 4.1 Unit-Tests
 
-| Bereich | vorher (0.2.6-2) | nachher |
-|---|---|---|
-| Desktop-Binary gesamt | 120 (93 eigene + 27 geteilte) | (offen) |
-| fileops | 8 | ins Crate; im Desktop bleiben die Tests zur Ablage |
-| volumes | 11 | ins Crate bis auf `shown()` |
-| icons / rename | 9 / 7 | anteilig ins Crate |
-| neu | – | Konfliktantwort → Crate-Antwort, „für alle“, Duplizieren ohne Frage, Fortschrittstext (Zahlen, Restzeit), Einhängen-Entscheidung |
+Desktop **70** Tests (0.2.7: 93). Umgezogen ins Crate: fileops 8, volumes 9,
+icons 4, rename 7, Files-Kennung 1 (= 29); neu: Fortschrittstexte 3,
+Konfliktfragen 2, Medien ohne Einhängung 1. Workspace fmt, clippy
+(`-D warnings`) und Tests grün (Log `nachweis/pruefung/`).
 
-Der alte Test „Verschieben überschreibt nie“ wird ersetzt durch: ohne Antwort
-(Vorgabe Überspringen) bleibt das Ziel unverändert.
+### 4.2 Isolierte GUI-Läufe
 
-### 4.2 GUI-Regression isoliert (`werkzeug/lauf.sh`)
+Werkzeug `~/projects/querencia-desktop-030/werkzeug/` (aus 0.2.6-2), Abläufe
+über `lauf.sh <tag> <desktop> <ablauf>`:
 
-Ablauf **gesamt** (aus 0.2.3 portiert, 48 PASS bei 0.2.3) plus neue Fälle:
+| Ablauf | Inhalt |
+|---|---|
+| `gesamt` | Regression der Dateioperationen aus 0.2.3 (QD-144), 48 Fälle |
+| `dateiarbeit` | N1 Fortschritt (40 000 Dateien), N2 Abbruch mitten im Baum, N3–N11 jede Konfliktantwort, „für alle“ mit Überspringen/Ersetzen/Umbenennen, Escape, Verschieben mit Ersetzen, Zusammenführen, N12–N14 Einhängen per Doppelklick, mit Kennwort, Automount, N15 Papierkorb leeren als Auftrag |
+| `dialoge` | Fotos von Fortschrittsfenster, Datei- und Ordnerfrage, Kennwortfrage, Medienmenü |
+| `belastung` | QD-106: Dateien anlegen/entfernen, Symbolthema wechseln, Menüs mit Programmsymbolen, Eigenschaften; Zähler `qvorlade.so` |
+| `medien` | Einhängen mit Lebenszeichen nach jedem Schritt (Befund §6) |
+| `files`, `tausch`, `texte`, `lage`, `ordner`, `oeffnen`, `fotos` | wie 0.2.6-2 |
 
-| Nr. | Fall | Erwartung |
-|---|---|---|
-| N1 | große Kopie (Ordner mit 200 MB in vielen Dateien) Arbeitsfläche → Ordner | Fortschrittsfenster erscheint nach ~1 s, Balken wächst, Dateiname wechselt, Fenster schließt sich am Ende |
-| N2 | Abbruch mitten im Baum | Knopf Abbrechen: Job endet, Log „abgebrochen“, kein Fehlerdialog, teilweise kopierte Datei nicht halb liegen gelassen, Quelle unverändert |
-| N3 | Konflikt Ersetzen | Ziel hat danach den Inhalt der Quelle |
-| N4 | Konflikt Überspringen (Eingabetaste = Vorgabe) | Ziel unverändert, Quelle unverändert |
-| N5 | Konflikt Umbenennen | Kopie unter dem eingegebenen Namen, Ziel unverändert |
-| N6 | Konflikt „für alle“ + Überspringen bei drei Konflikten | eine Frage, drei übersprungen, Nicht-Konflikte kopiert |
-| N7 | Konflikt Abbrechen (Escape) | Job endet, nichts ersetzt |
-| N8 | Verschieben mit Konflikt (Strg+X, Strg+V) Ersetzen | Quelle weg, Ziel neu |
-| N9 | Ordner zusammenführen | Inhalt beider Ordner im Ziel |
-| N10 | Einhängen per Doppelklick (Laufwerks-Attrappe aus `werkzeug/dateien-pruefrahmen`) | Volume eingehängt, Symbol wechselt auf eingehängt |
-| N11 | Einhängen mit Rückfrage (Attrappe verlangt Kennwort) | MountOperation-Dialog erscheint; Abbrechen lässt es ausgehängt |
-| N12 | Papierkorb leeren als Job | Zähler fällt auf 0, Symbol leer |
+Ergebnisse: §7 (nach dem Lauf eingetragen).
 
-Weitere Abläufe wie 0.2.6-2: `files`, `tausch` (0.2.6-2 → 0.3.0 → 0.2.6-2),
-`texte` de/en, `lage`, `fotos`; Fotos hell und dunkel je 1920×1080 und
-1024×768 (Fortschrittsfenster und Konfliktdialog eingeschlossen).
+### 4.3 Isolation
 
-### 4.3 Isolation der Läufe
-
-Seit 0.3.0 setzt `isoliert.py` `GVFS_MOUNTABLE_DIR` auf eine Kopie der
+`isoliert.py` setzt `GVFS_MOUNTABLE_DIR` auf eine Kopie der
 gvfs-Mountbeschreibungen ohne `network`, `wsdd`, `smb-browse`, `dns-sd` und
-`afp-browse`: Dateidialog und Files starten im Wegwerf-Bus keine Netzsuche
-(kein wsdd). Der Papierkorb bleibt.
+`afp-browse`: Dateidialog und Files starten im Wegwerf-Bus keine Netzsuche.
+Laufwerke kommen nur aus der Attrappe `qattrappe.c` (GIO-Modul, seit 0.3.0
+auch nicht eingehängte Medien mit Einhängen, Kennwort und Automount); die
+Volume-Monitore von GVfs sind in diesen Läufen gesperrt.
 
 ## 5. Integration
 
-Nach dem Muster 0.2.6-2: Arbeitsordner `~/projects/querencia-desktop-030`,
-Skript `desktop-030-integrieren.sh` (`pruefen | aktivieren | desktop-neustart |
-zurueck | desktop-neustart-zurueck`, `DESKTOP_030_FREIGABE=ja`), Ablage mit
-Programm und `share/locale/de`, Rückfall 0.2.6-2 `a9e3600107c1cd53`, Tausch
-mit `tausch-desktop.py`, Probe auf umgelenkten Kopien. Tags `desktop/0.3.0`
-(Code) und `desktop/0.3.0-int` (Integrationsstand).
+Integrationsordner nach dem Muster 0.2.7-2 (`desktop-030-integrieren.sh`,
+`DESKTOP_030_FREIGABE=ja`): `pruefen`, `aktivieren` (Ablage mit Programm und
+drei Katalogen, Link), `desktop-neustart` (laufend 0.2.7-2 oder 0.2.6-2),
+`zurueck` (Link auf 0.2.7-2 `e193b23d`), `desktop-neustart-zurueck`.
+Repo-Kopie `integration/desktop-030/` ohne Binaries und Kataloge.
 
-## 6. Verhaltensänderung (für CHANGELOG und Release Notes)
+## 6. Befunde
 
-> Kopieren und Verschieben auf der Arbeitsfläche zeigen jetzt ein
-> Fortschrittsfenster mit „Abbrechen“ und fragen bei einem vorhandenen Namen
-> nach (Ersetzen, Überspringen, Umbenennen); bisher wurde nie überschrieben.
+1. **GTKs Kennwortdialog stürzt im Desktop ab.** Nach erfolgreichem
+   Einhängen mit Kennwort über `gtk::MountOperation` endete der Desktop beim
+   Freigeben des (modalen) Dialogs mit SIGSEGV in
+   `wl_proxy_marshal_flags` (gtk4-layer-shell), mit und ohne Elternfenster;
+   Abbrechen stürzte nicht ab. 0.3.0 stellt Kennwort- und Auswahlfragen
+   selbst in nicht modalen Fenstern. Wichtig: GIOs eigener Handler von
+   `ask-password` antwortet sonst sofort „nicht behandelt“; die Signalausgabe
+   wird deshalb gestoppt (wie bei `show-processes`).
+2. **Fokus:** Das Fortschrittsfenster, das nach 1 s erschien, nahm einer
+   offenen Konfliktfrage die Tastatur. Es wartet jetzt auf die Antwort.
+3. **Teildatei beim Abbruch:** Das Crate baut ein Objekt unter einem Baunamen
+   und benennt es erst fertig um; ein Abbruch mitten im Baum hinterlässt im
+   Ziel weder Teildatei noch halben Ordner (N2).
+4. **Laufwerksbilder ohne Vorladen:** Die eingebauten Laufwerksbilder sind
+   SVG-Bytes (`gio::BytesIcon`); `symbole` kann sie nicht als Schlüssel
+   führen und schlug sie bei jedem Neuaufbau neu nach. GTK lud sie dann im
+   Hauptfaden über glycin (eigener Prozess): normal ~50 ms je Symbol, nach
+   einem abgebrochenen großen Auftrag (Platte mit Löschen beschäftigt)
+   2,5–4,5 s – der Desktop reagierte bis zu 7 s nicht (strace:
+   `ppoll` auf den glycin-Kanal). Der Desktop behält diese Bilder jetzt je
+   Bild, Größe und Skalierung (`volume_image`); Antwortzeit nach dem Abbruch
+   wieder 1 s einschließlich Eingabe (Prüffall N2). Für den Dateimanager
+   gilt dasselbe: eigene SVG-Symbole einmal laden.
+5. **Fenster „Dateioperationen“ wanderte:** Die Zeile mit Menge, Restzeit
+   und Rate war nicht gekürzt; das Fenster wuchs und schrumpfte mit jeder
+   Aktualisierung, „Abbrechen“ am Ende der Leiste wanderte mit, und Klicks
+   gingen daneben (im Prüflauf 4 von 4 Mal). Jetzt feste Breite 500 px,
+   lange Texte gekürzt.
 
-## 7. Risiken
+## 7. Ergebnisse
 
-| Risiko | Gegenmaßnahme |
+Release `c9fd30fb…` aus Commit `364b895` (Tag `desktop/0.3.0`), Neubau
+byte-gleich; Kataloge `querencia-desktop.mo` `e5d3ee8f…`,
+`querencia-oberflaeche.mo` `5fcc46d8…` (gleich 0.2.7-2),
+`querencia-dateiarbeit.mo` `4d9209d3…`. Belege im Arbeitsordner
+`nachweis/` (Repo-Kopie `integration/desktop-030/nachweis/`).
+
+| Prüfung | Ergebnis |
 |---|---|
-| Datenverlust beim Ersetzen über Dateisysteme oder GVfs | Vorgabe Überspringen; Ersetzen nur nach ausdrücklicher Antwort; Prüffälle N3/N8/N9 mit Inhaltsvergleich |
-| Konfliktdialog blockiert den Job dauerhaft (Desktop-Neustart mitten in der Frage) | Job-Abbruch beim Beenden; Tausch-Ablauf mit offenem Dialog prüfen |
-| Fortschrittsfenster verliert die Titelleiste (QD-076) | Fenster beim Schließen zerstören, neu bauen |
-| Symbole im Fortschrittsfenster (QD-106) | nur Symbole über `symbole` aus dem GUI-Crate |
-| Einhängen in der Prüfung trifft echte Platten | Läufe mit gesperrten GVfs-Volume-Monitoren, nur Attrappe |
+| Workspace fmt, clippy `-D warnings`, build | sauber |
+| Workspace-Tests | 524 bestanden, 0 fehlgeschlagen, 2 ignoriert; Desktop 70 |
+| Deutsch unverändert gegen 0.2.7 (`deutsch-gleich-030.py`) | 116 von 120 Übersetzungen gleich (46 davon jetzt im Katalog des Crates), 0 geändert; 4 entfallen mit der alten Leeren-Schleife |
+| `gesamt` (QD-144) | 48/0 (zweimal); 0.2.6-2 zur Eichung zweimal 48/0 |
+| `dateiarbeit` | 52/0 (N1 Fortschritt 40 000 Dateien, N2 Abbruch bei ~28 000 Objekten ohne Reste, N3–N11 alle Antworten, N12–N14 Einhängen, Kennwort, Automount, N15 Papierkorb leeren) |
+| `medien`, `abbruch` | 13/0, 5/0 |
+| `files` live/neu/alt/beide | je 11/0 |
+| `tausch` von 0.2.7-2 und von 0.2.6-2 | je 15/0 |
+| `texte` de/en, `lage`, `ordner`, `oeffnen` | 20/0, 20/0, 13/0, 13/0, 12/0 |
+| `fotos` hell/dunkel × 1920/1024 | je 10/0 |
+| `dialoge` hell/dunkel × 1920/1024, en | je 9/0 |
+| `belastung` 300 s (QD-106) | 0.3.0: 0 Vorladeaufträge, Desktop läuft, kein `object_already_finalized`; 0.2.7-2 zum Vergleich: 435 |
+| Probe Integrationsskript | 54/54 |
+| `pruefen` am echten Stand | D=alt (Link 0.2.7-2, laufend 0.2.6-2) |
+
+Ein erster Lauf `gesamt` der Schlussreihe hatte 6 Folgefehler, weil
+gleichzeitig die Probe lief und alte Diagnose-Läufe beendet wurden (der
+Papierkorb-Auftrag brauchte länger als die feste Wartezeit des Werkzeugs);
+ohne Parallellast zweimal 48/0. Bilder: .
+
+## 8. Grenzen
+
+- GVfs-Ziele (SMB/SFTP), echte Wechseldatenträger über udisks und echte
+  `MountOperation`-Fragen von GVfs sind nicht gemessen (Stufe G/H des
+  Prüfrahmens); die Attrappe bildet `ask-password` nach.
+- „Kein Papierkorb am Ort“ (`Conflict::NoTrash`) ist im GUI-Lauf nicht
+  nachgestellt (der Wegwerf-Bus hat keinen Ort ohne Papierkorb); im Crate
+  getestet.
+- Die Frage „Ausführen oder anzeigen?“ für ausführbare Textdateien (Nautilus
+  2.30) fehlt noch; solche Dateien öffnen wie bisher im Standardprogramm.
+- Ein gemeinsames Fortschrittsfenster für Desktop und Dateien (Variante B)
+  kommt mit Welle C.
