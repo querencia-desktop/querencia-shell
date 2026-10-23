@@ -1,0 +1,15 @@
+#!/bin/bash
+# Prüfung Netzwerk (Welle C1): ssh-Hülle vor der des Prüfrahmens (nur für
+# Querencia Dateien, nicht für gvfsd). Der Fingerabdruck-Abruf
+# (-oBatchMode=yes) bekommt kein -E, sonst landet sein Protokoll in der Datei
+# der Prüfrahmen-Hülle und das Programm sieht keinen Schlüssel (QF-0o-2,
+# Übergabe §3). Kein Schlüssel, kein Agent; alles andere geht unverändert an
+# die Hülle des Prüfrahmens ($QD_PROFIL/bin/ssh).
+for a in "$@"; do
+  if [ "$a" = "-oBatchMode=yes" ]; then
+    echo "$(date '+%T') ssh-Sonde: $*" >> "${QD_SSH_DIR:?}/huelle.log"
+    exec /usr/bin/ssh -F "$QD_SSH_DIR/ssh_config" -o IdentitiesOnly=yes -o IdentityFile=/dev/null \
+      -o IdentityAgent=none "$@"
+  fi
+done
+exec "${QD_PROFIL:?}/bin/ssh" "$@"

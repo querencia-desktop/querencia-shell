@@ -344,6 +344,9 @@ impl Fenster {
         self.reiter_verbinden(&r);
         let pos = reiter::regeln::neue_position(self.reiter.aktiv_index(), self.reiter.anzahl());
         self.reiter.einfuegen(&r, pos);
+        for h in app.register().reiter.clone() {
+            h(self, &r);
+        }
         let ort = ort
             .cloned()
             .unwrap_or_else(|| gio::File::for_path(glib::home_dir()));
