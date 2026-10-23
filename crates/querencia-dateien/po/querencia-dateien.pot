@@ -1,0 +1,858 @@
+# Übersetzungsvorlage für Querencia Dateien.
+# Copyright (C) 2026 Querencia
+# Diese Datei steht unter derselben Lizenz wie Querencia Dateien (GPL-3.0-or-later).
+# Erzeugt mit werkzeug/i18n.py pot – nicht von Hand bearbeiten.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-dateien\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#. TRANSLATORS: Desktop-Datei, Schlüssel Name
+#: data/org.querencia.Dateien.desktop.in:4 src/main.rs:101
+msgid "Files"
+msgstr ""
+
+#. TRANSLATORS: Desktop-Datei, Schlüssel GenericName
+#: data/org.querencia.Dateien.desktop.in:5
+msgid "File Manager"
+msgstr ""
+
+#. TRANSLATORS: Desktop-Datei, Schlüssel Comment
+#: data/org.querencia.Dateien.desktop.in:6
+msgid "Browse folders and manage files"
+msgstr ""
+
+#. TRANSLATORS: Desktop-Datei, Schlüssel Keywords (Liste, Einträge mit ; trennen und abschließen)
+#: data/org.querencia.Dateien.desktop.in:7
+msgid "folder;file manager;files;explorer;"
+msgstr ""
+
+#: src/adressleiste.rs:179
+msgid "Show the folders before"
+msgstr ""
+
+#: src/adressleiste.rs:180
+msgid "Show the folders after"
+msgstr ""
+
+#: src/adressleiste.rs:187 src/eigenschaften.rs:82
+msgid "Location:"
+msgstr ""
+
+#: src/adressleiste.rs:420 src/orte.rs:20 src/regeln.rs:351 src/seitenleiste.rs:83
+msgid "File System"
+msgstr ""
+
+#: src/adressleiste.rs:498
+#, no-c-format
+msgid "The location “{location}” could not be found."
+msgstr ""
+
+#: src/ansicht.rs:535
+msgid "Renaming is not possible in this view."
+msgstr ""
+
+#. TRANSLATORS: date and time in the properties, strftime format; German "%d.%m.%Y %H:%M"
+#: src/eigenschaften.rs:26
+msgid "%m/%d/%Y %I:%M %p"
+msgstr ""
+
+#: src/eigenschaften.rs:57
+#, no-c-format
+msgid "{name} Properties"
+msgstr ""
+
+#: src/eigenschaften.rs:69
+msgid "Name:"
+msgstr ""
+
+#: src/eigenschaften.rs:69
+msgid "Type:"
+msgstr ""
+
+#: src/eigenschaften.rs:73
+msgid "Link target:"
+msgstr ""
+
+#: src/eigenschaften.rs:77
+msgid "Size:"
+msgstr ""
+
+#: src/eigenschaften.rs:85
+msgid "Modified:"
+msgstr ""
+
+#: src/eigenschaften.rs:88
+msgid "Accessed:"
+msgstr ""
+
+#: src/eigenschaften.rs:102 src/einstellungen.rs:384 src/info.rs:186 src/menue.rs:260
+msgid "_Close"
+msgstr ""
+
+#: src/eigenschaften.rs:116
+msgid "Basic"
+msgstr ""
+
+#: src/einstellungen.rs:98
+msgid "Default View"
+msgstr ""
+
+#: src/einstellungen.rs:101
+msgid "_View new folders using:"
+msgstr ""
+
+#: src/einstellungen.rs:111
+msgid "_Arrange items:"
+msgstr ""
+
+#: src/einstellungen.rs:113
+msgid "By Name"
+msgstr ""
+
+#: src/einstellungen.rs:114
+msgid "By Size"
+msgstr ""
+
+#: src/einstellungen.rs:115
+msgid "By Type"
+msgstr ""
+
+#: src/einstellungen.rs:116
+msgid "By Modification Date"
+msgstr ""
+
+#: src/einstellungen.rs:123
+msgid "Sort _folders before files"
+msgstr ""
+
+#: src/einstellungen.rs:128
+msgid "Show _hidden files"
+msgstr ""
+
+#: src/einstellungen.rs:135
+msgid "Default Zoom Levels"
+msgstr ""
+
+#: src/einstellungen.rs:138
+msgid "Icon _view:"
+msgstr ""
+
+#: src/einstellungen.rs:144
+msgid "_List view:"
+msgstr ""
+
+#: src/einstellungen.rs:174
+msgid "_Double click to open items"
+msgstr ""
+
+#: src/einstellungen.rs:180
+msgid "_Single click to open items"
+msgstr ""
+
+#: src/einstellungen.rs:185 src/einstellungen.rs:376
+msgid "Behavior"
+msgstr ""
+
+#: src/einstellungen.rs:187
+msgid "Executable Text Files"
+msgstr ""
+
+#: src/einstellungen.rs:189
+msgid "When _opened:"
+msgstr ""
+
+#: src/einstellungen.rs:191
+msgid "Ask each time"
+msgstr ""
+
+#: src/einstellungen.rs:192
+msgid "View them"
+msgstr ""
+
+#: src/einstellungen.rs:193
+msgid "Run them"
+msgstr ""
+
+#: src/einstellungen.rs:201 src/fenster.rs:183 src/orte.rs:13 src/seitenleiste.rs:95
+msgid "Trash"
+msgstr ""
+
+#: src/einstellungen.rs:204
+msgid "Ask before _emptying the trash or deleting files"
+msgstr ""
+
+#: src/einstellungen.rs:210
+msgid "Include a Dele_te command that bypasses the trash"
+msgstr ""
+
+#: src/einstellungen.rs:218
+msgid "Location"
+msgstr ""
+
+#: src/einstellungen.rs:220
+msgid "Always use the location _entry instead of the path buttons"
+msgstr ""
+
+#: src/einstellungen.rs:231
+msgid "None"
+msgstr ""
+
+#: src/einstellungen.rs:232
+msgid "Size"
+msgstr ""
+
+#: src/einstellungen.rs:233
+msgid "Date Modified"
+msgstr ""
+
+#: src/einstellungen.rs:234
+msgid "Type"
+msgstr ""
+
+#: src/einstellungen.rs:240
+msgid "Icon Captions"
+msgstr ""
+
+#: src/einstellungen.rs:243
+msgid "_Below the name:"
+msgstr ""
+
+#: src/einstellungen.rs:250
+msgid "From 150 % _also:"
+msgstr ""
+
+#: src/einstellungen.rs:259
+msgid "Date"
+msgstr ""
+
+#: src/einstellungen.rs:261
+msgid "_Format:"
+msgstr ""
+
+#: src/einstellungen.rs:263
+msgid "As the region"
+msgstr ""
+
+#: src/einstellungen.rs:264
+msgid "ISO 8601"
+msgstr ""
+
+#: src/einstellungen.rs:276 src/einstellungen.rs:378
+msgid "List Columns"
+msgstr ""
+
+#: src/einstellungen.rs:278
+msgid "_Size"
+msgstr ""
+
+#: src/einstellungen.rs:282
+msgid "_Type"
+msgstr ""
+
+#: src/einstellungen.rs:283
+msgid "_Date Modified"
+msgstr ""
+
+#: src/einstellungen.rs:287
+msgid "_Permissions"
+msgstr ""
+
+#: src/einstellungen.rs:291
+msgid "_Owner"
+msgstr ""
+
+#: src/einstellungen.rs:295
+msgid "_Group"
+msgstr ""
+
+#: src/einstellungen.rs:301
+msgid "The name is always shown."
+msgstr ""
+
+#: src/einstellungen.rs:311
+msgid "Always"
+msgstr ""
+
+#: src/einstellungen.rs:312
+msgid "Local files only"
+msgstr ""
+
+#: src/einstellungen.rs:313
+msgid "Never"
+msgstr ""
+
+#: src/einstellungen.rs:319
+msgid "Thumbnails"
+msgstr ""
+
+#: src/einstellungen.rs:322
+msgid "_Show thumbnails:"
+msgstr ""
+
+#: src/einstellungen.rs:329
+msgid "_Only for files smaller than:"
+msgstr ""
+
+#: src/einstellungen.rs:341
+msgid "Folders"
+msgstr ""
+
+#: src/einstellungen.rs:343
+msgid "_Count number of items:"
+msgstr ""
+
+#: src/einstellungen.rs:366
+msgid "File Management Preferences"
+msgstr ""
+
+#: src/einstellungen.rs:375
+msgid "Views"
+msgstr ""
+
+#: src/einstellungen.rs:377
+msgid "Display"
+msgstr ""
+
+#: src/einstellungen.rs:379
+msgid "Preview"
+msgstr ""
+
+#: src/einstellungen.rs:383 src/menue.rs:689
+msgid "_Help"
+msgstr ""
+
+#: src/fenster.rs:187
+msgid "Empty Trash…"
+msgstr ""
+
+#. TRANSLATORS: Dezimalzeichen in Größen („3.4 GB“, deutsch „3,4 GB“)
+#: src/i18n.rs:128
+msgctxt "decimal separator"
+msgid "."
+msgstr ""
+
+#: src/i18n.rs:150 src/regeln.rs:259
+#, no-c-format
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: address of the online help; only change the language code (German …/de/docs/).
+#: src/info.rs:81
+msgid "https://querencialinux.org/en/docs/"
+msgstr ""
+
+#. TRANSLATORS: title of the about dialog
+#: src/info.rs:133
+msgid "About Files"
+msgstr ""
+
+#. TRANSLATORS: program name and version in the about dialog; German „Querencia Dateien {version}“.
+#: src/info.rs:145
+#, no-c-format
+msgid "Files {version}"
+msgstr ""
+
+#: src/info.rs:151
+msgid ""
+"Classic file manager for Querencia Desktop\n"
+"modelled on Nautilus 2.30."
+msgstr ""
+
+#: src/info.rs:158
+#, no-c-format
+msgid "Querencia Desktop {release}"
+msgstr ""
+
+#: src/info.rs:164
+msgid "Alpha – not released for everyday use."
+msgstr ""
+
+#: src/info.rs:179
+msgid "License: GPL-3.0-or-later"
+msgstr ""
+
+#: src/info.rs:180
+msgid "Contains code from Strata, MIT"
+msgstr ""
+
+#. TRANSLATORS: shortcut shown in the Go menu, deutsch „<Alt>Pos1“
+#: src/menue.rs:189
+msgctxt "accel"
+msgid "<Alt>Home"
+msgstr ""
+
+#: src/menue.rs:210
+msgid "New _Window"
+msgstr ""
+
+#: src/menue.rs:217
+msgid "Create _Folder"
+msgstr ""
+
+#: src/menue.rs:223
+msgid "Create _Document"
+msgstr ""
+
+#: src/menue.rs:227 src/seitenleiste.rs:522
+msgid "_Open"
+msgstr ""
+
+#: src/menue.rs:233 src/seitenleiste.rs:529
+msgid "Open in New _Window"
+msgstr ""
+
+#: src/menue.rs:238
+msgid "Open Wit_h"
+msgstr ""
+
+#: src/menue.rs:241
+msgid "_Properties"
+msgstr ""
+
+#: src/menue.rs:247 src/seitenleiste.rs:578
+msgid "_Empty Trash…"
+msgstr ""
+
+#: src/menue.rs:254
+msgid "Close _All Windows"
+msgstr ""
+
+#: src/menue.rs:273
+msgid "Cu_t"
+msgstr ""
+
+#: src/menue.rs:279
+msgid "_Copy"
+msgstr ""
+
+#: src/menue.rs:285
+msgid "_Paste"
+msgstr ""
+
+#: src/menue.rs:293
+msgid "Select _All"
+msgstr ""
+
+#: src/menue.rs:299
+msgid "_Invert Selection"
+msgstr ""
+
+#: src/menue.rs:305
+msgid "_Rename…"
+msgstr ""
+
+#: src/menue.rs:308
+msgid "Mo_ve to Trash"
+msgstr ""
+
+#: src/menue.rs:314
+msgid "_Delete…"
+msgstr ""
+
+#: src/menue.rs:319
+msgid "_Restore"
+msgstr ""
+
+#: src/menue.rs:322
+msgid "Prefere_nces"
+msgstr ""
+
+#: src/menue.rs:334
+msgid "_Stop"
+msgstr ""
+
+#: src/menue.rs:340
+msgid "_Reload"
+msgstr ""
+
+#: src/menue.rs:347
+msgid "_Toolbar"
+msgstr ""
+
+#: src/menue.rs:348
+msgid "Side _Pane"
+msgstr ""
+
+#: src/menue.rs:349
+msgid "Location _Bar"
+msgstr ""
+
+#: src/menue.rs:350
+msgid "St_atusbar"
+msgstr ""
+
+#: src/menue.rs:354
+msgid "Show _Hidden Files"
+msgstr ""
+
+#: src/menue.rs:358
+msgid "Arran_ge Items"
+msgstr ""
+
+#: src/menue.rs:362
+msgid "Zoom _In"
+msgstr ""
+
+#: src/menue.rs:368
+msgid "Zoom _Out"
+msgstr ""
+
+#: src/menue.rs:374
+msgid "Normal Si_ze"
+msgstr ""
+
+#: src/menue.rs:381
+msgid "_Icons"
+msgstr ""
+
+#: src/menue.rs:382
+msgid "_List"
+msgstr ""
+
+#: src/menue.rs:390
+msgid "By _Name"
+msgstr ""
+
+#: src/menue.rs:391
+msgid "By _Size"
+msgstr ""
+
+#: src/menue.rs:392
+msgid "By _Type"
+msgstr ""
+
+#: src/menue.rs:393
+msgid "By Modification _Date"
+msgstr ""
+
+#: src/menue.rs:395
+msgid "Re_versed Order"
+msgstr ""
+
+#: src/menue.rs:403
+msgid "Open _Parent"
+msgstr ""
+
+#: src/menue.rs:409
+msgid "_Back"
+msgstr ""
+
+#: src/menue.rs:414
+msgid "_Forward"
+msgstr ""
+
+#: src/menue.rs:418
+msgid "_Home Folder"
+msgstr ""
+
+#: src/menue.rs:423
+msgid "_Computer"
+msgstr ""
+
+#: src/menue.rs:425
+msgid "_Trash"
+msgstr ""
+
+#: src/menue.rs:431
+msgid "_Location…"
+msgstr ""
+
+#: src/menue.rs:439
+msgid "Online _Help"
+msgstr ""
+
+#: src/menue.rs:444
+msgid "_Report a Bug"
+msgstr ""
+
+#: src/menue.rs:446
+msgid "_About"
+msgstr ""
+
+#: src/menue.rs:543
+msgid "_Add Bookmark"
+msgstr ""
+
+#: src/menue.rs:595
+msgid "No templates installed"
+msgstr ""
+
+#: src/menue.rs:605
+msgid "Empty File"
+msgstr ""
+
+#: src/menue.rs:684
+msgid "_File"
+msgstr ""
+
+#: src/menue.rs:685
+msgid "_Edit"
+msgstr ""
+
+#: src/menue.rs:686
+msgid "_View"
+msgstr ""
+
+#: src/menue.rs:687
+msgid "_Go"
+msgstr ""
+
+#: src/menue.rs:688
+msgid "_Bookmarks"
+msgstr ""
+
+#: src/oeffnen.rs:78 src/oeffnen.rs:120
+#, no-c-format
+msgid "“{name}” could not be opened."
+msgstr ""
+
+#: src/oeffnen.rs:130 src/oeffnen.rs:266
+#, no-c-format
+msgid "“{name}” cannot be opened."
+msgstr ""
+
+#: src/oeffnen.rs:131
+#, no-c-format
+msgid "There is no program installed for “{type}” files."
+msgstr ""
+
+#: src/oeffnen.rs:150 src/oeffnen.rs:170 src/oeffnen.rs:191
+#, no-c-format
+msgid "“{program}” could not be started."
+msgstr ""
+
+#: src/oeffnen.rs:206
+msgid "Untrusted application launcher"
+msgstr ""
+
+#: src/oeffnen.rs:207
+#, no-c-format
+msgid ""
+"The application launcher “{name}” has not been marked as trusted. If you do not know the source of this file, launching it may be unsafe."
+msgstr ""
+
+#: src/oeffnen.rs:212 src/oeffnen.rs:293 src/oeffnen.rs:298
+msgid "_Cancel"
+msgstr ""
+
+#: src/oeffnen.rs:212
+msgid "_Trust and Launch"
+msgstr ""
+
+#: src/oeffnen.rs:229
+msgid "The launcher could not be marked as trusted."
+msgstr ""
+
+#: src/oeffnen.rs:251
+#, no-c-format
+msgid "“{name}” could not be run."
+msgstr ""
+
+#: src/oeffnen.rs:270
+msgid "There is no program installed for text files."
+msgstr ""
+
+#: src/oeffnen.rs:289
+#, no-c-format
+msgid "Do you want to run “{name}”, or display its contents?"
+msgstr ""
+
+#: src/oeffnen.rs:293
+msgid "_Display"
+msgstr ""
+
+#: src/oeffnen.rs:293 src/oeffnen.rs:298
+msgid "_Run"
+msgstr ""
+
+#: src/oeffnen.rs:297
+#, no-c-format
+msgid "Do you want to run “{name}”?"
+msgstr ""
+
+#: src/oeffnen.rs:303
+#, no-c-format
+msgid "“{name}” is an executable file."
+msgstr ""
+
+#: src/orte.rs:14
+msgid "Computer"
+msgstr ""
+
+#: src/orte.rs:15 src/seitenleiste.rs:89
+msgid "Network"
+msgstr ""
+
+#: src/orte.rs:26 src/regeln.rs:345 src/seitenleiste.rs:69
+msgid "Home Folder"
+msgstr ""
+
+#. TRANSLATORS: zoom level in the toolbar, deutsch „{percent} %“
+#: src/regeln.rs:58
+#, no-c-format
+msgid "{percent}%"
+msgstr ""
+
+#: src/regeln.rs:94
+msgid "Icon View"
+msgstr ""
+
+#: src/regeln.rs:95
+msgid "List View"
+msgstr ""
+
+#: src/regeln.rs:96
+msgid "Compact View"
+msgstr ""
+
+#: src/regeln.rs:244
+#, no-c-format
+msgid "{n} byte"
+msgid_plural "{n} bytes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/regeln.rs:265
+#, no-c-format
+msgid "{items}, Free space: {size}"
+msgstr ""
+
+#: src/regeln.rs:295
+#, no-c-format
+msgid "“{name}” selected"
+msgstr ""
+
+#: src/regeln.rs:297
+#, no-c-format
+msgid "“{name}” selected ({size})"
+msgstr ""
+
+#: src/regeln.rs:303
+#, no-c-format
+msgid "{n} folder selected"
+msgid_plural "{n} folders selected"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/regeln.rs:306
+#, no-c-format
+msgid "{n} item selected ({size})"
+msgid_plural "{n} items selected ({size})"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/regeln.rs:313
+#, no-c-format
+msgid "{n} other item selected ({size})"
+msgid_plural "{n} other items selected ({size})"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: "2 folders selected, 3 other items selected (1.2 MB)"
+#: src/regeln.rs:320
+#, no-c-format
+msgid "{folders}, {others}"
+msgstr ""
+
+#: src/seitenleiste.rs:77
+msgid "Desktop"
+msgstr ""
+
+#: src/seitenleiste.rs:181
+msgid "Places"
+msgstr ""
+
+#: src/seitenleiste.rs:187
+msgid "Close the side pane"
+msgstr ""
+
+#: src/seitenleiste.rs:540
+msgid "_Remove Bookmark"
+msgstr ""
+
+#: src/seitenleiste.rs:550
+msgid "_Mount"
+msgstr ""
+
+#: src/seitenleiste.rs:559
+msgid "_Eject"
+msgstr ""
+
+#: src/seitenleiste.rs:566
+msgid "_Unmount"
+msgstr ""
+
+#: src/statusleiste.rs:71
+#, no-c-format
+msgid "The folder could not be read: {error}"
+msgstr ""
+
+#: src/statusleiste.rs:117
+msgid "Loading…"
+msgstr ""
+
+#: src/werkzeugleiste.rs:55
+msgid "Back"
+msgstr ""
+
+#: src/werkzeugleiste.rs:56
+msgid "Go to the previous visited location"
+msgstr ""
+
+#: src/werkzeugleiste.rs:61
+msgid "Forward"
+msgstr ""
+
+#: src/werkzeugleiste.rs:62
+msgid "Go to the next visited location"
+msgstr ""
+
+#: src/werkzeugleiste.rs:68
+msgid "Go to the parent folder"
+msgstr ""
+
+#: src/werkzeugleiste.rs:74
+msgid "Stop loading the current location"
+msgstr ""
+
+#: src/werkzeugleiste.rs:80
+msgid "Reload the current location"
+msgstr ""
+
+#: src/werkzeugleiste.rs:87
+msgid "Go to the home folder"
+msgstr ""
+
+#: src/werkzeugleiste.rs:93
+msgid ""
+"Browse all local and remote disks and folders accessible from this computer"
+msgstr ""
+
+#: src/werkzeugleiste.rs:103
+msgid "Decrease the view size"
+msgstr ""
+
+#: src/werkzeugleiste.rs:112
+msgid "Increase the view size"
+msgstr ""
+
+#: src/werkzeugleiste.rs:121
+msgid "Use the normal view size"
+msgstr ""
+
+#: src/werkzeugleiste.rs:132
+msgid "Choose how the items are shown"
+msgstr ""
