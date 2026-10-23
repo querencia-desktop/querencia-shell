@@ -167,14 +167,14 @@ pub fn als_action(ablage: Ablage) -> gdk::DragAction {
     }
 }
 
-/// Whether `file` is in the trash: `trash:///…` or the home trash's
-/// `files` folder (without GVfs).
+/// Whether `file` is the trash or in it: `trash:///…`, or without GVfs the
+/// home trash's `files` folder and what is in it.
 pub fn im_papierkorb(file: &gio::File) -> bool {
     if file.uri_scheme().is_some_and(|s| s == "trash") {
         return true;
     }
     let files = gio::File::for_path(papierkorb::home_trash().join("files"));
-    file.has_prefix(&files)
+    file.equal(&files) || file.has_prefix(&files)
 }
 
 /// `id::filesystem` of a local file (for GVfs places `None`: asking could
@@ -751,6 +751,10 @@ mod tests {
         assert!(l.in_sich_selbst);
         assert_eq!(entscheiden(l), None);
         // a GVfs-like place counts as another file system
+        let files = gio::File::for_path(papierkorb::home_trash().join("files"));
+        assert!(im_papierkorb(&files) && im_papierkorb(&files.child("x.txt")));
+        assert!(im_papierkorb(&gio::File::for_uri("trash:///")));
+        assert!(!im_papierkorb(&a));
         let fern = gio::File::for_uri("sftp://127.0.0.1/ablage");
         let l = lage_fuer(&[x], &Ziel::Ordner(fern), Angebot::ALLE, (false, false));
         assert!(!l.gleiches_dateisystem);
