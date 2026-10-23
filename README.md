@@ -223,7 +223,8 @@ querencia-desktop/                 (Arbeitskopie: ~/projects/entwicklungs-vm)
 │   ├── labwc/                    labwc-Konfiguration der Classic2-Sitzung (labwc -C)
 │   │   ├── environment           Sitzungsvariablen
 │   │   └── autostart             Panelstart
-│   ├── querencia-session         Querencia-Sitzungsstarter, --exit zum Beenden
+│   ├── querencia-session         Querencia-Sitzungsstarter, --exit zum Beenden,
+│   │                             --grafik-pruefen (Software-OpenGL bei zink auf NVK, docs/sitzung-grafik.md)
 │   ├── querencia.desktop         Querencia-Sitzungsdefinition (wayland-sessions)
 │   └── querencia/labwc/          labwc-Konfiguration der Querencia-Sitzung
 │       ├── environment           Sitzungsvariablen (X-Querencia)
