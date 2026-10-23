@@ -708,3 +708,11 @@ Zusammenbau „dateien-020“ auf main `801a016` (C1 `dateien/netzwerk-1`, C2
   `update-desktop-database ~/.local/share/applications` (live listet der
   Cache für `inode/directory` noch `org.querencia.Files.desktop`). Im Paket
   erledigt das der dpkg-Trigger.
+- **Files ausmustern** (`integration/files-ausmustern/`, Schritt 7 nach der
+  Beta-Aktivierung, Ergänzung der Startsession 24.10.): `files-ausmustern.sh
+  pruefen|ausmustern|zurueck` mit `QDA_FREIGABE=ja` verschiebt die zwei
+  unsichtbaren Files-Starter und `~/opt/querencia-files/` in eine Sicherung
+  `~/opt/querencia/sicherung-files-<Zeit>/` und holt sie mit `zurueck`
+  zurück; nichts wird gelöscht, Files-Einstellungen bleiben. Vorprüfung:
+  Dateien ist Ordnerprogramm, der Link von Dateien zeigt auf ein Programm.
+  Probe 79 Fälle.
