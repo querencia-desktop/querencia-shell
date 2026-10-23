@@ -1,5 +1,28 @@
 # Änderungen – querencia-kuerzel
 
+## 0.2.2 – 2026-10-24
+
+Querencia Dateien statt Querencia Files (Welle C, Folgezug „Runtime nach
+der Ablösung“, 08 QD-168):
+
+- Seite „Programme“: Der Block „Querencia Files“ heißt jetzt „Querencia
+  Dateien“ und nennt dessen 38 Kürzel in der Reihenfolge seiner Menüs
+  (Datei, Bearbeiten, Ansicht, Gehe zu, Lesezeichen, Reiter, Hilfe) und so,
+  wie die Menüs sie schreiben (Umschalt vor Strg). Quelle:
+  `crates/querencia-dateien/src/menue.rs` (`KUERZEL`, `KUERZEL_IM_BEREICH`),
+  Suche Strg+F aus Welle C2, Reiter (Strg+T, Strg+W, Strg+Bild↑/↓,
+  Umschalt+Strg+Bild↑/↓, Alt+1 … Alt+0, Umschalt+Strg+O), Kompaktansicht
+  Strg+3 und Auswahl umkehren Umschalt+Strg+I aus Welle C3.
+- Gegenüber Files geändert: Strg+1/2/3 = Symbole/Liste/Kompakt, Strg+D =
+  Lesezeichen hinzufügen (Files: Duplizieren), Seitenleiste F9 (Files:
+  Strg+B), Suchen Strg+F (Files: Strg+K), Umschalt+Entf = Löschen mit
+  Nachfrage. Ohne Gegenstück in Dateien und deshalb nicht mehr aufgeführt:
+  Strg+Z/Umschalt+Strg+Z, Strg+, (Einstellungen).
+- Die Übersicht passt erst zu Querencia Dateien mit Welle C3 (Reiter);
+  mit Dateien 0.1.0 fehlen die Reiter- und Kompaktkürzel noch.
+- Test `built_in_file_is_clean`: Blockname, Zahl und Reihenfolge der
+  Dateien-Kürzel, geänderte und entfallene Kürzel.
+
 ## 0.2.1 – 2026-10-22
 
 Dunkelmodus (QD-109):
