@@ -1,6 +1,6 @@
 # Querencia Dateiarbeit (`crates/querencia-dateiarbeit`)
 
-**Stand:** 0.1.0, 23.10.2026 (Welle A von „Querencia Dateien“, QD-140, Schritt 2).
+**Stand:** 0.1.1, 23.10.2026 (Welle A von „Querencia Dateien“, QD-140, Schritt 2).
 Reines Bibliotheks-Crate ohne GTK, gemeinsam für Desktop 0.3.0 und den
 Dateimanager „Querencia Dateien“. Nichts ist aktiviert; der Desktop nutzt
 das Crate noch nicht (das macht Desktop 0.3.0, siehe
@@ -157,9 +157,9 @@ Nautilus 2.30) und `Folder`/`Location` mit `Option<AppInfo>`.
    laufen deshalb als eigener Kindprozess mit umgelenkten Ordnern und
    `GIO_USE_VFS=local`; der Test prüft vor dem ersten Wegwerfen, dass
    `user_data_dir` im Testordner liegt.
-6. Im Benutzer-Namensraum ist die eigene UID 0: der Papierkorb eines
-   Laufwerks heißt dort `.Trash-0`. Eine Datei dieses Namens verhindert ihn
-   (Prüffall „kein Papierkorb“).
+6. Im Benutzer-Namensraum ist die eigene UID 0, in der Prüfrahmen-Hülle
+   1001: der Papierkorb eines Laufwerks heißt `.Trash-<uid>`. Eine Datei
+   dieses Namens verhindert ihn (Prüffall „kein Papierkorb“).
 7. Ein voller Zielordner mitten in einem Ordnerbaum war zuerst ein
    Einzelfehler und hinterließ einen halben Ordner unter echtem Namen; jetzt
    lässt `NoSpace`/`ReadOnly`/`NotMounted` das ganze Objekt scheitern
@@ -176,6 +176,13 @@ Nautilus 2.30) und `Folder`/`Location` mit `Option<AppInfo>`.
   `LIBMOUNT_FSTAB` und `GIO_USE_VOLUME_MONITOR=unix`). Ohne
   Benutzer-Namensräume schlägt der Test fehl, außer
   `QUERENCIA_DATEIARBEIT_OHNE_NAMENSRAUM=1` (dann „NICHT GEMESSEN“).
+- Prüfrahmen (main, `werkzeug/dateien-pruefrahmen/`):
+  `bash werkzeug/dateien-pruefrahmen/beispiel-cargo-test.sh <worktree> L|G`
+  baut außen und startet jedes Testprogramm in der Hülle. Dort gibt es kein
+  eigenes `unshare`; der Namensraum-Test nimmt dann die `--tmpfs`-Ordner der
+  Hülle (`huelle.sh --tmpfs grenze:64M --tmpfs voll:1M --tmpfs
+  ohne-papierkorb:4M`), ohne sie meldet er „NICHT GEMESSEN“. Die
+  Laufwerks-Attrappen prüft nur `werkzeug/namensraum.sh`.
 - Die Kindprozesse laufen mit leerer Umgebung (nur HOME, XDG-Ordner, PATH,
   `LANG=C.UTF-8`, `GIO_USE_VFS=local`, `GIO_USE_VOLUME_MONITOR=unix`,
   `GSETTINGS_BACKEND=memory`, `DBUS_SESSION_BUS_ADDRESS=disabled:`): kein

@@ -23,6 +23,22 @@ fn namensraum() {
     if std::env::var_os(KIND).is_some() {
         return;
     }
+    // inside the Prüfrahmen's shell (bwrap): no unshare of our own; its
+    // `--tmpfs` folders stand in for the boundary cases when given
+    if let Ok(stufe) = std::env::var("QD_HUELLE") {
+        let profil = PathBuf::from(std::env::var_os("QD_PROFIL").expect("QD_PROFIL"));
+        if TMPFS.iter().all(|t| other_fs(&profil, &profil.join(t))) {
+            faelle(&profil);
+            eprintln!("MESSWERT Grenzfälle in der Prüfrahmen-Hülle (Stufe {stufe}): bestanden");
+        } else {
+            eprintln!(
+                "NICHT GEMESSEN in der Prüfrahmen-Hülle (Stufe {stufe}): kein eigenes unshare; \
+                 Grenzfälle mit huelle.sh --tmpfs grenze:64M --tmpfs voll:1M \
+                 --tmpfs ohne-papierkorb:4M"
+            );
+        }
+        return;
+    }
     if std::env::var("QUERENCIA_DATEIARBEIT_OHNE_NAMENSRAUM").as_deref() == Ok("1") {
         eprintln!(
             "NICHT GEMESSEN: Namensraum-Tests übersprungen (QUERENCIA_DATEIARBEIT_OHNE_NAMENSRAUM=1)"
@@ -64,14 +80,33 @@ fn kind_base() -> Option<PathBuf> {
 #[test]
 fn namensraum_kind() {
     let Some(base) = kind_base() else { return };
-    // inside: other file systems below base, our own trash
-    assert!(glib::user_data_dir().starts_with(&base));
-    let dev = |p: &Path| std::os::unix::fs::MetadataExt::dev(&std::fs::metadata(p).expect("da"));
-    assert_ne!(dev(&base), dev(&base.join("grenze")), "tmpfs eingehängt");
-    grenze(&base);
-    voll(&base);
-    ohne_papierkorb(&base);
+    assert!(
+        TMPFS.iter().all(|t| other_fs(&base, &base.join(t))),
+        "tmpfs eingehängt"
+    );
+    faelle(&base);
     laufwerke_attrappen();
+}
+
+/// The tmpfs folders below the base (werkzeug/namensraum.sh, or the
+/// Prüfrahmen's `--tmpfs`): boundary 64 MiB, full target 1 MiB, no trash.
+const TMPFS: [&str; 3] = ["grenze", "voll", "ohne-papierkorb"];
+
+fn other_fs(base: &Path, dir: &Path) -> bool {
+    let dev = |p: &Path| std::fs::metadata(p).map(|m| std::os::unix::fs::MetadataExt::dev(&m));
+    matches!((dev(base), dev(dir)), (Ok(a), Ok(b)) if a != b)
+}
+
+/// The cases on the tmpfs folders; our own trash only (XDG_DATA_HOME below
+/// the base, checked first).
+fn faelle(base: &Path) {
+    assert!(
+        glib::user_data_dir().starts_with(base),
+        "Papierkorb umgelenkt"
+    );
+    grenze(base);
+    voll(base);
+    ohne_papierkorb(base);
 }
 
 /// Moves across the file-system boundary: copy, then delete the original;
@@ -166,6 +201,14 @@ fn voll(base: &Path) {
 /// No trash on the place: the question, Skip keeps, Delete deletes.
 fn ohne_papierkorb(base: &Path) {
     let place = base.join("ohne-papierkorb");
+    // a file where GLib wants the volume's trash folder: no trash there
+    let marker = format!(
+        ".Trash-{}",
+        querencia_dateiarbeit::papierkorb::wiederherstellen::current_uid()
+    );
+    if !place.join(&marker).exists() {
+        write(&place.join(&marker), "");
+    }
     write(&place.join("a.txt"), "a");
     write(&place.join("b.txt"), "b");
     let (outcome, _, skript) = run(
@@ -184,7 +227,7 @@ fn ohne_papierkorb(base: &Path) {
         [all(Answer::Delete)],
     );
     assert_eq!(outcome.done, 2);
-    assert_eq!(names(&place), [".Trash-0"]);
+    assert_eq!(names(&place), [marker]);
 }
 
 /// The unix volume monitor sees QDTEST mounted (rbind of /boot) and

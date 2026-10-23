@@ -5,8 +5,9 @@
 # Darin, nur für diesen Prozessbaum sichtbar und mit ihm verschwunden:
 #   BASIS/grenze           tmpfs 64 MiB  – anderes Dateisystem neben BASIS
 #   BASIS/voll             tmpfs 1 MiB   – Ziel voll
-#   BASIS/ohne-papierkorb  tmpfs 4 MiB mit einer Datei .Trash-0 – dort kann
-#                          GLib keinen Papierkorb anlegen
+#   BASIS/ohne-papierkorb  tmpfs 4 MiB (der Test legt dort eine Datei
+#                          .Trash-<uid> an, dann kann GLib keinen Papierkorb
+#                          anlegen)
 #   /media                 tmpfs, darin QDTEST = rbind /boot (eingehängtes
 #                          Laufwerk, nur lesbar)
 #   LIBMOUNT_FSTAB=BASIS/fstab für GIO_USE_VOLUME_MONITOR=unix: QDTEST mit
@@ -28,7 +29,6 @@ mkdir -p "$basis/grenze" "$basis/voll" "$basis/ohne-papierkorb"
 mount -t tmpfs -o size=64m tmpfs "$basis/grenze"
 mount -t tmpfs -o size=1m tmpfs "$basis/voll"
 mount -t tmpfs -o size=4m tmpfs "$basis/ohne-papierkorb"
-: > "$basis/ohne-papierkorb/.Trash-0"
 mount -t tmpfs tmpfs /media
 mkdir /media/QDTEST /media/QDFSTAB
 mount --rbind /boot /media/QDTEST

@@ -1,5 +1,16 @@
 # Änderungen – querencia-dateiarbeit
 
+## 0.1.1 – 2026-10-23
+
+Prüfstand und Freigabe (Status-Session):
+
+- Tests ohne Klarnamen und Heimnetz-Namen (Laufwerks-Testdaten neutral).
+- Der Namensraum-Test läuft auch in der Prüfrahmen-Hülle: dort ohne
+  eigenes `unshare` auf deren `--tmpfs`-Ordnern (`grenze`, `voll`,
+  `ohne-papierkorb`), sonst meldet er „NICHT GEMESSEN“. Die Markierung
+  „kein Papierkorb“ legt der Test selbst an (`.Trash-<uid>`).
+- main mit dem Prüfrahmen (`werkzeug/dateien-pruefrahmen/`) zusammengeführt.
+
 ## 0.1.0 – 2026-10-23
 
 Erste Fassung (Welle A von „Querencia Dateien“, QD-140; noch von keinem
