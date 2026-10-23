@@ -7,7 +7,9 @@
 # Umgebung: LAUF_GROESSE (1024x768), LAUF_DUNKEL (0|1), LAUF_SPRACHE (de|en),
 #   LAUF_BIN (Programm, Vorgabe target/debug/querencia-dateien des Worktrees),
 #   LAUF_FILES_TOML (Files-settings.toml für M6), LAUF_THEMA (Ordner des
-#   GTK-Themas, Vorgabe ~/.local/share/themes/Querencia-Klassisch).
+#   GTK-Themas, Vorgabe ~/.local/share/themes/Querencia-Klassisch),
+#   LAUF_ATTRAPPEN (Laufwerks-Attrappen des Prüfrahmens, z. B.
+#   "schreibbar eingehaengt nicht-eingehaengt").
 # Ausgabe: ${DATEIEN_ARBEIT:-~/projects/dateien-arbeit}/laeufe/NAME/
 #   (ergebnis.txt, programm.log, fotos/, aufrufe.log, huelle.log).
 # Das Szenario läuft in der Hülle mit den Hilfen aus innen.sh.
@@ -57,8 +59,13 @@ if [ -n "${LAUF_FILES_TOML:-}" ]; then
 fi
 python3 -I "$HIER/testbaum.py" "$PROFIL/heim" "$PROFIL/config" "$PROFIL/data" "${TOML[@]}" > "$OUT/testbaum.log"
 case $SPRACHE in de) LOC=de_DE.UTF-8; LANGU=de ;; *) LOC=en_US.UTF-8; LANGU=en ;; esac
+ATT=()
+for art in ${LAUF_ATTRAPPEN:-}; do
+  # shellcheck disable=SC2207
+  ATT+=($(bash "$REPO/werkzeug/dateien-pruefrahmen/attrappen.sh" "$art" optionen))
+done
 set +e
-bash "$REPO/werkzeug/dateien-pruefrahmen/huelle.sh" --profil "$PROFIL" --labwc --sprache "$LOC" \
+bash "$REPO/werkzeug/dateien-pruefrahmen/huelle.sh" "${ATT[@]}" --profil "$PROFIL" --labwc --sprache "$LOC" \
   --lesen "$BIN" --lesen "$A/bin" --lesen "$HIER" --lesen "$SZENARIO" --schreiben "$OUT" \
   --setenv "LANGUAGE=$LANGU" --setenv "QUERENCIA_DATEIEN_LOCALEDIR=$PROFIL/locale" \
   --setenv "LAUF_GROESSE=$GROESSE" --setenv "LAUF_OUT=$OUT" --setenv "LAUF_PROG=$BIN" \
