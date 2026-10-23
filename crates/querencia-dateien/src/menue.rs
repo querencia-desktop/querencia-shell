@@ -271,6 +271,13 @@ fn datei() -> Vec<Vec<Punkt>> {
             ),
             p(N_("Open Wit_h"), "", None, None),
         ],
+        // Welle C1 (dateien-netzwerk)
+        vec![p(
+            N_("Connect to _Server…"),
+            "win.mit-server-verbinden",
+            None,
+            Some("network-server"),
+        )],
         vec![p(
             N_("_Properties"),
             "win.eigenschaften",
@@ -461,6 +468,13 @@ fn gehe_zu() -> Vec<Vec<Punkt>> {
                 "win.papierkorb-zeigen",
                 None,
                 Some("user-trash"),
+            ),
+            // Welle C1 (dateien-netzwerk)
+            p(
+                N_("_Network"),
+                "win.netzwerk",
+                None,
+                Some("network-workgroup"),
             ),
         ],
         vec![p(N_("_Location…"), "win.ort", Some("<Control>l"), None)],
@@ -809,13 +823,19 @@ mod tests {
         assert_eq!(finde("_List").kuerzel, Some("<Control>2"));
         assert_eq!(finde("_Location…").kuerzel, Some("<Control>l"));
         assert_eq!(finde("Online _Help").kuerzel, Some("F1"));
+        // Welle C1: network entries
+        assert_eq!(
+            finde("Connect to _Server…").aktion,
+            "win.mit-server-verbinden"
+        );
+        assert_eq!(finde("_Network").aktion, "win.netzwerk");
         // Welle C3: tabs and the compact view (B §3.3)
         assert_eq!(finde("New _Tab").kuerzel, Some("<Control>t"));
         assert_eq!(finde("Open in New _Tab").kuerzel, Some("<Shift><Control>o"));
         assert_eq!(finde("_Compact").kuerzel, Some("<Control>3"));
         assert_eq!(finde("_Compact").ziel, Some("kompakt"));
         // no other B-stage entries yet (B §3.3)
-        for b in ["Connect to _Server…", "_Undo", "D_uplicate"] {
+        for b in ["_Undo", "D_uplicate"] {
             assert!(!alle.iter().any(|p| p.text == b), "{b} ist Beta");
         }
     }

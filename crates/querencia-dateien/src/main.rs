@@ -42,6 +42,9 @@ mod operationen;
 mod ziehen;
 mod zwischenablage;
 
+// Welle C1 (dateien-netzwerk): mod-Zeilen unter dieser Zeile.
+mod netzwerk;
+
 // Welle C3 (dateien-reiter-kompakt): mod-Zeilen unter dieser Zeile.
 mod kompaktansicht;
 mod reiter;
@@ -66,6 +69,9 @@ fn erweiterungen(register: &mut app::Register) {
 
     // Welle B3: Aufrufe unter dieser Zeile.
     operationen::registrieren(register);
+
+    // Welle C1 (dateien-netzwerk): Aufrufe unter dieser Zeile.
+    netzwerk::registrieren(register);
 
     // Welle C3: Aufrufe unter dieser Zeile.
     kompaktansicht::registrieren(register);

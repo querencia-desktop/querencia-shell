@@ -626,6 +626,17 @@ impl Seitenleiste {
                     None,
                 ));
             }
+            // Welle C1 (dateien-netzwerk): "Mit Server verbinden …" at
+            // "Netzwerk"
+            Platz::Ort { datei, .. } if datei.uri_scheme().as_deref() == Some("network") => {
+                mitte.append_item(&eintrag(
+                    &gettext("Connect to _Server…"),
+                    Some("win.mit-server-verbinden"),
+                    None,
+                    None,
+                    Some(&gio::ThemedIcon::new("network-server").upcast()),
+                ));
+            }
             Platz::Ort { .. } => {}
         }
         if mitte.n_items() > 0 {

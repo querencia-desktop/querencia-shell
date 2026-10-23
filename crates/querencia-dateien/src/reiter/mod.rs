@@ -248,6 +248,11 @@ impl Reiter {
         self.ansichten.aktuell()
     }
 
+    /// The folder model of this tab (for `register.reiter`).
+    pub fn modell(&self) -> &Ordnermodell {
+        &self.modell
+    }
+
     /// The name in the tab head (the folder's name, as the window title).
     pub fn titel(&self) -> String {
         self.titel.text().to_string()

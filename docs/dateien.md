@@ -308,12 +308,98 @@ nutzen können.
 - Das Fortschrittsfenster nimmt beim Erscheinen die Tastatur (wie im
   Desktop 0.3.0).
 
-## 7. Welle C3: Reiter, Kompaktansicht, Migration (`dateien/reiter-1`)
+## 7. Netzwerk (Welle C1, `src/netzwerk/`)
+
+**Stand:** 23.10.2026, Zweig `dateien-netzwerk`, Tag `dateien/netzwerk-1`.
+Alles über GVfs, kein eigenes Protokoll. Abnahmefälle B23–B26 aus
+ §5; Bericht .
+
+### 7.1 Module
+
+| Datei | Inhalt |
+|---|---|
+| `mod.rs` | `registrieren` (ein `register.fenster`-Haken), Aktionen `win.mit-server-verbinden` und `win.netzwerk`, Statuszeile, Lesezeichen mit Namen |
+| `adresse.rs` | Dienstarten des Dialogs → GVfs-URI (SFTP, SMB mit `DOMÄNE;benutzer`, FTP, WebDAV/WebDAVS, eigene Adresse mit `\\server\freigabe` → `smb://`, `ssh://` → `sftp://`); Prüfung von Server, Port, Kennwort in der Adresse |
+| `einhaengen.rs` | Einhängen bei Bedarf (`bei_ortswechsel` und erster Ort eines neuen Fensters), ein Versuch je Server im ganzen Prozess, Stopp, Zeitgrenze 60 s ohne offene Frage, Fehlermeldung genau einmal, Rücksprung an einen Ort ohne Verbindung, Ursachensuche bei GVfs' „Verbindung fehlgeschlagen“ (Namensauflösung, TCP zum Port, ohne Anmeldung) |
+| `anmeldung.rs` | eigene Dialoge an `gtk4::MountOperation`: Kennwortfrage (Benutzer, Kennwort, Domäne, „Anonym verbinden“, „Kennwort merken“ nur wenn GVfs speichern kann, **aus** als Vorgabe → `PasswordSave::Never`, angehakt → `Permanently`, GVfs legt es über libsecret ab), Fragen (Host-Key mit selbst gelesenem Fingerabdruck, QD-008), known_hosts-Abgleich vor dem Kennwort und nach dem Einhängen, Doppelfragen schließen |
+| `gvfs_texte.rs` | **MIT** (aus Querencia Files übernommen, `LICENSES/MIT-Strata.txt`): GVfs-Fehler, Kennwortzeilen (Vorlagen von GVfs 1.60 englisch und deutsch), Host-Key-Frage, Knopfreihenfolge |
+| `netzansicht.rs` | `network:///`: Doppel aus Avahi und wsdd ausblenden (QD-036, `querencia_dateiarbeit::netz::merge_network_entries`), Hinweis bei leerem Netzwerk |
+| `verbinden_dialog.rs` | „Mit Server verbinden …“ nach Nautilus 2.30 (Dienst-Typ, Server, optional Port/Freigabe/Ordner/Benutzername/Domänenname, Lesezeichen mit Name; Hilfe, Abbrechen, Verbinden); merkt den zuletzt gewählten Typ |
+| `rahmen.rs` | Rahmen der Dialoge (Symbol 48 px, fette erste Zeile, Knöpfe rechts, Esc bricht ab) |
+
+Logik ohne Oberfläche (Doppel-Zusammenführung, Host-Key-Abruf per
+`ssh -v`, known_hosts) liegt seit Welle A in `querencia_dateiarbeit::netz`.
+
+### 7.2 Eingriffe in gemeinsame Dateien
+
+- `main.rs`: je ein markierter Block „Welle C1 (dateien-netzwerk)“ für die
+  `mod`-Zeile und den Aufruf.
+- `menue.rs`: „Mit _Server verbinden …“ im Datei-Menü (eigener Abschnitt
+  nach „Öffnen mit“), „_Netzwerk“ unter Gehe zu nach „Papierkorb“; der
+  Menütest erwartet beide statt sie als Beta auszuschließen.
+- `seitenleiste.rs`: Kontextmenü von „Netzwerk“ mit „Mit Server verbinden …“
+  (ein Zweig im bestehenden `match`). Eingehängte Server kamen schon über
+  `laufwerke::alle` mit ⏏ in die Seitenleiste.
+- `eintrag.rs`: Verknüpfungen mit `standard::target-uri` (Rechner und
+  Freigaben in `network:///`) gelten als Ordner; vorher öffnete ein
+  Doppelklick sie als Datei („nicht eingehängt“).
+- Die Doppel-Ausblendung hängt sich ohne Änderung an `modell.rs` unter die
+  sortierte Liste (`SortListModel::set_model` auf ein `FilterListModel`
+  über dem bisherigen); Positionen der Auswahl bleiben die der sortierten
+  Liste. Ein eigener Haken im `Ordnermodell` wäre sauberer (Übergabe).
+
+### 7.3 Übersetzung
+
+Teilkatalog `po/de.netzwerk.po` (§3.7), Wortlaut nach Nautilus 2.30 de
+(„Mit Server verbinden“, „Dienst-Typ“, „Domänenname“) und „Kennwort“ statt
+GVfs' „Passwort“. GVfs' eigene Kennwort- und Host-Key-Texte werden nach
+Vorlage erkannt (englisch und deutsch) und durch eigene Sätze ersetzt;
+unbekannte Texte erscheinen mit der ersten Zeile fett.
+
+### 7.4 Prüfung
+
+- `cargo test`: Adressen je Dienst, Escapes, IPv6, Fehlertexte, Ursachen,
+  Kennwortvorlagen, Knopfreihenfolge, known_hosts-Fehler, Server-Schlüssel,
+  Doppel-Ausblendung, Netzwerk-Verknüpfung als Ordner.
+- Isolierte GUI-Läufe `crates/querencia-dateien/werkzeug/netzwerk/`
+  (Prüfrahmen Stufe G, Netz nur `lo`, Attrappen-System-Bus): `lauf.sh NAME
+  SZENARIO` (nach `pruefung/lauf.sh`, dazu `--sshd`, `LAUF_SSH_HOSTKEY_FRAGE`,
+  `LAUF_SSH_OHNE_SCHLUESSEL`, `LAUF_ZEITGRENZE`, `LAUF_WSDD`), `alle.sh`
+  (sieben Szenarien), `fotosaetze.sh` (hell/dunkel, 1024×768 und 1920×1080,
+  englisch). Test-Server nur im Namensraum: Test-sshd des Prüfrahmens,
+  `webdav-attrappe.py` (Basic-Anmeldung), `ftp-attrappe.py`,
+  `wsdd-attrappe.py` (beantwortet nur die Socket-API, sendet nichts),
+  Wegwerf-Schlüsselbund (gnome-keyring, `geheimnisse.py` listet nur
+  Attribute). `bin/ssh` liegt vor der ssh-Hülle des Prüfrahmens, damit der
+  Fingerabdruck-Abruf sein Protokoll selbst liest.
+- Ergebnisse unter `~/projects/dateien-netzwerk-arbeit/laeufe/`.
+
+### 7.5 Grenzen
+
+- SMB-Erfolgsfall ungeprüft: kein `samba` auf der VM, ein Server ohne sudo
+  ist nicht möglich. Geprüft sind SMB-Adressen (Unit-Tests) und der
+  Fehlerweg; die SMB-Kennwort-/Domänenfrage ist nur über die WebDAV- und
+  SFTP-Fälle desselben Dialogs belegt.
+- Doppel aus Avahi und wsdd: Avahi lässt sich ohne Systemdienst nicht
+  nachstellen; die Ausblendung ist mit Tabellentests belegt, im GUI-Lauf
+  nur die wsdd-Geräte.
+- SFTP mit Kennwort: Der Test-sshd läuft ohne PAM und kann Kennwörter nicht
+  prüfen; belegt sind Kennwortfrage, Wiederholung und Ablehnung, der
+  Erfolg mit Kennwort nur über WebDAV.
+- Nach einem falschen Kennwort fragt GVfs (dav) ohne `SAVING_SUPPORTED`:
+  „Kennwort merken“ fehlt dann im zweiten Versuch.
+- TLS-Zertifikatsfragen (`davs`, `ftps`) laufen durch die allgemeine Frage;
+  ohne Testserver mit Zertifikat ungeprüft.
+- Die Fehlerursache wird nur für GVfs' bloßes „Verbindung fehlgeschlagen“
+  selbst gesucht (Name, Port); andere Meldungen bleiben, wie GVfs sie
+  schickt, mit eigener Erklärung davor.
+
+## 8. Welle C3: Reiter, Kompaktansicht, Migration (`dateien/reiter-1`)
 
 Zweig `dateien-reiter-kompakt`, Bericht .
 Ersetzt in §6 die Punkte „Reiter“ und „Kompaktansicht“.
 
-### 7.1 Reiter (`src/reiter/`)
+### 8.1 Reiter (`src/reiter/`)
 
 Schlank wie Nautilus 2.30 (B §3.8): Jeder Reiter (`reiter::Reiter`) hat
 eigenes `Ordnermodell`, eigene `Ansichten` und eigenen Verlauf; Menüleiste,
@@ -344,7 +430,15 @@ aktuellen Reiters zurück, `ansichten()` ein `Rc<Ansichten>`; `ort()`,
 aktuellen Reiter. Neu: `reiterliste()`, `reiter_oeffnen(Some(&ort),
 zeigen, ansicht)`, `reiter_schliessen(&reiter)`. Die Haken `bei_ortswechsel`
 und `bei_auswahl` laufen auch beim Reiterwechsel. `register.neue_ansicht`
-läuft je Ansicht **und Reiter**. Ansichten melden sich über einen
+läuft je Ansicht **und Reiter**. Wer sich an ein Ordnermodell hängt
+(`bei_zustand`, Filter in der Modellkette), tut das im neuen Haken
+`register.reiter(|fenster, reiter|)` – er läuft je Reiter, auch für den
+ersten, bevor der Reiter liest; `reiter.modell()`, `reiter.ort()`,
+`fenster.reiter_ist_aktiv(&reiter)` (Meldungen nur für den gezeigten
+Reiter). So angepasst beim Merge: Netzwerk (§7) – Doppel-Filter und
+Hinweise je Reiter (`netzansicht::beobachten`), „zuletzt gelesen“ für den
+sicheren Ort nach einem gescheiterten Einhängen je Reiter
+(`einhaengen::reiter_beobachten`). Ansichten melden sich über einen
 `Rueckruf` je Reiter (`reiter::ReiterRueckruf`); Umbenennen wählt den
 neuen Namen im Reiter, in dem umbenannt wurde.
 
@@ -353,7 +447,7 @@ Logzeilen (immer, für die isolierten Läufe): `Reiter N neu: i/n URI`,
 `Reiter N geschlossen, n offen`, `Reiter N freigegeben`,
 `Reiterleiste und Menü „Reiter“ an|aus`.
 
-### 7.2 Kompaktansicht (`src/kompaktansicht.rs`)
+### 8.2 Kompaktansicht (`src/kompaktansicht.rs`)
 
 Drittes Ansicht-Modul (`Ansichtsart::Kompakt`, Strg+3, Ansicht → Kompakt,
 Klappliste der Werkzeugleiste) am Trait `Ansicht` über `ansichtskern`
@@ -372,7 +466,7 @@ Einstellung ist jede Spalte so breit wie ihr längster Name, nichts wird
 gekürzt. Der breiteste Name wird an den 48 längsten Namen gemessen
 (`GEMESSEN`), nicht an allen.
 
-### 7.3 Migration (B §4.2)
+### 8.3 Migration (B §4.2)
 
 | Nr. | Stand nach C3 |
 |---|---|
@@ -382,7 +476,7 @@ gekürzt. Der breiteste Name wird an den 48 längsten Namen gemessen
 | M8 Texte | Kürzelübersicht und Handbuch nennen noch Querencia Files: Textliste für C4 in  §6 |
 | M2, M4, M5, M7, M9 | Paketierung (C4) bzw. Ansicht je Ordner (später) |
 
-### 7.4 Befunde aus 0.1.0, in C3 behoben
+### 8.4 Befunde aus 0.1.0, in C3 behoben
 
 - **Fenster blieben bis zum Programmende im Speicher** (mit Ordnermodell
   und Überwachung): `App` hält das `Fenster`, das `Fenster` das
@@ -396,7 +490,7 @@ gekürzt. Der breiteste Name wird an den 48 längsten Namen gemessen
   Thread-Wächter. `app::freigeben()` nach `run()`.
 - Umschalt+Strg+I (Auswahl umkehren) stand im Menü, war aber nicht gebunden.
 
-### 7.5 Prüfung
+### 8.5 Prüfung
 
 `cargo test`: `reiter::regeln` (Position, Nachbarn ohne Umlauf, Alt+Ziffer,
 Leiste ab zwei), `kompaktansicht` (Grenzen in px und Zeichen, Breite je
@@ -411,7 +505,7 @@ nach, `zurueck` entfernt genau das Angelegte; Live-Kopie unverändert) mit Probe
 `integration/dateien-010/werkzeug/probe-dateien-standard.sh` im Prüfrahmen (15 Fälle, Ergebnis
 `nachweis/probe-dateien-standard.txt`, Diff gegen Fassung 1 `nachweis/dateien-standard-diff.txt`).
 
-### 7.6 Grenzen
+### 8.6 Grenzen
 
 - GTK 4.22 meldet beim ersten Einblenden der Reiterleiste je Fenster zwei
   Warnungen „Trying to measure GtkImage … for width of 0“ (Schließen-Knöpfe

@@ -37,6 +37,9 @@ pub type AblageHaken = Rc<dyn Fn(&Rc<Fenster>, &gtk4::Widget, Zielfinder)>;
 pub type Zielfinder = Rc<dyn Fn(f64, f64) -> Option<gio::File>>;
 /// Called once at startup (subscribe to the queue, …).
 pub type AnwendungsHaken = Rc<dyn Fn(&Rc<App>)>;
+/// Called for every tab of every window (Welle C3), before it reads its
+/// first folder: what hangs on a tab's folder model.
+pub type ReiterHaken = Rc<dyn Fn(&Rc<Fenster>, &Rc<crate::reiter::Reiter>)>;
 
 /// The hooks of the modules (filled in `main.rs`, `erweiterungen`).
 #[derive(Default, Clone)]
@@ -47,6 +50,7 @@ pub struct Register {
     pub(crate) kontextmenue: Option<KontextHaken>,
     pub(crate) ablage: Option<AblageHaken>,
     pub(crate) anwendung: Vec<AnwendungsHaken>,
+    pub(crate) reiter: Vec<ReiterHaken>,
 }
 
 impl Register {
@@ -82,6 +86,14 @@ impl Register {
     /// Called once at startup.
     pub fn anwendung(&mut self, haken: impl Fn(&Rc<App>) + 'static) {
         self.anwendung.push(Rc::new(haken));
+    }
+
+    /// Called for every tab of every window, the first one included, before
+    /// it reads its first folder (Welle C3): handlers on the tab's folder
+    /// model belong here, not in [`Self::fenster`] (`Fenster::modell()` is
+    /// only the model of the tab shown).
+    pub fn reiter(&mut self, haken: impl Fn(&Rc<Fenster>, &Rc<crate::reiter::Reiter>) + 'static) {
+        self.reiter.push(Rc::new(haken));
     }
 }
 
