@@ -90,7 +90,7 @@ pub fn typ_text(e: &Eintrag) -> String {
     TYPEN.with(|t| {
         t.borrow_mut()
             .entry(typ.clone())
-            .or_insert_with(|| gio::content_type_get_description(typ).to_string())
+            .or_insert_with(|| e.beschreibung())
             .clone()
     })
 }
@@ -1784,6 +1784,8 @@ pub trait Darstellung: 'static {
     fn widget(&self) -> gtk4::Widget;
     fn zoom_setzen(self: &Rc<Self>, prozent: u32);
     fn einstellungen(self: &Rc<Self>, werte: &Werte);
+    /// The model's sort order changed (menu, settings, column head).
+    fn sortierung_geaendert(&self, _s: Sortierung) {}
 }
 
 type RueckrufZelle = Rc<RefCell<Option<Rc<dyn crate::ansicht::Rueckruf>>>>;
@@ -1917,6 +1919,12 @@ impl<D: Darstellung> Modul<D> {
         *kern.rueckrufe.umgebung.borrow_mut() = Some(Rc::new(move || {
             (fuer_umgebung.ordner(), fuer_umgebung.sortierung())
         }));
+        let weak = Rc::downgrade(d);
+        modell.bei_sortierung(move |s| {
+            if let Some(d) = weak.upgrade() {
+                d.sortierung_geaendert(s);
+            }
+        });
         // reading a folder: forget cursor and rename, Messung lines,
         // keyboard focus when it is read
         let weak = Rc::downgrade(kern);

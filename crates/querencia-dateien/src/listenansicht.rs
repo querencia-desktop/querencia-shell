@@ -106,17 +106,6 @@ impl Listenansicht {
         }
         liste.ansicht.set_model(Some(auswahl));
         liste.kern.anschliessen(&scroller);
-        // a new order from the menu (Ansicht → Objekte anordnen): the
-        // header arrow follows the model's order
-        let weak = Rc::downgrade(&liste);
-        auswahl.connect_items_changed(move |_, _, weg, neu| {
-            if weg > 1
-                && weg == neu
-                && let Some(l) = weak.upgrade()
-            {
-                l.sortierung_abgleichen();
-            }
-        });
         let weak = Rc::downgrade(&liste);
         liste.ansicht.connect_activate(move |_, pos| {
             if let Some(l) = weak.upgrade() {
@@ -217,21 +206,6 @@ impl Listenansicht {
             f(neu);
         }
         self.kern.nach_umordnen();
-    }
-
-    fn sortierung_abgleichen(&self) {
-        let s = self
-            .kern
-            .rueckrufe
-            .umgebung
-            .borrow()
-            .as_ref()
-            .map(|f| f().1);
-        if let Some(s) = s
-            && s != self.sortierung.get()
-        {
-            self.sortierung_zeigen(s);
-        }
     }
 
     /// Shows the arrow of `s` in the header (after a change from the menu).
@@ -408,6 +382,12 @@ impl Darstellung for Listenansicht {
         }
         self.spalten_setzen(&spalten);
         self.datumsformat_setzen(werte.datum_iso);
+    }
+
+    fn sortierung_geaendert(&self, s: Sortierung) {
+        if s != self.sortierung.get() {
+            self.sortierung_zeigen(s);
+        }
     }
 }
 
