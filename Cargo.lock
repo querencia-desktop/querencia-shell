@@ -716,6 +716,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "querencia-dateien"
+version = "0.1.0"
+dependencies = [
+ "gettext-rs",
+ "gio-unix",
+ "gtk4",
+ "querencia-dateiarbeit",
+ "querencia-oberflaeche",
+]
+
+[[package]]
 name = "querencia-desktop"
 version = "0.2.7"
 dependencies = [
