@@ -304,6 +304,14 @@ impl Ordnermodell {
     }
 
     fn melden(&self, zustand: Zustand) {
+        crate::log(&match &zustand {
+            Zustand::Laedt(o) => format!("Ordner {}: lesen", o.uri()),
+            Zustand::ErsterBlock => "erster Block".to_owned(),
+            Zustand::Geladen(n) => format!("Ordner gelesen: {n} Einträge"),
+            Zustand::Gestoppt => "Lesen gestoppt".to_owned(),
+            Zustand::Fehler(t) => format!("Ordner nicht lesbar: {t}"),
+            Zustand::OrdnerWeg => "Ordner verschwunden".to_owned(),
+        });
         let handler: Vec<ZustandHandler> = self.0.handler.borrow().clone();
         for h in handler {
             h(&zustand);
