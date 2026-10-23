@@ -353,18 +353,33 @@ pub fn ueber_thumbnailer(
     abbruch: &AtomicBool,
     zeitlimit: Duration,
 ) -> Result<Vec<u8>, Fehler> {
+    ueber_thumbnailer_in(&glib::home_dir(), q, t, kante, abbruch, zeitlimit)
+}
+
+/// As [`ueber_thumbnailer`] with `heim` as the folder the sandbox hides
+/// (tests: a throwaway home folder).
+fn ueber_thumbnailer_in(
+    heim: &Path,
+    q: &Quelle,
+    t: &Thumbnailer,
+    kante: u32,
+    abbruch: &AtomicBool,
+    zeitlimit: Duration,
+) -> Result<Vec<u8>, Fehler> {
     let huelle = sandkasten::huelle();
     if *huelle == sandkasten::Huelle::Keine {
         return Err(Fehler::KeinWeg);
     }
     let auftrag = auftrags_ordner()
         .ok_or_else(|| Fehler::Fehlgeschlagen("kein temporärer Ordner".to_owned()))?;
-    let ergebnis = im_auftrag(q, t, kante, abbruch, zeitlimit, huelle, &auftrag);
+    let ergebnis = im_auftrag(heim, q, t, kante, abbruch, zeitlimit, huelle, &auftrag);
     let _ = std::fs::remove_dir_all(&auftrag);
     ergebnis
 }
 
+#[allow(clippy::too_many_arguments)]
 fn im_auftrag(
+    heim: &Path,
     q: &Quelle,
     t: &Thumbnailer,
     kante: u32,
@@ -373,32 +388,25 @@ fn im_auftrag(
     huelle: &sandkasten::Huelle,
     auftrag: &Path,
 ) -> Result<Vec<u8>, Fehler> {
-    let endung = endung(&q.uri);
     // files without a path (GIO) are copied into the job folder first
-    let eingabe = match &q.pfad {
-        Some(p) => p.clone(),
+    let (eingabe, uri) = match &q.pfad {
+        Some(p) => (p.clone(), q.uri.clone()),
         None => {
-            let p = auftrag.join(format!("eingabe{endung}"));
+            let p = auftrag.join(format!("eingabe{}", endung(&q.uri)));
             std::fs::write(&p, inhalt(q)?).map_err(|e| Fehler::Fehlgeschlagen(e.to_string()))?;
-            p
+            let uri = gio::File::for_path(&p).uri().to_string();
+            (p, uri)
         }
     };
-    let pfade = sandkasten::pfade(huelle, auftrag, &eingabe, &q.uri, &endung);
-    let args = befehl(
-        &t.exec,
-        &pfade.uri,
-        Some(&pfade.eingabe),
-        &pfade.ausgabe,
-        kante,
-    )
-    .ok_or(Fehler::KeinWeg)?;
+    let ausgabe = auftrag.join("ausgabe.png");
+    let args = befehl(&t.exec, &uri, Some(&eingabe), &ausgabe, kante).ok_or(Fehler::KeinWeg)?;
     let programm = if args[0].contains('/') {
         PathBuf::from(&args[0])
     } else {
         glib::find_program_in_path(&args[0])
             .ok_or_else(|| Fehler::Fehlgeschlagen(format!("{}: {} fehlt", t.name, args[0])))?
     };
-    let mut c = sandkasten::befehl(huelle, auftrag, &eingabe, &endung, &programm, &args[1..])
+    let mut c = sandkasten::befehl(huelle, heim, auftrag, &eingabe, &programm, &args[1..])
         .ok_or(Fehler::KeinWeg)?;
     let start = Instant::now();
     let mut kind = c
@@ -407,6 +415,11 @@ fn im_auftrag(
         .stderr(Stdio::null())
         .spawn()
         .map_err(|e| Fehler::Fehlgeschlagen(format!("{}: {e}", t.name)))?;
+    // try_wait every 5 ms instead of a blocking wait: the job must also end
+    // when its cell is unbound (the flag is set by the main thread), which
+    // a blocking wait cannot notice, and std has no wait with a time
+    // limit; the cost is a few wake-ups of this worker thread while a
+    // thumbnailer runs
     let status = loop {
         if let Ok(Some(s)) = kind.try_wait() {
             break Some(s);
@@ -421,7 +434,6 @@ fn im_auftrag(
     if abbruch.load(Ordering::Relaxed) {
         return Err(Fehler::Abgebrochen);
     }
-    let ausgabe = auftrag.join("ausgabe.png");
     let lesen = || -> Option<Vec<u8>> {
         let f = std::fs::File::open(&ausgabe).ok()?;
         let mut v = Vec::new();
@@ -481,6 +493,8 @@ pub fn erzeugen(q: &Quelle, eimer: Eimer, abbruch: &AtomicBool) -> Result<(Vec<u
     {
         match ueber_thumbnailer(q, t, kante, abbruch, ZEITLIMIT) {
             Ok(b) => ergebnis = Some((b, Weg::Thumbnailer)),
+            // an earlier real failure (a broken picture) stays the answer
+            Err(Fehler::KeinWeg) => {}
             Err(e) => fehler = e,
         }
     }
@@ -602,8 +616,13 @@ mod tests {
         (d, t, q)
     }
 
+    /// Integration test of the sandbox with the PDF stand-in of the checks
+    /// (`werkzeug/miniaturen/qd-pdf-miniatur`) in a throwaway home folder:
+    /// it renders the page, and its attempts to write outside the output
+    /// folder, to read the home folder, to reach the session or the
+    /// network all fail.
     #[test]
-    fn thumbnailers_run_in_bwrap_without_network_home_or_session() {
+    fn the_pdf_stand_in_runs_sandboxed_in_a_throwaway_home() {
         if !matches!(sandkasten::huelle(), sandkasten::Huelle::Bwrap(_)) {
             eprintln!(
                 "bwrap geht hier nicht ({:?}): übersprungen",
@@ -611,19 +630,57 @@ mod tests {
             );
             return;
         }
-        // fails unless: only lo, no /home, empty environment, input at
-        // /tmp/eingabe.png, output to /tmp
-        let (d, t, q) = probe(
-            "netz",
-            r#"[ "$(grep -c : /proc/net/dev)" = 1 ] || exit 3
-[ ! -e /home ] || exit 4
-[ -z "$DBUS_SESSION_BUS_ADDRESS$WAYLAND_DISPLAY$XDG_RUNTIME_DIR" ] || exit 5
-[ "$1" = /tmp/eingabe.png ] && [ "$2" = /tmp/ausgabe.png ] || exit 6
-cp "$1" "$2""#,
-        );
+        let d = std::env::temp_dir().join(format!("qd-sandkasten-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        let heim = d.join("heim");
+        std::fs::create_dir_all(heim.join("Dokumente")).unwrap();
+        let pdf = heim.join("Dokumente/rechnung.pdf");
+        std::fs::write(&pdf, b"%PDF-1.4\n%%EOF\n").unwrap();
+        let geheim = heim.join("geheim.txt");
+        std::fs::write(&geheim, b"geheim").unwrap();
+        // writable on the host, read-only in the sandbox
+        let draussen = PathBuf::from(format!(
+            "/var/tmp/qd-sandkasten-boese-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&draussen);
+        let lauscher = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        lauscher.set_nonblocking(true).unwrap();
+        let port = lauscher.local_addr().unwrap().port();
+        let skript =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("werkzeug/miniaturen/qd-pdf-miniatur");
+        let t = Thumbnailer {
+            name: "qd-pdf.thumbnailer".to_owned(),
+            exec: format!(
+                "{} --versuche {} {port} {} %i %o %s",
+                skript.display(),
+                draussen.display(),
+                geheim.display()
+            ),
+            typen: vec!["application/pdf".to_owned()],
+        };
+        let q = Quelle {
+            uri: gio::File::for_path(&pdf).uri().to_string(),
+            pfad: Some(pdf.clone()),
+            typ: "application/pdf".to_owned(),
+            mtime: 1,
+            groesse: 15,
+        };
         let nein = AtomicBool::new(false);
-        let png = ueber_thumbnailer(&q, &t, 128, &nein, ZEITLIMIT).expect("im Sandkasten");
-        assert_eq!(cache::png_masse(&png), Some((40, 30)));
+        let png = ueber_thumbnailer_in(&heim, &q, &t, 128, &nein, ZEITLIMIT)
+            .expect("Stellvertreter im Sandkasten");
+        let (b, h) = cache::png_masse(&png).unwrap();
+        assert_eq!((b, h), (90, 128), "A4-Seite");
+        assert!(!draussen.exists(), "Schreiben ins System gelang");
+        assert!(
+            !heim.join("boese.txt").exists(),
+            "Schreiben ins HOME gelang"
+        );
+        assert!(
+            !heim.join("Dokumente/daneben.txt").exists(),
+            "Schreiben neben die Eingabe gelang"
+        );
+        assert!(lauscher.accept().is_err(), "Netz erreicht");
         let _ = std::fs::remove_dir_all(&d);
     }
 

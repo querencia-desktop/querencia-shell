@@ -19,16 +19,16 @@ NR=M02; ok $CP "$HOME"/Bilder/Fotos/*.jpg && fall M02 "Cache nach Spezifikation:
 markiere; gehe "$HOME/Bilder/Gemischt"; warte_log "Miniaturen fertig" 30; q "wait 400"
 foto M03-gemischt
 NR=M03; ok $CP "$HOME"/Bilder/Gemischt/{bewegt.gif,bild.bmp,bild.tiff,bild.webp,halbdurchsichtig.png,kreis.svg} \
-  && fall M03 "GIF, BMP, TIFF, WebP, PNG mit Alpha, SVG über GdkPixbuf/Thumbnailer" 1 "beleg-M03.txt" || fall M03 "Bildarten" 0 "beleg-M03.txt"
+  && fall M03 "GIF, BMP, TIFF, WebP, PNG mit Alpha, SVG über GdkPixbuf (glycin)" 1 "beleg-M03.txt" || fall M03 "Bildarten" 0 "beleg-M03.txt"
 NR=M04; ok $CP --keine "$HOME/Bilder/Gemischt/rauschen-gross.png" && fall M04 "Datei über 10 MB (Vorgabe „Nur für Dateien kleiner als“) bekommt keine Miniatur" 1 "beleg-M04.txt, $(stat -c %s "$HOME/Bilder/Gemischt/rauschen-gross.png") Bytes" || fall M04 "Größengrenze" 0 "beleg-M04.txt"
 NR=M05; ok $CP --fehl "$HOME/Bilder/Gemischt/kaputt.png" && fall M05 "Kaputtes Bild: Eintrag unter fail/querencia-dateien mit URI und MTime" 1 "beleg-M05.txt" || fall M05 "fail-Eintrag" 0 "beleg-M05.txt"
 markiere; gehe "$HOME/Dokumente/PDF"; warte_log "Miniaturen fertig" 30; q "wait 400"
 foto M06-pdf
-NR=M06; ok $CP "$HOME"/Dokumente/PDF/*.pdf && fall M06 "PDF über einen Thumbnailer (%i %o %s; Stellvertreter qd-pdf.thumbnailer)" 1 "beleg-M06.txt" || fall M06 "PDF" 0 "beleg-M06.txt"
-# Fremde Thumbnailer: außerhalb in bwrap (Unit-Test), in der Prüfhülle
-# (kein verschachtelter Namensraum) in deren eigenem Sandkasten
-NR=M11; z=$(grep "Thumbnailer (" "$LOG" | head -1)
-[[ $z == *"Prüfhülle ohne eigenes bwrap"* ]] && fall M11 "Thumbnailer laufen nur im Sandkasten (hier: Prüfhülle ohne Netz; bwrap-Weg im Unit-Test)" 1 "${z#*: }" || fall M11 "Sandkasten" 0 "${z:-keine Zeile}"
+NR=M06; ok $CP --keine "$HOME"/Dokumente/PDF/*.pdf && fall M06 "PDF: der Thumbnailer läuft nicht ohne Sandkasten (kein bwrap in der Hülle) – keine Miniatur, kein fail-Eintrag" 1 "beleg-M06.txt" || fall M06 "PDF ohne Sandkasten" 0 "beleg-M06.txt"
+# Fremde Thumbnailer nur in bwrap: in der Hülle ist bwrap verboten, also aus,
+# mit einer Logzeile je Lauf (der Sandkasten selbst: Integrationstest in erzeuger.rs)
+NR=M11; n=$(grep -c "Thumbnailer nicht verfügbar" "$LOG"); z=$(grep "Thumbnailer nicht verfügbar" "$LOG" | head -1)
+[ "$n" = 1 ] && fall M11 "Ohne bwrap startet kein Thumbnailer; genau eine Logzeile je Lauf" 1 "${z#*: }" || fall M11 "Sandkasten" 0 "$n Zeilen: ${z:-keine}"
 # Zoom und Liste
 markiere; gehe "$HOME/Bilder/Fotos"; q "wait 500"
 taste ctrl+plus; q "wait 1500"; taste ctrl+plus; q "wait 1500"

@@ -475,8 +475,7 @@ pub fn registrieren(register: &mut Register) {
             erzeuger::alle().len(),
             match sandkasten::huelle() {
                 sandkasten::Huelle::Bwrap(_) => "in bwrap",
-                sandkasten::Huelle::Pruefrahmen => "in der Prüfhülle ohne eigenes bwrap",
-                sandkasten::Huelle::Keine => "aus: kein bwrap",
+                sandkasten::Huelle::Keine => "nicht verfügbar: kein Sandkasten",
             },
             faeden()
         ));

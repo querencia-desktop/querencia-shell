@@ -1,102 +1,103 @@
-//! Foreign thumbnailers run in a bubblewrap sandbox, as GNOME runs them
-//! (`gnome-desktop-thumbnail-script.c`): no network and no other
-//! namespaces of the session (`--unshare-all`), an empty environment,
-//! `/usr` read-only, the file to read bound read-only to
-//! `/tmp/eingabe.<ext>`, a fresh folder of the job as `/tmp` for the
-//! output, `--die-with-parent`, and the caller's time limit.
+//! Foreign thumbnailers (`*.thumbnailer`) parse files from anywhere, so
+//! they only ever run in a bubblewrap sandbox (Recherche C §2, condition of
+//! the status session, 23.10.2026):
 //!
-//! Without a working bwrap no foreign thumbnailer runs. The one exception
-//! is the check frame (`werkzeug/dateien-pruefrahmen/huelle.sh`: own user,
-//! PID and network namespace with only `lo`), where the kernel allows no
-//! nested user namespace; there the thumbnailer runs in the frame's own
-//! sandbox (recognised by `QD_HUELLE` and `XDG_RUNTIME_DIR=/tmp/qd-*`).
+//! - the system read-only (`--ro-bind / /`), fresh `/dev` and `/proc`;
+//! - `/tmp`, `/run` and the real home folder as empty tmpfs: no files of
+//!   the user, no session bus, Wayland or GVfs sockets (a network
+//!   namespace does not hide sockets in the file system, so `/run` is
+//!   covered too);
+//! - then only the input file read-only and the job's output folder
+//!   writable, both at their real paths (`%i`, `%u`, `%o` stay as they
+//!   are), and the thumbnailer itself if it lives below a hidden folder;
+//! - an empty environment, `--unshare-all` (no network, own PID, IPC, UTS,
+//!   user namespace), `--die-with-parent`, `--new-session`; the caller
+//!   keeps the time limit.
+//!
+//! If bwrap is missing or cannot start a sandbox (checked once per
+//! process with `/usr/bin/true`), thumbnailers count as not available:
+//! never without a sandbox. One log line per run says so. GdkPixbuf/glycin
+//! in the process stay as they are (glycin has its own sandbox).
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-/// Where a thumbnailer runs.
+/// Whether foreign thumbnailers can run.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Huelle {
-    /// bwrap works: every thumbnailer runs in its own sandbox.
+    /// bwrap starts a sandbox: every thumbnailer runs in its own.
     Bwrap(PathBuf),
-    /// Inside the check frame (no nested sandbox possible).
-    Pruefrahmen,
-    /// No sandbox: foreign thumbnailers stay off.
+    /// No sandbox possible: thumbnailers stay off.
     Keine,
 }
 
-/// The paths of one job as the thumbnailer sees them.
-pub struct Pfade {
-    pub eingabe: PathBuf,
-    pub uri: String,
-    pub ausgabe: PathBuf,
+fn s(x: &Path) -> String {
+    x.to_string_lossy().into_owned()
 }
 
-/// Whether this process runs in the check frame.
-pub fn im_pruefrahmen() -> bool {
-    std::env::var_os("QD_HUELLE").is_some()
-        && std::env::var("XDG_RUNTIME_DIR").is_ok_and(|r| r.starts_with("/tmp/qd-"))
-}
-
-/// The arguments that give a thumbnailer the system without the session:
-/// `/usr` and the links of merged `/usr`, the few files of `/etc` programs
-/// need to start, `/proc`, `/dev`, the job folder as `/tmp`.
-fn grundlage(auftrag: &Path) -> Vec<String> {
-    let mut a: Vec<String> = ["--ro-bind", "/usr", "/usr"].map(str::to_owned).to_vec();
-    for d in ["bin", "sbin", "lib", "lib64", "lib32"] {
-        let p = Path::new("/").join(d);
-        match std::fs::read_link(&p) {
-            Ok(ziel) => a.extend([
-                "--symlink".to_owned(),
-                ziel.to_string_lossy().into_owned(),
-                p.to_string_lossy().into_owned(),
-            ]),
-            Err(_) if p.is_dir() => a.extend([
-                "--ro-bind".to_owned(),
-                p.to_string_lossy().into_owned(),
-                p.to_string_lossy().into_owned(),
-            ]),
-            Err(_) => {}
-        }
+/// The sandbox's arguments in front of the input, output and program
+/// binds: the system read-only, `/tmp`, `/run` and `heim` empty.
+fn grundlage(heim: &Path) -> Vec<String> {
+    let mut a: Vec<String> = [
+        "--ro-bind",
+        "/",
+        "/",
+        "--dev",
+        "/dev",
+        "--proc",
+        "/proc",
+        "--tmpfs",
+        "/tmp",
+        "--tmpfs",
+        "/run",
+    ]
+    .map(str::to_owned)
+    .to_vec();
+    // a home folder below /tmp or /run is already empty
+    if heim != Path::new("/") && !heim.starts_with("/tmp") && !heim.starts_with("/run") {
+        a.extend(["--tmpfs".to_owned(), s(heim)]);
     }
-    for p in [
-        "/etc/ld.so.cache",
-        "/etc/alternatives",
-        "/etc/fonts",
-        "/var/cache/fontconfig",
-    ] {
-        a.extend(["--ro-bind-try", p, p].map(str::to_owned));
-    }
-    a.extend(["--proc", "/proc", "--dev", "/dev", "--bind"].map(str::to_owned));
-    a.push(auftrag.to_string_lossy().into_owned());
-    a.push("/tmp".to_owned());
     a
 }
 
-const ENDE: [&str; 15] = [
-    "--chdir",
-    "/tmp",
-    "--clearenv",
-    "--setenv",
-    "PATH",
-    "/usr/bin:/bin",
-    "--setenv",
-    "HOME",
-    "/tmp",
-    "--setenv",
-    "GIO_USE_VFS",
-    "local",
-    "--unshare-all",
-    "--die-with-parent",
-    "--new-session",
-];
+/// The arguments after the binds: environment and namespaces.
+fn ende(heim: &Path, ordner: &Path) -> Vec<String> {
+    let mut a: Vec<String> = [
+        "--clearenv",
+        "--setenv",
+        "PATH",
+        "/usr/bin:/bin",
+        "--setenv",
+        "HOME",
+    ]
+    .map(str::to_owned)
+    .to_vec();
+    a.push(s(heim));
+    a.extend(
+        [
+            "--setenv",
+            "TMPDIR",
+            "/tmp",
+            "--setenv",
+            "GIO_USE_VFS",
+            "local",
+            "--unshare-all",
+            "--die-with-parent",
+            "--new-session",
+            "--chdir",
+        ]
+        .map(str::to_owned),
+    );
+    a.push(s(ordner));
+    a
+}
 
-/// Whether bwrap starts a sandbox here (once per process, ~5 ms).
+/// Whether bwrap starts this sandbox here (~5 ms).
 fn bwrap_geht(bwrap: &Path) -> bool {
-    let d = std::env::temp_dir();
-    let mut a = grundlage(&d);
-    a.extend(ENDE.map(str::to_owned));
+    let heim = gtk4::glib::home_dir();
+    let mut a = grundlage(&heim);
+    a.extend(ende(&heim, Path::new("/")));
     a.extend(["--", "/usr/bin/true"].map(str::to_owned));
     Command::new(bwrap)
         .args(&a)
@@ -104,154 +105,137 @@ fn bwrap_geht(bwrap: &Path) -> bool {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .is_ok_and(|s| s.success())
+        .is_ok_and(|st| st.success())
 }
 
-/// Where thumbnailers run in this process (decided once).
+/// Whether thumbnailers can run in this process (decided once; one log
+/// line when not).
 pub fn huelle() -> &'static Huelle {
     static HUELLE: OnceLock<Huelle> = OnceLock::new();
-    HUELLE.get_or_init(|| {
-        let bwrap = gtk4::glib::find_program_in_path("bwrap");
-        match bwrap {
-            Some(b) if bwrap_geht(&b) => Huelle::Bwrap(b),
-            _ if im_pruefrahmen() => Huelle::Pruefrahmen,
-            _ => Huelle::Keine,
+    HUELLE.get_or_init(|| match gtk4::glib::find_program_in_path("bwrap") {
+        Some(b) if bwrap_geht(&b) => Huelle::Bwrap(b),
+        b => {
+            crate::log(&format!(
+                "Thumbnailer nicht verfügbar: {} (ohne Sandkasten startet keiner)",
+                if b.is_some() {
+                    "bwrap startet keinen Sandkasten"
+                } else {
+                    "bwrap fehlt"
+                }
+            ));
+            Huelle::Keine
         }
     })
 }
 
-/// The paths of a job: in the sandbox `/tmp/eingabe<ext>` and
-/// `/tmp/ausgabe.png`, in the check frame the real ones.
-pub fn pfade(huelle: &Huelle, auftrag: &Path, eingabe: &Path, uri: &str, endung: &str) -> Pfade {
-    match huelle {
-        Huelle::Bwrap(_) => {
-            let innen = PathBuf::from(format!("/tmp/eingabe{endung}"));
-            Pfade {
-                uri: format!("file://{}", innen.display()),
-                eingabe: innen,
-                ausgabe: PathBuf::from("/tmp/ausgabe.png"),
-            }
-        }
-        _ => Pfade {
-            eingabe: eingabe.to_owned(),
-            uri: uri.to_owned(),
-            ausgabe: auftrag.join("ausgabe.png"),
-        },
-    }
-}
-
-/// The command for `programm args` of a job in `auftrag` (host folder)
-/// reading `eingabe` (host path). `None` without a sandbox.
+/// The command for `programm args` reading `eingabe` and writing into
+/// `ordner` (the job folder), with `heim` hidden. `None` without a
+/// sandbox.
 pub fn befehl(
     huelle: &Huelle,
-    auftrag: &Path,
+    heim: &Path,
+    ordner: &Path,
     eingabe: &Path,
-    endung: &str,
     programm: &Path,
     args: &[String],
 ) -> Option<Command> {
-    match huelle {
-        Huelle::Keine => None,
-        Huelle::Pruefrahmen => {
-            let mut c = Command::new(programm);
-            c.args(args);
-            Some(c)
-        }
-        Huelle::Bwrap(bwrap) => {
-            let mut a = grundlage(auftrag);
-            // the input over the job folder (bound after it), unless it is
-            // already in there (files read through GIO)
-            if !eingabe.starts_with(auftrag) {
-                a.extend([
-                    "--ro-bind".to_owned(),
-                    eingabe.to_string_lossy().into_owned(),
-                    format!("/tmp/eingabe{endung}"),
-                ]);
-            }
-            // a thumbnailer outside /usr (e.g. ~/.local/bin) is bound itself
-            if !programm.starts_with("/usr") {
-                let p = programm.to_string_lossy().into_owned();
-                a.extend(["--ro-bind".to_owned(), p.clone(), p]);
-            }
-            a.extend(ENDE.map(str::to_owned));
-            a.push("--".to_owned());
-            a.push(programm.to_string_lossy().into_owned());
-            a.extend(args.iter().cloned());
-            let mut c = Command::new(bwrap);
-            c.args(a);
-            Some(c)
-        }
+    let Huelle::Bwrap(bwrap) = huelle else {
+        return None;
+    };
+    let mut a = grundlage(heim);
+    a.extend(["--bind".to_owned(), s(ordner), s(ordner)]);
+    a.extend(["--ro-bind".to_owned(), s(eingabe), s(eingabe)]);
+    // a thumbnailer below a hidden folder (e.g. ~/.local/bin) is bound
+    // itself, read-only
+    let versteckt = [heim, Path::new("/tmp"), Path::new("/run")];
+    if versteckt.iter().any(|v| programm.starts_with(v)) {
+        a.extend(["--ro-bind".to_owned(), s(programm), s(programm)]);
     }
+    a.extend(ende(heim, ordner));
+    a.push("--".to_owned());
+    a.push(s(programm));
+    a.extend(args.iter().cloned());
+    let mut c = Command::new(bwrap);
+    c.args(a);
+    Some(c)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn args(c: &Command) -> Vec<String> {
+        c.get_args()
+            .map(|x| x.to_string_lossy().into_owned())
+            .collect()
+    }
+
     #[test]
-    fn the_sandbox_shares_nothing_but_usr_and_the_job() {
+    fn the_sandbox_follows_the_conditions() {
         let h = Huelle::Bwrap(PathBuf::from("/usr/bin/bwrap"));
-        let p = pfade(
-            &h,
-            Path::new("/x/1"),
-            Path::new("/home/a/b.pdf"),
-            "file:///home/a/b.pdf",
-            ".pdf",
-        );
-        assert_eq!(p.eingabe, Path::new("/tmp/eingabe.pdf"));
-        assert_eq!(p.uri, "file:///tmp/eingabe.pdf");
-        assert_eq!(p.ausgabe, Path::new("/tmp/ausgabe.png"));
         let c = befehl(
             &h,
-            Path::new("/x/1"),
-            Path::new("/home/a/b.pdf"),
-            ".pdf",
+            Path::new("/home/a"),
+            Path::new("/tmp/job-1"),
+            Path::new("/home/a/Dokumente/b.pdf"),
             Path::new("/home/a/.local/bin/t"),
-            &["/tmp/eingabe.pdf".to_owned()],
+            &[
+                "/home/a/Dokumente/b.pdf".to_owned(),
+                "/tmp/job-1/ausgabe.png".to_owned(),
+            ],
         )
         .unwrap();
-        let a: Vec<String> = c
-            .get_args()
-            .map(|s| s.to_string_lossy().into_owned())
-            .collect();
+        let a = args(&c);
         let text = a.join(" ");
         for muss in [
+            "--ro-bind / /",
+            "--dev /dev",
+            "--proc /proc",
+            "--tmpfs /tmp",
+            "--tmpfs /run",
+            "--tmpfs /home/a",
+            "--bind /tmp/job-1 /tmp/job-1",
+            "--ro-bind /home/a/Dokumente/b.pdf /home/a/Dokumente/b.pdf",
+            "--ro-bind /home/a/.local/bin/t /home/a/.local/bin/t",
+            "--clearenv",
             "--unshare-all",
             "--die-with-parent",
-            "--clearenv",
-            "--ro-bind /usr /usr",
-            "--bind /x/1 /tmp",
-            "--ro-bind /home/a/b.pdf /tmp/eingabe.pdf",
-            "--ro-bind /home/a/.local/bin/t /home/a/.local/bin/t",
-            "-- /home/a/.local/bin/t /tmp/eingabe.pdf",
+            "--new-session",
+            "-- /home/a/.local/bin/t /home/a/Dokumente/b.pdf /tmp/job-1/ausgabe.png",
         ] {
             assert!(text.contains(muss), "{muss} fehlt in {text}");
         }
-        assert!(!text.contains("--bind /home"), "kein schreibbares HOME");
         assert!(!text.contains("--share-net"));
-        // the job folder comes before the input bound into it
-        let tmp = a.iter().position(|x| x == "/tmp").unwrap();
-        let ein = a.iter().position(|x| x == "/tmp/eingabe.pdf").unwrap();
-        assert!(tmp < ein);
+        assert_eq!(
+            a.iter().filter(|x| *x == "--bind").count(),
+            1,
+            "nur der Ausgabeordner schreibbar"
+        );
+        // the empty folders come before the binds into them
+        let pos = |x: &str| a.iter().position(|y| y == x).unwrap();
+        assert!(pos("/home/a") < pos("/home/a/Dokumente/b.pdf"));
+        assert!(pos("/tmp") < pos("/tmp/job-1"));
+        // a program in /usr is not bound again
+        let c = befehl(
+            &h,
+            Path::new("/home/a"),
+            Path::new("/tmp/j"),
+            Path::new("/e"),
+            Path::new("/usr/bin/t"),
+            &[],
+        )
+        .unwrap();
+        assert!(!args(&c).join(" ").contains("--ro-bind /usr/bin/t"));
         assert!(
             befehl(
                 &Huelle::Keine,
-                Path::new("/x"),
-                Path::new("/y"),
-                "",
+                Path::new("/h"),
+                Path::new("/t"),
+                Path::new("/e"),
                 Path::new("/usr/bin/t"),
                 &[]
             )
             .is_none()
         );
-        let pr = pfade(
-            &Huelle::Pruefrahmen,
-            Path::new("/x/1"),
-            Path::new("/a.pdf"),
-            "file:///a.pdf",
-            ".pdf",
-        );
-        assert_eq!(pr.ausgabe, Path::new("/x/1/ausgabe.png"));
-        assert_eq!(pr.uri, "file:///a.pdf");
     }
 }
