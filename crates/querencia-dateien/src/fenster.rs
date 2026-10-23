@@ -7,7 +7,7 @@
 //! [`Fenster::window`], [`Fenster::ort`], [`Fenster::modell`],
 //! [`Fenster::ansicht`], [`Fenster::gehe_zu`], [`Fenster::bei_ortswechsel`],
 //! [`Fenster::bei_auswahl`], [`Fenster::nach_erscheinen_umbenennen`],
-//! [`Fenster::melden`], [`Fenster::ansichtsbereich`].
+//! [`Fenster::melden`].
 
 use std::cell::{OnceCell, RefCell};
 use std::rc::{Rc, Weak};
@@ -348,11 +348,6 @@ impl Fenster {
         self.ansichten.get().expect("Fenster ohne Ansichten")
     }
 
-    /// The box around the views (drop targets on free space, keys).
-    pub fn ansichtsbereich(&self) -> &gtk4::Box {
-        &self.bereich
-    }
-
     pub(crate) fn seitenleiste(&self) -> &Rc<Seitenleiste> {
         self.seitenleiste.get().expect("Fenster ohne Seitenleiste")
     }
@@ -369,14 +364,6 @@ impl Fenster {
 
     pub(crate) fn statusleiste(&self) -> &Rc<Statusleiste> {
         self.statusleiste.get().expect("Fenster ohne Statusleiste")
-    }
-
-    pub(crate) fn menueleiste(&self) -> &menue::Menueleiste {
-        self.menue.get().expect("Fenster ohne Menüleiste")
-    }
-
-    pub(crate) fn verlauf(&self) -> std::cell::Ref<'_, Verlauf> {
-        self.verlauf.borrow()
     }
 
     /// `f` runs after every change of folder (also back/forward/reload).
@@ -463,7 +450,7 @@ impl Fenster {
             s.ort_anzeigen(ort);
         }
         self.papierkorb_leiste
-            .set_visible(ort.uri_scheme().as_deref() == Some("trash"));
+            .set_visible(crate::ziehen::im_papierkorb(ort));
         self.aktionen_pruefen();
         let handler: Vec<OrtHandler> = self.ort_handler.borrow().clone();
         for h in handler {
@@ -555,10 +542,6 @@ impl Fenster {
         if let Some(s) = self.statusleiste.get() {
             s.zustand(z);
         }
-    }
-
-    fn ansicht_hat_fokus(&self) -> bool {
-        GtkWindowExt::focus(&self.window).is_some_and(|f| f.is_ancestor(&self.bereich))
     }
 
     fn auswahl_geaendert(&self) {
@@ -751,7 +734,7 @@ impl Fenster {
             }
         });
         self.window.add_action(&mit);
-        self.aktion("eigenschaften", crate::eigenschaften::zeigen);
+        self.aktion("eigenschaften", crate::eigenschaften_dialog::zeigen);
         // Bearbeiten
         self.aktion("alles-auswaehlen", |f| f.modell.alle_waehlen());
         self.aktion("auswahl-umkehren", |f| f.modell.auswahl_umkehren());
@@ -856,6 +839,9 @@ impl Fenster {
         let auswahl = self.modell.gewaehlte();
         if let [eins] = auswahl.as_slice() {
             let a = self.ansicht();
+            if a.umbenennen_laeuft() {
+                return;
+            }
             a.fokus_auf(eins.datei(), true);
             a.umbenennen_anstossen(eins.datei(), ganz);
         }

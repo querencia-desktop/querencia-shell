@@ -496,9 +496,8 @@ fn fuellen(menue: &gio::Menu, tabelle: Vec<Vec<Punkt>>, fenster: &Rc<Fenster>) {
             }
             // entries that only show where they apply (B §3.3)
             let ort = fenster.ort();
-            let im_papierkorb = ort
-                .as_ref()
-                .is_some_and(|o| o.uri_scheme().as_deref() == Some("trash"));
+            // trash:/// with GVfs, the home trash's files folder without
+            let im_papierkorb = ort.as_ref().is_some_and(crate::ziehen::im_papierkorb);
             let werte = fenster
                 .app()
                 .map(|a| a.konfig().werte())

@@ -209,32 +209,6 @@ pub fn suchform(name: &str) -> String {
     name.to_lowercase()
 }
 
-/// The next position from `start` (included) whose name begins with
-/// `eingabe`, searching forwards or backwards and wrapping around;
-/// `name(i)` is the search form of the name at position `i`.
-pub fn treffer(
-    anzahl: u32,
-    start: u32,
-    vorwaerts: bool,
-    eingabe: &str,
-    name: impl Fn(u32) -> String,
-) -> Option<u32> {
-    if anzahl == 0 || eingabe.is_empty() {
-        return None;
-    }
-    let eingabe = suchform(eingabe);
-    let start = start.min(anzahl - 1);
-    (0..anzahl)
-        .map(|schritt| {
-            if vorwaerts {
-                (start + schritt) % anzahl
-            } else {
-                (start + anzahl - schritt) % anzahl
-            }
-        })
-        .find(|&i| name(i).starts_with(&eingabe))
-}
-
 /// A size as Nautilus 2.30's status bar shows it ("12,3 kB", "3,4 GB",
 /// "512 Bytes"): decimal units as GLib's `g_format_size`, one decimal, the
 /// decimal separator of the interface language.
@@ -482,18 +456,6 @@ mod tests {
             assert_eq!(Kriterium::aus_kennung(k.kennung()), Some(k));
         }
         assert_eq!(Ansichtsart::aus_kennung("spalten"), None);
-    }
-
-    #[test]
-    fn type_ahead_wraps_and_ignores_case() {
-        let namen = ["alpha", "Beta", "beton", "gamma"];
-        let name = |i: u32| suchform(namen[i as usize]);
-        assert_eq!(treffer(4, 0, true, "be", name), Some(1));
-        assert_eq!(treffer(4, 2, true, "BE", name), Some(2));
-        assert_eq!(treffer(4, 3, true, "al", name), Some(0));
-        assert_eq!(treffer(4, 0, false, "g", name), Some(3));
-        assert_eq!(treffer(4, 0, true, "x", name), None);
-        assert_eq!(treffer(0, 0, true, "a", name), None);
     }
 
     #[test]
