@@ -4,7 +4,7 @@
 //! DNS-SD entry wins). An empty network gets a hint in the status bar.
 //!
 //! The duplicates are hidden by a filter of this module chained below the
-//! window model's sorted list (`Ordnermodell` stays as it is: positions of
+//! sorted list of each tab's model (Welle C3) (`Ordnermodell` stays as it is: positions of
 //! the selection are those of the sorted list, the filter sits beneath it).
 
 use std::cell::RefCell;
@@ -19,6 +19,7 @@ use crate::eintrag::Eintrag;
 use crate::fenster::Fenster;
 use crate::i18n::gettext;
 use crate::modell::Zustand;
+use crate::reiter::Reiter;
 
 /// Whether `ort` is the network view (or the Windows network below it).
 pub fn ist_netzwerk(ort: &gio::File) -> bool {
@@ -49,12 +50,20 @@ pub fn doppelte(eintraege: &[Eintrag]) -> HashSet<String> {
         .collect()
 }
 
-pub fn beobachten(fenster: &Rc<Fenster>) {
-    filter_einsetzen(fenster);
+/// Per tab (Welle C3): the filter in the tab's model, the hints in the
+/// status bar only for the tab shown.
+pub fn beobachten(fenster: &Rc<Fenster>, reiter: &Rc<Reiter>) {
+    filter_einsetzen(reiter);
     let weak = Rc::downgrade(fenster);
-    fenster.modell().bei_zustand(move |z| {
-        let Some(f) = weak.upgrade() else { return };
-        let Some(ort) = f.ort() else { return };
+    let weak_r = Rc::downgrade(reiter);
+    reiter.modell().bei_zustand(move |z| {
+        let (Some(f), Some(r)) = (weak.upgrade(), weak_r.upgrade()) else {
+            return;
+        };
+        if !f.reiter_ist_aktiv(&r) {
+            return;
+        }
+        let Some(ort) = r.ort() else { return };
         match z {
             Zustand::Geladen(0) if ist_netzwerk(&ort) => f.melden(&gettext(
                 "No computers found in the network – File → Connect to Server…",
@@ -67,8 +76,8 @@ pub fn beobachten(fenster: &Rc<Fenster>) {
     });
 }
 
-fn filter_einsetzen(fenster: &Rc<Fenster>) {
-    let Some(sortiert) = fenster
+fn filter_einsetzen(reiter: &Rc<Reiter>) {
+    let Some(sortiert) = reiter
         .modell()
         .auswahl()
         .model()
@@ -89,7 +98,7 @@ fn filter_einsetzen(fenster: &Rc<Fenster>) {
     let gefiltert = gtk4::FilterListModel::new(unten.clone(), Some(filter.clone()));
     sortiert.set_model(Some(&gefiltert));
     let Some(unten) = unten else { return };
-    let weak: Weak<Fenster> = Rc::downgrade(fenster);
+    let weak: Weak<Reiter> = Rc::downgrade(reiter);
     let geplant = Rc::new(std::cell::Cell::new(false));
     unten.connect_items_changed(move |liste, _, _, _| {
         if geplant.replace(true) {
@@ -107,7 +116,7 @@ fn filter_einsetzen(fenster: &Rc<Fenster>) {
             geplant.set(false);
             let netz = weak
                 .upgrade()
-                .and_then(|f| f.ort())
+                .and_then(|r| r.ort())
                 .is_some_and(|o| ist_netzwerk(&o));
             let neu = if netz {
                 let eintraege: Vec<Eintrag> = (0..liste.n_items())

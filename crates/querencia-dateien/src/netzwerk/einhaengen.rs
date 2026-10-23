@@ -17,7 +17,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use gtk4::prelude::*;
@@ -28,6 +28,7 @@ use super::anmeldung::{self, Anmeldung};
 use super::gvfs_texte;
 use crate::fenster::Fenster;
 use crate::i18n::gettext_f;
+use crate::reiter::Reiter;
 
 /// Without an open question, an attempt ends after this time.
 pub const ZEITGRENZE: Duration = Duration::from_secs(60);
@@ -55,20 +56,24 @@ type Warter = Box<dyn FnOnce(bool)>;
 thread_local! {
     /// The running attempts by the server's key, with those waiting.
     static LAUFEND: RefCell<HashMap<String, Vec<Warter>>> = RefCell::default();
-    /// Per window (by its address): the last folder that was read.
-    static GELESEN: RefCell<HashMap<usize, gio::File>> = RefCell::default();
+    /// Per tab (by its address, Welle C3): the last folder that was read.
+    static GELESEN: RefCell<HashMap<usize, (Weak<Reiter>, gio::File)>> = RefCell::default();
 }
 
-fn fenster_schluessel(fenster: &Fenster) -> usize {
-    fenster.window().as_ptr() as usize
+fn reiter_schluessel(reiter: &Rc<Reiter>) -> usize {
+    Rc::as_ptr(reiter) as usize
 }
 
-/// Where a window goes after a failed attempt: the last folder it read if
-/// that needs no connection (local, or still mounted), else the home
-/// folder. Never another server that would ask again.
+/// Where the shown tab of a window goes after a failed attempt: the last
+/// folder it read if that needs no connection (local, or still mounted),
+/// else the home folder. Never another server that would ask again.
 fn sicherer_ort(fenster: &Fenster) -> gio::File {
+    let schluessel = fenster
+        .reiterliste()
+        .aktiv_wenn()
+        .map(|r| reiter_schluessel(&r));
     GELESEN
-        .with(|g| g.borrow().get(&fenster_schluessel(fenster)).cloned())
+        .with(|g| schluessel.and_then(|k| g.borrow().get(&k).map(|(_, o)| o.clone())))
         .filter(|o| o.is_native() || o.find_enclosing_mount(gio::Cancellable::NONE).is_ok())
         .unwrap_or_else(|| gio::File::for_path(glib::home_dir()))
 }
@@ -104,21 +109,27 @@ pub fn laeuft(ort: &gio::File) -> bool {
     LAUFEND.with(|l| l.borrow().contains_key(&schluessel))
 }
 
+/// Each tab remembers the last folder it read (Welle C3: per tab).
+pub fn reiter_beobachten(reiter: &Rc<Reiter>) {
+    let schluessel = reiter_schluessel(reiter);
+    let weak = Rc::downgrade(reiter);
+    reiter.modell().bei_zustand(move |z| {
+        if let (crate::modell::Zustand::Geladen(_), Some(r)) = (z, weak.upgrade())
+            && let Some(ort) = r.ort()
+        {
+            GELESEN.with(|g| {
+                let mut g = g.borrow_mut();
+                // closed tabs leave the map
+                g.retain(|_, (w, _)| w.strong_count() > 0);
+                g.insert(schluessel, (Rc::downgrade(&r), ort));
+            });
+        }
+    });
+}
+
 /// Every change of folder: a network place that is not mounted is
 /// mounted first.
 pub fn beobachten(fenster: &Rc<Fenster>) {
-    let schluessel = fenster_schluessel(fenster);
-    let weak = Rc::downgrade(fenster);
-    fenster.modell().bei_zustand(move |z| {
-        if let (crate::modell::Zustand::Geladen(_), Some(f)) = (z, weak.upgrade())
-            && let Some(ort) = f.ort()
-        {
-            GELESEN.with(|g| g.borrow_mut().insert(schluessel, ort));
-        }
-    });
-    fenster.window().connect_destroy(move |_| {
-        GELESEN.with(|g| g.borrow_mut().remove(&schluessel));
-    });
     let weak = Rc::downgrade(fenster);
     fenster.bei_ortswechsel(move |ort| {
         if let Some(f) = weak.upgrade() {

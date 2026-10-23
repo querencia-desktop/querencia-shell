@@ -10,7 +10,7 @@ starte
 warte_log "Ordner gelesen" 20
 verbinden_dialog() {
   menue datei
-  q "move 120 231" "click"
+  q "move 120 279" "click"  # Welle C3: zwei Einträge mehr im Menü Datei
   q "wait 800"
   q "type 127.0.0.1"
   taste alt+p; q "type 2222"

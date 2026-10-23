@@ -298,8 +298,9 @@ impl Seitenleiste {
                     s.kontextmenue(zeile.index() as usize, x, y);
                 }
                 gdk::BUTTON_MIDDLE => {
+                    // Nautilus 2.30: the middle button opens a new tab
                     g.set_state(gtk4::EventSequenceState::Claimed);
-                    s.oeffnen(zeile.index() as usize, true);
+                    s.oeffnen_in_reiter(zeile.index() as usize);
                 }
                 _ => {}
             }
@@ -310,6 +311,7 @@ impl Seitenleiste {
         for (name, f) in [
             ("oeffnen", Self::k_oeffnen as fn(&Rc<Self>)),
             ("neues-fenster", Self::k_neues_fenster),
+            ("neuer-reiter", Self::k_neuer_reiter),
             ("entfernen", Self::k_entfernen),
             ("einhaengen", Self::k_einhaengen),
             ("aushaengen", Self::k_aushaengen),
@@ -561,6 +563,13 @@ impl Seitenleiste {
             None,
         ));
         oben.append_item(&eintrag(
+            &gettext("Open in New _Tab"),
+            Some("seite.neuer-reiter"),
+            None,
+            None,
+            None,
+        ));
+        oben.append_item(&eintrag(
             &gettext("Open in New _Window"),
             Some("seite.neues-fenster"),
             None,
@@ -657,6 +666,26 @@ impl Seitenleiste {
     fn k_neues_fenster(self: &Rc<Self>) {
         if let Some(i) = self.kontext.get() {
             self.oeffnen(i, true);
+        }
+    }
+
+    fn k_neuer_reiter(self: &Rc<Self>) {
+        if let Some(i) = self.kontext.get() {
+            self.oeffnen_in_reiter(i);
+        }
+    }
+
+    /// A place in a new tab behind the current one; a drive that is not
+    /// mounted yet opens in a new window after mounting (as before).
+    fn oeffnen_in_reiter(self: &Rc<Self>, i: usize) {
+        let (Some(p), Some(f)) = (self.platz(i), self.fenster.upgrade()) else {
+            return;
+        };
+        match p.datei() {
+            Some(d) => {
+                f.reiter_oeffnen(Some(&d), false, None);
+            }
+            None => self.oeffnen(i, true),
         }
     }
 

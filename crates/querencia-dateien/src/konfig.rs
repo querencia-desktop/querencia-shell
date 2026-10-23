@@ -5,7 +5,8 @@
 //! The first start without `dateien.ini` takes six values once from
 //! Querencia Files (`~/.config/querencia-files/settings.toml`, migration
 //! M6 in B §4.2) and notes `AusFiles=1`; the Files file is only read, never
-//! changed or removed.
+//! changed or removed. The first start writes `dateien.ini` in any case, so
+//! a Files file that appears later is not taken over.
 
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -103,6 +104,9 @@ pub struct Werte {
     pub zusatz: Zusatz,
     pub zusatz_gross: Zusatz,
     pub datum_iso: bool,
+    /// Compact view: „Alle Spalten haben dieselbe Breite“ (Nautilus 2.30
+    /// `compact_view/all_columns_have_same_width`, default on).
+    pub kompakt_gleich_breit: bool,
     // Listenspalten (Beta)
     pub spalte_groesse: bool,
     pub spalte_typ: bool,
@@ -143,6 +147,7 @@ impl Default for Werte {
             zusatz: Zusatz::Nichts,
             zusatz_gross: Zusatz::Groesse,
             datum_iso: false,
+            kompakt_gleich_breit: true,
             spalte_groesse: true,
             spalte_typ: true,
             spalte_datum: true,
@@ -239,6 +244,7 @@ impl Werte {
                 }
             }
             ("Anzeige", "Datum") => self.datum_iso = v == "iso",
+            ("Anzeige", "KompaktGleichBreit") => self.kompakt_gleich_breit = b(v),
             ("Listenspalten", "Groesse") => self.spalte_groesse = b(v),
             ("Listenspalten", "Typ") => self.spalte_typ = b(v),
             ("Listenspalten", "Datum") => self.spalte_datum = b(v),
@@ -298,6 +304,7 @@ impl Werte {
         s += &format!("Zusatz={}\n", self.zusatz.kennung());
         s += &format!("ZusatzGross={}\n", self.zusatz_gross.kennung());
         s += &format!("Datum={}\n", if self.datum_iso { "iso" } else { "region" });
+        s += &format!("KompaktGleichBreit={}\n", b(self.kompakt_gleich_breit));
         s += "\n[Listenspalten]\n";
         s += &format!("Groesse={}\n", b(self.spalte_groesse));
         s += &format!("Typ={}\n", b(self.spalte_typ));
@@ -325,10 +332,27 @@ impl Werte {
 
     /// Migration M6: the six values of a Querencia Files `settings.toml`
     /// (top-level `key = value` lines; other tables are skipped).
+    ///
+    /// Clicks as Files QF-0t (`ui/preferences.rs`): the TOML keys name the
+    /// views of old Strata, the mode decides which pair counts – icons:
+    /// `grid_*_clicks`, list: `explorer_*_clicks`, columns:
+    /// `list_*_clicks`. „Einfacher Klick“ only when folders and files open
+    /// with one click there (in Querencia Dateien the setting is for both).
     pub fn aus_files(text: &str) -> Self {
         let mut w = Self::default();
         let mut oben = true;
-        let mut klicks = (None::<i64>, None::<i64>);
+        // Files' defaults: icons; folders 2 clicks (columns 1), files 2
+        let mut modus = String::from("icons");
+        let mut klicks: std::collections::HashMap<&str, i64> = [
+            ("grid_folder_clicks", 2),
+            ("grid_file_clicks", 2),
+            ("explorer_folder_clicks", 2),
+            ("explorer_file_clicks", 2),
+            ("list_folder_clicks", 1),
+            ("list_file_clicks", 2),
+        ]
+        .into_iter()
+        .collect();
         for zeile in text.lines().map(str::trim) {
             if zeile.starts_with('[') {
                 oben = false;
@@ -343,14 +367,7 @@ impl Werte {
             let v = v.trim().trim_matches('"');
             match k.trim() {
                 "show_hidden" => w.verborgene = v == "true",
-                "browser_mode" => {
-                    w.ansicht = match v {
-                        "icons" | "grid" => Ansichtsart::Symbole,
-                        // B §4.2 M6: columns becomes the list view
-                        "list" | "columns" => Ansichtsart::Liste,
-                        _ => w.ansicht,
-                    }
-                }
+                "browser_mode" => modus = v.to_owned(),
                 "sort_key" => {
                     w.anordnen = match v {
                         "name" => Kriterium::Name,
@@ -361,13 +378,24 @@ impl Werte {
                     }
                 }
                 "folders_first" => w.ordner_zuerst = v != "false",
-                "grid_folder_clicks" => klicks.0 = v.parse().ok(),
-                "list_folder_clicks" => klicks.1 = v.parse().ok(),
                 "sidebar_expanded" => w.seitenleiste = v != "false",
-                _ => {}
+                k => {
+                    if let (Some(z), Ok(n)) = (klicks.get_mut(k), v.parse::<i64>()) {
+                        *z = n;
+                    }
+                }
             }
         }
-        w.einfacher_klick = klicks == (Some(1), Some(1));
+        // Files reads any other mode as columns (browser_mode_from_stored)
+        let (art, paar) = match modus.as_str() {
+            "icons" | "grid" => (Ansichtsart::Symbole, "grid"),
+            "list" | "explorer" => (Ansichtsart::Liste, "explorer"),
+            // B §4.2 M6: columns becomes the list view
+            _ => (Ansichtsart::Liste, "list"),
+        };
+        w.ansicht = art;
+        w.einfacher_klick = klicks[format!("{paar}_folder_clicks").as_str()] == 1
+            && klicks[format!("{paar}_file_clicks").as_str()] == 1;
         w.aus_files = true;
         w
     }
@@ -416,7 +444,13 @@ impl Konfig {
                     );
                     w
                 }
-                Err(_) => Werte::default(),
+                Err(_) => {
+                    // nothing to take over: the first start is over all the
+                    // same (a later settings.toml is not migrated)
+                    let w = Werte::default();
+                    let _ = schreiben(pfad, &w);
+                    w
+                }
             },
         };
         Rc::new(Self {
@@ -482,6 +516,7 @@ mod tests {
         assert_eq!(w.zoom_liste, Zoom(50));
         assert!(!w.einfacher_klick);
         assert!(w.ordner_zuerst && w.nachfragen && !w.verborgene && !w.loeschen_anbieten);
+        assert!(w.kompakt_gleich_breit);
         assert_eq!(w.ausfuehrbare_texte, AusfuehrbareTexte::Nachfragen);
         assert_eq!((w.breite, w.hoehe), (800, 550));
     }
@@ -497,6 +532,7 @@ mod tests {
             ausfuehrbare_texte: AusfuehrbareTexte::Anzeigen,
             seitenleiste: false,
             vorschaubilder: Wo::Nie,
+            kompakt_gleich_breit: false,
             ..Werte::default()
         };
         assert_eq!(Werte::aus_ini(&w.als_ini()), w);
@@ -512,7 +548,7 @@ mod tests {
     #[test]
     fn migration_m6_takes_six_values_from_files() {
         let toml = "browser_mode = \"columns\"\nshow_hidden = true\nsort_key = \"modified\"\n\
-                    folders_first = false\ngrid_folder_clicks = 1\nlist_folder_clicks = 1\n\
+                    folders_first = false\nlist_folder_clicks = 1\nlist_file_clicks = 1\n\
                     sidebar_expanded = false\n[tabs]\nshow_hidden = false\n";
         let w = Werte::aus_files(toml);
         assert_eq!(w.ansicht, Ansichtsart::Liste);
@@ -522,11 +558,27 @@ mod tests {
         assert!(w.einfacher_klick);
         assert!(!w.seitenleiste);
         assert!(w.aus_files);
-        // one click value 2: double click stays
+        // the pair of the mode counts: list = explorer_*, files two clicks
         let w = Werte::aus_files(
-            "grid_folder_clicks = 2\nlist_folder_clicks = 1\nbrowser_mode = \"list\"\n",
+            "grid_folder_clicks = 1\ngrid_file_clicks = 1\nexplorer_folder_clicks = 1\n\
+             browser_mode = \"list\"\n",
         );
         assert!(!w.einfacher_klick);
+        assert_eq!(w.ansicht, Ansichtsart::Liste);
+        let w = Werte::aus_files(
+            "browser_mode = \"icons\"\ngrid_folder_clicks = 1\ngrid_file_clicks = 1\n",
+        );
+        assert!(w.einfacher_klick);
+        assert_eq!(w.ansicht, Ansichtsart::Symbole);
+        // Files' defaults: icons, double click; columns has folders on one
+        // click only, so double click stays
+        let w = Werte::aus_files("");
+        assert_eq!(w.ansicht, Ansichtsart::Symbole);
+        assert!(!w.einfacher_klick);
+        assert!(!Werte::aus_files("browser_mode = \"columns\"\n").einfacher_klick);
+        // unknown values keep the defaults
+        let w = Werte::aus_files("sort_key = \"device\"\nbrowser_mode = \"spalten\"\n");
+        assert_eq!(w.anordnen, Kriterium::Name);
         assert_eq!(w.ansicht, Ansichtsart::Liste);
     }
 
@@ -565,6 +617,23 @@ mod tests {
             std::fs::read_to_string(&files).unwrap(),
             "show_hidden = false\n"
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn first_start_without_files_writes_the_ini_so_no_late_migration() {
+        let dir = std::env::temp_dir().join(format!("qdat-konfig-ohne-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let files = dir.join("querencia-files/settings.toml");
+        let ini = dir.join("querencia/dateien.ini");
+        let k = Konfig::laden_von(&ini, &files);
+        assert_eq!(k.werte(), Werte::default());
+        assert!(std::fs::read_to_string(&ini).is_ok_and(|t| !t.contains("AusFiles")));
+        // Files settings that appear after the first start stay Files'
+        std::fs::create_dir_all(files.parent().unwrap()).unwrap();
+        std::fs::write(&files, "show_hidden = true\n").unwrap();
+        let k = Konfig::laden_von(&ini, &files);
+        assert!(!k.werte().verborgene && !k.werte().aus_files);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
