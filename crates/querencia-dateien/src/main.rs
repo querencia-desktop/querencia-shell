@@ -49,6 +49,10 @@ mod netzwerk;
 mod miniaturen;
 mod suche;
 
+// Welle C3 (dateien-reiter-kompakt): mod-Zeilen unter dieser Zeile.
+mod kompaktansicht;
+mod reiter;
+
 use std::rc::Rc;
 
 use gtk4::prelude::*;
@@ -76,6 +80,9 @@ fn erweiterungen(register: &mut app::Register) {
     // Welle C2 (dateien-miniaturen-suche): Aufrufe unter dieser Zeile.
     miniaturen::registrieren(register);
     suche::registrieren(register);
+
+    // Welle C3: Aufrufe unter dieser Zeile.
+    kompaktansicht::registrieren(register);
 }
 
 /// One log line on stderr ("querencia-dateien: …"), as the other programs.
@@ -158,5 +165,7 @@ fn main() -> glib::ExitCode {
             }
         }
     });
-    app.run()
+    let ende = app.run();
+    app::freigeben();
+    ende
 }

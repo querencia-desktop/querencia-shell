@@ -23,7 +23,8 @@ grep -q "ausgeführt" "$HOME/aufrufe.log" && fall D15b "Ausführen führt aus" 1
 waehle notiz
 q "key Escape" "wait 200"
 menue datei
-q "key Down" "key Down" "key Down" "key Down" "key Down" "key Right" "wait 400"
+# Welle C3: „Neuer Reiter“ steht vor „Neues Fenster“ (ein Pfeil mehr)
+q "key Down" "key Down" "key Down" "key Down" "key Down" "key Down" "key Right" "wait 400"
 foto 03-oeffnen-mit
 q "key Down" "key Return" "wait 800"
 grep -q "attrappe-zweit .*notiz.txt" "$HOME/aufrufe.log" && fall D17a "Öffnen mit anderem Programm" 1 "aufrufe.log" || fall D17a "Öffnen mit" 0 "aufrufe.log"

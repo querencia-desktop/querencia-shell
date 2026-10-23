@@ -1,5 +1,26 @@
 # Änderungen – Querencia Dateien (`querencia-dateien`)
 
+## Welle C3 – Reiter, Kompaktansicht, Migration (Tag `dateien/reiter-1`, Version setzt die Zusammenführung)
+
+- Reiter wie Nautilus 2.30 (`src/reiter/`): eigenes Ordnermodell, eigene
+  Ansicht und eigener Verlauf je Reiter, Leisten folgen dem gezeigten
+  Reiter; Reiterleiste und Menü „Reiter“ ab zwei Reitern; Strg+T, Strg+W
+  (letzter Reiter schließt das Fenster), Strg+Bild↑/↓, Umschalt+Strg+Bild↑/↓,
+  Alt+1 … Alt+0; Mitteltaste auf Ordner, Pfadknopf und Ort öffnet einen
+  Reiter dahinter (mit Umschalt ein Fenster), „In neuem Reiter öffnen“
+  (Umschalt+Strg+O, Datei-Menü, Kontextmenüs), mehrere Ordner öffnen in
+  Reitern; Dateien auf einen Reiterkopf ziehen legt sie dort ab.
+- Kompaktansicht (Strg+3, `src/kompaktansicht.rs`): Spalten waagrecht,
+  kleines Symbol mit Namen, Zoom 50–200 %, „Alle Spalten haben dieselbe
+  Breite“ (Einstellungen → Anzeige).
+- Migration M6 nach dem echten Files-Format: Klickwerte des benutzten
+  Modus (`grid_*`, `explorer_*`, `list_*`), Einfacher Klick nur, wenn
+  Ordner und Dateien mit einem Klick öffnen; der erste Start ohne Files
+  schreibt `dateien.ini` sofort.
+- Behoben (0.1.0): geschlossene Fenster blieben mit Ordnerüberwachung im
+  Speicher; Panik beim Programmende nach Strg+W auf dem letzten Fenster;
+  Umschalt+Strg+I war nicht gebunden.
+
 ## 0.1.0 – 23.10.2026 (Welle B, QD-140)
 
 Erste Fassung des eigenen Dateimanagers nach Nautilus 2.30 (Browser-Modus),

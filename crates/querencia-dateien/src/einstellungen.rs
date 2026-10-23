@@ -268,7 +268,17 @@ fn anzeige(w: &Werte) -> gtk4::Box {
         )
         .upcast()],
     );
-    seite(&[beschriftung, datum])
+    // Nautilus 2.30: „Vorgaben für kompakte Ansicht“ (Welle C3)
+    let kompakt = rahmen(
+        &gettext("Compact View"),
+        &[schalter(
+            &gettext("A_ll columns have the same width"),
+            w.kompakt_gleich_breit,
+            |k, v| k.kompakt_gleich_breit = v,
+        )
+        .upcast()],
+    );
+    seite(&[beschriftung, datum, kompakt])
 }
 
 fn spalten(w: &Werte) -> gtk4::Box {
