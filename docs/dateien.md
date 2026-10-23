@@ -274,7 +274,7 @@ nutzen können.
 
 - Die klassischen Menüs zeigen keine Zugriffstasten in Einträgen und keine
   Haken; Haken und Auswahlpunkte kommen als Symbol
-  (`object-select-symbolic`, `radio-checked-symbolic`), Alt+Buchstabe
+  (`object-select-symbolic`, `media-record-symbolic`), Alt+Buchstabe
   öffnet nur die Menüs der Leiste (GTK-Mnemonik der Knöpfe).
 - Seitenleiste nur „Orte“ (Baum: Beta), Reiter, Suche, Netzwerk,
   Kompaktansicht: Beta.
