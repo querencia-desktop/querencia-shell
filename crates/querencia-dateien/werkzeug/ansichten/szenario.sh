@@ -65,7 +65,9 @@ start() { # [Ordner] [Umgebung…]
     local ordner=${1:-$BEISPIEL}; shift || true
     START_NR=$((${START_NR:-0} + 1)); LOG=$OUT/dateien-$START_NR.log
     : >"$LOG"; MARKE=0
-    env "$@" PATH="$PBIN:$PATH" QUERENCIA_DATEIEN_DEBUG=1 GTK_USE_PORTAL= \
+    # GTK_USE_PORTAL der Hülle (0) weg: GTK 4 liest sonst das Settings-Portal
+    # (Farbschema, Schrift) nicht, auch nicht mit leerem Wert
+    env -u GTK_USE_PORTAL "$@" PATH="$PBIN:$PATH" QUERENCIA_DATEIEN_DEBUG=1 \
         QUERENCIA_DATEIEN_LOCALEDIR="$QD_PROFIL/locale" \
         "$BIN" "$ordner" >"$LOG" 2>&1 8>&- &
     PID=$!
@@ -91,6 +93,10 @@ erkunden)
     q "key Down" "wait 300"
     info "Liste: Fokus $(fokus_name) bei $(fokus_lage)"
     foto e03-liste
+    q "keydown Control_L" "type 1" "keyup Control_L" "wait 600"
+    q "type beri" "key Escape" "key F2" "wait 600"
+    foto e04-umbenennen
+    q "key Escape" "wait 300"
     stopp
     ;;
 *)

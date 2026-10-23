@@ -1180,6 +1180,11 @@ impl Kern {
         });
     }
 
+    /// The folder is read while this view is hidden: no Messung, no focus.
+    pub fn laden_vergessen(&self) {
+        self.z.borrow_mut().laden = None;
+    }
+
     /// The folder is read: focus `name` (the folder one came up from) or
     /// the first object, without selecting it.
     pub fn geladen(&self, name: Option<&str>) {
@@ -1338,6 +1343,16 @@ impl Kern {
             Art::Liste => Feld::einzeilig(),
         };
         feld.setzen(&text, markierung);
+        // A GtkTextView reports its height only after its idle validation;
+        // in a GridView cell it stayed 0 px high (measured). Start with the
+        // height the label had for the same name (one line at least).
+        if self.art == Art::Symbole {
+            let hoehe = beschriftung
+                .height()
+                .max(beschriftung.measure(gtk4::Orientation::Vertical, -1).1);
+            feld.widget()
+                .set_size_request(self.feldbreite.get(), hoehe.max(16) + 4);
+        }
         zelle.insert_child_after(&feld.widget(), Some(&beschriftung));
         beschriftung.set_visible(false);
         let tasten = gtk4::EventControllerKey::new();
@@ -1504,6 +1519,11 @@ impl Kern {
                 return glib::ControlFlow::Continue;
             };
             let w = feld.widget();
+            protokoll(&format!(
+                "Umbenennen: Feld {} × {} px",
+                w.width(),
+                w.height()
+            ));
             if !w.has_focus() && w.focus_child().is_none() {
                 let (text, markierung) = (feld.text(), feld.markierung());
                 w.grab_focus();
@@ -1909,6 +1929,8 @@ impl<D: Darstellung> Modul<D> {
                 Ladezustand::Geladen(_) | Ladezustand::Gestoppt if k.liste.is_mapped() => {
                     k.geladen(None)
                 }
+                // a hidden view only forgets the start of the read
+                Ladezustand::Geladen(_) | Ladezustand::Gestoppt => k.laden_vergessen(),
                 _ => {}
             }
         });
