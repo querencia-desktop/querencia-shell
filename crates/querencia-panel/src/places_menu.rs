@@ -73,21 +73,32 @@ fn place_icon(label: &str) -> &'static str {
     }
 }
 
-/// Name and desktop IDs of the Querencia file manager, preferred first
-/// (QD-059): the new ID from QF-0t, then the old one, which stays as a
-/// hidden bridge for a while; the name as before when neither matches.
+/// Names and desktop IDs of the Querencia file managers, preferred first:
+/// Querencia Dateien (Welle C, migration M3), then Querencia Files with the
+/// ID from QF-0t and the old one, which stays as a hidden bridge for a
+/// while (QD-059); the names when no ID matches. Dateien's English name
+/// „Files“ is GNOME's too, so only the German one counts.
+const QUERENCIA_DATEIEN: &str = "Querencia Dateien";
 const QUERENCIA_FILES: &str = "Querencia Files";
-const QUERENCIA_FILES_IDS: [&str; 2] = [
+const QUERENCIA_FILES_IDS: [&str; 3] = [
+    "org.querencia.Dateien.desktop",
     "org.querencia.Files.desktop",
     "io.github.lgse.Strata.desktop",
 ];
+const QUERENCIA_FILES_NAMES: [&str; 2] = [QUERENCIA_DATEIEN, QUERENCIA_FILES];
 
-/// How well an application with desktop ID `id` and `name` is Querencia
-/// Files: 0 and 1 by ID in the order of [`QUERENCIA_FILES_IDS`], 2 by name;
-/// `None` for any other application.
+/// How well an application with desktop ID `id` and `name` is a Querencia
+/// file manager: 0 to 2 by ID in the order of [`QUERENCIA_FILES_IDS`], then
+/// 3 and 4 by name ([`QUERENCIA_FILES_NAMES`]); `None` for any other
+/// application.
 fn files_rank(id: Option<&str>, name: &str) -> Option<usize> {
     id.and_then(|id| QUERENCIA_FILES_IDS.iter().position(|f| *f == id))
-        .or_else(|| (name == QUERENCIA_FILES).then_some(QUERENCIA_FILES_IDS.len()))
+        .or_else(|| {
+            QUERENCIA_FILES_NAMES
+                .iter()
+                .position(|n| *n == name)
+                .map(|i| QUERENCIA_FILES_IDS.len() + i)
+        })
 }
 const DIRECTORY: &str = "inode/directory";
 
@@ -101,8 +112,9 @@ struct DirectoryHandler {
 /// a default the user set in `mimeapps.list`, or else an application GIO
 /// associates with `inode/directory` (through `mimeinfo.cache`). Only if GIO
 /// has none, an installed application whose desktop entry itself declares
-/// `inode/directory` (`MimeType`) is taken, Querencia Files first: the entry
-/// may be installed without its `mimeinfo.cache` having been updated.
+/// `inode/directory` (`MimeType`) is taken, Querencia Dateien first, then
+/// Querencia Files: the entry may be installed without its
+/// `mimeinfo.cache` having been updated.
 fn directory_handler(
     gio_choice: Option<gio::AppInfo>,
     installed: Vec<gio::AppInfo>,
@@ -546,6 +558,13 @@ mod tests {
             )),
             Some((QUERENCIA_FILES.to_string(), false))
         );
+        // Querencia Dateien before Querencia Files (M3)
+        let dateien = app(QUERENCIA_DATEIEN, Some("inode/directory"));
+        let files = app(QUERENCIA_FILES, Some("inode/directory"));
+        assert_eq!(
+            chosen(directory_handler(None, vec![files, other.clone(), dateien])),
+            Some((QUERENCIA_DATEIEN.to_string(), false))
+        );
         // without Querencia Files: another application declaring directories
         assert_eq!(
             chosen(directory_handler(None, vec![editor.clone(), other])),
@@ -558,23 +577,34 @@ mod tests {
         );
     }
 
-    /// QD-059: the new desktop ID of Querencia Files first, then the old
-    /// one (hidden bridge), then the name; other applications not at all.
+    /// M3 and QD-059: Querencia Dateien first, then the new desktop ID of
+    /// Querencia Files, the old one (hidden bridge), then the names; other
+    /// applications not at all.
     #[test]
     fn querencia_files_by_new_id_then_old_id_then_name() {
         assert_eq!(
-            files_rank(Some("org.querencia.Files.desktop"), "Querencia Files"),
+            files_rank(Some("org.querencia.Dateien.desktop"), "Files"),
             Some(0)
         );
         assert_eq!(
-            files_rank(Some("io.github.lgse.Strata.desktop"), "Querencia Files"),
+            files_rank(Some("org.querencia.Files.desktop"), "Querencia Files"),
             Some(1)
         );
         assert_eq!(
-            files_rank(Some("io.github.lgse.Strata.desktop"), "Strata"),
-            Some(1)
+            files_rank(Some("io.github.lgse.Strata.desktop"), "Querencia Files"),
+            Some(2)
         );
-        assert_eq!(files_rank(None, QUERENCIA_FILES), Some(2));
+        assert_eq!(
+            files_rank(Some("io.github.lgse.Strata.desktop"), "Strata"),
+            Some(2)
+        );
+        assert_eq!(files_rank(None, QUERENCIA_DATEIEN), Some(3));
+        assert_eq!(files_rank(None, QUERENCIA_FILES), Some(4));
+        // GNOME's Files (Nautilus) has Dateien's English name
+        assert_eq!(
+            files_rank(Some("org.gnome.Nautilus.desktop"), "Files"),
+            None
+        );
         assert_eq!(
             files_rank(Some("org.gnome.Nautilus.desktop"), "Dateien"),
             None
