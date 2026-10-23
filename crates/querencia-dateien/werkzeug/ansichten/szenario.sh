@@ -33,8 +33,11 @@ neu_im_log() { tail -n +$((MARKE + 1)) "$LOG" | grep -a -q -- "$1"; }
 warte_log() { warte_bis "$1" neu_im_log "$2"; }
 zeile() { tail -n +$((MARKE + 1)) "$LOG" | grep -a -- "$1" | tail -1; }
 # letzte Fokuszeile: Name und Lage (Fensterkoordinaten = Bildschirm ohne Rahmen)
-fokus_name() { grep -a 'Fokus .*ansicht: ' "$LOG" | tail -1 | sed -E 's/.*ansicht: (.*) \| .*/\1/'; }
-fokus_lage() { grep -a 'Fokus .*ansicht: ' "$LOG" | tail -1 | sed -E 's/.*\| ([0-9-]+) ([0-9-]+) ([0-9]+) ([0-9]+)$/\1 \2 \3 \4/'; }
+# Fokuszeilen: „Fokus <Ansicht>: Name | x y b h“ (GTK meldet einen neuen
+# Fokus) und „Fokus nach Umordnen <Ansicht>: Name (Position)“
+fokus_name() { grep -a -E ': Fokus (nach Umordnen )?(Symbol|Listen)ansicht: ' "$LOG" | tail -1 \
+    | sed -E -e 's/.*ansicht: //' -e 's/ \| [0-9 -]+$//' -e 's/ \([0-9]+\)$//'; }
+fokus_lage() { grep -a -E ': Fokus (Symbol|Listen)ansicht: ' "$LOG" | tail -1 | sed -E 's/.*\| ([0-9-]+) ([0-9-]+) ([0-9]+) ([0-9]+)$/\1 \2 \3 \4/'; }
 fokus_mitte() { fokus_lage | awk '{ printf "%d %d", $1 + $3 / 2, $2 + $4 / 3 }'; }
 # letzte Auswahlzeile der sichtbaren Ansicht: „<Zahl>: <bis zu sechs Namen>“
 auswahl() { grep -a 'Auswahl [A-Za-z]*ansicht [0-9]*:' "$LOG" | tail -1 | sed -E 's/.*Auswahl [A-Za-z]+ //'; }
@@ -58,12 +61,13 @@ info "querencia-dateien $(sha256sum "$BIN" | cut -c1-16), ${BX}x$BY, dunkel $DUN
 
 start() { # [Ordner] [Umgebung…]
     local ordner=${1:-$BEISPIEL}; shift || true
+    START_NR=$((${START_NR:-0} + 1)); LOG=$OUT/dateien-$START_NR.log
     : >"$LOG"; MARKE=0
     env "$@" PATH="$PBIN:$PATH" QUERENCIA_DATEIEN_DEBUG=1 GTK_USE_PORTAL= \
         QUERENCIA_DATEIEN_LOCALEDIR="$QD_PROFIL/locale" \
         "$BIN" "$ordner" >"$LOG" 2>&1 8>&- &
     PID=$!
-    warte_log 20 'vollständig gezeigt' && warte_log 5 'Fokus .*ansicht: ' \
+    warte_log 20 'vollständig gezeigt' && warte_log 5 ': Fokus [A-Za-z]*ansicht: ' \
         && ok "Start: $(zeile 'gelesen und sortiert' | sed 's/.*Messung //')" \
         || nok "Start ohne Messzeile"
     hat_besitzer org.querencia.Dateien || nok "App-ID nicht auf dem Bus"

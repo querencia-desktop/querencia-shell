@@ -16,7 +16,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib};
@@ -123,7 +123,13 @@ struct Zustand {
     /// Slow second click on a selected name: the pending rename.
     langsam: Option<glib::SourceId>,
     gedrueckt: Option<(f64, f64, bool)>,
+    /// Umschalt+Gummiband: start point in list coordinates.
+    gummiband: Option<(f64, f64)>,
     umordnen_geplant: bool,
+    /// Start of a reorder (sort, filter), set before the list rebuilds.
+    umordnen_start: Option<Instant>,
+    /// Reading a folder: start and path, for the Messung lines.
+    laden: Option<(Instant, String)>,
 }
 
 type ZelleUndItem = (glib::WeakRef<gtk4::Box>, glib::WeakRef<gtk4::ListItem>);
@@ -198,7 +204,18 @@ impl Kern {
             rueckrufe: Rueckrufe::default(),
             feldbreite: Cell::new(-1),
         });
-        kern.signale(scroller);
+        // Connected before the list gets the model, so it runs before the
+        // list rebuilds its cells: the start of a reorder for the Messung.
+        let weak = Rc::downgrade(&kern);
+        kern.auswahl.connect_items_changed(move |_, _, weg, neu| {
+            if let Some(k) = weak.upgrade()
+                && weg > 1
+                && weg == neu
+            {
+                k.z.borrow_mut().umordnen_start = Some(Instant::now());
+            }
+        });
+        let _ = scroller;
         kern
     }
 
@@ -383,7 +400,9 @@ impl Kern {
 
     // --- signals -----------------------------------------------------
 
-    fn signale(self: &Rc<Self>, scroller: &gtk4::ScrolledWindow) {
+    /// After the list got the model: the kern's own handlers (they run
+    /// after the list's).
+    pub fn anschliessen(self: &Rc<Self>, scroller: &gtk4::ScrolledWindow) {
         let weak = Rc::downgrade(self);
         self.auswahl.connect_selection_changed(move |_, _, _| {
             if let Some(k) = weak.upgrade() {
@@ -438,6 +457,31 @@ impl Kern {
             }
         });
         self.liste.add_controller(klick);
+
+        // Umschalt+Gummiband: GTK 4.22 starts no rubberband while Shift is
+        // held (measured); Nautilus 2.30 added the objects. Own band on free
+        // space, only with Shift (GTK's own band stays for the rest).
+        let ziehen = gtk4::GestureDrag::new();
+        ziehen.set_propagation_phase(gtk4::PropagationPhase::Capture);
+        let weak = Rc::downgrade(self);
+        ziehen.connect_drag_begin(move |g, x, y| {
+            if let Some(k) = weak.upgrade() {
+                k.gummiband_beginn(g, x, y);
+            }
+        });
+        let weak = Rc::downgrade(self);
+        ziehen.connect_drag_update(move |g, dx, dy| {
+            if let Some(k) = weak.upgrade() {
+                k.gummiband_zeigen(g, dx, dy);
+            }
+        });
+        let weak = Rc::downgrade(self);
+        ziehen.connect_drag_end(move |g, dx, dy| {
+            if let Some(k) = weak.upgrade() {
+                k.gummiband_ende(g, dx, dy);
+            }
+        });
+        self.liste.add_controller(ziehen);
 
         // Ctrl+wheel zooms through the window's actions.
         let rad = gtk4::EventControllerScroll::new(
@@ -513,6 +557,24 @@ impl Kern {
     }
 
     fn modell_geaendert(self: &Rc<Self>, n: u32, weg: u32, neu: u32) {
+        let start = self.z.borrow_mut().umordnen_start.take();
+        if let Some(t0) = start
+            && self.liste.is_mapped()
+        {
+            eprintln!(
+                "{PROGRAMM}: Messung Umordnen {}: {n} Objekte, Zellen neu nach {} ms",
+                self.art.name(),
+                t0.elapsed().as_millis()
+            );
+            let art = self.art.name();
+            self.liste.add_tick_callback(move |_, _| {
+                eprintln!(
+                    "{PROGRAMM}: Messung Umordnen {art}: Bild nach {} ms",
+                    t0.elapsed().as_millis()
+                );
+                glib::ControlFlow::Break
+            });
+        }
         // A lease whose object left the model ends without a rename.
         let verloren = self
             .z
@@ -773,6 +835,105 @@ impl Kern {
         self.z.borrow_mut().langsam = Some(quelle);
     }
 
+    fn gummiband_beginn(&self, g: &gtk4::GestureDrag, x: f64, y: f64) {
+        let umschalt = g
+            .current_event_state()
+            .contains(gdk::ModifierType::SHIFT_MASK)
+            && !g
+                .current_event_state()
+                .contains(gdk::ModifierType::CONTROL_MASK);
+        let (treffer, drin) = self.position_bei(x, y);
+        if !umschalt || !drin || treffer.is_some() || g.current_button() != gdk::BUTTON_PRIMARY {
+            g.set_state(gtk4::EventSequenceState::Denied);
+            return;
+        }
+        g.set_state(gtk4::EventSequenceState::Claimed);
+        self.z.borrow_mut().gummiband = Some((x, y));
+    }
+
+    /// The band as (x, y, width, height) in list coordinates.
+    fn gummiband_rechteck(&self, dx: f64, dy: f64) -> Option<(f64, f64, f64, f64)> {
+        let (x, y) = self.z.borrow().gummiband?;
+        Some((x.min(x + dx), y.min(y + dy), dx.abs(), dy.abs()))
+    }
+
+    fn gummiband_zeigen(&self, _g: &gtk4::GestureDrag, dx: f64, dy: f64) {
+        let Some((x, y, b, h)) = self.gummiband_rechteck(dx, dy) else {
+            return;
+        };
+        let band = self.gummiband_widget();
+        let p = self
+            .liste
+            .compute_point(
+                &self.wurzel,
+                &gtk4::graphene::Point::new(x as f32, y as f32),
+            )
+            .map_or((x, y), |p| (f64::from(p.x()), f64::from(p.y())));
+        band.set_margin_start(p.0.max(0.0) as i32);
+        band.set_margin_top(p.1.max(0.0) as i32);
+        band.set_size_request(b as i32, h as i32);
+        band.set_visible(true);
+    }
+
+    fn gummiband_widget(&self) -> gtk4::Widget {
+        let mut kind = self.wurzel.first_child();
+        while let Some(k) = kind {
+            if k.has_css_class("gummiband") {
+                return k;
+            }
+            kind = k.next_sibling();
+        }
+        let band = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        band.add_css_class("gummiband");
+        band.set_can_target(false);
+        band.set_halign(gtk4::Align::Start);
+        band.set_valign(gtk4::Align::Start);
+        self.wurzel.add_overlay(&band);
+        band.upcast()
+    }
+
+    /// Adds the objects whose cells the band touches to the selection.
+    fn gummiband_ende(&self, _g: &gtk4::GestureDrag, dx: f64, dy: f64) {
+        let rechteck = self.gummiband_rechteck(dx, dy);
+        self.z.borrow_mut().gummiband = None;
+        self.gummiband_widget().set_visible(false);
+        let Some((x, y, b, h)) = rechteck else {
+            return;
+        };
+        let behaelter = self.behaelter();
+        let neu = gtk4::Bitset::new_empty();
+        for (zelle, li) in self.lebende_zellen() {
+            // the item widget (grid child, list row) is the hit area
+            let mut w: Option<gtk4::Widget> = Some(zelle.clone().upcast());
+            while let Some(k) = w.clone() {
+                if k.parent().as_ref() == Some(&behaelter) {
+                    break;
+                }
+                w = k.parent();
+            }
+            let Some(r) = w.and_then(|w| w.compute_bounds(&self.liste)) else {
+                continue;
+            };
+            let (rx, ry, rb, rh) = (
+                f64::from(r.x()),
+                f64::from(r.y()),
+                f64::from(r.width()),
+                f64::from(r.height()),
+            );
+            if rb > 0.0 && rx < x + b && rx + rb > x && ry < y + h && ry + rh > y {
+                neu.add(li.position());
+            }
+        }
+        protokoll(&format!(
+            "Umschalt+Gummiband {}: {} Objekte dazu",
+            self.art.name(),
+            neu.size()
+        ));
+        if neu.size() > 0 {
+            self.auswahl.set_selection(&neu, &neu);
+        }
+    }
+
     fn langsam_abbrechen(&self) {
         if let Some(q) = self.z.borrow_mut().langsam.take() {
             q.remove();
@@ -907,19 +1068,54 @@ impl Kern {
         }
     }
 
-    /// A new folder is shown: forget cursor, rename and type-ahead.
-    pub fn ordner_gewechselt(self: &Rc<Self>) {
+    /// A new folder `pfad` is read: forget cursor, rename and type-ahead.
+    pub fn ordner_gewechselt(self: &Rc<Self>, pfad: &str) {
         self.umbenennen_ende(false);
         self.tipp.schliessen();
         self.langsam_abbrechen();
         let mut z = self.z.borrow_mut();
         z.cursor = None;
         z.warten_auf = None;
+        z.laden = Some((Instant::now(), pfad.to_owned()));
+    }
+
+    /// The first block of the folder is in the model: the time to the first
+    /// picture (Messung).
+    pub fn erster_block(&self) {
+        let Some((t0, pfad)) = self.z.borrow().laden.clone() else {
+            return;
+        };
+        if !self.liste.is_mapped() {
+            return;
+        }
+        self.liste.add_tick_callback(move |_, _| {
+            eprintln!(
+                "{PROGRAMM}: Messung {pfad}: erstes Bild nach {} ms",
+                t0.elapsed().as_millis()
+            );
+            glib::ControlFlow::Break
+        });
     }
 
     /// The folder is read: focus `name` (the folder one came up from) or
     /// the first object, without selecting it.
     pub fn geladen(&self, name: Option<&str>) {
+        if let Some((t0, pfad)) = self.z.borrow_mut().laden.take()
+            && self.liste.is_mapped()
+        {
+            let n = self.auswahl.n_items();
+            eprintln!(
+                "{PROGRAMM}: Messung {pfad}: {n} Objekte im Modell nach {} ms",
+                t0.elapsed().as_millis()
+            );
+            self.liste.add_tick_callback(move |_, _| {
+                eprintln!(
+                    "{PROGRAMM}: Messung {pfad}: Ordner vollständig gezeigt nach {} ms",
+                    t0.elapsed().as_millis()
+                );
+                glib::ControlFlow::Break
+            });
+        }
         self.liste.grab_focus();
         match name.and_then(|n| self.position_von(n)) {
             Some(pos) => self.fokus_auf(pos, true),
@@ -1231,6 +1427,25 @@ impl Kern {
         });
     }
 
+    /// Strg+A while renaming: the whole text of the field (the window's
+    /// „Alles auswählen“ must not select objects then).
+    pub fn feld_alles_markieren(&self) -> bool {
+        let feld = self
+            .z
+            .borrow()
+            .umbenennen
+            .as_ref()
+            .and_then(|u| u.feld.as_ref().map(|(f, _)| f.clone()));
+        match feld {
+            Some(f) => {
+                let n = f.text().chars().count() as i32;
+                f.setzen(&f.text(), Some((0, n)));
+                true
+            }
+            None => false,
+        }
+    }
+
     pub fn umbenennen_beenden(self: &Rc<Self>, uebernehmen: bool) {
         if self.z.borrow().umbenennen.is_some() {
             self.umbenennen_ende(uebernehmen);
@@ -1442,6 +1657,10 @@ frame.suchfeld {
 }
 frame.suchfeld.ohne-treffer label {
   color: @error_color;
+}
+.gummiband {
+  border: 1px solid @theme_selected_bg_color;
+  background-color: alpha(@theme_selected_bg_color, 0.25);
 }
 menubutton.menue-anker > button {
   min-width: 0;

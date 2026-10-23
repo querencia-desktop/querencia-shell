@@ -275,6 +275,35 @@ pub fn anker_anlegen(overlay: &gtk4::Overlay) {
     anker.set_halign(gtk4::Align::Start);
     anker.set_valign(gtk4::Align::Start);
     overlay.add_overlay(&anker);
+    // Esc or a chosen entry leaves the focus on the anchor; typing then
+    // went nowhere (prototype §5 A10). Back to the list of the view.
+    let fuer_ende = overlay.downgrade();
+    anker.connect_active_notify(move |a| {
+        if a.is_active() {
+            return;
+        }
+        let Some(overlay) = fuer_ende.upgrade() else {
+            return;
+        };
+        let liste = overlay
+            .child()
+            .and_downcast::<gtk4::ScrolledWindow>()
+            .and_then(|s| s.child());
+        let Some(liste) = liste else {
+            return;
+        };
+        // after GTK has moved the focus at the end of the popup
+        let anker = a.clone();
+        glib::idle_add_local_once(move || {
+            let fokus = anker.root().and_then(|r| r.focus());
+            let verloren = fokus
+                .as_ref()
+                .is_none_or(|f| f == anker.upcast_ref::<gtk4::Widget>() || f.is_ancestor(&anker));
+            if verloren {
+                liste.grab_focus();
+            }
+        });
+    });
     let menue = gio::Menu::new();
     classic_menu::attach(&anker, menue.upcast_ref());
     ANKER.with(|a| {

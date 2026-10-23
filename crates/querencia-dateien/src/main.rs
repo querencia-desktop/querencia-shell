@@ -17,7 +17,6 @@ mod vorlauf_modell;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Instant;
 
 use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib};
@@ -213,7 +212,9 @@ impl Probe {
                         if neu { " (neues Fenster)" } else { "" },
                         namen.join(", ")
                     ));
+                    // a new window is the frame's (B1); the test window stays
                     if let [e] = liste.as_slice()
+                        && !neu
                         && e.daten().ist_ordner
                     {
                         p.oeffne(e.daten().datei.clone(), None);
@@ -305,50 +306,36 @@ impl Probe {
     }
 
     fn oeffne(self: &Rc<Self>, ordner: gio::File, fokus: Option<String>) {
-        let t0 = Instant::now();
-        self.symbole.kern.ordner_gewechselt();
-        self.liste.kern.ordner_gewechselt();
+        let pfad = ordner.parse_name().to_string();
+        for k in [self.symbole.kern.clone(), self.liste.kern.clone()] {
+            k.ordner_gewechselt(&pfad);
+        }
         let titel = ordner
             .basename()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         self.fenster.set_title(Some(&titel));
-        let pfad = ordner.parse_name().to_string();
         let weak = Rc::downgrade(self);
-        let pfad_erst = pfad.clone();
         let erst = Rc::new(std::cell::Cell::new(false));
-        let erst_k = erst.clone();
-        let fenster = self.fenster.clone();
         let handler = self
             .modell
             .sortiert
             .connect_items_changed(move |_, _, _, neu| {
-                if neu > 0 && !erst_k.replace(true) {
-                    let pfad = pfad_erst.clone();
-                    fenster.add_tick_callback(move |_, _| {
-                        eprintln!(
-                            "querencia-dateien: Messung {pfad}: erstes Bild nach {} ms",
-                            t0.elapsed().as_millis()
-                        );
-                        glib::ControlFlow::Break
-                    });
+                if neu > 0
+                    && !erst.replace(true)
+                    && let Some(p) = weak.upgrade()
+                {
+                    p.kern().erster_block();
                 }
             });
-        let handler = Rc::new(std::cell::RefCell::new(Some(handler)));
+        let handler = Rc::new(RefCell::new(Some(handler)));
+        let weak = Rc::downgrade(self);
         self.modell.oeffne(ordner, move || {
             let Some(p) = weak.upgrade() else { return };
             if let Some(h) = handler.borrow_mut().take() {
                 p.modell.sortiert.disconnect(h);
             }
             p.kern().geladen(fokus.as_deref());
-            let pfad = pfad.clone();
-            p.fenster.add_tick_callback(move |_, _| {
-                eprintln!(
-                    "querencia-dateien: Messung {pfad}: Ordner vollständig gezeigt nach {} ms",
-                    t0.elapsed().as_millis()
-                );
-                glib::ControlFlow::Break
-            });
         });
     }
 
@@ -407,7 +394,15 @@ impl Probe {
             "umbenennen-ganz",
             mit(|p| p.kern().umbenennen_starten(true)),
         );
-        einfach("alles-auswaehlen", mit(|p| p.kern().alles_auswaehlen()));
+        einfach(
+            "alles-auswaehlen",
+            mit(|p| {
+                let k = p.kern();
+                if !k.feld_alles_markieren() {
+                    k.alles_auswaehlen();
+                }
+            }),
+        );
         einfach(
             "neu-laden",
             mit(|p| {
