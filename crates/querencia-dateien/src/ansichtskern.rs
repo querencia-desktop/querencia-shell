@@ -22,9 +22,9 @@ use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib};
 
 use querencia_dateiarbeit::namen;
-use querencia_oberflaeche::classic_menu;
 
-use crate::kontextmenue::{self, Auswahlinfo, Ort, Umgebung};
+use crate::i18n::gettext;
+use crate::kontextmenue;
 use crate::tippsuche::Tippsuche;
 use crate::umbenennen::{self, Feld, Mietvertrag};
 pub use crate::vorlauf_modell::{Eintrag, Kriterium, Sortierung};
@@ -85,16 +85,25 @@ type UmgebungFn = Rc<dyn Fn() -> (Option<gio::File>, Sortierung)>;
 /// What the window learns from a view, and what the view asks of it.
 #[derive(Default)]
 pub struct Rueckrufe {
-    /// Double click or Enter: the objects to open.
-    pub aktiviert: Rueckruf<Vec<Eintrag>>,
+    /// Double click or Enter: the objects to open; `true` for a new window
+    /// (Umschalt+Doppelklick, middle button).
+    pub aktiviert: Rueckruf<(Vec<Eintrag>, bool)>,
     /// Backspace: the parent folder.
     pub nach_oben: Rueckruf<()>,
     /// „/“ or „~“ typed: the location entry, starting with the character.
     pub ortsfeld: Rueckruf<char>,
     /// The selection changed (status bar).
     pub auswahl: Rueckruf<()>,
-    /// A rename succeeded: the old entry and the renamed file.
-    pub umbenannt: Rueckruf<(Eintrag, gio::File)>,
+    /// Ctrl+wheel: one level larger (+1) or smaller (-1).
+    pub zoom: Rueckruf<i32>,
+    /// Right click or menu key: for the selection (`true`) or the
+    /// background, at (x, y) in the list widget. Without it the view shows
+    /// the menu of [`crate::kontextmenue`] itself.
+    pub kontextmenue: Rueckruf<(bool, f64, f64)>,
+    /// A checked new name for an object: the window renames it (job).
+    pub umbenennen: Rueckruf<(Eintrag, String)>,
+    /// A message for the status bar.
+    pub melden: Rueckruf<String>,
     /// The folder shown and the sort order, for the context menus.
     pub umgebung: RefCell<Option<UmgebungFn>>,
 }
@@ -107,7 +116,10 @@ struct Zustand {
     /// Select (and focus) this name once it is in the model; with `true`
     /// start renaming it (new folder).
     warten_auf: Option<(String, bool)>,
-    zoom: usize,
+    /// Zoom level in percent.
+    zoom: u32,
+    /// The next GTK activate opens in a new window (Umschalt+Doppelklick).
+    neues_fenster: bool,
     /// Slow second click on a selected name: the pending rename.
     langsam: Option<glib::SourceId>,
     gedrueckt: Option<(f64, f64, bool)>,
@@ -126,8 +138,6 @@ pub struct Kern {
     behaelter: RefCell<Option<gtk4::Widget>>,
     pub wurzel: gtk4::Overlay,
     tipp: Rc<Tippsuche>,
-    anker: gtk4::MenuButton,
-    menue: gio::Menu,
     z: RefCell<Zustand>,
     zellen: RefCell<HashMap<usize, ZelleUndItem>>,
     pub rueckrufe: Rueckrufe,
@@ -175,18 +185,7 @@ impl Kern {
         let wurzel = gtk4::Overlay::new();
         wurzel.set_child(Some(scroller));
         wurzel.add_overlay(&tipp.rahmen);
-        // The anchor of the context menus: an empty menu button at the
-        // view's origin; the popover points at the click (desktop pattern).
-        let anker = gtk4::MenuButton::new();
-        anker.set_child(Some(&gtk4::Box::new(gtk4::Orientation::Horizontal, 0)));
-        anker.add_css_class("menue-anker");
-        anker.set_can_target(false);
-        anker.set_focus_on_click(false);
-        anker.set_halign(gtk4::Align::Start);
-        anker.set_valign(gtk4::Align::Start);
-        wurzel.add_overlay(&anker);
-        let menue = gio::Menu::new();
-        classic_menu::attach(&anker, menue.upcast_ref());
+        kontextmenue::anker_anlegen(&wurzel);
         let kern = Rc::new(Self {
             art,
             auswahl,
@@ -194,8 +193,6 @@ impl Kern {
             behaelter: RefCell::new(None),
             wurzel,
             tipp,
-            anker,
-            menue,
             z: RefCell::new(Zustand::default()),
             zellen: RefCell::new(HashMap::new()),
             rueckrufe: Rueckrufe::default(),
@@ -230,13 +227,23 @@ impl Kern {
         self.auswahl.item(pos).and_downcast::<Eintrag>()
     }
 
-    pub fn zoom(&self) -> usize {
+    /// The zoom level in percent.
+    pub fn zoom(&self) -> u32 {
         self.z.borrow().zoom
     }
 
-    pub fn zoom_merken(self: &Rc<Self>, index: usize) {
+    pub fn zoom_merken(self: &Rc<Self>, prozent: u32) {
         self.umbenennen_beenden(true);
-        self.z.borrow_mut().zoom = index;
+        self.z.borrow_mut().zoom = prozent;
+    }
+
+    /// Nautilus' „Einfacher Klick zum Öffnen“ (Reiter „Verhalten“).
+    pub fn einfacher_klick(&self, an: bool) {
+        if let Some(g) = self.liste.downcast_ref::<gtk4::GridView>() {
+            g.set_single_click_activate(an);
+        } else if let Some(c) = self.liste.downcast_ref::<gtk4::ColumnView>() {
+            c.set_single_click_activate(an);
+        }
     }
 
     pub fn feldbreite_setzen(&self, breite: i32) {
@@ -381,6 +388,17 @@ impl Kern {
         self.auswahl.connect_selection_changed(move |_, _, _| {
             if let Some(k) = weak.upgrade() {
                 k.langsam_abbrechen();
+                if k.liste.is_mapped() {
+                    let g = k.gewaehlte();
+                    let anfang: Vec<&str> =
+                        g.iter().take(6).map(|e| e.daten().name.as_str()).collect();
+                    protokoll(&format!(
+                        "Auswahl {} {}: {}",
+                        k.art.name(),
+                        g.len(),
+                        anfang.join(", ")
+                    ));
+                }
                 if let Some(f) = k.rueckrufe.auswahl.borrow().clone() {
                     f(());
                 }
@@ -426,7 +444,7 @@ impl Kern {
             gtk4::EventControllerScrollFlags::VERTICAL | gtk4::EventControllerScrollFlags::DISCRETE,
         );
         rad.set_propagation_phase(gtk4::PropagationPhase::Capture);
-        let liste = self.liste.clone();
+        let weak = Rc::downgrade(self);
         rad.connect_scroll(move |c, _, dy| {
             if !c
                 .current_event_state()
@@ -435,12 +453,13 @@ impl Kern {
             {
                 return glib::Propagation::Proceed;
             }
-            let aktion = if dy < 0.0 {
-                "win.vergroessern"
-            } else {
-                "win.verkleinern"
-            };
-            let _ = liste.activate_action(aktion, None);
+            let schritt = if dy < 0.0 { 1 } else { -1 };
+            if let Some(f) = weak
+                .upgrade()
+                .and_then(|k| k.rueckrufe.zoom.borrow().clone())
+            {
+                f(schritt);
+            }
             glib::Propagation::Stop
         });
         scroller.add_controller(rad);
@@ -516,7 +535,7 @@ impl Kern {
                 if let Some(k) = weak.upgrade() {
                     k.fokus_auf(pos, true);
                     if umbenennen {
-                        k.umbenennen_starten();
+                        k.umbenennen_starten(false);
                     }
                 }
             });
@@ -686,7 +705,21 @@ impl Kern {
                 }
                 self.menue_zeigen(treffer.is_some(), x, y);
             }
+            gdk::BUTTON_MIDDLE => {
+                // the middle button opens a folder in a new window
+                if let Some((pos, _)) = treffer {
+                    g.set_state(gtk4::EventSequenceState::Claimed);
+                    if let Some(e) = self.eintrag(pos)
+                        && let Some(f) = self.rueckrufe.aktiviert.borrow().clone()
+                    {
+                        f((vec![e], true));
+                    }
+                }
+            }
             gdk::BUTTON_PRIMARY => {
+                // Umschalt+Doppelklick: GTK's activate follows this press
+                self.z.borrow_mut().neues_fenster =
+                    n == 2 && zustand.contains(gdk::ModifierType::SHIFT_MASK);
                 if modifikator {
                     return;
                 }
@@ -734,7 +767,7 @@ impl Kern {
             if let Some(k) = weak.upgrade() {
                 k.z.borrow_mut().langsam = None;
                 protokoll("langsamer zweiter Klick: Umbenennen");
-                k.umbenennen_starten();
+                k.umbenennen_starten(false);
             }
         });
         self.z.borrow_mut().langsam = Some(quelle);
@@ -868,7 +901,7 @@ impl Kern {
         match self.position_von(name) {
             Some(pos) => {
                 self.fokus_auf(pos, true);
-                self.umbenennen_starten();
+                self.umbenennen_starten(false);
             }
             None => self.z.borrow_mut().warten_auf = Some((name.to_owned(), true)),
         }
@@ -905,7 +938,7 @@ impl Kern {
         if !gewaehlt.is_empty()
             && let Some(f) = self.rueckrufe.aktiviert.borrow().clone()
         {
-            f(gewaehlt);
+            f((gewaehlt, false));
         }
     }
 
@@ -920,8 +953,9 @@ impl Kern {
         } else {
             vec![e]
         };
+        let neu = std::mem::take(&mut self.z.borrow_mut().neues_fenster);
         if let Some(f) = self.rueckrufe.aktiviert.borrow().clone() {
-            f(liste);
+            f((liste, neu));
         }
     }
 
@@ -945,86 +979,31 @@ impl Kern {
     }
 
     /// The menu for the selection (or the background) at (x, y) in list
-    /// coordinates.
+    /// coordinates: through the window if it has a menu hook, else here.
     fn menue_zeigen(&self, objekte: bool, x: f64, y: f64) {
+        if let Some(f) = self.rueckrufe.kontextmenue.borrow().clone() {
+            f((objekte, x, y));
+            return;
+        }
         let (ordner, sortierung) = self
             .rueckrufe
             .umgebung
             .borrow()
             .as_ref()
             .map_or((None, Sortierung::default()), |f| f());
-        let im_papierkorb = ordner.as_ref().is_some_and(|o| o.has_uri_scheme("trash"));
-        let gewaehlt = self.gewaehlte();
-        let ort = if objekte && !gewaehlt.is_empty() {
-            let ordner_zahl = gewaehlt.iter().filter(|e| e.daten().ist_ordner).count();
-            let erster = gewaehlt[0].daten().typ.clone();
-            let gleich = gewaehlt.iter().all(|e| e.daten().typ == erster);
-            Ort::Auswahl(Auswahlinfo {
-                anzahl: gewaehlt.len(),
-                ordner: ordner_zahl,
-                gemeinsamer_typ: gleich.then_some(erster),
-            })
-        } else {
-            Ort::Hintergrund
-        };
-        let programme = match &ort {
-            Ort::Auswahl(Auswahlinfo {
-                gemeinsamer_typ: Some(t),
-                ..
-            }) => kontextmenue::programme_fuer(t),
-            _ => Vec::new(),
-        };
-        let vorlagen = if ort == Ort::Hintergrund {
-            kontextmenue::vorlagen(
-                glib::user_special_dir(glib::UserDirectory::Templates).as_deref(),
-                &glib::home_dir(),
-            )
+        let gewaehlt = if objekte {
+            self.gewaehlte()
         } else {
             Vec::new()
         };
-        let umgebung = Umgebung {
-            im_papierkorb,
-            programme,
-            vorlagen,
-            sortierung,
-        };
-        let gruppen = kontextmenue::zeilen(&ort, &umgebung);
-        let liste = self.liste.clone();
-        let modell =
-            kontextmenue::als_menue(&gruppen, &|a| kontextmenue::aktion_verfuegbar(&liste, a));
-        self.menue.remove_all();
-        for i in 0..modell.n_items() {
-            if let Some(abschnitt) = modell.item_link(i, "section") {
-                self.menue.append_section(None, &abschnitt);
-            }
-        }
-        protokoll(&format!(
-            "Kontextmenü {}: {}",
-            self.art.name(),
-            kontextmenue::protokoll(&self.menue)
-        ));
-        let punkt = self
-            .liste
-            .compute_point(
-                &self.wurzel,
-                &gtk4::graphene::Point::new(x as f32, y as f32),
-            )
-            .map_or((x, y), |p| (f64::from(p.x()), f64::from(p.y())));
-        if let Some(popover) = self.anker.popover() {
-            popover.set_pointing_to(Some(&gdk::Rectangle::new(
-                punkt.0 as i32,
-                punkt.1 as i32,
-                1,
-                1,
-            )));
-        }
-        self.anker.popup();
+        kontextmenue::zeigen(&self.liste, x, y, &gewaehlt, ordner.as_ref(), sortierung);
     }
 
     // --- rename ------------------------------------------------------
 
-    /// F2: the one selected object, else the focused one.
-    pub fn umbenennen_starten(self: &Rc<Self>) {
+    /// F2: the one selected object, else the focused one; `ganz` selects
+    /// the whole name (Umschalt+F2) instead of the name without extension.
+    pub fn umbenennen_starten(self: &Rc<Self>, ganz: bool) {
         if self.z.borrow().umbenennen.is_some() {
             return;
         }
@@ -1035,13 +1014,16 @@ impl Kern {
             1 => Some(auswahl.nth(0)),
             _ => {
                 protokoll("Umbenennen: mehrere Objekte gewählt, nichts getan");
+                if let Some(f) = self.rueckrufe.melden.borrow().clone() {
+                    f(gettext("Only one item can be renamed at a time."));
+                }
                 return;
             }
         };
         let Some((pos, e)) = pos.and_then(|p| Some((p, self.eintrag(p)?))) else {
             return;
         };
-        let vertrag = Mietvertrag::neu(&e);
+        let vertrag = Mietvertrag::neu(&e, ganz);
         protokoll(&format!(
             "Umbenennen begonnen {}: {} (markiert {:?})",
             self.art.name(),
@@ -1315,33 +1297,14 @@ impl Kern {
                 return;
             }
         };
-        let weak = Rc::downgrade(self);
-        let datei = d.datei.clone();
-        glib::spawn_future_local(async move {
-            let ergebnis = umbenennen::ausfuehren(datei, neu).await;
-            let Some(k) = weak.upgrade() else {
-                return;
-            };
-            match ergebnis {
-                Ok(neue_datei) => {
-                    let name = neue_datei
-                        .basename()
-                        .map(|n| n.to_string_lossy().into_owned())
-                        .unwrap_or_default();
-                    protokoll(&format!("umbenannt in {name}"));
-                    k.z.borrow_mut().cursor = Some(name.clone());
-                    k.z.borrow_mut().warten_auf = Some((name, false));
-                    if let Some(f) = k.rueckrufe.umbenannt.borrow().clone() {
-                        f((eintrag, neue_datei));
-                    }
-                }
-                Err(fehler) => {
-                    protokoll(&format!("Umbenennen fehlgeschlagen: {}", fehler.message()));
-                    let fenster = k.liste.root().and_downcast::<gtk4::Window>();
-                    umbenennen::fehler_zeigen(fenster.as_ref(), fehler.message());
-                }
-            }
-        });
+        protokoll(&format!("Umbenennen: {} → {neu}", d.name));
+        // The window renames (a job of the queue, with its error dialogs)
+        // and selects the renamed object; the cursor follows the name.
+        self.z.borrow_mut().cursor = Some(neu.clone());
+        self.z.borrow_mut().warten_auf = Some((neu.clone(), false));
+        if let Some(f) = self.rueckrufe.umbenennen.borrow().clone() {
+            f((eintrag, neu));
+        }
     }
 
     /// A starter keeps its file name; its shown name is the `Name` key in
@@ -1394,9 +1357,6 @@ impl Kern {
                 Ok(()) => {
                     protokoll(&format!("Starter umbenannt: {neu}"));
                     k.z.borrow_mut().warten_auf = Some((eintrag.daten().name.clone(), false));
-                    if let Some(f) = k.rueckrufe.umbenannt.borrow().clone() {
-                        f((eintrag.clone(), eintrag.daten().datei.clone()));
-                    }
                 }
                 Err(grund) => {
                     let fenster = k.liste.root().and_downcast::<gtk4::Window>();

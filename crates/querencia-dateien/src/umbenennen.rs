@@ -190,12 +190,20 @@ pub struct Mietvertrag {
 }
 
 impl Mietvertrag {
-    pub fn neu(eintrag: &Eintrag) -> Self {
+    /// `ganz`: the whole name selected (Umschalt+F2), else the name
+    /// without its extension.
+    pub fn neu(eintrag: &Eintrag, ganz: bool) -> Self {
         let d = eintrag.daten();
+        let markiert = if ganz {
+            (0, d.anzeige.chars().count() as i32)
+        } else {
+            // a starter's shown name has no extension
+            markierung(&d.anzeige, !d.ist_ordner && !d.starter)
+        };
         Self {
             eintrag: eintrag.clone(),
             text: d.anzeige.clone(),
-            markierung: Some(markierung(&d.anzeige, !d.ist_ordner)),
+            markierung: Some(markiert),
             feld: None,
         }
     }

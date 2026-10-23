@@ -405,15 +405,19 @@ async fn laden(weak: Weak<Modell>, ordner: gio::File, generation: u64, fertig: i
     let t0 = Instant::now();
     let pfad = ordner.parse_name().to_string();
     let aktuell = |m: &Modell| m.generation.get() == generation;
-    let Ok(aufzaehlung) = ordner
+    let aufzaehlung = match ordner
         .enumerate_children_future(
             ATTRIBUTE,
             gio::FileQueryInfoFlags::NONE,
             glib::Priority::DEFAULT,
         )
         .await
-    else {
-        return;
+    {
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("querencia-dateien: {pfad} nicht lesbar: {}", e.message());
+            return;
+        }
     };
     let mut block = 200;
     let mut gesamt = 0usize;

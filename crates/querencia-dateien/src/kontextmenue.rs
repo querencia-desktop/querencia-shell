@@ -9,12 +9,15 @@
 //! [`zeilen`] is pure and tested; [`als_menue`] turns its rows into the
 //! `gio::Menu` the classic menu shows.
 
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
 use gtk4::prelude::*;
-use gtk4::{gio, glib};
+use gtk4::{gdk, gio, glib};
 
-use crate::ansichtskern::{Kriterium, Sortierung};
+use querencia_oberflaeche::classic_menu;
+
+use crate::ansichtskern::{Eintrag, Kriterium, Sortierung, protokoll};
 use crate::i18n::{gettext, gettext_f};
 
 /// What was clicked.
@@ -252,6 +255,135 @@ fn hintergrund(u: &Umgebung) -> Vec<Vec<Zeile>> {
     gruppen
 }
 
+thread_local! {
+    /// The anchors of the views with the menu each one shows.
+    static ANKER: RefCell<Vec<(glib::WeakRef<gtk4::MenuButton>, gio::Menu)>> =
+        const { RefCell::new(Vec::new()) };
+}
+
+/// Puts the anchor of the context menus into a view's overlay: an empty,
+/// untargetable menu button at its origin whose classic menu points at the
+/// click (desktop pattern, `desktop_view.rs`).
+pub fn anker_anlegen(overlay: &gtk4::Overlay) {
+    let anker = gtk4::MenuButton::new();
+    anker.set_child(Some(&gtk4::Box::new(gtk4::Orientation::Horizontal, 0)));
+    anker.add_css_class("menue-anker");
+    anker.set_can_target(false);
+    // stays focusable: an unfocusable menu button makes GTK report a
+    // critical each time its menu opens (desktop)
+    anker.set_focus_on_click(false);
+    anker.set_halign(gtk4::Align::Start);
+    anker.set_valign(gtk4::Align::Start);
+    overlay.add_overlay(&anker);
+    let menue = gio::Menu::new();
+    classic_menu::attach(&anker, menue.upcast_ref());
+    ANKER.with(|a| {
+        let mut a = a.borrow_mut();
+        a.retain(|(k, _)| k.upgrade().is_some());
+        a.push((anker.downgrade(), menue));
+    });
+}
+
+/// The anchor next to `widget` (in its overlay) and its menu.
+fn anker_bei(widget: &gtk4::Widget) -> Option<(gtk4::MenuButton, gio::Menu)> {
+    let mut w = Some(widget.clone());
+    while let Some(kandidat) = w {
+        let mut kind = kandidat.first_child();
+        while let Some(k) = kind {
+            if k.has_css_class("menue-anker")
+                && let Ok(knopf) = k.clone().downcast::<gtk4::MenuButton>()
+            {
+                let menue = ANKER.with(|a| {
+                    a.borrow()
+                        .iter()
+                        .find(|(b, _)| b.upgrade().as_ref() == Some(&knopf))
+                        .map(|(_, m)| m.clone())
+                });
+                return menue.map(|m| (knopf, m));
+            }
+            kind = k.next_sibling();
+        }
+        w = kandidat.parent();
+    }
+    None
+}
+
+/// What the menu shows for `gewaehlt` (empty: the background).
+pub fn ort_fuer(gewaehlt: &[Eintrag]) -> Ort {
+    let Some(erster) = gewaehlt.first() else {
+        return Ort::Hintergrund;
+    };
+    let typ = erster.daten().typ.clone();
+    let gleich = gewaehlt.iter().all(|e| e.daten().typ == typ);
+    Ort::Auswahl(Auswahlinfo {
+        anzahl: gewaehlt.len(),
+        ordner: gewaehlt.iter().filter(|e| e.daten().ist_ordner).count(),
+        gemeinsamer_typ: gleich.then_some(typ),
+    })
+}
+
+/// Shows the context menu for `gewaehlt` (empty: the background of
+/// `ordner`) at (x, y) in `widget`, a view's list widget.
+pub fn zeigen(
+    widget: &gtk4::Widget,
+    x: f64,
+    y: f64,
+    gewaehlt: &[Eintrag],
+    ordner: Option<&gio::File>,
+    sortierung: Sortierung,
+) {
+    let Some((anker, menue)) = anker_bei(widget) else {
+        protokoll("Kontextmenü: kein Anker neben der Ansicht");
+        return;
+    };
+    let ort = ort_fuer(gewaehlt);
+    let programme = match &ort {
+        Ort::Auswahl(Auswahlinfo {
+            gemeinsamer_typ: Some(t),
+            ..
+        }) => programme_fuer(t),
+        _ => Vec::new(),
+    };
+    let vorlagen = if ort == Ort::Hintergrund {
+        vorlagen(
+            glib::user_special_dir(glib::UserDirectory::Templates).as_deref(),
+            &glib::home_dir(),
+        )
+    } else {
+        Vec::new()
+    };
+    let umgebung = Umgebung {
+        im_papierkorb: ordner.is_some_and(|o| o.has_uri_scheme("trash")),
+        programme,
+        vorlagen,
+        sortierung,
+    };
+    let gruppen = zeilen(&ort, &umgebung);
+    let modell = als_menue(&gruppen, &|a| aktion_verfuegbar(widget, a));
+    menue.remove_all();
+    for i in 0..modell.n_items() {
+        if let Some(abschnitt) = modell.item_link(i, "section") {
+            menue.append_section(None, &abschnitt);
+        }
+    }
+    protokoll(&format!("Kontextmenü: {}", protokoll_zeilen(&menue)));
+    // the anchor sits at the overlay's origin; the popover points at the
+    // click in the overlay's coordinates
+    let basis = anker.parent().unwrap_or_else(|| widget.clone());
+    let punkt = widget
+        .compute_point(&basis, &gtk4::graphene::Point::new(x as f32, y as f32))
+        .map_or((x, y), |p| (f64::from(p.x()), f64::from(p.y())));
+    if let Some(popover) = anker.popover() {
+        popover.set_pointing_to(Some(&gdk::Rectangle::new(
+            punkt.0 as i32,
+            punkt.1 as i32,
+            1,
+            1,
+        )));
+    }
+    anker.popup();
+}
+
 /// The menu model of `gruppen`; `verfuegbar("win.x")` tells whether the
 /// window can run the action now (otherwise the entry is insensitive).
 pub fn als_menue(gruppen: &[Vec<Zeile>], verfuegbar: &dyn Fn(&str) -> bool) -> gio::Menu {
@@ -400,7 +532,7 @@ pub fn beschreibung(gruppen: &[Vec<Zeile>]) -> String {
 }
 
 /// The menu as shown: rows with their actions, for the debug log.
-pub fn protokoll(menue: &gio::Menu) -> String {
+pub fn protokoll_zeilen(menue: &gio::Menu) -> String {
     fn zeilen_von(m: &gio::MenuModel, aus: &mut Vec<String>) {
         for i in 0..m.n_items() {
             if let Some(abschnitt) = m.item_link(i, "section") {
