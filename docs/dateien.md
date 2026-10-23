@@ -307,3 +307,89 @@ nutzen können.
   gemessen.
 - Das Fortschrittsfenster nimmt beim Erscheinen die Tastatur (wie im
   Desktop 0.3.0).
+
+## 7. Netzwerk (Welle C1, `src/netzwerk/`)
+
+**Stand:** 23.10.2026, Zweig `dateien-netzwerk`, Tag `dateien/netzwerk-1`.
+Alles über GVfs, kein eigenes Protokoll. Abnahmefälle B23–B26 aus
+ §5; Bericht .
+
+### 7.1 Module
+
+| Datei | Inhalt |
+|---|---|
+| `mod.rs` | `registrieren` (ein `register.fenster`-Haken), Aktionen `win.mit-server-verbinden` und `win.netzwerk`, Statuszeile, Lesezeichen mit Namen |
+| `adresse.rs` | Dienstarten des Dialogs → GVfs-URI (SFTP, SMB mit `DOMÄNE;benutzer`, FTP, WebDAV/WebDAVS, eigene Adresse mit `\\server\freigabe` → `smb://`, `ssh://` → `sftp://`); Prüfung von Server, Port, Kennwort in der Adresse |
+| `einhaengen.rs` | Einhängen bei Bedarf (`bei_ortswechsel` und erster Ort eines neuen Fensters), ein Versuch je Server im ganzen Prozess, Stopp, Zeitgrenze 60 s ohne offene Frage, Fehlermeldung genau einmal, Rücksprung an einen Ort ohne Verbindung, Ursachensuche bei GVfs' „Verbindung fehlgeschlagen“ (Namensauflösung, TCP zum Port, ohne Anmeldung) |
+| `anmeldung.rs` | eigene Dialoge an `gtk4::MountOperation`: Kennwortfrage (Benutzer, Kennwort, Domäne, „Anonym verbinden“, „Kennwort merken“ nur wenn GVfs speichern kann, **aus** als Vorgabe → `PasswordSave::Never`, angehakt → `Permanently`, GVfs legt es über libsecret ab), Fragen (Host-Key mit selbst gelesenem Fingerabdruck, QD-008), known_hosts-Abgleich vor dem Kennwort und nach dem Einhängen, Doppelfragen schließen |
+| `gvfs_texte.rs` | **MIT** (aus Querencia Files übernommen, `LICENSES/MIT-Strata.txt`): GVfs-Fehler, Kennwortzeilen (Vorlagen von GVfs 1.60 englisch und deutsch), Host-Key-Frage, Knopfreihenfolge |
+| `netzansicht.rs` | `network:///`: Doppel aus Avahi und wsdd ausblenden (QD-036, `querencia_dateiarbeit::netz::merge_network_entries`), Hinweis bei leerem Netzwerk |
+| `verbinden_dialog.rs` | „Mit Server verbinden …“ nach Nautilus 2.30 (Dienst-Typ, Server, optional Port/Freigabe/Ordner/Benutzername/Domänenname, Lesezeichen mit Name; Hilfe, Abbrechen, Verbinden); merkt den zuletzt gewählten Typ |
+| `rahmen.rs` | Rahmen der Dialoge (Symbol 48 px, fette erste Zeile, Knöpfe rechts, Esc bricht ab) |
+
+Logik ohne Oberfläche (Doppel-Zusammenführung, Host-Key-Abruf per
+`ssh -v`, known_hosts) liegt seit Welle A in `querencia_dateiarbeit::netz`.
+
+### 7.2 Eingriffe in gemeinsame Dateien
+
+- `main.rs`: je ein markierter Block „Welle C1 (dateien-netzwerk)“ für die
+  `mod`-Zeile und den Aufruf.
+- `menue.rs`: „Mit _Server verbinden …“ im Datei-Menü (eigener Abschnitt
+  nach „Öffnen mit“), „_Netzwerk“ unter Gehe zu nach „Papierkorb“; der
+  Menütest erwartet beide statt sie als Beta auszuschließen.
+- `seitenleiste.rs`: Kontextmenü von „Netzwerk“ mit „Mit Server verbinden …“
+  (ein Zweig im bestehenden `match`). Eingehängte Server kamen schon über
+  `laufwerke::alle` mit ⏏ in die Seitenleiste.
+- `eintrag.rs`: Verknüpfungen mit `standard::target-uri` (Rechner und
+  Freigaben in `network:///`) gelten als Ordner; vorher öffnete ein
+  Doppelklick sie als Datei („nicht eingehängt“).
+- Die Doppel-Ausblendung hängt sich ohne Änderung an `modell.rs` unter die
+  sortierte Liste (`SortListModel::set_model` auf ein `FilterListModel`
+  über dem bisherigen); Positionen der Auswahl bleiben die der sortierten
+  Liste. Ein eigener Haken im `Ordnermodell` wäre sauberer (Übergabe).
+
+### 7.3 Übersetzung
+
+Teilkatalog `po/de.netzwerk.po` (§3.7), Wortlaut nach Nautilus 2.30 de
+(„Mit Server verbinden“, „Dienst-Typ“, „Domänenname“) und „Kennwort“ statt
+GVfs' „Passwort“. GVfs' eigene Kennwort- und Host-Key-Texte werden nach
+Vorlage erkannt (englisch und deutsch) und durch eigene Sätze ersetzt;
+unbekannte Texte erscheinen mit der ersten Zeile fett.
+
+### 7.4 Prüfung
+
+- `cargo test`: Adressen je Dienst, Escapes, IPv6, Fehlertexte, Ursachen,
+  Kennwortvorlagen, Knopfreihenfolge, known_hosts-Fehler, Server-Schlüssel,
+  Doppel-Ausblendung, Netzwerk-Verknüpfung als Ordner.
+- Isolierte GUI-Läufe `crates/querencia-dateien/werkzeug/netzwerk/`
+  (Prüfrahmen Stufe G, Netz nur `lo`, Attrappen-System-Bus): `lauf.sh NAME
+  SZENARIO` (nach `pruefung/lauf.sh`, dazu `--sshd`, `LAUF_SSH_HOSTKEY_FRAGE`,
+  `LAUF_SSH_OHNE_SCHLUESSEL`, `LAUF_ZEITGRENZE`, `LAUF_WSDD`), `alle.sh`
+  (sieben Szenarien), `fotosaetze.sh` (hell/dunkel, 1024×768 und 1920×1080,
+  englisch). Test-Server nur im Namensraum: Test-sshd des Prüfrahmens,
+  `webdav-attrappe.py` (Basic-Anmeldung), `ftp-attrappe.py`,
+  `wsdd-attrappe.py` (beantwortet nur die Socket-API, sendet nichts),
+  Wegwerf-Schlüsselbund (gnome-keyring, `geheimnisse.py` listet nur
+  Attribute). `bin/ssh` liegt vor der ssh-Hülle des Prüfrahmens, damit der
+  Fingerabdruck-Abruf sein Protokoll selbst liest.
+- Ergebnisse unter `~/projects/dateien-netzwerk-arbeit/laeufe/`.
+
+### 7.5 Grenzen
+
+- SMB-Erfolgsfall ungeprüft: kein `samba` auf der VM, ein Server ohne sudo
+  ist nicht möglich. Geprüft sind SMB-Adressen (Unit-Tests) und der
+  Fehlerweg; die SMB-Kennwort-/Domänenfrage ist nur über die WebDAV- und
+  SFTP-Fälle desselben Dialogs belegt.
+- Doppel aus Avahi und wsdd: Avahi lässt sich ohne Systemdienst nicht
+  nachstellen; die Ausblendung ist mit Tabellentests belegt, im GUI-Lauf
+  nur die wsdd-Geräte.
+- SFTP mit Kennwort: Der Test-sshd läuft ohne PAM und kann Kennwörter nicht
+  prüfen; belegt sind Kennwortfrage, Wiederholung und Ablehnung, der
+  Erfolg mit Kennwort nur über WebDAV.
+- Nach einem falschen Kennwort fragt GVfs (dav) ohne `SAVING_SUPPORTED`:
+  „Kennwort merken“ fehlt dann im zweiten Versuch.
+- TLS-Zertifikatsfragen (`davs`, `ftps`) laufen durch die allgemeine Frage;
+  ohne Testserver mit Zertifikat ungeprüft.
+- Die Fehlerursache wird nur für GVfs' bloßes „Verbindung fehlgeschlagen“
+  selbst gesucht (Name, Port); andere Meldungen bleiben, wie GVfs sie
+  schickt, mit eigener Erklärung davor.
