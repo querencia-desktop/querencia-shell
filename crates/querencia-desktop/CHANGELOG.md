@@ -2,6 +2,11 @@
 
 ## 0.2.7 – 2026-10-23
 
+Integrationsstand 0.2.7-2 (Tags `desktop/0.2.7-2`, `desktop/0.2.7-2-int`):
+derselbe Code, gemergt auf runtime main `5a5b65c`. Programm und Kataloge
+sind byte-gleich mit 0.2.7 (`desktop/0.2.7`); `desktop/0.2.7-int` wird nicht
+aktiviert.
+
 Nur ein Umbau, sichtbar ändert sich nichts gegenüber 0.2.6.
 
 - Die Bausteine des Panels (klassische Menüs, Symbolthema, Farbschema,

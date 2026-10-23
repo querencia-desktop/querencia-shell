@@ -174,6 +174,14 @@ DESKTOP_027_FREIGABE=ja bash $D zurueck         # Link → 0.2.6-2
 DESKTOP_027_FREIGABE=ja bash $D desktop-neustart-zurueck
 ```
 
+**Integrationsstand:** `panel/0.3.1-2-int` und `desktop/0.2.7-2-int`.
+Während der Prüfung rückte main auf `5a5b65c` (Dateiarbeit 0.1.1,
+Prüfrahmen 0.1.1). Der Merge `0f4b6ef` (Tags `panel/0.3.1-2`,
+`desktop/0.2.7-2`) baut Programme und Kataloge byte-gleich mit
+`87ceaab` (`panel/0.3.1`, `desktop/0.2.7`), aus dem die Vorlagen stammen
+(`QUELLE_COMMIT=87ceaab`). Die Tags `panel/0.3.1-int` und
+`desktop/0.2.7-int` bleiben stehen, sie werden nicht aktiviert.
+
 Die Tausch-Skripte (`tausch-panel-3.py`, `tausch-desktop.py`) sind
 byte-gleich mit denen von Panel 0.3.0-2 und Desktop 0.2.6-2. Das
 Desktop-Skript liest die Prozessliste jetzt ohne `grep -q` hinter einer
