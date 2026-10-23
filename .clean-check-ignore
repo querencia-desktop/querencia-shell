@@ -135,5 +135,7 @@
 #      (qeingabe.c englisch wie die Vorlage, Szenarien deutsch mit englischen
 #      Befehlswörtern) und H003 für
 #      tools/dateien-operationen-pruefung/virtual-keyboard-unstable-v1.xml
-#      (Protokolldatei unter ihrem Namen); sie fallen unter die Ausnahmen oben
-#     .
+#      (Protokolldatei unter ihrem Namen) und Q007 für
+#      tools/dateien-operationen-pruefung/szenarien/hilfen.sh Zeile 7
+#      (gemessene Koordinaten im Kommentar, kein auskommentierter Code); sie
+#      fallen unter die Ausnahmen oben.
