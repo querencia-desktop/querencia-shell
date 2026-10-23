@@ -56,7 +56,7 @@ fn text_der_spalte(spalte: Spalte, e: &Eintrag, iso: bool) -> String {
 
 impl Listenansicht {
     pub fn new(auswahl: &gtk4::MultiSelection) -> Rc<Self> {
-        let ansicht = gtk4::ColumnView::new(Some(auswahl.clone()));
+        let ansicht = gtk4::ColumnView::new(None::<gtk4::MultiSelection>);
         ansicht.set_enable_rubberband(true);
         ansicht.set_reorderable(false);
         ansicht.set_show_row_separators(false);
@@ -103,6 +103,19 @@ impl Listenansicht {
         for (spalte, _, factory) in &spalten {
             liste.fabrik(*spalte, factory);
         }
+        liste.ansicht.set_model(Some(auswahl));
+        liste.kern.anschliessen(&scroller);
+        // a new order from the menu (Ansicht → Objekte anordnen): the
+        // header arrow follows the model's order
+        let weak = Rc::downgrade(&liste);
+        auswahl.connect_items_changed(move |_, _, weg, neu| {
+            if weg > 1
+                && weg == neu
+                && let Some(l) = weak.upgrade()
+            {
+                l.sortierung_abgleichen();
+            }
+        });
         let weak = Rc::downgrade(&liste);
         liste.ansicht.connect_activate(move |_, pos| {
             if let Some(l) = weak.upgrade() {
@@ -118,7 +131,45 @@ impl Listenansicht {
             });
         }
         liste.sortierung_zeigen(Sortierung::default());
+        // where the column headers are (for the isolated checks)
+        let weak = Rc::downgrade(&liste);
+        liste.ansicht.connect_map(move |_| {
+            let weak = weak.clone();
+            glib::idle_add_local_once(move || {
+                if let Some(l) = weak.upgrade() {
+                    l.kopf_protokoll();
+                }
+            });
+        });
         liste
+    }
+
+    fn kopf_protokoll(&self) {
+        let (Some(kopf), Some(fenster)) = (self.ansicht.first_child(), self.ansicht.root()) else {
+            return;
+        };
+        let sichtbar: Vec<Spalte> = self
+            .spalten
+            .iter()
+            .filter(|(_, c)| c.is_visible())
+            .map(|(s, _)| *s)
+            .collect();
+        let mut kind = kopf.first_child();
+        let mut i = 0;
+        while let Some(k) = kind {
+            if let (Some(s), Some(r)) = (sichtbar.get(i), k.compute_bounds(&fenster)) {
+                protokoll(&format!(
+                    "Spaltenkopf {} bei {:.0} {:.0} {:.0} {:.0}",
+                    s.kennung(),
+                    r.x(),
+                    r.y(),
+                    r.width(),
+                    r.height()
+                ));
+            }
+            i += 1;
+            kind = k.next_sibling();
+        }
     }
 
     pub fn widget(&self) -> gtk4::Widget {
@@ -171,6 +222,21 @@ impl Listenansicht {
             f(neu);
         }
         self.kern.nach_umordnen();
+    }
+
+    fn sortierung_abgleichen(&self) {
+        let s = self
+            .kern
+            .rueckrufe
+            .umgebung
+            .borrow()
+            .as_ref()
+            .map(|f| f().1);
+        if let Some(s) = s
+            && s != self.sortierung.get()
+        {
+            self.sortierung_zeigen(s);
+        }
     }
 
     /// Shows the arrow of `s` in the header (after a change from the menu).

@@ -45,7 +45,7 @@ fn zusatz_label(zelle: &gtk4::Box) -> Option<gtk4::Label> {
 impl Symbolansicht {
     pub fn new(auswahl: &gtk4::MultiSelection) -> Rc<Self> {
         let factory = gtk4::SignalListItemFactory::new();
-        let grid = gtk4::GridView::new(Some(auswahl.clone()), Some(factory.clone()));
+        let grid = gtk4::GridView::new(None::<gtk4::MultiSelection>, Some(factory.clone()));
         grid.set_enable_rubberband(true);
         // GTK keeps max_columns × about 30 rows of cells alive; spalten()
         // keeps it at what fits (prototype report §5 A1).
@@ -72,6 +72,8 @@ impl Symbolansicht {
             iso: Cell::new(false),
         });
         ansicht.fabrik(&factory);
+        ansicht.grid.set_model(Some(auswahl));
+        ansicht.kern.anschliessen(&scroller);
         let weak = Rc::downgrade(&ansicht);
         ansicht.grid.connect_activate(move |_, pos| {
             if let Some(a) = weak.upgrade() {

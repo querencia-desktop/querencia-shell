@@ -213,7 +213,8 @@ int main(void) {
                      : !strcmp(arg, "Page_Up") ? KEY_PAGEUP : !strcmp(arg, "Page_Down") ? KEY_PAGEDOWN
                      : !strcmp(arg, "Home") ? KEY_HOME : !strcmp(arg, "End") ? KEY_END
                      : !strcmp(arg, "space") ? KEY_SPACE
-                     : !strcmp(arg, "BackSpace") ? KEY_BACKSPACE : !strcmp(arg, "F5") ? KEY_F5 : -1;
+                     : !strcmp(arg, "BackSpace") ? KEY_BACKSPACE : !strcmp(arg, "F5") ? KEY_F5
+                     : !strcmp(arg, "F10") ? KEY_F10 : !strcmp(arg, "Menu") ? KEY_COMPOSE : -1;
             if (code < 0) { fprintf(stderr, "qeingabe: Taste %s?\n", arg); continue; }
             zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_PRESSED);
             wl_display_roundtrip(display); sleep_ms(30);
