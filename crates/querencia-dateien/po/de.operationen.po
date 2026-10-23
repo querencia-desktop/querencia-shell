@@ -343,13 +343,3 @@ msgstr "Neues Dokument"
 
 msgid "Template"
 msgstr "Vorlage"
-
-#, no-c-format
-msgid "Select an application to open “{name}”"
-msgstr "Wählen Sie ein Programm, um „{name}“ zu öffnen"
-
-#, no-c-format
-msgid "Select an application to open {n} file"
-msgid_plural "Select an application to open {n} files"
-msgstr[0] "Wählen Sie ein Programm zum Öffnen von {n} Datei"
-msgstr[1] "Wählen Sie ein Programm zum Öffnen von {n} Dateien"
