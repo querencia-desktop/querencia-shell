@@ -697,7 +697,7 @@ mod tests {
         let mut shadowed = usb_stick();
         shadowed.shadowed = true;
         assert_eq!(classify(&shadowed), None);
-        let mut shadowed_share = nas_test();
+        let mut shadowed_share = nas_share();
         shadowed_share.shadowed = true;
         assert_eq!(classify(&shadowed_share), None);
         for root in [
@@ -733,11 +733,11 @@ mod tests {
         );
     }
 
-    /// The mounts of the VM entwicklungs-vm on 19.10.2026 (`gio mount -li`).
+    /// Mounts as a test VM listed them (`gio mount -li`), with neutral names.
     fn cidata() -> Facts {
         Facts {
             name: "cidata".into(),
-            root_uri: "file:///run/media/user/cidata".into(),
+            root_uri: "file:///run/media/u/cidata".into(),
             has_volume: true,
             volume_class: Some("device".into()),
             unix_device: Some("/dev/sr0".into()),
@@ -757,10 +757,10 @@ mod tests {
         }
     }
 
-    fn nas_test() -> Facts {
+    fn nas_share() -> Facts {
         Facts {
-            name: "user on nas-test.local".into(),
-            root_uri: "smb://nas-test.local/user/".into(),
+            name: "daten on nas-test.local".into(),
+            root_uri: "smb://nas-test.local/daten/".into(),
             can_unmount: true,
             icon_names: vec!["folder-remote".into(), "folder".into()],
             ..Facts::default()
@@ -772,14 +772,14 @@ mod tests {
         assert_eq!(classify(&usb_stick()), Some(VolumeType::Removable));
         assert_eq!(classify(&loop_image()), Some(VolumeType::Removable));
         assert_eq!(classify(&cidata()), Some(VolumeType::Optical));
-        assert_eq!(classify(&nas_test()), Some(VolumeType::Network));
-        let mut sftp = nas_test();
+        assert_eq!(classify(&nas_share()), Some(VolumeType::Network));
+        let mut sftp = nas_share();
         sftp.root_uri = "sftp://server/home".into();
         assert_eq!(classify(&sftp), Some(VolumeType::Network));
         let mut nfs_volume = loop_image();
         nfs_volume.volume_class = Some("network".into());
         assert_eq!(classify(&nfs_volume), Some(VolumeType::Network));
-        let mut phone = nas_test();
+        let mut phone = nas_share();
         phone.root_uri = "mtp://Telefon/".into();
         assert_eq!(classify(&phone), Some(VolumeType::Removable));
         let mut disk = loop_image();
@@ -796,8 +796,8 @@ mod tests {
         let mut luks_stick = usb_stick();
         luks_stick.unix_device = Some("/dev/dm-1".into());
         assert_eq!(classify(&luks_stick), Some(VolumeType::Removable));
-        assert_eq!(picture(&nas_test()), Picture::Network);
-        assert_eq!(removal(&nas_test()), Some(Removal::Unmount));
+        assert_eq!(picture(&nas_share()), Picture::Network);
+        assert_eq!(removal(&nas_share()), Some(Removal::Unmount));
     }
 
     /// QE-04a (G2-X, QE-03 D13 with QE-04): an unlocked LUKS loop image has

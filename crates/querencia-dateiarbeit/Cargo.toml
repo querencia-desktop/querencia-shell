@@ -1,6 +1,6 @@
 [package]
 name = "querencia-dateiarbeit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Querencia Dateiarbeit: Dateioperationen mit Fortschritt, Abbruch und Konfliktfrage, Laufwerke, Papierkorb, Überwachung und Öffnen – ohne GTK, für Desktop und Dateimanager"
 edition.workspace = true
 rust-version.workspace = true
