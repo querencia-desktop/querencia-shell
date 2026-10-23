@@ -62,8 +62,9 @@ Modell ein neues `Eintrag` an dieselbe Stelle (recycelte Zellen werden
   Inhaltstyp, Ordner `inode/directory`), `suchname` (Tippsuche), `sort`.
 - Abkürzungen: `datei()`, `name()`, `ist_ordner()`, `ziel()` (bei
   `computer:///` und Papierkorb `standard::target-uri`, sonst die Datei),
-  `gewaehlt()` (für die Statusleiste).
-- Abgefragte Attribute: `eintrag::ATTRIBUTE` (lokal, ohne
+  `gewaehlt()` (für die Statusleiste), `beschreibung()` (Typbeschreibung).
+- Abgefragte Attribute: `eintrag::ATTRIBUTE` (lokal, mit `unix::mode`,
+  `owner::user`, `owner::group` für die Listenspalten, ohne
   `standard::icon` und `standard::content-type`, C §1), bei GVfs-Orten
   zusätzlich `ATTRIBUTE_ORTE` (`standard::icon`, `standard::target-uri`,
   `trash::orig-path`, `trash::deletion-date`); `attribute_fuer(&ordner)`.
@@ -87,6 +88,7 @@ Reihenfolge gehören dem Modell.
 | `sortierung()`, `sortierung_setzen(Sortierung)`, `verborgene_zeigen()`, `verborgene_setzen(bool)` | Ordnung und Filter |
 | `bei_zustand(Fn(&Zustand))` | `Laedt(ordner)`, `ErsterBlock`, `Geladen(n)`, `Gestoppt`, `Fehler(text)`, `OrdnerWeg` |
 | `bei_erscheinen(&datei, FnOnce(&Eintrag))` | sobald eine Datei im Ordner ist (sofort, wenn schon da) |
+| `bei_sortierung(Fn(Sortierung))` | nach jeder neuen Sortierung (Menü, Einstellungen, Spaltenkopf) |
 
 Änderungen kommen über `dateiarbeit::ueberwachung::FolderWatch`
 (gebündelt): neue und geänderte Dateien werden neu abgefragt und
@@ -269,12 +271,28 @@ nutzen können.
   (Lesen, Sortieren, Filtern, Auswahl über Umbenennen hinweg, Erscheinen,
   Ändern, Löschen, Neu laden, Ordner weg, Lesefehler).
 - Übersetzungen: im Crate-Ordner `python3 -I werkzeug/i18n.py pruefen`.
+- **Isolierte GUI-Läufe** (`crates/querencia-dateien/werkzeug/pruefung/`):
+  `bauen-eingabe.sh` baut `qeingabe`/`qausgabe` (verweigern jede Sitzung
+  außerhalb des Prüfrahmens: `XDG_RUNTIME_DIR=/tmp/qd-*` und `QD_HUELLE`);
+  `lauf.sh NAME szenarien/X.sh` legt ein Profil mit Testbaum
+  (`testbaum.py`: XDG-Ordner, Umlaute, lange Namen, versteckte Dateien,
+  Verweis, ausführbare Textdatei, 200 Dateien, 50 MB, 12 Ebenen, Vorlagen,
+  Attrappen-Programme mit `mimeapps.list`), Thema Querencia-Klassisch,
+  Symbolthema und den drei Katalogen an und startet das Szenario in
+  `werkzeug/dateien-pruefrahmen/huelle.sh` (Stufe L, headless labwc,
+  Fenster per labwc-Regel oben links). Umgebung: `LAUF_GROESSE`,
+  `LAUF_DUNKEL`, `LAUF_SPRACHE`, `LAUF_FILES_TOML` (M6),
+  `LAUF_ATTRAPPEN` (Laufwerks-Attrappen). Hilfen im Szenario
+  (`innen.sh`): `starte`, `q`, `taste`, `menue`, `warte_log`, `foto`,
+  `fall`. Ergebnisse unter `~/projects/dateien-arbeit/laeufe/NAME/`
+  (`ergebnis.txt`, `programm.log`, `fotos/`). Szenarien: `menues`,
+  `navigation`, `dialoge`, `oeffnen`, `einstellungen`, `laufwerke`, `start`.
 
 ## 6. Grenzen (Stand Gerüst)
 
 - Die klassischen Menüs zeigen keine Zugriffstasten in Einträgen und keine
   Haken; Haken und Auswahlpunkte kommen als Symbol
-  (`object-select-symbolic`, `radio-checked-symbolic`), Alt+Buchstabe
+  (`object-select-symbolic`, `media-record-symbolic`), Alt+Buchstabe
   öffnet nur die Menüs der Leiste (GTK-Mnemonik der Knöpfe).
 - Seitenleiste nur „Orte“ (Baum: Beta), Reiter, Suche, Netzwerk,
   Kompaktansicht: Beta.

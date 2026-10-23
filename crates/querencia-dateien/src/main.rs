@@ -63,6 +63,11 @@ fn erweiterungen(register: &mut app::Register) {
     operationen::registrieren(register);
 }
 
+/// One log line on stderr ("querencia-dateien: …"), as the other programs.
+pub fn log(text: &str) {
+    eprintln!("{PROGRAMM}: {text}");
+}
+
 fn stil_laden() {
     let css = gtk4::CssProvider::new();
     farbschema::folgen(&css, PROGRAMM);
