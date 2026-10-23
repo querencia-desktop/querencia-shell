@@ -152,6 +152,40 @@ impl Rueckfrage for Fragen {
     }
 }
 
+/// Mounts the desktop rules leave out because they have no GVolume, but
+/// that a person mounted below /media, /run/media or /mnt (a stick mounted
+/// by hand, the unix volume monitor of the test harness): Nautilus 2.30
+/// listed them, so does the side pane.
+fn eingehaengte_ohne_volume(monitor: &gio::VolumeMonitor, schon: &[Laufwerk]) -> Vec<Laufwerk> {
+    monitor
+        .mounts()
+        .into_iter()
+        .filter(|m| m.volume().is_none() && !m.is_shadowed())
+        .filter_map(|mount| {
+            let pfad = mount.root().path()?;
+            let unter = ["/media/", "/run/media/", "/mnt/"]
+                .iter()
+                .any(|p| pfad.starts_with(p));
+            let uri = mount.root().uri().to_string();
+            if !unter || schon.iter().any(|l| l.uri.as_deref() == Some(uri.as_str())) {
+                return None;
+            }
+            let facts = laufwerke::facts(&mount);
+            let picture = laufwerke::Picture::Removable;
+            Some(Laufwerk {
+                name: facts.name.clone(),
+                uri: Some(uri),
+                typ: laufwerke::VolumeType::Removable,
+                picture,
+                mounted: true,
+                removal: laufwerke::removal(&facts),
+                icon: laufwerke::volume_icon(picture),
+                quelle: Quelle::Mount(mount),
+            })
+        })
+        .collect()
+}
+
 pub fn fehler_zeigen(parent: &impl IsA<gtk4::Window>, titel: &str, text: &str) {
     gtk4::AlertDialog::builder()
         .message(titel)
@@ -324,11 +358,9 @@ impl Seitenleiste {
         };
         let Some(app) = f.app() else { return };
         let mut plaetze = feste_orte(app.papierkorb().icon());
-        plaetze.extend(
-            laufwerke::alle(app.laufwerke())
-                .into_iter()
-                .map(Platz::Laufwerk),
-        );
+        let mut alle = laufwerke::alle(app.laufwerke());
+        alle.extend(eingehaengte_ohne_volume(app.laufwerke(), &alle));
+        plaetze.extend(alle.into_iter().map(Platz::Laufwerk));
         plaetze.extend(
             app.lesezeichen()
                 .liste()
@@ -368,7 +400,10 @@ impl Seitenleiste {
                 && l.mounted
                 && let Some(how) = l.removal
             {
-                let aus = gtk4::Button::from_icon_name("media-eject");
+                // the sign itself: the Querencia icon theme (gnome-human)
+                // has no media-eject
+                let aus = gtk4::Button::with_label("⏏");
+                aus.update_property(&[gtk4::accessible::Property::Label(&how.menu_label())]);
                 aus.set_has_frame(false);
                 aus.set_can_focus(false);
                 aus.set_tooltip_text(Some(&how.menu_label()));
@@ -560,7 +595,7 @@ impl Seitenleiste {
                             Some("seite.auswerfen"),
                             None,
                             None,
-                            Some(&gio::ThemedIcon::new("media-eject").upcast()),
+                            None,
                         )),
                         Some(Removal::Unmount) => mitte.append_item(&eintrag(
                             &gettext("_Unmount"),

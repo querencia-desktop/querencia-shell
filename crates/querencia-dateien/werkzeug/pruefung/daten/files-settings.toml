@@ -1,0 +1,12 @@
+# Probe einer Querencia-Files-settings.toml für die Migration M6 (B §4.2)
+browser_mode = "columns"
+show_hidden = true
+sort_key = "modified"
+folders_first = true
+grid_folder_clicks = 1
+list_folder_clicks = 1
+sidebar_expanded = true
+check_for_updates = true
+
+[tabs]
+show_hidden = false

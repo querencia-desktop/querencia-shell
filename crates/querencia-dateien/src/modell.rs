@@ -43,6 +43,7 @@ pub enum Zustand {
 }
 
 type ZustandHandler = Rc<dyn Fn(&Zustand)>;
+type SortierHandler = Rc<dyn Fn(Sortierung)>;
 type Warter = (String, Box<dyn FnOnce(&Eintrag)>);
 
 struct Inner {
@@ -61,6 +62,7 @@ struct Inner {
     watch: RefCell<Option<FolderWatch>>,
     laedt: Cell<bool>,
     handler: RefCell<Vec<ZustandHandler>>,
+    sortier_handler: RefCell<Vec<SortierHandler>>,
     /// Callbacks waiting for a file name to appear ([`Ordnermodell::bei_erscheinen`]).
     warter: RefCell<Vec<Warter>>,
 }
@@ -117,6 +119,7 @@ impl Ordnermodell {
             watch: RefCell::default(),
             laedt: Cell::new(false),
             handler: RefCell::default(),
+            sortier_handler: RefCell::default(),
             warter: RefCell::default(),
         }))
     }
@@ -268,6 +271,16 @@ impl Ordnermodell {
         }
         self.0.sortierung.set(sortierung);
         self.0.sorter.changed(gtk4::SorterChange::Different);
+        let handler: Vec<SortierHandler> = self.0.sortier_handler.borrow().clone();
+        for h in handler {
+            h(sortierung);
+        }
+    }
+
+    /// `f` gets every new sort order (View menu, settings, a column head),
+    /// e.g. to show the arrow in the list view's column heads.
+    pub fn bei_sortierung(&self, f: impl Fn(Sortierung) + 'static) {
+        self.0.sortier_handler.borrow_mut().push(Rc::new(f));
     }
 
     pub fn verborgene_zeigen(&self) -> bool {
@@ -304,6 +317,14 @@ impl Ordnermodell {
     }
 
     fn melden(&self, zustand: Zustand) {
+        crate::log(&match &zustand {
+            Zustand::Laedt(o) => format!("Ordner {}: lesen", o.uri()),
+            Zustand::ErsterBlock => "erster Block".to_owned(),
+            Zustand::Geladen(n) => format!("Ordner gelesen: {n} Einträge"),
+            Zustand::Gestoppt => "Lesen gestoppt".to_owned(),
+            Zustand::Fehler(t) => format!("Ordner nicht lesbar: {t}"),
+            Zustand::OrdnerWeg => "Ordner verschwunden".to_owned(),
+        });
         let handler: Vec<ZustandHandler> = self.0.handler.borrow().clone();
         for h in handler {
             h(&zustand);
