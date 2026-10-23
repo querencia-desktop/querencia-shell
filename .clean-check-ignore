@@ -104,6 +104,13 @@
 #      nur S004 in der Kopie integration/panel-030-2 (Skript, tausch-panel-3.py,
 #      vorlage-erzeugen.sh wie integration/panel-030) und die höhere Zählung
 #      bei P002; sie fallen unter die Ausnahmen oben.
+# dateiarbeit (23.10.2026): neu nur S003/S004/S005 in
+#      crates/querencia-dateiarbeit (Rust englisch kommentiert, Prüfhülle
+#      werkzeug/namensraum.sh deutsch, Typografie in Oberflächentexten und
+#      deren Nennung in Kommentaren) und H002 für
+#      crates/querencia-dateiarbeit/CHANGELOG.md (CHANGELOG je Crate wie
+#      Panel/Desktop/Kürzel, in der Doc-Map); sie fallen unter die Ausnahmen
+#      oben (Vergleich mit main a1b3e53, ).
 # oberflaeche (23.10.2026): neu gegenüber main a1b3e53 sind vor allem
 #      verschobene Befunde: classic_menu.rs, classic_menu/gui_test.rs,
 #      symbole.rs, icon_theme.rs, farbschema.rs und portal.rs stehen jetzt
