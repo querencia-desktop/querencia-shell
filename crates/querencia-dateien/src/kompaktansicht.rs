@@ -40,6 +40,9 @@ const ZEICHEN_NORMAL: i32 = 70;
 const ZEICHEN_KLEIN: i32 = 56;
 /// Gap between icon and name (Nautilus' hbox spacing in the beside layout).
 pub const ABSTAND: i32 = 4;
+/// The name label's padding left and right ([`STIL`]: `padding: 0 3px`):
+/// GTK counts it into the size request.
+const RAND: i32 = 6;
 /// How many of the longest names are measured for the folder's widest
 /// name (the width follows the length closely; measuring 20 000 names on
 /// every change would hold up loading, B35).
@@ -316,7 +319,7 @@ impl Kompaktansicht {
         };
         let grenze = self.grenze();
         text.set_size_request(
-            breite_fuer(eigene, self.breiteste.get(), self.gleich.get(), grenze),
+            breite_fuer(eigene, self.breiteste.get(), self.gleich.get(), grenze) + RAND,
             -1,
         );
         // a cut name shows whole in the tooltip
