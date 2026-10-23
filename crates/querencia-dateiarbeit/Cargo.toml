@@ -1,0 +1,27 @@
+[package]
+name = "querencia-dateiarbeit"
+version = "0.1.0"
+description = "Querencia Dateiarbeit: Dateioperationen mit Fortschritt, Abbruch und Konfliktfrage, Laufwerke, Papierkorb, Überwachung und Öffnen – ohne GTK, für Desktop und Dateimanager"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "querencia_dateiarbeit"
+path = "src/lib.rs"
+
+[dependencies]
+# Translations through GNU gettext (own text domain querencia-dateiarbeit,
+# po/), as the panel libraries: gettext-system uses the gettext of glibc.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
+# GIO and GLib directly instead of through gtk4: the crate has no display.
+# Same versions and features (v2_66) as gtk4 0.11 brings along
+# (Cargo.lock), so nothing new is built; gio-unix for
+# DesktopAppInfo (starters), as querencia-desktop.
+gio = { version = "0.22", features = ["v2_66"] }
+gio-unix = "0.22"
+glib = { version = "0.22", features = ["v2_66"] }
+# libc (already in Cargo.lock) for renameat2 (RENAME_NOREPLACE,
+# RENAME_EXCHANGE) and its error numbers; nothing else of it.
+libc = "0.2"

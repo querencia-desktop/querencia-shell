@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Festplatte</title>
+  <rect x="4" y="14" width="56" height="36" rx="6" fill="#8c8c8c" stroke="#3c3c3c" stroke-width="3"/>
+  <rect x="9" y="19" width="46" height="18" rx="3" fill="#c8c8c8"/>
+  <rect x="9" y="40" width="30" height="5" rx="2" fill="#f07746"/>
+  <circle cx="51" cy="42.5" r="3.5" fill="#f07746" stroke="#b8532b" stroke-width="1.5"/>
+</svg>
