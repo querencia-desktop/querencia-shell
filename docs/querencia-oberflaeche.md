@@ -148,3 +148,33 @@ Siehe : Testnamen-Abgleich vorher/nachher
 (die 27 geteilten Tests laufen jetzt einmal im Crate statt in Panel und
 Desktop), GUI-Regression von Panel und Desktop, Fotos hell/dunkel,
 Symbol-Belastung QD-106, isolierte GUI-Tests der Menüs und der Symbole.
+
+## 8. Integration
+
+Maßgeblich sind die Arbeitsordner
+`~/projects/oberflaeche-arbeit/integration-panel-031/` und
+`~/projects/oberflaeche-arbeit/integration-desktop-027/`; im Repo liegen
+Kopien ohne Binaries und Kataloge (`integration/panel-031/`,
+`integration/desktop-027/`). Panel und Desktop sind unabhängig: jedes
+Programm hat seine eigene Ablage mit seiner Kopie von
+`querencia-oberflaeche.mo`; die Reihenfolge ist beliebig.
+
+```bash
+P=~/projects/oberflaeche-arbeit/integration-panel-031/panel-031-integrieren.sh
+bash $P pruefen                                 # P=alt (0.3.0-2 b6f9b2fa)
+PANEL_031_FREIGABE=ja bash $P aktivieren        # Ablage mit vier Katalogen + Link
+PANEL_031_FREIGABE=ja bash $P panel-neustart    # eigener Schritt, Wachhund bleibt
+PANEL_031_FREIGABE=ja bash $P zurueck           # Link → 0.3.0-2
+PANEL_031_FREIGABE=ja bash $P panel-neustart-zurueck
+D=~/projects/oberflaeche-arbeit/integration-desktop-027/desktop-027-integrieren.sh
+bash $D pruefen                                 # D=alt (0.2.6-2 a9e36001)
+DESKTOP_027_FREIGABE=ja bash $D aktivieren      # Ablage mit zwei Katalogen + Link
+DESKTOP_027_FREIGABE=ja bash $D desktop-neustart
+DESKTOP_027_FREIGABE=ja bash $D zurueck         # Link → 0.2.6-2
+DESKTOP_027_FREIGABE=ja bash $D desktop-neustart-zurueck
+```
+
+Die Tausch-Skripte (`tausch-panel-3.py`, `tausch-desktop.py`) sind
+byte-gleich mit denen von Panel 0.3.0-2 und Desktop 0.2.6-2. Das
+Desktop-Skript liest die Prozessliste jetzt ohne `grep -q` hinter einer
+Pipe (wie das Panel-Skript seit 0.2.5).
