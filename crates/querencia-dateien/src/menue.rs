@@ -518,7 +518,7 @@ fn fuellen(menue: &gio::Menu, tabelle: Vec<Vec<Punkt>>, fenster: &Rc<Fenster>) {
                 Art::Wahl => zustand(fenster, punkt.aktion)
                     .and_then(|v| v.get::<String>())
                     .filter(|v| Some(v.as_str()) == punkt.ziel)
-                    .map(|_| gio::ThemedIcon::new("radio-checked-symbolic").upcast()),
+                    .map(|_| gio::ThemedIcon::new("media-record-symbolic").upcast()),
             };
             let kuerzel = punkt.kuerzel.map(kuerzel_text);
             abschnitt.append_item(&eintrag(

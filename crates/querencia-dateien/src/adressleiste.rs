@@ -129,6 +129,23 @@ pub fn vervollstaendigen(text: &str, ordner: impl Fn(&Path) -> Vec<String>) -> O
     (neu != text).then_some(neu)
 }
 
+/// Tab in the entry: completes `text` as typed – "~/…", absolute, or
+/// relative to the shown folder `hier` – and gives it back in the same form.
+pub fn tab_ergaenzen(text: &str, hier: Option<&Path>, home: &Path) -> Option<String> {
+    let (vorne, absolut) = if let Some(rest) = text.strip_prefix("~/") {
+        ("~/".to_owned(), format!("{}/{rest}", home.display()))
+    } else if text.starts_with('/') {
+        (String::new(), text.to_owned())
+    } else {
+        let hier = hier?;
+        (String::new(), format!("{}/{text}", hier.display()))
+    };
+    let neu = vervollstaendigen(&absolut, ordner_in)?;
+    let basis = &absolut[..absolut.len() - text.len() + vorne.len()];
+    let rest = neu.strip_prefix(basis)?;
+    Some(format!("{vorne}{rest}"))
+}
+
 fn ordner_in(dir: &Path) -> Vec<String> {
     std::fs::read_dir(dir)
         .map(|r| {
@@ -154,6 +171,8 @@ pub struct Adressleiste {
     gezeigt: RefCell<Vec<(gtk4::ToggleButton, gio::File)>>,
     immer_text: Cell<bool>,
     setzt: Cell<bool>,
+    /// The button to scroll into view once the bar has its new size.
+    zeigen_nach: RefCell<Option<gtk4::ToggleButton>>,
 }
 
 impl Adressleiste {
@@ -205,6 +224,7 @@ impl Adressleiste {
             gezeigt: RefCell::default(),
             immer_text: Cell::new(false),
             setzt: Cell::new(false),
+            zeigen_nach: RefCell::default(),
         });
         a.signale();
         if let Some(app) = fenster.app() {
@@ -219,6 +239,10 @@ impl Adressleiste {
         adj.connect_changed(move |_| {
             if let Some(a) = weak.upgrade() {
                 a.pfeile();
+                let k = a.zeigen_nach.borrow().clone();
+                if let Some(k) = k {
+                    a.zeigen(&k);
+                }
             }
         });
         let weak = Rc::downgrade(self);
@@ -256,13 +280,12 @@ impl Adressleiste {
                 }
                 gdk::Key::Tab if crate::fenster::ohne_strg_alt(zustand) => {
                     let text = a.feld.text().to_string();
-                    let home = glib::home_dir();
-                    let lokal = if let Some(rest) = text.strip_prefix("~/") {
-                        format!("{}/{rest}", home.display())
-                    } else {
-                        text.clone()
-                    };
-                    if let Some(neu) = vervollstaendigen(&lokal, ordner_in) {
+                    let hier = a
+                        .fenster
+                        .upgrade()
+                        .and_then(|f| f.ort())
+                        .and_then(|o| o.path());
+                    if let Some(neu) = tab_ergaenzen(&text, hier.as_deref(), &glib::home_dir()) {
                         a.feld.set_text(&neu);
                         a.feld.set_position(-1);
                     }
@@ -320,12 +343,9 @@ impl Adressleiste {
         }
         self.setzt.set(false);
         if let Some(k) = aktiv {
-            let weak = Rc::downgrade(self);
-            glib::idle_add_local_once(move || {
-                if let Some(a) = weak.upgrade() {
-                    a.zeigen(&k);
-                }
-            });
+            // now if the size is known, else when the adjustment changes
+            self.zeigen(&k);
+            self.zeigen_nach.replace(Some(k));
         }
     }
 
@@ -412,8 +432,12 @@ impl Adressleiste {
         }
         if let Some(n) = name {
             let l = gtk4::Label::new(Some(n));
-            l.set_ellipsize(gtk4::pango::EllipsizeMode::Middle);
+            // the minimum width is the text (up to 24 characters), so a long
+            // path overflows into the arrows instead of squeezing every button
+            let zeichen = i32::try_from(n.chars().count().min(24) + 1).unwrap_or(24);
+            l.set_width_chars(zeichen);
             l.set_max_width_chars(24);
+            l.set_ellipsize(gtk4::pango::EllipsizeMode::Middle);
             inhalt.append(&l);
             k.set_tooltip_text(Some(n));
         } else {
@@ -561,6 +585,29 @@ mod tests {
             aufloesen(" file:///tmp ", None, home).path().unwrap(),
             Path::new("/tmp")
         );
+    }
+
+    #[test]
+    fn tab_keeps_the_typed_form() {
+        let dir = std::env::temp_dir().join(format!("qdat-tab-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("Dokumente")).unwrap();
+        std::fs::create_dir_all(dir.join("Downloads")).unwrap();
+        assert_eq!(
+            tab_ergaenzen("Dok", Some(&dir), Path::new("/x")).as_deref(),
+            Some("Dokumente/")
+        );
+        assert_eq!(
+            tab_ergaenzen("~/Dok", None, &dir).as_deref(),
+            Some("~/Dokumente/")
+        );
+        let abs = format!("{}/Dow", dir.display());
+        assert_eq!(
+            tab_ergaenzen(&abs, None, Path::new("/x")),
+            Some(format!("{}/Downloads/", dir.display()))
+        );
+        assert_eq!(tab_ergaenzen("Do", Some(&dir), Path::new("/x")), None);
+        assert_eq!(tab_ergaenzen("Dok", None, Path::new("/x")), None);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
