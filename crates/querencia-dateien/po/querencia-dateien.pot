@@ -642,7 +642,7 @@ msgid "Querencia Desktop {release}"
 msgstr ""
 
 #: src/info.rs:164
-msgid "Alpha – not released for everyday use."
+msgid "Beta – not released for everyday use."
 msgstr ""
 
 #: src/info.rs:179
