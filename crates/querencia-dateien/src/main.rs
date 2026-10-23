@@ -42,6 +42,10 @@ mod operationen;
 mod ziehen;
 mod zwischenablage;
 
+// Welle C2 (dateien-miniaturen-suche): mod-Zeilen unter dieser Zeile.
+mod miniaturen;
+mod suche;
+
 use std::rc::Rc;
 
 use gtk4::prelude::*;
@@ -62,6 +66,10 @@ fn erweiterungen(register: &mut app::Register) {
 
     // Welle B3: Aufrufe unter dieser Zeile.
     operationen::registrieren(register);
+
+    // Welle C2 (dateien-miniaturen-suche): Aufrufe unter dieser Zeile.
+    miniaturen::registrieren(register);
+    suche::registrieren(register);
 }
 
 /// One log line on stderr ("querencia-dateien: …"), as the other programs.
