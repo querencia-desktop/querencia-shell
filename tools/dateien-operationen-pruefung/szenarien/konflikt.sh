@@ -23,7 +23,7 @@ pruefe K3 "Alt+U" "Umbenennen: „x (Kopie).txt“, Ziel bleibt" '[ "$(cat "$T/b
 titel; einfuegen_frage; q "key Escape" "wait 800"; warte_log 'kopieren fertig: .*abgebrochen'
 pruefe K4 "Esc" "Abbrechen: nichts geändert" 'grep -a -q "Antwort zu Auftrag [0-9]*: Abbrechen" "$LOG" && [ "$(cat "$T/b/x.txt")" = alt ] && [ "$(ls "$T/b" | wc -l)" = 5 ]' "$(ls "$T/b" | tr '\n' ' ')"
 titel; hoch; hinein 0
-strg a; q "keydown Control_L" "move $((450 + OX)) $(( $(zeile 0) + OY ))" "click" "keyup Control_L" "wait 400"; strg c
+strg a; q "keydown Control_L" "move $((950 + OX)) $(( $(zeile 0) + OY ))" "click" "keyup Control_L" "wait 400"; strg c
 hoch; hinein 1
 n=$(fragen); zklick 0; strg v; warte_frage "$n"
 alt d; q "key Return" "wait 1000"; warte_log '0 erledigt, 3 übersprungen' 10
