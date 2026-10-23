@@ -205,6 +205,8 @@ impl Listenansicht {
         if let Some(f) = self.kern.rueckrufe.sortieren.borrow().clone() {
             f(neu);
         }
+        // one arrow only (GTK added the column in front of the old one)
+        self.sortierung_zeigen(neu);
         self.kern.nach_umordnen();
     }
 
@@ -223,6 +225,10 @@ impl Listenansicht {
             .find(|(sp, _)| *sp == spalte)
             .map(|(_, c)| c.clone());
         self.zeigt.set(true);
+        // GTK keeps the former column as a secondary sorter and draws its
+        // arrow too; Nautilus shows one: clear first
+        self.ansicht
+            .sort_by_column(None::<&gtk4::ColumnViewColumn>, gtk4::SortType::Ascending);
         self.ansicht.sort_by_column(
             col.as_ref(),
             if s.umgekehrt {
