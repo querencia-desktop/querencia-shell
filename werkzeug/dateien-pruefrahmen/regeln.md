@@ -23,7 +23,7 @@
 |---|---|---|---|
 | **L** lokal | `GIO_USE_VFS=local`, `GIO_USE_VOLUME_MONITOR=unix` | Session-Bus ohne aktivierbare Dienste | Ordner, Operationen, Papierkorb über `$XDG_DATA_HOME/Trash`, Eigenschaften, Suche, Umbenennen, Attrappen |
 | **G** GVfs | GVfs-Client, `GIO_USE_VOLUME_MONITOR=unix` | Session-Bus mit nur `gvfsd --no-fuse` und `gvfsd-metadata` | `trash:///`, `sftp://` gegen den eigenen sshd (`--sshd`), `network:///` (bleibt leer), Attrappen |
-| H Hardware | – | – | echte udisks/USB/SMB nur auf der Probe-VM oder mit pottrauschens Zustimmung; diese Hülle deckt H nicht ab |
+| H Hardware | – | – | echte udisks/USB/SMB nur auf der Probe-VM oder mit Zustimmung des Besitzers; diese Hülle deckt H nicht ab |
 
 **Beide Stufen:**
 - Start mit `env -i`. Gesetzt werden nur `HOME`, `USER`, `LOGNAME`, `LANG`, `LC_ALL`, `TERM`, `PATH`, `TMPDIR`, die vier `XDG_*_HOME`, `XDG_RUNTIME_DIR`, `XDG_DATA_DIRS`, `XDG_CONFIG_DIRS`, beide Busadressen, `GSETTINGS_BACKEND=keyfile`, `GIO_USE_VOLUME_MONITOR`, `GVFS_REMOTE_VOLUME_MONITOR_IGNORE`, `GTK_USE_PORTAL=0`, `NO_AT_BRIDGE`, `GTK_A11Y`, `QD_HUELLE`, `QD_PROFIL`, dazu `--setenv`. Keine `QUERENCIA_*`-Variable aus der Live-Umgebung.
@@ -92,7 +92,7 @@ bash $H/huelle.sh $(bash $H/attrappen.sh alle optionen) --lesen ~/projects/WT L 
 bash $H/huelle.sh --sshd G -- sh -c 'gio mount "$QD_SSH_URI" </dev/null && gio list "$QD_SSH_URI"'
 ```
 
-**Tests im Crate** können „nur in der Hülle“ erzwingen: `QD_HUELLE` muss gesetzt sein, sonst überspringen oder scheitern. Feste Pfade unter `~` sind in der Hülle unsichtbar. Dateisystemgrenzen kommen über `--tmpfs grenze[:GRÖSSE]` als `$QD_PROFIL/grenze`.
+**Tests im Crate** können „nur in der Hülle“ erzwingen: `QD_HUELLE` muss gesetzt sein, sonst überspringen oder scheitern. Feste Pfade im echten HOME sind in der Hülle unsichtbar. Dateisystemgrenzen kommen über `--tmpfs grenze[:GRÖSSE]` als `$QD_PROFIL/grenze`.
 
 ## 4. Laufwerks-Attrappen (`attrappen.sh`)
 
@@ -105,7 +105,7 @@ bash $H/huelle.sh --sshd G -- sh -c 'gio mount "$QD_SSH_URI" </dev/null && gio l
 
 `attrappen.sh ART pruefen [L|G]` belegt die Sicht mit `gio-sicht.py` und `gio mount -l` und prüft die Erwartungen der Tabelle. `ART` ist eine der vier Attrappen oder `alle`.
 
-### Was ohne sudo nicht geht (für pottrauschen)
+### Was ohne sudo nicht geht (für den Besitzer)
 
 1. **Schreibbare Attrappe mit echtem Dateisystem** (vfat/ext4-Semantik, Größe, Aushängen): `fuse2fs` (Paket `fuse2fs`) bzw. FUSE im Namensraum. In der Hülle gibt es heute weder `/dev/fuse` noch setuid-`fusermount3`. ramfs ersetzt das nur für „schreibbares GMount“.
 2. **SMB-Erfolgsfall:** `samba` als Testserver, am besten auf der Probe-VM. In der Hülle wäre er auf `127.0.0.1` erreichbar.
