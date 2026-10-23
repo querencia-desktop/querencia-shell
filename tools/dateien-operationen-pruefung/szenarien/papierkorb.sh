@@ -6,7 +6,7 @@ TR=$(papierkorb_ordner)
 drei_waehlen() { q "move $((950 + OX)) $(( $(zeile 0) + OY ))" "click" "wait 200" "keydown Shift_L" "move $((950 + OX)) $(( $(zeile 2) + OY ))" "click" "keyup Shift_L" "wait 300"; }
 start_app "$T"
 # d1, d2, d3, keep
-drei_waehlen; q "key Delete" "wait 300"
+drei_waehlen; q "wait 500" "key Delete" "wait 300"
 warte_log 'in den Papierkorb fertig' 10
 pruefe P1 "Entf auf drei Dateien" "ohne Frage im Papierkorb, .trashinfo je Datei" '! grep -a -q "Frage:" "$LOG" && [ "$(ls "$TR/files" | wc -l)" = 3 ] && [ "$(ls "$TR/info" | wc -l)" = 3 ] && [ ! -e "$T/d1.txt" ]' "$(ls "$TR/files" | tr '\n' ' ')"
 gehe_zu "$TR/files"
@@ -15,7 +15,7 @@ zklick 0; strg a; aktion wiederherstellen
 warte_log 'wiederherstellen fertig' 10
 pruefe P2 "Wiederherstellen (Menü Bearbeiten)" "an den Ursprungsort, Papierkorb leer" '[ "$(cat "$T/d2.txt")" = "inhalt 2" ] && [ -z "$(ls -A "$TR/files")" ] && [ -z "$(ls -A "$TR/info")" ]' "$(ls "$T" | tr '\n' ' ')"
 gehe_zu "$T"
-drei_waehlen; q "key Delete" "wait 300"
+drei_waehlen; q "wait 500" "key Delete" "wait 300"
 warte_bis '[ "$(ls "$TR/files" | wc -l)" = 3 ]' 10
 gehe_zu "$TR/files"
 zklick 0; q "key Delete" "wait 800"
