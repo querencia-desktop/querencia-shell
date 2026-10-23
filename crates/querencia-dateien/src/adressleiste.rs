@@ -416,6 +416,18 @@ impl Adressleiste {
                     }
                 }
             });
+            // the middle button opens the folder in a new tab (B §1.3)
+            let mitte = gtk4::GestureClick::new();
+            mitte.set_button(gdk::BUTTON_MIDDLE);
+            let weak = Rc::downgrade(self);
+            let d4 = d.clone();
+            mitte.connect_released(move |g, _, _, _| {
+                g.set_state(gtk4::EventSequenceState::Claimed);
+                if let Some(f) = weak.upgrade().and_then(|a| a.fenster.upgrade()) {
+                    f.reiter_oeffnen(Some(&d4), false, None);
+                }
+            });
+            k.add_controller(mitte);
             if let (Some(f), Some(h)) = (&fenster, &ablage) {
                 let d3 = d.clone();
                 h(f, k.upcast_ref(), Rc::new(move |_, _| Some(d3.clone())));
