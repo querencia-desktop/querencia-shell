@@ -22,13 +22,13 @@ warte_bis '[ -f "$QD_PROFIL/grenze/z.txt" ] && [ ! -e "$T/z.txt" ]' 10
 pruefe Z4 "Umschalt, anderes Dateisystem" "verschoben (kopiert, dann gelöscht)" '[ -f "$QD_PROFIL/grenze/z.txt" ] && [ ! -e "$T/z.txt" ]' "$(grep -a 'Ablage:' "$LOG" | tail -1 | cut -c1-200)"
 eingabe <<< "wait 1000"
 # a, b, grenze, y.txt  → y.txt auf „Persönlicher Ordner“ in der Seitenleiste
-ziehe_nach "$XZ" "$(zeile 3)" 320 260
+ziehe_nach "$XZ" "$(zeile 3)" $PERSOENLICH
 warte_bis '[ -f "$HOME/y.txt" ] && [ ! -e "$T/y.txt" ]' 10
 pruefe Z5 "auf „Persönlicher Ordner“ in der Seitenleiste" "verschoben" '[ -f "$HOME/y.txt" ] && [ ! -e "$T/y.txt" ]' "$(grep -a 'Ablage:' "$LOG" | tail -1 | cut -c1-200)"
 eingabe <<< "wait 1000"
 foto ziehen-nachher
 # a → Knopf „heim“ im Knopfpfad (Eltern)
-ziehe_nach "$XZ" "$(zeile 0)" 285 182
+ziehe_nach "$XZ" "$(zeile 0)" $PFAD_ERSTER
 warte_bis '[ -d "$HOME/a" ] && [ ! -e "$T/a" ]' 10
 pruefe Z6 "Ordner auf den Knopf des Elternordners" "verschoben" '[ -d "$HOME/a" ] && [ -f "$HOME/a/y.txt" ] && [ ! -e "$T/a" ]' "$(grep -a 'Ablage:' "$LOG" | tail -1 | cut -c1-200)"
 # in den eigenen Ordner: nichts
@@ -44,19 +44,19 @@ TR=$(papierkorb_ordner)
 gio trash "$T/weg.txt"
 aktion gehe-zu "'$(python3 -c 'import sys,pathlib;print(pathlib.Path(sys.argv[1]).as_uri())' "$TR/files")'"
 warte_ordner "$n"
-ziehe_nach "$XZ" "$(zeile 0)" 320 260 Control_L
+ziehe_nach "$XZ" "$(zeile 0)" $PERSOENLICH Control_L
 warte_bis '[ -f "$HOME/weg.txt" ]' 10
 pruefe Z8 "aus dem Papierkorb mit Strg auf „Persönlicher Ordner“" "verschoben, .trashinfo weg" '[ -f "$HOME/weg.txt" ] && [ -z "$(ls -A "$TR/files")" ] && [ -z "$(ls -A "$TR/info")" ]' "$(grep -a 'Ziehen beginnt\|Ablage:' "$LOG" | tail -2 | tr '\n' ' ' | cut -c1-250)"
 # Symbolansicht (B2): Datei auf Ordnersymbol; Zelle i der ersten Reihe bei x = 455 + 129 i, Symbol y = 233
 mkdir -p "$T/sym/c"; echo s > "$T/sym/s.txt"
 gehe_zu "$T/sym"; strg 1; eingabe <<< "wait 800"
-ziehe_nach 584 233 455 233
+ziehe_nach 584 $SYM_Y 455 $SYM_Y
 warte_bis '[ -f "$T/sym/c/s.txt" ] && [ ! -e "$T/sym/s.txt" ]' 10
 pruefe Z9 "Symbolansicht: Datei auf Ordnersymbol" "verschoben" '[ -f "$T/sym/c/s.txt" ] && [ ! -e "$T/sym/s.txt" ]' "$(grep -a 'Ablage:' "$LOG" | tail -1 | cut -c1-200)"
 foto ziehen-symbolansicht
 # Gegenfall: auf freier Fläche bleibt das Gummiband der Ansicht (die DragSource greift nur auf Einträgen)
 echo t > "$T/sym/t.txt"; eingabe <<< "wait 1200"
 vor=$(zahl_log 'Ziehen beginnt')
-ziehe_nach 1000 600 440 215
+ziehe_nach 1000 600 405 205
 eingabe <<< "wait 600"
 pruefe Z10 "Gummiband auf freier Fläche (Symbolansicht)" "wählt die Zellen, kein Ziehen" '[ "$(zahl_log "Ziehen beginnt")" = "$vor" ] && grep -a "Auswahl Symbolansicht" "$LOG" | tail -1 | grep -q "c, t.txt"' "$(grep -a 'Auswahl Symbolansicht' "$LOG" | tail -1)"

@@ -4,7 +4,7 @@ T=$HOME/Test; mkdir -p "$T/a"
 python3 - "$T" <<'P'
 import os, sys
 t = sys.argv[1]
-for name, n in (("viele", 40000), ("viele2", 40000), ("riesig", 80000)):
+for name, n in (("viele", 80000), ("viele2", 80000), ("riesig", 80000)):
     d = os.path.join(t, name); os.makedirs(d)
     for i in range(n):
         open(os.path.join(d, f"datei-{i:05d}.txt"), "w").close()
@@ -22,18 +22,18 @@ abbrechen_klick() { # AUFTRAG – Fenster mittig (labwc), Titelleiste 26 px, Lag
   q "move $sx $sy" "wait 100" "click" "wait 300"
 }
 start_app "$T"
-# a, riesig, viele, viele2
-kopieren_einfuegen 2
-# das Fortschrittsfenster nimmt beim Erscheinen die Tastatur: danach zurück ins Hauptfenster
-warte_log 'Fortschritt gezeigt: Auftrag 1' 10
-titel
-kopieren_einfuegen 3
+# a, riesig, viele, viele2 – beide Kopien in einem Zug, bevor das Fortschrittsfenster
+# erscheint (es nimmt die Tastatur; ein Klick ins Hauptfenster höbe dieses darüber)
+q "move $((950 + OX)) $(( $(zeile 2) + OY ))" "click" "wait 100" \
+  "keydown Control_L" "type c" "type v" "keyup Control_L" "wait 50" \
+  "move $((950 + OX)) $(( $(zeile 3) + OY ))" "click" "wait 100" \
+  "keydown Control_L" "type c" "type v" "keyup Control_L"
 warte_bis '[ "$(zahl_log "Fortschritt gezeigt")" -ge 2 ]' 20
 eingabe <<< "wait 300"
 foto fortschritt-zwei
 pruefe F1 "zwei Kopien gleichzeitig" "Fenster „Dateien werden kopiert …“ mit zwei Zeilen" '[ "$(zahl_log "Fortschritt gezeigt")" -ge 2 ]' "$(grep -a 'Fortschritt gezeigt' "$LOG" | tr '\n' ' ' | cut -c1-200)"
-warte_bis '[ "$(zahl_log "kopieren fertig: 1 erledigt")" -ge 2 ]' 90
-pruefe F2 "beide Kopien fertig" "40001 bzw. 40000 Objekte, Inhalt gleich, Fenster zu" '[ "$(ls -A "$T/viele (Kopie)" | wc -l)" = 40001 ] && [ "$(ls -A "$T/viele2 (Kopie)" | wc -l)" = 40000 ] && cmp -s "$T/viele/gross.bin" "$T/viele (Kopie)/gross.bin" && grep -a -q "Fortschrittsfenster geschlossen" "$LOG"' "$(ls "$T" | tr '\n' ' ')"
+warte_bis '[ "$(zahl_log "kopieren fertig: 1 erledigt")" -ge 2 ]' 180
+pruefe F2 "beide Kopien fertig" "80001 bzw. 80000 Objekte, Inhalt gleich, Fenster zu" '[ "$(ls -A "$T/viele (Kopie)" | wc -l)" = 80001 ] && [ "$(ls -A "$T/viele2 (Kopie)" | wc -l)" = 80000 ] && cmp -s "$T/viele/gross.bin" "$T/viele (Kopie)/gross.bin" && grep -a -q "Fortschrittsfenster geschlossen" "$LOG"' "$(ls "$T" | tr '\n' ' ')"
 eingabe <<< "wait 1500"
 # a, riesig, viele, viele (Kopie), viele2, viele2 (Kopie)
 kopieren_einfuegen 1
