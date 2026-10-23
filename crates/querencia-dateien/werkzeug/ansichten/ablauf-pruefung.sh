@@ -207,8 +207,9 @@ M=$(zeile 'Kontextmenü:' | sed 's/.*Kontextmenü: //')
 # gesperrte Einträge stehen in [ ]; Aktionen von B3 fehlen vor dem Zusammenbau
 MO=$(printf '%s' "$M" | tr -d '[]')
 info "A12 Ordner: $M"
-fall A12 "Ordner: Öffnen, In neuem Fenster öffnen, In Ordner einfügen" bash -c \
-    'case $1 in "Öffnen In neuem Fenster öffnen"*"In Ordner einfügen"*) exit 0 ;; esac; exit 1' _ "$MO"
+# Welle C3: „In neuem Reiter öffnen“ steht vor „In neuem Fenster öffnen“ (Nautilus 2.30)
+fall A12 "Ordner: Öffnen, In neuem Reiter öffnen, In neuem Fenster öffnen, In Ordner einfügen" bash -c \
+    'case $1 in "Öffnen In neuem Reiter öffnen In neuem Fenster öffnen"*"In Ordner einfügen"*) exit 0 ;; esac; exit 1' _ "$MO"
 taste Escape; q "wait 300"
 read -r X Y < <(mitte_von 0 1); klick "$X" "$Y"
 read -r X2 Y2 < <(mitte_von 2 1); q "move $X2 $Y2" "keydown Control_L" "click" "keyup Control_L" "wait 300"
