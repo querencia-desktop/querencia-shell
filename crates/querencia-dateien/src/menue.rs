@@ -61,6 +61,7 @@ pub const KUERZEL: &[(&str, &[&str])] = &[
     ("win.normale-groesse", &["<Control>0", "<Control>KP_0"]),
     ("win.ansicht::symbole", &["<Control>1"]),
     ("win.ansicht::liste", &["<Control>2"]),
+    ("win.ansicht::kompakt", &["<Control>3"]),
     ("win.nach-oben", &["<Alt>Up"]),
     ("win.zurueck", &["<Alt>Left"]),
     ("win.vor", &["<Alt>Right"]),
@@ -68,6 +69,23 @@ pub const KUERZEL: &[(&str, &[&str])] = &[
     ("win.ort", &["<Control>l"]),
     ("win.lesezeichen-hinzufuegen", &["<Control>d"]),
     ("win.hilfe", &["F1"]),
+    // Reiter (Welle C3, `reiter/`)
+    ("win.neuer-reiter", &["<Control>t"]),
+    ("win.oeffnen-neuer-reiter", &["<Shift><Control>o"]),
+    ("win.reiter-vorheriger", &["<Control>Page_Up"]),
+    ("win.reiter-naechster", &["<Control>Page_Down"]),
+    ("win.reiter-links", &["<Shift><Control>Page_Up"]),
+    ("win.reiter-rechts", &["<Shift><Control>Page_Down"]),
+    ("win.reiter::1", &["<Alt>1"]),
+    ("win.reiter::2", &["<Alt>2"]),
+    ("win.reiter::3", &["<Alt>3"]),
+    ("win.reiter::4", &["<Alt>4"]),
+    ("win.reiter::5", &["<Alt>5"]),
+    ("win.reiter::6", &["<Alt>6"]),
+    ("win.reiter::7", &["<Alt>7"]),
+    ("win.reiter::8", &["<Alt>8"]),
+    ("win.reiter::9", &["<Alt>9"]),
+    ("win.reiter::0", &["<Alt>0"]),
 ];
 
 /// Sets the application accels (startup).
@@ -206,12 +224,20 @@ const fn N_(msgid: &'static str) -> &'static str {
 
 fn datei() -> Vec<Vec<Punkt>> {
     vec![
-        vec![p(
-            N_("New _Window"),
-            "app.neues-fenster",
-            Some("<Control>n"),
-            Some("window-new"),
-        )],
+        vec![
+            p(
+                N_("New _Tab"),
+                "win.neuer-reiter",
+                Some("<Control>t"),
+                Some("tab-new"),
+            ),
+            p(
+                N_("New _Window"),
+                "app.neues-fenster",
+                Some("<Control>n"),
+                Some("window-new"),
+            ),
+        ],
         vec![
             p(
                 N_("Create _Folder"),
@@ -228,6 +254,12 @@ fn datei() -> Vec<Vec<Punkt>> {
                 "win.oeffnen",
                 Some("<Control>o"),
                 Some("document-open"),
+            ),
+            p(
+                N_("Open in New _Tab"),
+                "win.oeffnen-neuer-reiter",
+                Some("<Shift><Control>o"),
+                None,
             ),
             p(
                 N_("Open in New _Window"),
@@ -380,6 +412,7 @@ fn ansicht() -> Vec<Vec<Punkt>> {
         vec![
             w(N_("_Icons"), "win.ansicht", "symbole", Some("<Control>1")),
             w(N_("_List"), "win.ansicht", "liste", Some("<Control>2")),
+            w(N_("_Compact"), "win.ansicht", "kompakt", Some("<Control>3")),
         ],
     ]
 }
@@ -672,6 +705,8 @@ pub fn oeffnen_mit_menue(eintraege: &[Eintrag]) -> gio::Menu {
 /// The menu bar of a window.
 pub struct Menueleiste {
     leiste: gtk4::Box,
+    /// „Reiter“: only while the window has two tabs or more.
+    reiter: gtk4::MenuButton,
 }
 
 impl Menueleiste {
@@ -679,14 +714,16 @@ impl Menueleiste {
         let leiste = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
         leiste.add_css_class("querencia-menuleiste");
         type Fueller = fn(&gio::Menu, &Rc<Fenster>);
-        let menues: [(&str, Fueller); 6] = [
+        let menues: [(&str, Fueller); 7] = [
             (N_("_File"), |m, f| fuellen(m, datei(), f)),
             (N_("_Edit"), |m, f| fuellen(m, bearbeiten(), f)),
             (N_("_View"), |m, f| fuellen(m, ansicht(), f)),
             (N_("_Go"), |m, f| fuellen(m, gehe_zu(), f)),
             (N_("_Bookmarks"), lesezeichen_fuellen),
+            (N_("_Tabs"), crate::reiter::menue_fuellen),
             (N_("_Help"), |m, f| fuellen(m, hilfe(), f)),
         ];
+        let mut knoepfe = Vec::new();
         for (titel, fueller) in menues {
             let knopf = gtk4::MenuButton::new();
             knopf.set_label(&text(titel));
@@ -706,8 +743,19 @@ impl Menueleiste {
                 }
             });
             leiste.append(&knopf);
+            knoepfe.push(knopf);
         }
-        Self { leiste }
+        let reiter = knoepfe.swap_remove(5);
+        reiter.set_visible(false);
+        Self { leiste, reiter }
+    }
+
+    /// Shows or hides the menu „Reiter“ (from two tabs on, Nautilus 2.30);
+    /// true when that changed something.
+    pub fn reiter_zeigen(&self, an: bool) -> bool {
+        let anders = self.reiter.is_visible() != an;
+        self.reiter.set_visible(an);
+        anders
     }
 
     pub fn widget(&self) -> &gtk4::Box {
@@ -759,14 +807,13 @@ mod tests {
         assert_eq!(finde("_List").kuerzel, Some("<Control>2"));
         assert_eq!(finde("_Location…").kuerzel, Some("<Control>l"));
         assert_eq!(finde("Online _Help").kuerzel, Some("F1"));
-        // no B-stage entries in 0.1 (B §3.3)
-        for b in [
-            "New _Tab",
-            "Connect to _Server…",
-            "_Undo",
-            "D_uplicate",
-            "_Compact",
-        ] {
+        // Welle C3: tabs and the compact view (B §3.3)
+        assert_eq!(finde("New _Tab").kuerzel, Some("<Control>t"));
+        assert_eq!(finde("Open in New _Tab").kuerzel, Some("<Shift><Control>o"));
+        assert_eq!(finde("_Compact").kuerzel, Some("<Control>3"));
+        assert_eq!(finde("_Compact").ziel, Some("kompakt"));
+        // no other B-stage entries yet (B §3.3)
+        for b in ["Connect to _Server…", "_Undo", "D_uplicate"] {
             assert!(!alle.iter().any(|p| p.text == b), "{b} ist Beta");
         }
     }

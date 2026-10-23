@@ -1,7 +1,8 @@
 //! One browser window (B §3.2): menu bar, toolbar, location bar (path
-//! buttons or entry), side pane with places, the view switch, the trash
-//! bar and the status bar. The window owns its folder model and its
-//! history; views report through [`Rueckruf`].
+//! buttons or entry), side pane with places, the tabs and the status bar.
+//! Every tab owns its folder model, views and history (`reiter/`); the
+//! bars follow the tab shown, views report through the tab's
+//! [`crate::ansicht::Rueckruf`].
 //!
 //! Public for the modules of Welle B2/B3 (`docs/dateien.md` §3.4):
 //! [`Fenster::window`], [`Fenster::ort`], [`Fenster::modell`],
@@ -16,14 +17,14 @@ use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib};
 use querencia_dateiarbeit::auftraege::{Job, Op};
 
-use crate::adressleiste::{Adressleiste, Verlauf};
-use crate::ansicht::{Ansicht, Ansichten, Kontextziel, Neu, Rueckruf};
+use crate::adressleiste::Adressleiste;
+use crate::ansicht::{Ansicht, Ansichten};
 use crate::app::App;
 use crate::eintrag::Eintrag;
-use crate::i18n::gettext;
 use crate::konfig::Werte;
 use crate::modell::{Ordnermodell, Zustand};
-use crate::regeln::{Ansichtsart, Kriterium, Sortierung, Zoom};
+use crate::regeln::{Ansichtsart, Kriterium, Zoom};
+use crate::reiter::{self, Reiter, Reiterliste};
 use crate::seitenleiste::Seitenleiste;
 use crate::statusleiste::Statusleiste;
 use crate::werkzeugleiste::Werkzeugleiste;
@@ -36,72 +37,18 @@ type AuswahlHandler = Rc<dyn Fn()>;
 pub struct Fenster {
     app: Weak<App>,
     window: gtk4::ApplicationWindow,
-    modell: Ordnermodell,
-    ansichten: OnceCell<Ansichten>,
-    verlauf: RefCell<Verlauf>,
+    /// The tabs; each has its folder model, views and history.
+    reiter: Reiterliste,
     menue: OnceCell<menue::Menueleiste>,
     werkzeugleiste: OnceCell<Werkzeugleiste>,
     adressleiste: OnceCell<Rc<Adressleiste>>,
     seitenleiste: OnceCell<Rc<Seitenleiste>>,
     statusleiste: OnceCell<Rc<Statusleiste>>,
-    /// Holds the views; keys that act on files are bound here.
+    /// Holds the tabs; keys that act on files are bound here.
     bereich: gtk4::Box,
-    papierkorb_leiste: gtk4::Box,
     paned: gtk4::Paned,
     ort_handler: RefCell<Vec<OrtHandler>>,
     auswahl_handler: RefCell<Vec<AuswahlHandler>>,
-}
-
-/// The window's side of the view callbacks.
-struct FensterRueckruf(Weak<Fenster>);
-
-impl Rueckruf for FensterRueckruf {
-    fn aktivieren(&self, eintraege: &[Eintrag], neues_fenster: bool) {
-        if let Some(f) = self.0.upgrade() {
-            oeffnen::oeffnen(&f, eintraege, neues_fenster);
-        }
-    }
-
-    fn kontextmenue(&self, ziel: Kontextziel, widget: &gtk4::Widget, x: f64, y: f64) {
-        if let Some(f) = self.0.upgrade()
-            && let Some(app) = f.app.upgrade()
-            && let Some(haken) = app.register().kontextmenue.clone()
-        {
-            haken(&f, ziel, widget, x, y);
-        }
-    }
-
-    fn adresse_tippen(&self, anfang: &str) {
-        if let Some(f) = self.0.upgrade()
-            && let Some(a) = f.adressleiste.get()
-        {
-            a.textfeld_oeffnen(Some(anfang));
-        }
-    }
-
-    fn zoom_geaendert(&self, zoom: Zoom) {
-        if let Some(f) = self.0.upgrade() {
-            f.zoom_anzeigen(zoom);
-        }
-    }
-
-    fn nach_oben(&self) {
-        if let Some(f) = self.0.upgrade() {
-            f.nach_oben();
-        }
-    }
-
-    fn umbenennen(&self, datei: &gio::File, neuer_name: &str) {
-        if let Some(f) = self.0.upgrade() {
-            f.umbenennen(datei, neuer_name);
-        }
-    }
-
-    fn melden(&self, text: &str) {
-        if let Some(f) = self.0.upgrade() {
-            f.melden(text);
-        }
-    }
 }
 
 impl Fenster {
@@ -114,64 +61,29 @@ impl Fenster {
             .icon_name(crate::APP_ID)
             .build();
         window.add_css_class("querencia-dateien");
-        let modell = Ordnermodell::new(
-            Sortierung {
-                kriterium: werte.anordnen,
-                ordner_zuerst: werte.ordner_zuerst,
-                umgekehrt: false,
-            },
-            werte.verborgene,
-        );
         let bereich = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         bereich.set_hexpand(true);
         bereich.set_vexpand(true);
         let fenster = Rc::new(Self {
             app: Rc::downgrade(app),
             window,
-            modell,
-            ansichten: OnceCell::new(),
-            verlauf: RefCell::default(),
+            reiter: Reiterliste::new(),
             menue: OnceCell::new(),
             werkzeugleiste: OnceCell::new(),
             adressleiste: OnceCell::new(),
             seitenleiste: OnceCell::new(),
             statusleiste: OnceCell::new(),
             bereich,
-            papierkorb_leiste: gtk4::Box::new(gtk4::Orientation::Horizontal, 6),
             paned: gtk4::Paned::new(gtk4::Orientation::Horizontal),
             ort_handler: RefCell::default(),
             auswahl_handler: RefCell::default(),
         });
         fenster.aufbauen(app, &werte);
-        fenster.gehe_zu(ort);
+        fenster.reiter_oeffnen(Some(ort), true, None);
         fenster
     }
 
     fn aufbauen(self: &Rc<Self>, app: &Rc<App>, werte: &Werte) {
-        let weak = Rc::downgrade(self);
-        let rueckruf: Rc<dyn Rueckruf> = Rc::new(FensterRueckruf(weak.clone()));
-        let bei_neu: Vec<Neu> = app
-            .register()
-            .neue_ansicht
-            .iter()
-            .map(|h| {
-                let h = h.clone();
-                let weak = weak.clone();
-                Rc::new(move |a: &Rc<dyn Ansicht>| {
-                    if let Some(f) = weak.upgrade() {
-                        h(&f, a);
-                    }
-                }) as Neu
-            })
-            .collect();
-        let ansichten = Ansichten::new(
-            &self.modell,
-            rueckruf,
-            app.register().ansichten.clone(),
-            bei_neu,
-            werte,
-        );
-
         self.aktionen_einrichten(app);
         let menue = menue::Menueleiste::new(self);
         let werkzeugleiste = Werkzeugleiste::new(self);
@@ -179,21 +91,7 @@ impl Fenster {
         let seitenleiste = Seitenleiste::new(self);
         let statusleiste = Statusleiste::new(self);
 
-        // the trash bar (B §1.10): above the view while the trash is shown
-        let titel = gtk4::Label::new(Some(&gettext("Trash")));
-        titel.add_css_class("heading");
-        titel.set_hexpand(true);
-        titel.set_xalign(0.0);
-        let leeren = gtk4::Button::with_label(&gettext("Empty Trash…"));
-        leeren.set_action_name(Some("win.papierkorb-leeren"));
-        self.papierkorb_leiste.append(&titel);
-        self.papierkorb_leiste.append(&leeren);
-        self.papierkorb_leiste
-            .add_css_class("querencia-papierkorb-leiste");
-        self.papierkorb_leiste.set_visible(false);
-
-        self.bereich.append(&self.papierkorb_leiste);
-        self.bereich.append(ansichten.widget());
+        self.bereich.append(self.reiter.widget());
         self.tasten_im_bereich();
 
         self.paned.set_start_child(Some(seitenleiste.widget()));
@@ -220,33 +118,21 @@ impl Fenster {
         let _ = self.adressleiste.set(adressleiste);
         let _ = self.seitenleiste.set(seitenleiste);
         let _ = self.statusleiste.set(statusleiste);
-        let _ = self.ansichten.set(ansichten);
-        self.ansicht_umschalten(werte.ansicht);
 
         self.signale(app);
     }
 
     fn signale(self: &Rc<Self>, app: &Rc<App>) {
+        // the notebook shows another tab (Strg+Bild↑/↓, a click on a head,
+        // a closed tab): the bars follow it
         let weak = Rc::downgrade(self);
-        self.modell.bei_zustand(move |z| {
-            if let Some(f) = weak.upgrade() {
-                f.zustand(z);
-            }
-        });
-        let weak = Rc::downgrade(self);
-        self.modell
-            .auswahl()
-            .connect_selection_changed(move |_, _, _| {
-                if let Some(f) = weak.upgrade() {
-                    f.auswahl_geaendert();
-                }
-            });
-        let weak = Rc::downgrade(self);
-        self.modell
-            .auswahl()
-            .connect_items_changed(move |_, _, _, _| {
-                if let Some(f) = weak.upgrade() {
-                    f.auswahl_geaendert();
+        self.reiter
+            .widget()
+            .connect_switch_page(move |_, seite, _| {
+                if let Some(f) = weak.upgrade()
+                    && let Some(r) = f.reiter.aktiv_nach_seite(seite)
+                {
+                    f.reiter_gezeigt(&r);
                 }
             });
         // settings from the dialog or another window
@@ -330,22 +216,37 @@ impl Fenster {
         self.app.upgrade()
     }
 
-    /// The folder shown.
+    /// The folder shown (in the current tab).
     pub fn ort(&self) -> Option<gio::File> {
-        self.modell.ordner()
+        self.reiter.aktiv_wenn().and_then(|r| r.ort())
     }
 
-    pub fn modell(&self) -> &Ordnermodell {
-        &self.modell
+    /// The folder model of the current tab (an empty one while the window
+    /// is built and has no tab yet).
+    pub fn modell(&self) -> Ordnermodell {
+        self.reiter
+            .aktiv_wenn()
+            .map(|r| r.modell.clone())
+            .unwrap_or_default()
     }
 
-    /// The view shown.
+    /// The view shown (in the current tab).
     pub fn ansicht(&self) -> Rc<dyn Ansicht> {
-        self.ansichten().aktuell()
+        self.reiter.aktiv().ansicht()
     }
 
-    pub fn ansichten(&self) -> &Ansichten {
-        self.ansichten.get().expect("Fenster ohne Ansichten")
+    /// The view switch of the current tab.
+    pub fn ansichten(&self) -> Rc<Ansichten> {
+        self.reiter.aktiv().ansichten.clone()
+    }
+
+    /// The tabs of the window.
+    pub fn reiterliste(&self) -> &Reiterliste {
+        &self.reiter
+    }
+
+    pub(crate) fn reiter_ist_aktiv(&self, r: &Rc<Reiter>) -> bool {
+        self.reiter.aktiv_wenn().is_some_and(|a| Rc::ptr_eq(&a, r))
     }
 
     pub(crate) fn seitenleiste(&self) -> &Rc<Seitenleiste> {
@@ -386,14 +287,15 @@ impl Fenster {
     /// When `datei` appears in the shown folder: select it, show it and
     /// start renaming it (new folder, new document; B §5.1 D18/D19).
     pub fn nach_erscheinen_umbenennen(self: &Rc<Self>, datei: &gio::File) {
-        let weak = Rc::downgrade(self);
+        let r = self.reiter.aktiv();
+        let weak = Rc::downgrade(&r);
         let datei2 = datei.clone();
-        self.modell.bei_erscheinen(datei, move |_| {
-            let Some(f) = weak.upgrade() else { return };
+        r.modell.bei_erscheinen(datei, move |_| {
+            let Some(r) = weak.upgrade() else { return };
             let datei = datei2.clone();
             // after the view has its cell for the new entry
             glib::idle_add_local_once(move || {
-                let a = f.ansicht();
+                let a = r.ansicht();
                 a.fokus_auf(&datei, true);
                 a.umbenennen_anstossen(&datei, false);
             });
@@ -403,54 +305,229 @@ impl Fenster {
     /// When `dateien` appear in the shown folder: select them (results of
     /// copy, move, paste).
     pub fn nach_erscheinen_waehlen(self: &Rc<Self>, dateien: &[gio::File]) {
+        let modell = self.modell();
         for d in dateien {
-            let weak = Rc::downgrade(self);
+            let weak = Rc::downgrade(&self.reiter.aktiv());
             let alle = dateien.to_vec();
-            self.modell.bei_erscheinen(d, move |_| {
-                if let Some(f) = weak.upgrade() {
+            modell.bei_erscheinen(d, move |_| {
+                if let Some(r) = weak.upgrade() {
                     let da: Vec<gio::File> = alle
                         .iter()
-                        .filter(|x| f.modell.eintrag_von(x).is_some())
+                        .filter(|x| r.modell.eintrag_von(x).is_some())
                         .cloned()
                         .collect();
-                    f.modell.waehlen(&da);
+                    r.modell.waehlen(&da);
                 }
+            });
+        }
+    }
+
+    // ------------------------------------------------------------ tabs
+
+    /// A new tab showing `ort` (home folder if `None`), right of the
+    /// current one. `zeigen`: it becomes the current tab (Strg+T); folders
+    /// opened in new tabs stay behind (Nautilus 2.30). `ansicht`: view and
+    /// zoom to start with, else the defaults of `dateien.ini`.
+    pub fn reiter_oeffnen(
+        self: &Rc<Self>,
+        ort: Option<&gio::File>,
+        zeigen: bool,
+        ansicht: Option<(Ansichtsart, Zoom)>,
+    ) -> Option<Rc<Reiter>> {
+        let app = self.app()?;
+        let werte = app.konfig().werte();
+        let (art, zoom) = match ansicht {
+            Some((art, zoom)) => (art, Some(zoom)),
+            None => (werte.ansicht, None),
+        };
+        let r = Reiter::neu(self, &app, &werte, art, zoom);
+        self.reiter_verbinden(&r);
+        let pos = reiter::regeln::neue_position(self.reiter.aktiv_index(), self.reiter.anzahl());
+        self.reiter.einfuegen(&r, pos);
+        let ort = ort
+            .cloned()
+            .unwrap_or_else(|| gio::File::for_path(glib::home_dir()));
+        self.gehe_zu_in(&r, &ort);
+        crate::log(&format!(
+            "Reiter {} neu: {}/{} {}",
+            r.nummer(),
+            pos + 1,
+            self.reiter.anzahl(),
+            ort.uri()
+        ));
+        self.reiterleiste_folgen();
+        if zeigen {
+            self.reiter.zeigen(pos);
+        }
+        self.reiter_aktionen_pruefen();
+        Some(r)
+    }
+
+    /// The model of `r` reports to the window (only the current tab moves
+    /// the bars; every tab keeps its head current).
+    fn reiter_verbinden(self: &Rc<Self>, r: &Rc<Reiter>) {
+        let (f, w) = (Rc::downgrade(self), Rc::downgrade(r));
+        r.modell.bei_zustand(move |z| {
+            if let (Some(f), Some(r)) = (f.upgrade(), w.upgrade()) {
+                f.zustand(&r, z);
+            }
+        });
+        let (f, w) = (Rc::downgrade(self), Rc::downgrade(r));
+        r.modell
+            .auswahl()
+            .connect_selection_changed(move |_, _, _| {
+                if let (Some(f), Some(r)) = (f.upgrade(), w.upgrade())
+                    && f.reiter_ist_aktiv(&r)
+                {
+                    f.auswahl_geaendert();
+                }
+            });
+        let (f, w) = (Rc::downgrade(self), Rc::downgrade(r));
+        r.modell.auswahl().connect_items_changed(move |_, _, _, _| {
+            if let (Some(f), Some(r)) = (f.upgrade(), w.upgrade())
+                && f.reiter_ist_aktiv(&r)
+            {
+                f.auswahl_geaendert();
+            }
+        });
+    }
+
+    /// Strg+W, the close button of a head: closes `r`; the last tab closes
+    /// the window.
+    pub fn reiter_schliessen(self: &Rc<Self>, r: &Rc<Reiter>) {
+        if self.reiter.anzahl() <= 1 {
+            self.window.close();
+            return;
+        }
+        let nummer = r.nummer();
+        r.modell.stoppen();
+        if !self.reiter.entfernen(r) {
+            return;
+        }
+        crate::log(&format!(
+            "Reiter {nummer} geschlossen, {} offen",
+            self.reiter.anzahl()
+        ));
+        self.reiterleiste_folgen();
+        self.reiter_aktionen_pruefen();
+    }
+
+    /// The notebook shows `r`: title, location bar, side pane, toolbar,
+    /// status bar, menus and the keyboard follow it.
+    fn reiter_gezeigt(self: &Rc<Self>, r: &Rc<Reiter>) {
+        self.window.set_title(Some(&r.titel()));
+        let ort = r.ort();
+        if let Some(ort) = &ort {
+            if let Some(a) = self.adressleiste.get() {
+                a.ort_anzeigen(ort);
+            }
+            if let Some(s) = self.seitenleiste.get() {
+                s.ort_anzeigen(ort);
+            }
+        }
+        let a = r.ansicht();
+        if let Some(w) = self.werkzeugleiste.get() {
+            w.laedt(r.modell.laedt());
+            w.ansicht_anzeigen(a.art());
+        }
+        self.zoom_anzeigen(a.zoom());
+        if let Some(aktion) = self.window.lookup_action("ansicht") {
+            aktion.change_state(&a.art().kennung().to_variant());
+        }
+        if let Some(aktion) = self.window.lookup_action("umgekehrt") {
+            aktion.change_state(&r.modell.sortierung().umgekehrt.to_variant());
+        }
+        self.aktion_aktiv("stopp", r.modell.laedt());
+        if let (Some(s), Some(ort)) = (self.statusleiste.get(), &ort) {
+            s.zustand(&Zustand::Laedt(ort.clone()));
+            if let Some(fehler) = r.fehler() {
+                s.zustand(&Zustand::Fehler(fehler));
+            }
+        }
+        // the view of the tab takes the keyboard unless a location is typed
+        let tippt = GtkWindowExt::focus(&self.window)
+            .is_some_and(|f| f.is_ancestor(self.adressleiste().widget()));
+        if !tippt {
+            a.fokus();
+        }
+        crate::log(&format!(
+            "Reiter {} gezeigt: {}/{} {} {}",
+            r.nummer(),
+            self.reiter.aktiv_index().map_or(0, |i| i + 1),
+            self.reiter.anzahl(),
+            a.art().kennung(),
+            ort.map(|o| o.uri().to_string()).unwrap_or_default()
+        ));
+        self.aktionen_pruefen();
+        if let Some(ort) = r.ort() {
+            let handler: Vec<OrtHandler> = self.ort_handler.borrow().clone();
+            for h in handler {
+                h(&ort);
+            }
+        }
+        let handler: Vec<AuswahlHandler> = self.auswahl_handler.borrow().clone();
+        for h in handler {
+            h();
+        }
+    }
+
+    pub(crate) fn reiter_aktionen_pruefen(&self) {
+        reiter::aktionen_pruefen(self);
+    }
+
+    /// The menu „Reiter“ follows the tab bar (both from two tabs on).
+    fn reiterleiste_folgen(&self) {
+        let an = reiter::regeln::leiste_sichtbar(self.reiter.anzahl());
+        if let Some(m) = self.menue.get()
+            && m.reiter_zeigen(an)
+        {
+            crate::log(if an {
+                "Reiterleiste und Menü „Reiter“ an"
+            } else {
+                "Reiterleiste und Menü „Reiter“ aus"
             });
         }
     }
 
     // ------------------------------------------------------------ navigation
 
-    /// Shows `ort` in this window (history: a new step).
+    /// Shows `ort` in the current tab (history: a new step).
     pub fn gehe_zu(self: &Rc<Self>, ort: &gio::File) {
-        if self.ort().is_some_and(|o| o.equal(ort)) {
-            return;
-        }
-        self.verlauf.borrow_mut().besuchen(ort);
-        self.laden(ort, None);
+        let r = self.reiter.aktiv();
+        self.gehe_zu_in(&r, ort);
     }
 
-    fn laden(self: &Rc<Self>, ort: &gio::File, markieren: Option<gio::File>) {
-        self.modell.laden(ort);
+    fn gehe_zu_in(self: &Rc<Self>, r: &Rc<Reiter>, ort: &gio::File) {
+        if r.ort().is_some_and(|o| o.equal(ort)) {
+            return;
+        }
+        r.verlauf.borrow_mut().besuchen(ort);
+        self.laden(r, ort, None);
+    }
+
+    fn laden(self: &Rc<Self>, r: &Rc<Reiter>, ort: &gio::File, markieren: Option<gio::File>) {
+        r.modell.laden(ort);
         if let Some(kind) = markieren {
-            let weak = Rc::downgrade(self);
+            let weak = Rc::downgrade(r);
             let k = kind.clone();
-            self.modell.bei_erscheinen(&kind, move |_| {
-                if let Some(f) = weak.upgrade() {
+            r.modell.bei_erscheinen(&kind, move |_| {
+                if let Some(r) = weak.upgrade() {
                     let k = k.clone();
-                    glib::idle_add_local_once(move || f.ansicht().fokus_auf(&k, true));
+                    glib::idle_add_local_once(move || r.ansicht().fokus_auf(&k, true));
                 }
             });
         }
-        self.titel_setzen(ort);
+        self.titel_setzen(r, ort);
+        r.papierkorb_zeigen(ort.uri_scheme().as_deref() == Some("trash"));
+        if !self.reiter_ist_aktiv(r) {
+            return;
+        }
         if let Some(a) = self.adressleiste.get() {
             a.ort_anzeigen(ort);
         }
         if let Some(s) = self.seitenleiste.get() {
             s.ort_anzeigen(ort);
         }
-        self.papierkorb_leiste
-            .set_visible(ort.uri_scheme().as_deref() == Some("trash"));
         self.aktionen_pruefen();
         let handler: Vec<OrtHandler> = self.ort_handler.borrow().clone();
         for h in handler {
@@ -459,37 +536,45 @@ impl Fenster {
     }
 
     pub fn zurueck(self: &Rc<Self>) {
-        let ziel = self.verlauf.borrow_mut().zurueck();
+        let r = self.reiter.aktiv();
+        let ziel = r.verlauf.borrow_mut().zurueck();
         if let Some((ort, kind)) = ziel {
-            self.laden(&ort, kind);
+            self.laden(&r, &ort, kind);
         }
     }
 
     pub fn vor(self: &Rc<Self>) {
-        let ziel = self.verlauf.borrow_mut().vor();
+        let r = self.reiter.aktiv();
+        let ziel = r.verlauf.borrow_mut().vor();
         if let Some((ort, _)) = ziel {
-            self.laden(&ort, None);
+            self.laden(&r, &ort, None);
         }
     }
 
     /// Gehe zu → Nach oben: the parent folder, with the folder we came from
     /// selected (Nautilus 2.30).
     pub fn nach_oben(self: &Rc<Self>) {
-        let Some(ort) = self.ort() else { return };
+        let r = self.reiter.aktiv();
+        let Some(ort) = r.ort() else { return };
         if let Some(eltern) = ort.parent() {
-            self.verlauf.borrow_mut().besuchen(&eltern);
-            self.laden(&eltern, Some(ort));
+            r.verlauf.borrow_mut().besuchen(&eltern);
+            self.laden(&r, &eltern, Some(ort));
         }
     }
 
-    fn titel_setzen(&self, ort: &gio::File) {
+    /// The tab head and, for the current tab, the window title.
+    fn titel_setzen(&self, r: &Rc<Reiter>, ort: &gio::File) {
         let titel = crate::orte::anzeigename(ort);
-        self.window.set_title(Some(&titel));
+        r.titel_setzen(&titel);
+        if self.reiter_ist_aktiv(r) {
+            self.window.set_title(Some(&titel));
+        }
         if ort.is_native() {
             return;
         }
         // GVfs places name themselves ("Papierkorb", the share's name)
         let w = self.window.downgrade();
+        let weak = Rc::downgrade(r);
         let ort = ort.clone();
         glib::spawn_future_local(async move {
             if let Ok(info) = ort
@@ -499,46 +584,55 @@ impl Fenster {
                     glib::Priority::DEFAULT,
                 )
                 .await
-                && let Some(w) = w.upgrade()
+                && let Some(r) = weak.upgrade()
+                && r.ort().is_some_and(|o| o.equal(&ort))
             {
                 let name = info.display_name();
                 if !name.is_empty() && ort.uri_scheme().as_deref() != Some("trash") {
-                    w.set_title(Some(&name));
+                    r.titel_setzen(&name);
+                    if let Some(w) = w.upgrade()
+                        && let Some(f) =
+                            crate::app::app_wenn().and_then(|a| a.fenster_von(w.upcast_ref()))
+                        && f.reiter_ist_aktiv(&r)
+                    {
+                        w.set_title(Some(&name));
+                    }
                 }
             }
         });
     }
 
-    fn zustand(self: &Rc<Self>, z: &Zustand) {
-        match z {
-            Zustand::OrdnerWeg => {
-                // QD-112 pattern: go to the nearest existing parent
-                let Some(ort) = self.ort() else { return };
-                let mut ziel = ort.parent();
-                while let Some(z) = ziel.clone() {
-                    if z.query_exists(gio::Cancellable::NONE) {
-                        break;
-                    }
-                    ziel = z.parent();
+    fn zustand(self: &Rc<Self>, r: &Rc<Reiter>, z: &Zustand) {
+        r.zustand_merken(z);
+        if let Zustand::OrdnerWeg = z {
+            // QD-112 pattern: go to the nearest existing parent
+            let Some(ort) = r.ort() else { return };
+            let mut ziel = ort.parent();
+            while let Some(z) = ziel.clone() {
+                if z.query_exists(gio::Cancellable::NONE) {
+                    break;
                 }
-                let ziel = ziel.unwrap_or_else(|| gio::File::for_path(glib::home_dir()));
-                self.gehe_zu(&ziel);
+                ziel = z.parent();
             }
-            Zustand::ErsterBlock => {
-                // the view takes the keyboard after every change of folder,
-                // unless the user is typing a location (Nautilus 2.30)
-                let tippt = GtkWindowExt::focus(&self.window)
-                    .is_some_and(|f| f.is_ancestor(self.adressleiste().widget()));
-                if !tippt {
-                    self.ansicht().fokus();
-                }
+            let ziel = ziel.unwrap_or_else(|| gio::File::for_path(glib::home_dir()));
+            self.gehe_zu_in(r, &ziel);
+        }
+        if !self.reiter_ist_aktiv(r) {
+            return;
+        }
+        if let Zustand::ErsterBlock = z {
+            // the view takes the keyboard after every change of folder,
+            // unless the user is typing a location (Nautilus 2.30)
+            let tippt = GtkWindowExt::focus(&self.window)
+                .is_some_and(|f| f.is_ancestor(self.adressleiste().widget()));
+            if !tippt {
+                r.ansicht().fokus();
             }
-            _ => {}
         }
         if let Some(w) = self.werkzeugleiste.get() {
-            w.laedt(self.modell.laedt());
+            w.laedt(r.modell.laedt());
         }
-        self.aktion_aktiv("stopp", self.modell.laedt());
+        self.aktion_aktiv("stopp", r.modell.laedt());
         if let Some(s) = self.statusleiste.get() {
             s.zustand(z);
         }
@@ -568,7 +662,7 @@ impl Fenster {
         }
     }
 
-    fn zoom_anzeigen(&self, zoom: Zoom) {
+    pub(crate) fn zoom_anzeigen(&self, zoom: Zoom) {
         if let Some(w) = self.werkzeugleiste.get() {
             let a = self.ansicht();
             let stufen = a.zoomstufen();
@@ -593,12 +687,14 @@ impl Fenster {
     }
 
     fn einstellungen_anwenden(self: &Rc<Self>, w: &Werte) {
-        let mut s = self.modell.sortierung();
-        s.kriterium = w.anordnen;
-        s.ordner_zuerst = w.ordner_zuerst;
-        self.modell.sortierung_setzen(s);
-        self.modell.verborgene_setzen(w.verborgene);
-        self.ansichten().einstellungen_anwenden(w);
+        for r in self.reiter.alle() {
+            let mut s = r.modell.sortierung();
+            s.kriterium = w.anordnen;
+            s.ordner_zuerst = w.ordner_zuerst;
+            r.modell.sortierung_setzen(s);
+            r.modell.verborgene_setzen(w.verborgene);
+            r.ansichten.einstellungen_anwenden(w);
+        }
         if let Some(a) = self.adressleiste.get() {
             a.einstellungen_anwenden(w);
         }
@@ -619,7 +715,14 @@ impl Fenster {
         self.aktionen_pruefen();
     }
 
-    fn umbenennen(self: &Rc<Self>, datei: &gio::File, neuer_name: &str) {
+    /// Rename finished in a cell of `r`: the job, then select the new name
+    /// in that tab.
+    pub(crate) fn umbenennen_in(
+        self: &Rc<Self>,
+        r: &Rc<Reiter>,
+        datei: &gio::File,
+        neuer_name: &str,
+    ) {
         let Some(app) = self.app() else { return };
         let Some(alt) = datei.basename() else { return };
         if alt.to_string_lossy() == neuer_name {
@@ -634,12 +737,12 @@ impl Fenster {
         );
         if let Some(eltern) = datei.parent() {
             let neu = eltern.child(neuer_name);
-            let weak = Rc::downgrade(self);
+            let weak = Rc::downgrade(r);
             let ziel = neu.clone();
-            self.modell.bei_erscheinen(&ziel, move |_| {
-                if let Some(f) = weak.upgrade() {
+            r.modell.bei_erscheinen(&ziel, move |_| {
+                if let Some(r) = weak.upgrade() {
                     let neu = neu.clone();
-                    glib::idle_add_local_once(move || f.ansicht().fokus_auf(&neu, true));
+                    glib::idle_add_local_once(move || r.ansicht().fokus_auf(&neu, true));
                 }
             });
         }
@@ -716,34 +819,38 @@ impl Fenster {
     fn aktionen_einrichten(self: &Rc<Self>, app: &Rc<App>) {
         let w = app.konfig().werte();
         // Datei
-        self.aktion("schliessen", |f| f.window.close());
+        // Strg+W closes the current tab, the last one the window (2.30)
+        self.aktion("schliessen", |f| {
+            let r = f.reiter.aktiv();
+            f.reiter_schliessen(&r);
+        });
         self.aktion("oeffnen", |f| {
-            let auswahl = f.modell.gewaehlte();
+            let auswahl = f.modell().gewaehlte();
             oeffnen::oeffnen(f, &auswahl, false);
         });
         self.aktion("oeffnen-neues-fenster", |f| {
-            let auswahl = f.modell.gewaehlte();
+            let auswahl = f.modell().gewaehlte();
             oeffnen::oeffnen(f, &auswahl, true);
         });
         let mit = gio::SimpleAction::new("oeffnen-mit", Some(glib::VariantTy::STRING));
         let weak = Rc::downgrade(self);
         mit.connect_activate(move |_, wert| {
             if let (Some(f), Some(id)) = (weak.upgrade(), wert.and_then(|w| w.get::<String>())) {
-                let auswahl = f.modell.gewaehlte();
+                let auswahl = f.modell().gewaehlte();
                 oeffnen::oeffnen_mit(&f, &auswahl, &id);
             }
         });
         self.window.add_action(&mit);
         self.aktion("eigenschaften", crate::eigenschaften_dialog::zeigen);
         // Bearbeiten
-        self.aktion("alles-auswaehlen", |f| f.modell.alle_waehlen());
-        self.aktion("auswahl-umkehren", |f| f.modell.auswahl_umkehren());
+        self.aktion("alles-auswaehlen", |f| f.modell().alle_waehlen());
+        self.aktion("auswahl-umkehren", |f| f.modell().auswahl_umkehren());
         self.aktion("umbenennen", |f| f.umbenennen_anstossen(false));
         self.aktion("umbenennen-ganz", |f| f.umbenennen_anstossen(true));
         self.aktion("einstellungen", crate::einstellungen::zeigen);
         // Ansicht
-        self.aktion("stopp", |f| f.modell.stoppen());
-        self.aktion("aktualisieren", |f| f.modell.neu_laden());
+        self.aktion("stopp", |f| f.modell().stoppen());
+        self.aktion("aktualisieren", |f| f.modell().neu_laden());
         self.schalter("werkzeugleiste", w.werkzeugleiste, |f, an| {
             f.werkzeugleiste().widget().set_visible(an);
             f.konfig_aendern(|k| k.werkzeugleiste = an);
@@ -761,21 +868,26 @@ impl Fenster {
             f.konfig_aendern(|k| k.statusleiste = an);
         });
         self.schalter("verborgene", w.verborgene, |f, an| {
-            f.modell.verborgene_setzen(an);
+            for r in f.reiter.alle() {
+                r.modell.verborgene_setzen(an);
+            }
             f.konfig_aendern(|k| k.verborgene = an);
         });
         self.auswahl_aktion("anordnen", w.anordnen.kennung(), |f, k| {
             if let Some(k) = Kriterium::aus_kennung(k) {
-                let mut s = f.modell.sortierung();
-                s.kriterium = k;
-                f.modell.sortierung_setzen(s);
+                for r in f.reiter.alle() {
+                    let mut s = r.modell.sortierung();
+                    s.kriterium = k;
+                    r.modell.sortierung_setzen(s);
+                }
                 f.konfig_aendern(|w| w.anordnen = k);
             }
         });
         self.schalter("umgekehrt", false, |f, an| {
-            let mut s = f.modell.sortierung();
+            let m = f.modell();
+            let mut s = m.sortierung();
             s.umgekehrt = an;
-            f.modell.sortierung_setzen(s);
+            m.sortierung_setzen(s);
         });
         self.aktion("vergroessern", |f| f.zoom_schritt(1));
         self.aktion("verkleinern", |f| f.zoom_schritt(-1));
@@ -827,6 +939,8 @@ impl Fenster {
             crate::info::fehler_melden(f.window.upcast_ref())
         });
         self.aktion("info", |f| crate::info::zeigen(f.window.upcast_ref()));
+        // Reiter
+        reiter::aktionen_einrichten(self);
     }
 
     fn konfig_aendern(&self, f: impl FnOnce(&mut Werte)) {
@@ -836,7 +950,7 @@ impl Fenster {
     }
 
     fn umbenennen_anstossen(self: &Rc<Self>, ganz: bool) {
-        let auswahl = self.modell.gewaehlte();
+        let auswahl = self.modell().gewaehlte();
         if let [eins] = auswahl.as_slice() {
             let a = self.ansicht();
             if a.umbenennen_laeuft() {
@@ -861,10 +975,13 @@ impl Fenster {
     /// selection or history (the menus are rebuilt from the enabled state
     /// whenever one opens, `menue.rs`).
     pub(crate) fn aktionen_pruefen(&self) {
-        let auswahl = self.modell.gewaehlte();
+        let Some(r) = self.reiter.aktiv_wenn() else {
+            return;
+        };
+        let auswahl = r.modell.gewaehlte();
         let eine = auswahl.len() == 1;
-        let ort = self.ort();
-        let verlauf = self.verlauf.borrow();
+        let ort = r.ort();
+        let verlauf = r.verlauf.borrow();
         self.aktion_aktiv("zurueck", verlauf.kann_zurueck());
         self.aktion_aktiv("vor", verlauf.kann_vor());
         drop(verlauf);
@@ -883,6 +1000,7 @@ impl Fenster {
         );
         self.aktion_aktiv("umbenennen-ganz", eine);
         self.aktion_aktiv("lesezeichen-hinzufuegen", ort.is_some());
+        self.reiter_aktionen_pruefen();
         if let Some(m) = self.menue.get() {
             m.zustand_geaendert();
         }

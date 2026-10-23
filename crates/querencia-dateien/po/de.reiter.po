@@ -1,0 +1,37 @@
+# Querencia Dateien – Teilkatalog der Welle C3 (Reiter, Kompaktansicht).
+# Nur msgid/msgstr; bei der Integration übernimmt „werkzeug/i18n.py update“
+# die Einträge in po/de.po, danach entfällt diese Datei (docs/dateien.md §3.7).
+# Wortlaut nach Nautilus 2.30 (po/de.po 2.30.1).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "New _Tab"
+msgstr "Neuer _Reiter"
+
+msgid "Open in New _Tab"
+msgstr "In neuem _Reiter öffnen"
+
+msgid "_Tabs"
+msgstr "_Reiter"
+
+msgid "_Previous Tab"
+msgstr "_Vorheriger Reiter"
+
+msgid "_Next Tab"
+msgstr "_Nächster Reiter"
+
+msgid "Move Tab _Left"
+msgstr "Reiter nach _links verschieben"
+
+msgid "Move Tab _Right"
+msgstr "Reiter nach _rechts verschieben"
+
+msgid "Close tab"
+msgstr "Reiter schließen"
+
+msgid "_Compact"
+msgstr "_Kompakt"
+
+msgid "A_ll columns have the same width"
+msgstr "Alle S_palten haben dieselbe Breite"

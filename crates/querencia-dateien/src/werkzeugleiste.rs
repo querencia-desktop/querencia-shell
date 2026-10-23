@@ -123,8 +123,7 @@ impl Werkzeugleiste {
         leiste.append(&normal);
         leiste.append(&groesser);
 
-        // 0.1: icon and list view (compact view: Beta)
-        let arten = vec![Ansichtsart::Symbole, Ansichtsart::Liste];
+        let arten = Ansichtsart::ALLE.to_vec();
         let namen: Vec<String> = arten.iter().map(|a| a.name()).collect();
         let namen_ref: Vec<&str> = namen.iter().map(String::as_str).collect();
         let ansicht = gtk4::DropDown::from_strings(&namen_ref);
