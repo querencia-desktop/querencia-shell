@@ -44,6 +44,8 @@ pub struct Suche {
     laeuft: Cell<bool>,
     /// The results are shown instead of the views.
     zeigt: Cell<bool>,
+    /// The views' stack the results stand in for (the tab's, Welle C3).
+    verdeckt: RefCell<Option<glib::WeakRef<gtk4::Stack>>>,
     beginn: Cell<Option<Instant>>,
 }
 
@@ -137,6 +139,7 @@ impl Suche {
             abbruch: RefCell::default(),
             laeuft: Cell::new(false),
             zeigt: Cell::new(false),
+            verdeckt: RefCell::default(),
             beginn: Cell::new(None),
         });
         if dateisuche().is_some() {
@@ -203,13 +206,26 @@ impl Suche {
         suche
     }
 
-    fn einbauen(self: &Rc<Self>, f: &Rc<Fenster>) {
-        // the view area: trash bar, (search bar), views, (results)
+    /// Places bar and results into the view area of the tab shown: trash
+    /// bar, (search bar), views, (results). Each tab has its own area
+    /// (Welle C3); the search moves along when it opens in another tab.
+    fn einbauen(&self, f: &Fenster) {
         let stapel = f.ansichten().widget().clone();
         let Some(bereich) = stapel.parent().and_downcast::<gtk4::Box>() else {
             crate::log("Suche: Ansichtsbereich nicht gefunden");
             return;
         };
+        if self.leiste.parent().as_ref() == Some(bereich.upcast_ref()) {
+            return;
+        }
+        for w in [
+            self.leiste.upcast_ref::<gtk4::Widget>(),
+            self.ergebnisse.widget().upcast_ref(),
+        ] {
+            if let Some(alt) = w.parent().and_downcast::<gtk4::Box>() {
+                alt.remove(w);
+            }
+        }
         bereich.insert_child_after(&self.leiste, bereich.first_child().as_ref());
         bereich.insert_child_after(self.ergebnisse.widget(), Some(&stapel));
     }
@@ -220,6 +236,9 @@ impl Suche {
 
     /// Shows the search bar (Strg+F, the button).
     pub fn oeffnen(&self) {
+        if let Some(f) = self.fenster() {
+            self.einbauen(&f);
+        }
         protokoll("Suchleiste geöffnet");
         self.leiste.set_visible(true);
         self.feld.grab_focus();
@@ -256,7 +275,15 @@ impl Suche {
         if self.zeigt.replace(an) == an {
             return;
         }
-        f.ansichten().widget().set_visible(!an);
+        // the stack hidden is the one shown again, also after a change of
+        // tab ended the search (Welle C3)
+        if an {
+            let stapel = f.ansichten().widget().clone();
+            stapel.set_visible(false);
+            self.verdeckt.replace(Some(stapel.downgrade()));
+        } else if let Some(stapel) = self.verdeckt.take().and_then(|w| w.upgrade()) {
+            stapel.set_visible(true);
+        }
         self.ergebnisse.widget().set_visible(an);
         if an {
             f.window().set_title(Some(&gettext("Search results")));
@@ -271,6 +298,7 @@ impl Suche {
     /// Searches the shown folder for `text`.
     pub fn starten(&self, text: &str) {
         let Some(f) = self.fenster() else { return };
+        self.einbauen(&f);
         let worte = sucher::worte(text);
         self.stoppen();
         if worte.is_empty() {

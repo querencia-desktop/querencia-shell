@@ -145,6 +145,9 @@ fn nach_dem_zeichnen(widget: &gtk4::Widget, f: impl FnOnce() + 'static) {
 pub enum Art {
     Symbole,
     Liste,
+    /// The compact view (`kompaktansicht.rs`, Welle C3): a horizontal
+    /// GridView with names beside the icons.
+    Kompakt,
 }
 
 impl Art {
@@ -152,6 +155,7 @@ impl Art {
         match self {
             Art::Symbole => "Symbolansicht",
             Art::Liste => "Listenansicht",
+            Art::Kompakt => "Kompaktansicht",
         }
     }
 }
@@ -327,7 +331,7 @@ impl Kern {
             return b.clone();
         }
         let b = match self.art {
-            Art::Symbole => self.liste.clone(),
+            Art::Symbole | Art::Kompakt => self.liste.clone(),
             Art::Liste => {
                 let mut kind = self.liste.first_child();
                 while let Some(k) = kind.clone() {
@@ -1119,7 +1123,7 @@ impl Kern {
         // GTK accepts NULL for the column and the scroll info.
         unsafe {
             match self.art {
-                Art::Symbole => gtk_grid_view_scroll_to(
+                Art::Symbole | Art::Kompakt => gtk_grid_view_scroll_to(
                     self.liste.as_ptr() as *mut gtk4::ffi::GtkGridView,
                     pos,
                     flags,
@@ -1396,7 +1400,7 @@ impl Kern {
         let (_, beschriftung) = teile(zelle);
         let feld = match self.art {
             Art::Symbole => Feld::mehrzeilig(self.feldbreite.get()),
-            Art::Liste => Feld::einzeilig(),
+            Art::Liste | Art::Kompakt => Feld::einzeilig(),
         };
         feld.setzen(&text, markierung);
         // A GtkTextView reports its height only after its idle validation;

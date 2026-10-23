@@ -24,25 +24,55 @@ fn kontext(fenster: &Fenster) -> gtk4::gdk::AppLaunchContext {
     k
 }
 
-/// Opens `eintraege` (the selection): one folder in this window (several,
-/// or with `neues_fenster`, each in a new window), files with their
-/// programs.
+/// Where a folder opens.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Wohin {
+    Hier,
+    Fenster,
+    /// A new tab behind the current one.
+    Reiter,
+}
+
+/// Opens `eintraege` (the selection): one folder in this window, several
+/// in new tabs (Nautilus 2.30, `nautilus-mime-actions.c`), with
+/// `neues_fenster` each in a new window; files with their programs.
 pub fn oeffnen(fenster: &Rc<Fenster>, eintraege: &[Eintrag], neues_fenster: bool) {
     let ordner: Vec<&Eintrag> = eintraege.iter().filter(|e| e.ist_ordner()).collect();
-    let dateien: Vec<&Eintrag> = eintraege.iter().filter(|e| !e.ist_ordner()).collect();
-    if ordner.len() == 1 && !neues_fenster {
-        ordner_oeffnen(fenster, ordner[0], false);
-    } else {
+    if neues_fenster {
         for o in &ordner {
-            ordner_oeffnen(fenster, o, true);
+            ordner_oeffnen(fenster, o, Wohin::Fenster);
         }
+    } else if let [eins] = ordner.as_slice() {
+        ordner_oeffnen(fenster, eins, Wohin::Hier);
+    } else {
+        ordner_in_reitern(fenster, &ordner);
     }
-    for d in dateien {
+    dateien_oeffnen(fenster, eintraege);
+}
+
+/// „In neuem Reiter öffnen“, the middle button: folders in new tabs right
+/// of the current one, in the order of the selection; files with their
+/// programs.
+pub fn oeffnen_in_reitern(fenster: &Rc<Fenster>, eintraege: &[Eintrag]) {
+    let ordner: Vec<&Eintrag> = eintraege.iter().filter(|e| e.ist_ordner()).collect();
+    ordner_in_reitern(fenster, &ordner);
+    dateien_oeffnen(fenster, eintraege);
+}
+
+fn ordner_in_reitern(fenster: &Rc<Fenster>, ordner: &[&Eintrag]) {
+    // each new tab goes right of the current one: the last first
+    for o in ordner.iter().rev() {
+        ordner_oeffnen(fenster, o, Wohin::Reiter);
+    }
+}
+
+fn dateien_oeffnen(fenster: &Rc<Fenster>, eintraege: &[Eintrag]) {
+    for d in eintraege.iter().filter(|e| !e.ist_ordner()) {
         datei_oeffnen(fenster, d);
     }
 }
 
-fn ordner_oeffnen(fenster: &Rc<Fenster>, e: &Eintrag, neues_fenster: bool) {
+fn ordner_oeffnen(fenster: &Rc<Fenster>, e: &Eintrag, wohin: Wohin) {
     let ziel = e.ziel();
     let mountable = e.daten().info.file_type() == gio::FileType::Mountable
         && !e.daten().info.has_attribute("standard::target-uri");
@@ -70,7 +100,7 @@ fn ordner_oeffnen(fenster: &Rc<Fenster>, e: &Eintrag, neues_fenster: bool) {
                             .and_then(|i| i.attribute_string("standard::target-uri"))
                             .map(|u| gio::File::for_uri(&u))
                             .unwrap_or(wurzel);
-                        hin(&f, &wurzel, neues_fenster);
+                        hin(&f, &wurzel, wohin);
                     }
                     Err(err) if err.matches(gio::IOErrorEnum::FailedHandled) => {}
                     Err(err) => fehler_zeigen(
@@ -86,16 +116,20 @@ fn ordner_oeffnen(fenster: &Rc<Fenster>, e: &Eintrag, neues_fenster: bool) {
         );
         return;
     }
-    hin(fenster, &ziel, neues_fenster);
+    hin(fenster, &ziel, wohin);
 }
 
-fn hin(fenster: &Rc<Fenster>, ort: &gio::File, neues_fenster: bool) {
-    if neues_fenster {
-        if let Some(app) = fenster.app() {
-            app.neues_fenster(Some(ort));
+fn hin(fenster: &Rc<Fenster>, ort: &gio::File, wohin: Wohin) {
+    match wohin {
+        Wohin::Hier => fenster.gehe_zu(ort),
+        Wohin::Fenster => {
+            if let Some(app) = fenster.app() {
+                app.neues_fenster(Some(ort));
+            }
         }
-    } else {
-        fenster.gehe_zu(ort);
+        Wohin::Reiter => {
+            fenster.reiter_oeffnen(Some(ort), false, None);
+        }
     }
 }
 

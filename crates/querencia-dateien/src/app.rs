@@ -37,6 +37,9 @@ pub type AblageHaken = Rc<dyn Fn(&Rc<Fenster>, &gtk4::Widget, Zielfinder)>;
 pub type Zielfinder = Rc<dyn Fn(f64, f64) -> Option<gio::File>>;
 /// Called once at startup (subscribe to the queue, …).
 pub type AnwendungsHaken = Rc<dyn Fn(&Rc<App>)>;
+/// Called for every tab of every window (Welle C3), before it reads its
+/// first folder: what hangs on a tab's folder model.
+pub type ReiterHaken = Rc<dyn Fn(&Rc<Fenster>, &Rc<crate::reiter::Reiter>)>;
 
 /// The hooks of the modules (filled in `main.rs`, `erweiterungen`).
 #[derive(Default, Clone)]
@@ -47,6 +50,7 @@ pub struct Register {
     pub(crate) kontextmenue: Option<KontextHaken>,
     pub(crate) ablage: Option<AblageHaken>,
     pub(crate) anwendung: Vec<AnwendungsHaken>,
+    pub(crate) reiter: Vec<ReiterHaken>,
 }
 
 impl Register {
@@ -83,6 +87,14 @@ impl Register {
     pub fn anwendung(&mut self, haken: impl Fn(&Rc<App>) + 'static) {
         self.anwendung.push(Rc::new(haken));
     }
+
+    /// Called for every tab of every window, the first one included, before
+    /// it reads its first folder (Welle C3): handlers on the tab's folder
+    /// model belong here, not in [`Self::fenster`] (`Fenster::modell()` is
+    /// only the model of the tab shown).
+    pub fn reiter(&mut self, haken: impl Fn(&Rc<Fenster>, &Rc<crate::reiter::Reiter>) + 'static) {
+        self.reiter.push(Rc::new(haken));
+    }
 }
 
 /// Shared state of the process.
@@ -109,6 +121,15 @@ pub fn app_wenn() -> Option<Rc<App>> {
     APP.with(|a| a.borrow().clone())
 }
 
+/// Drops the shared state after `run()`, while thread-local storage still
+/// lives: dropped by the TLS destructor instead, the windows' GTK closures
+/// ran into glib's thread guard and the program panicked at exit (0.1.0,
+/// Strg+W on the last window; found in Welle C3).
+pub(crate) fn freigeben() {
+    let app = APP.with(|a| a.borrow_mut().take());
+    drop(app);
+}
+
 impl App {
     /// Builds the shared state in `startup` (on the GTK main context).
     pub(crate) fn starten(gtk: &gtk4::Application, register: Register) -> Rc<Self> {
@@ -124,6 +145,22 @@ impl App {
             auftraege: RefCell::default(),
         });
         APP.with(|a| a.replace(Some(app.clone())));
+        // A closed window leaves the list when GTK takes it off the
+        // application: its „destroy“ only comes once the last reference is
+        // gone, and the list is one (0.1.0 kept every closed window with its
+        // folder watches until the end; found in Welle C3). After the
+        // signal, so GTK finishes closing first.
+        let weak = Rc::downgrade(&app);
+        gtk.connect_window_removed(move |_, _| {
+            let weak = weak.clone();
+            glib::idle_add_local_once(move || {
+                if let Some(app) = weak.upgrade() {
+                    app.fenster
+                        .borrow_mut()
+                        .retain(|f| f.window().application().is_some());
+                }
+            });
+        });
         for h in app.register.anwendung.clone() {
             h(&app);
         }
