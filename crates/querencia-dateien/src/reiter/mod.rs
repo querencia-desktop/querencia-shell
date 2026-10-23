@@ -28,7 +28,7 @@ use crate::ansicht::{Ansicht, Ansichten, Kontextziel, Neu, Rueckruf};
 use crate::app::App;
 use crate::eintrag::Eintrag;
 use crate::fenster::Fenster;
-use crate::i18n::gettext;
+use crate::i18n::{gettext, pgettext};
 use crate::konfig::Werte;
 use crate::menue;
 use crate::modell::{Ordnermodell, Zustand};
@@ -581,39 +581,45 @@ fn aktiv(fenster: &Fenster, name: &str) -> bool {
 /// current one, Alt+1 … Alt+0).
 pub fn menue_fuellen(menue: &gio::Menu, fenster: &Rc<Fenster>) {
     menue.remove_all();
-    let punkt = |text: String, name: &str, kuerzel: &str| {
+    let punkt = |text: String, name: &str, kuerzel: String| {
         menue::eintrag(
             &text,
             aktiv(fenster, name)
                 .then(|| format!("win.{name}"))
                 .as_deref(),
             None,
-            Some(kuerzel),
+            Some(&kuerzel),
             None,
         )
     };
+    // the classic menus show key names as they are: the German ones
+    // („Bild↑“) come from the catalog, as „Pos1“ in `menue.rs`
     let wechseln = gio::Menu::new();
     wechseln.append_item(&punkt(
         gettext("_Previous Tab"),
         "reiter-vorheriger",
-        "<Control>Page_Up",
+        // TRANSLATORS: shortcut shown in the Tabs menu, deutsch „<Control>Bild↑“
+        pgettext("accel", "<Control>PageUp"),
     ));
     wechseln.append_item(&punkt(
         gettext("_Next Tab"),
         "reiter-naechster",
-        "<Control>Page_Down",
+        // TRANSLATORS: shortcut shown in the Tabs menu, deutsch „<Control>Bild↓“
+        pgettext("accel", "<Control>PageDown"),
     ));
     menue.append_section(None, &wechseln);
     let schieben = gio::Menu::new();
     schieben.append_item(&punkt(
         gettext("Move Tab _Left"),
         "reiter-links",
-        "<Shift><Control>Page_Up",
+        // TRANSLATORS: shortcut shown in the Tabs menu
+        pgettext("accel", "<Shift><Control>PageUp"),
     ));
     schieben.append_item(&punkt(
         gettext("Move Tab _Right"),
         "reiter-rechts",
-        "<Shift><Control>Page_Down",
+        // TRANSLATORS: shortcut shown in the Tabs menu
+        pgettext("accel", "<Shift><Control>PageDown"),
     ));
     menue.append_section(None, &schieben);
     let liste = gio::Menu::new();
