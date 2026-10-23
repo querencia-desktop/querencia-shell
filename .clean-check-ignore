@@ -152,3 +152,11 @@
 #      Prüfwerkzeugen (Rust englisch kommentiert, Typografie in
 #      Oberflächentexten) und die höhere Zählung bei P002; sie fallen unter
 #      die Ausnahmen oben.
+# dateien-netzwerk (23.10.2026, Welle C1): neu gegenüber main f9a3cda nur
+#      S003/S004/S005 in crates/querencia-dateien/src/netzwerk/ (Rust englisch
+#      kommentiert mit Backticks wie das übrige Crate, Typografie in
+#      Oberflächentexten), S004 in menue.rs/seitenleiste.rs (je ein Eintrag
+#      „Mit Server verbinden …“) und in crates/querencia-dateien/werkzeug/
+#      netzwerk/ (deutsche Kommentare und Fallnamen mit „“ und →); security 0,
+#      keine neuen Hygiene- oder Qualitätsbefunde; sie fallen unter die
+#      Ausnahmen oben ( §8).

@@ -133,10 +133,13 @@ impl Eintrag {
     pub fn aus_info(ordner: &gio::File, info: &gio::FileInfo) -> Self {
         let name = info.name().to_string_lossy().into_owned();
         let datei = ordner.child(&name);
+        // Welle C1: the computers and shares of network:/// are shortcuts
+        // with a target, opened like folders
         let ist_ordner = matches!(
             info.file_type(),
             gio::FileType::Directory | gio::FileType::Mountable
-        );
+        ) || (info.file_type() == gio::FileType::Shortcut
+            && info.has_attribute("standard::target-uri"));
         let typ = if ist_ordner {
             "inode/directory".to_owned()
         } else {

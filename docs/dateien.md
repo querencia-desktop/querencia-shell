@@ -308,7 +308,93 @@ nutzen können.
 - Das Fortschrittsfenster nimmt beim Erscheinen die Tastatur (wie im
   Desktop 0.3.0).
 
-## 7. Welle C2: Miniaturen und Suche (`src/miniaturen/`, `src/suche/`)
+## 7. Netzwerk (Welle C1, `src/netzwerk/`)
+
+**Stand:** 23.10.2026, Zweig `dateien-netzwerk`, Tag `dateien/netzwerk-1`.
+Alles über GVfs, kein eigenes Protokoll. Abnahmefälle B23–B26 aus
+ §5; Bericht .
+
+### 7.1 Module
+
+| Datei | Inhalt |
+|---|---|
+| `mod.rs` | `registrieren` (ein `register.fenster`-Haken), Aktionen `win.mit-server-verbinden` und `win.netzwerk`, Statuszeile, Lesezeichen mit Namen |
+| `adresse.rs` | Dienstarten des Dialogs → GVfs-URI (SFTP, SMB mit `DOMÄNE;benutzer`, FTP, WebDAV/WebDAVS, eigene Adresse mit `\\server\freigabe` → `smb://`, `ssh://` → `sftp://`); Prüfung von Server, Port, Kennwort in der Adresse |
+| `einhaengen.rs` | Einhängen bei Bedarf (`bei_ortswechsel` und erster Ort eines neuen Fensters), ein Versuch je Server im ganzen Prozess, Stopp, Zeitgrenze 60 s ohne offene Frage, Fehlermeldung genau einmal, Rücksprung an einen Ort ohne Verbindung, Ursachensuche bei GVfs' „Verbindung fehlgeschlagen“ (Namensauflösung, TCP zum Port, ohne Anmeldung) |
+| `anmeldung.rs` | eigene Dialoge an `gtk4::MountOperation`: Kennwortfrage (Benutzer, Kennwort, Domäne, „Anonym verbinden“, „Kennwort merken“ nur wenn GVfs speichern kann, **aus** als Vorgabe → `PasswordSave::Never`, angehakt → `Permanently`, GVfs legt es über libsecret ab), Fragen (Host-Key mit selbst gelesenem Fingerabdruck, QD-008), known_hosts-Abgleich vor dem Kennwort und nach dem Einhängen, Doppelfragen schließen |
+| `gvfs_texte.rs` | **MIT** (aus Querencia Files übernommen, `LICENSES/MIT-Strata.txt`): GVfs-Fehler, Kennwortzeilen (Vorlagen von GVfs 1.60 englisch und deutsch), Host-Key-Frage, Knopfreihenfolge |
+| `netzansicht.rs` | `network:///`: Doppel aus Avahi und wsdd ausblenden (QD-036, `querencia_dateiarbeit::netz::merge_network_entries`), Hinweis bei leerem Netzwerk |
+| `verbinden_dialog.rs` | „Mit Server verbinden …“ nach Nautilus 2.30 (Dienst-Typ, Server, optional Port/Freigabe/Ordner/Benutzername/Domänenname, Lesezeichen mit Name; Hilfe, Abbrechen, Verbinden); merkt den zuletzt gewählten Typ |
+| `rahmen.rs` | Rahmen der Dialoge (Symbol 48 px, fette erste Zeile, Knöpfe rechts, Esc bricht ab) |
+
+Logik ohne Oberfläche (Doppel-Zusammenführung, Host-Key-Abruf per
+`ssh -v`, known_hosts) liegt seit Welle A in `querencia_dateiarbeit::netz`.
+
+### 7.2 Eingriffe in gemeinsame Dateien
+
+- `main.rs`: je ein markierter Block „Welle C1 (dateien-netzwerk)“ für die
+  `mod`-Zeile und den Aufruf.
+- `menue.rs`: „Mit _Server verbinden …“ im Datei-Menü (eigener Abschnitt
+  nach „Öffnen mit“), „_Netzwerk“ unter Gehe zu nach „Papierkorb“; der
+  Menütest erwartet beide statt sie als Beta auszuschließen.
+- `seitenleiste.rs`: Kontextmenü von „Netzwerk“ mit „Mit Server verbinden …“
+  (ein Zweig im bestehenden `match`). Eingehängte Server kamen schon über
+  `laufwerke::alle` mit ⏏ in die Seitenleiste.
+- `eintrag.rs`: Verknüpfungen mit `standard::target-uri` (Rechner und
+  Freigaben in `network:///`) gelten als Ordner; vorher öffnete ein
+  Doppelklick sie als Datei („nicht eingehängt“).
+- Die Doppel-Ausblendung hängt sich ohne Änderung an `modell.rs` unter die
+  sortierte Liste (`SortListModel::set_model` auf ein `FilterListModel`
+  über dem bisherigen); Positionen der Auswahl bleiben die der sortierten
+  Liste. Ein eigener Haken im `Ordnermodell` wäre sauberer (Übergabe).
+
+### 7.3 Übersetzung
+
+Teilkatalog `po/de.netzwerk.po` (§3.7), Wortlaut nach Nautilus 2.30 de
+(„Mit Server verbinden“, „Dienst-Typ“, „Domänenname“) und „Kennwort“ statt
+GVfs' „Passwort“. GVfs' eigene Kennwort- und Host-Key-Texte werden nach
+Vorlage erkannt (englisch und deutsch) und durch eigene Sätze ersetzt;
+unbekannte Texte erscheinen mit der ersten Zeile fett.
+
+### 7.4 Prüfung
+
+- `cargo test`: Adressen je Dienst, Escapes, IPv6, Fehlertexte, Ursachen,
+  Kennwortvorlagen, Knopfreihenfolge, known_hosts-Fehler, Server-Schlüssel,
+  Doppel-Ausblendung, Netzwerk-Verknüpfung als Ordner.
+- Isolierte GUI-Läufe `crates/querencia-dateien/werkzeug/netzwerk/`
+  (Prüfrahmen Stufe G, Netz nur `lo`, Attrappen-System-Bus): `lauf.sh NAME
+  SZENARIO` (nach `pruefung/lauf.sh`, dazu `--sshd`, `LAUF_SSH_HOSTKEY_FRAGE`,
+  `LAUF_SSH_OHNE_SCHLUESSEL`, `LAUF_ZEITGRENZE`, `LAUF_WSDD`), `alle.sh`
+  (sieben Szenarien), `fotosaetze.sh` (hell/dunkel, 1024×768 und 1920×1080,
+  englisch). Test-Server nur im Namensraum: Test-sshd des Prüfrahmens,
+  `webdav-attrappe.py` (Basic-Anmeldung), `ftp-attrappe.py`,
+  `wsdd-attrappe.py` (beantwortet nur die Socket-API, sendet nichts),
+  Wegwerf-Schlüsselbund (gnome-keyring, `geheimnisse.py` listet nur
+  Attribute). `bin/ssh` liegt vor der ssh-Hülle des Prüfrahmens, damit der
+  Fingerabdruck-Abruf sein Protokoll selbst liest.
+- Ergebnisse unter `~/projects/dateien-netzwerk-arbeit/laeufe/`.
+
+### 7.5 Grenzen
+
+- SMB-Erfolgsfall ungeprüft: kein `samba` auf der VM, ein Server ohne sudo
+  ist nicht möglich. Geprüft sind SMB-Adressen (Unit-Tests) und der
+  Fehlerweg; die SMB-Kennwort-/Domänenfrage ist nur über die WebDAV- und
+  SFTP-Fälle desselben Dialogs belegt.
+- Doppel aus Avahi und wsdd: Avahi lässt sich ohne Systemdienst nicht
+  nachstellen; die Ausblendung ist mit Tabellentests belegt, im GUI-Lauf
+  nur die wsdd-Geräte.
+- SFTP mit Kennwort: Der Test-sshd läuft ohne PAM und kann Kennwörter nicht
+  prüfen; belegt sind Kennwortfrage, Wiederholung und Ablehnung, der
+  Erfolg mit Kennwort nur über WebDAV.
+- Nach einem falschen Kennwort fragt GVfs (dav) ohne `SAVING_SUPPORTED`:
+  „Kennwort merken“ fehlt dann im zweiten Versuch.
+- TLS-Zertifikatsfragen (`davs`, `ftps`) laufen durch die allgemeine Frage;
+  ohne Testserver mit Zertifikat ungeprüft.
+- Die Fehlerursache wird nur für GVfs' bloßes „Verbindung fehlgeschlagen“
+  selbst gesucht (Name, Port); andere Meldungen bleiben, wie GVfs sie
+  schickt, mit eigener Erklärung davor.
+
+## 8. Welle C2: Miniaturen und Suche (`src/miniaturen/`, `src/suche/`)
 
 Zweig `dateien-miniaturen-suche`, Tag `dateien/miniaturen-1`. M9 aus
  §4 (gleicher Cache wie Files) und B §1
@@ -316,7 +402,7 @@ Zweig `dateien-miniaturen-suche`, Tag `dateien/miniaturen-1`. M9 aus
 Volltextsuche, kein Index). Registrierung in `main.rs` im Block
 „Welle C2“, Übersetzungen im Teilkatalog `po/de.miniaturen.po`.
 
-### 7.1 Schnittstelle „Bildquelle je Eintrag“
+### 8.1 Schnittstelle „Bildquelle je Eintrag“
 
 Die einzige Verbindung zwischen den Ansichten und den Miniaturen; das
 Trait `Ansicht` bleibt unverändert.
@@ -341,14 +427,14 @@ Zelle auf ihn wartet. Ohne registriertes Modul verhält sich `binden` wie
 zwei Zeilen) und den Suchergebnissen; die Kompaktansicht (C3) bindet
 ebenso.
 
-### 7.2 Miniaturen
+### 8.2 Miniaturen
 
 | Datei | Inhalt |
 |---|---|
 | `miniaturen/mod.rs` | Regeln, Zustand im Hauptfaden (Bindungen, wartende Zellen, LRU 48 MB der fertigen Texturen), `bildquelle`, `registrieren` |
 | `miniaturen/cache.rs` | Thumbnail Managing Standard 0.9: `$XDG_CACHE_HOME/thumbnails/{normal,large}/<MD5 der URI>.png`, `fail/querencia-dateien/`, PNG-`tEXt` lesen und schreiben (CRC selbst), Lesen ohne Symlinks/FIFOs mit Größengrenze (Prüfung nach Files, MIT-Vermerk), Schreiben atomar 0600 in Ordnern 0700 |
 | `miniaturen/erzeuger.rs` | Erzeugen: GdkPixbuf, GTK-Lader, `*.thumbnailer` (`TryExec`, `Exec` mit `%u %i %o %s`, Zeitlimit 20 s, je Auftrag ein eigener Ordner 0700) |
-| `miniaturen/sandkasten.rs` | fremde Thumbnailer nur in bwrap (Bedingung der Status-Session, Recherche C §2): `--ro-bind / /`, `--dev`, `--proc`, `/tmp`, `/run` und das echte HOME als leeres tmpfs (`/run`: keine Bus-, Wayland- oder GVfs-Sockets – ein Netz-Namensraum verdeckt Dateisystem-Sockets nicht), dann nur die Eingabe lesend und der Auftragsordner schreibbar an ihren echten Pfaden, `--clearenv`, `--unshare-all` (kein Netz), `--die-with-parent`, `--new-session`, Zeitlimit 20 s. Fehlt bwrap oder startet es keinen Sandkasten, ist kein Thumbnailer verfügbar (nie ohne Sandkasten; eine Logzeile je Lauf). GdkPixbuf/glycin im Prozess unverändert (glycin hat eine eigene Sandbox) |
+| `miniaturen/sandkasten.rs` | fremde Thumbnailer nur in bwrap (Bedingung der Status-Session, Recherche C §2): `--ro-bind / /`, `--dev`, `--proc`, `/tmp`, `/run` und das echte HOME als leeres tmpfs (`/run`: keine Bus-, Wayland- oder GVfs-Sockets – ein Netz-Namensraum verdeckt Dateisystem-Sockets nicht), dann nur die Eingabe lesend und der Auftragsordner schreibbar an ihren echten Pfaden, `--clearenv`, `--unshare-all` (kein Netz), `--die-with-parent`, `--new-session`, Zeitlimit 20 s. Fehlt bwrap oder startet es keinen Sandkasten, ist kein Thumbnailer verfügbar (nie ohne Sandkasten; eine Logzeile je Lauf). GdkPixbuf/glycin im Prozess unverändert (glycin hat eine eigene Sandbox) ; die Ausgabe liest der Wirt nur als reguläre Datei (`cache::lies_regulaer`: `O_NOFOLLOW`, `O_NONBLOCK`, fstat auf der offenen Datei, höchstens 8 MB) – ein Link oder FIFO, den der Thumbnailer in seinen Auftragsordner legt, endet sofort als Fehlschlag (Befund der Status-Session) |
 | `miniaturen/warteschlange.rs` | Arbeitsfäden (Kerne/2, 2–4: höchstens so viele Aufträge zugleich), Warteschlange in Ankunftsfolge, Zurücknehmen (wartend: entfernt; laufend: Abbruch-Merker, ein Thumbnailer wird beendet), Auslieferung über `glib::idle_add_once` |
 | `miniaturen/bild.rs` | Pixel: Verkleinern über Flächenmittel, Rahmen, Textur |
 
@@ -383,7 +469,7 @@ MB, … Thumbnailer, … Fäden“, „Miniaturen fertig: N aus dem Cache, N
 erzeugt, N fehlgeschlagen in N ms“, „Miniaturen nach Ordnerwechsel: N
 zurückgenommen …“, „Miniaturen: Regel …“.
 
-### 7.3 Suche
+### 8.3 Suche
 
 | Datei | Inhalt |
 |---|---|
@@ -402,7 +488,7 @@ Strg+A wählt alle Treffer. „Erweiterte Suche …“ erscheint, wenn
 startet es mit `--ordner` und `--name *Text*`. ↓ im Suchfeld führt in die
 Treffer.
 
-### 7.4 Prüfung und Messwerte
+### 8.4 Prüfung und Messwerte
 
 `crates/querencia-dateien/werkzeug/miniaturen/`: `material.sh`
 (Testmaterial: 200 Fotos 1920×1080, Bildarten, kaputtes und zu großes
@@ -435,7 +521,7 @@ Spannen aus fünf Läufen):
 | GTK-Lader statt GdkPixbuf (Gegenversuch) | +54 MB nach 200, danach Plateau |
 | nach der Suche mit 9.942 Treffern | +36 MB |
 
-### 7.5 Grenzen (Stand dateien/miniaturen-1)
+### 8.5 Grenzen (Stand dateien/miniaturen-4)
 
 - Kein PDF-/Dokument-Thumbnailer auf der VM: geprüft ist der Weg mit dem
   Stellvertreter `qd-pdf-miniatur` im Sandkasten (Integrationstest); echte
