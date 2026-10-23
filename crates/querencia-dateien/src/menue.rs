@@ -50,6 +50,8 @@ pub const KUERZEL: &[(&str, &[&str])] = &[
     ("win.aktualisieren", &["<Control>r", "F5"]),
     ("win.seitenleiste", &["F9"]),
     ("win.verborgene", &["<Control>h"]),
+    // shown in Bearbeiten since 0.1.0, bound since Welle C3
+    ("win.auswahl-umkehren", &["<Shift><Control>i"]),
     (
         "win.vergroessern",
         &["<Control>plus", "<Control>equal", "<Control>KP_Add"],
