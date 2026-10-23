@@ -11,7 +11,6 @@
 //! The result is the PNG for the cache with the tags of the standard
 //! (`cache::mit_tags`).
 
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::OnceLock;
@@ -434,15 +433,14 @@ fn im_auftrag(
     if abbruch.load(Ordering::Relaxed) {
         return Err(Fehler::Abgebrochen);
     }
-    let lesen = || -> Option<Vec<u8>> {
-        let f = std::fs::File::open(&ausgabe).ok()?;
-        let mut v = Vec::new();
-        f.take(MAX_AUSGABE).read_to_end(&mut v).ok()?;
-        Some(v)
-    };
+    // the thumbnailer wrote the job folder itself: only a regular file is
+    // taken, never a symlink (it could point anywhere on the host) or a
+    // FIFO (it would block this thread forever)
+    let lesen = || cache::lies_regulaer(&ausgabe, MAX_AUSGABE);
     let Some(bytes) = status.filter(|s| s.success()).and_then(|_| lesen()) else {
         return Err(Fehler::Fehlgeschlagen(match status {
             None => format!("{}: Zeitlimit", t.name),
+            Some(s) if s.success() => format!("{}: keine reguläre Ausgabedatei", t.name),
             Some(s) => format!("{}: {s}", t.name),
         }));
     };
@@ -520,6 +518,7 @@ pub fn fehl_png(q: &Quelle) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
 
     #[test]
     fn exec_lines_are_split_and_filled_in() {
@@ -707,5 +706,54 @@ mod tests {
         assert_eq!(endung("file:///a/b.PDF"), ".PDF");
         assert_eq!(endung("file:///a/b"), "");
         assert_eq!(endung("file:///a/b.x%20y"), "");
+    }
+
+    /// The output of a thumbnailer as a symlink to a readable file outside
+    /// or as a FIFO: refused at once, the host never reads through it.
+    #[test]
+    fn output_links_and_fifos_fail_at_once() {
+        if *sandkasten::huelle() == sandkasten::Huelle::Keine {
+            eprintln!("bwrap geht hier nicht: übersprungen");
+            return;
+        }
+        let draussen =
+            std::env::temp_dir().join(format!("qd-ausgabe-ziel-{}.png", std::process::id()));
+        let mut b = Bild::leer(10, 10);
+        b.px.chunks_exact_mut(4).for_each(|p| p.fill(255));
+        std::fs::write(&draussen, b.png()).unwrap();
+        for (name, skript) in [
+            ("link", format!("ln -s {} \"$2\"", draussen.display())),
+            ("link-etc", "ln -s /etc/hostname \"$2\"".to_owned()),
+            ("fifo", "mkfifo \"$2\"".to_owned()),
+        ] {
+            let (d, t, q) = probe(name, &skript);
+            let nein = AtomicBool::new(false);
+            let start = Instant::now();
+            let e = ueber_thumbnailer(&q, &t, 128, &nein, ZEITLIMIT);
+            assert!(
+                matches!(&e, Err(Fehler::Fehlgeschlagen(g)) if g.contains("keine reguläre Ausgabedatei")),
+                "{name}: {e:?}"
+            );
+            assert!(start.elapsed() < Duration::from_secs(3), "{name} hing");
+            let _ = std::fs::remove_dir_all(&d);
+        }
+        // the reader itself: a link and a FIFO are refused, a file is read
+        let d = std::env::temp_dir().join(format!("qd-ausgabe-lesen-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        std::os::unix::fs::symlink(&draussen, d.join("link.png")).unwrap();
+        assert!(
+            Command::new("mkfifo")
+                .arg(d.join("fifo.png"))
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert_eq!(cache::lies_regulaer(&d.join("link.png"), MAX_AUSGABE), None);
+        assert_eq!(cache::lies_regulaer(&d.join("fifo.png"), MAX_AUSGABE), None);
+        assert!(cache::lies_regulaer(&draussen, MAX_AUSGABE).is_some());
+        assert_eq!(cache::lies_regulaer(&draussen, 10), None, "zu groß");
+        let _ = std::fs::remove_dir_all(&d);
+        let _ = std::fs::remove_file(&draussen);
     }
 }
