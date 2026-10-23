@@ -706,12 +706,13 @@ dependencies = [
 
 [[package]]
 name = "querencia-desktop"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "gettext-rs",
  "gio-unix",
  "gtk4",
  "gtk4-layer-shell",
+ "querencia-oberflaeche",
 ]
 
 [[package]]
@@ -741,8 +742,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "querencia-oberflaeche"
+version = "0.1.0"
+dependencies = [
+ "gettext-rs",
+ "gtk4",
+]
+
+[[package]]
 name = "querencia-panel"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "gettext-rs",
  "gio-unix",
@@ -751,6 +760,7 @@ dependencies = [
  "gtk4-layer-shell",
  "querencia-lautstaerke",
  "querencia-netzwerk",
+ "querencia-oberflaeche",
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",

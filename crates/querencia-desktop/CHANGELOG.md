@@ -1,5 +1,22 @@
 # Änderungen – querencia-desktop
 
+## 0.2.7 – 2026-10-23
+
+Nur ein Umbau, sichtbar ändert sich nichts gegenüber 0.2.6.
+
+- Die Bausteine des Panels (klassische Menüs, Symbolthema, Farbschema,
+  Settings-Portal) kommen aus der Bibliothek `querencia-oberflaeche` des
+  Workspace statt über `#[path]` aus dem Quelltext des Panels. Die Weiche
+  `cfg(querencia_desktop)` und `build.rs` entfallen.
+- Das Desktop-Menü lädt seine Symbole weiter auf GTKs eigenem Weg; das
+  wählt der Desktop jetzt beim Start ausdrücklich
+  (`classic_menu::set_icon_loading(IconLoading::Gtk)`).
+- Der Desktop bindet die Textdomäne `querencia-oberflaeche` an sein
+  Katalogverzeichnis und liefert `querencia-oberflaeche.mo` mit (Tastennamen
+  der Kürzel; das Desktop-Menü zeigt bisher keine).
+- Die 27 Tests der geteilten Module laufen jetzt einmal in der Bibliothek
+  statt zusätzlich im Desktop.
+
 ## 0.2.6-2 – 2026-10-22
 
 Neubau von 0.2.6 auf dem Stand von main mit Panel 0.2.5. Die mit dem Panel

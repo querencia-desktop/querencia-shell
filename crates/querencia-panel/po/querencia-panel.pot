@@ -264,31 +264,6 @@ msgstr ""
 msgid "Restore Windows"
 msgstr ""
 
-#: src/classic_menu.rs:150
-msgctxt "keyboard key"
-msgid "Ctrl"
-msgstr ""
-
-#: src/classic_menu.rs:152
-msgctxt "keyboard key"
-msgid "Shift"
-msgstr ""
-
-#: src/classic_menu.rs:162
-msgctxt "keyboard key"
-msgid "Del"
-msgstr ""
-
-#: src/classic_menu.rs:164
-msgctxt "keyboard key"
-msgid "Enter"
-msgstr ""
-
-#: src/classic_menu.rs:165
-msgctxt "keyboard key"
-msgid "Print"
-msgstr ""
-
 #. TRANSLATORS: format of the panel clock (glib::DateTime::format, i.e. strftime); day and month names come from the time locale
 #: src/clock.rs:64
 msgid "%a %b %e, %l:%M %p"
@@ -302,7 +277,7 @@ msgstr ""
 msgid "No unread notifications"
 msgstr ""
 
-#: src/glocke.rs:105 src/i18n.rs:188
+#: src/glocke.rs:105 src/i18n.rs:184
 #, no-c-format
 msgid "{n} unread notification"
 msgid_plural "{n} unread notifications"
@@ -325,7 +300,7 @@ msgstr ""
 msgid "Remove From Panel"
 msgstr ""
 
-#: src/i18n.rs:192 src/workspace_switcher.rs:256
+#: src/i18n.rs:193 src/workspace_switcher.rs:256
 #, no-c-format
 msgid "Workspace {number}"
 msgstr ""
@@ -426,7 +401,7 @@ msgstr ""
 msgid "More Networks…"
 msgstr ""
 
-#: src/network_applet.rs:381 src/network_applet.rs:1188
+#: src/network_applet.rs:381 src/network_applet.rs:1185
 msgid "Connect to Hidden Network…"
 msgstr ""
 
@@ -434,7 +409,7 @@ msgstr ""
 msgid "No network device"
 msgstr ""
 
-#: src/network_applet.rs:398 src/network_applet.rs:1190
+#: src/network_applet.rs:398 src/network_applet.rs:1187
 msgid "Wireless Enabled"
 msgstr ""
 
@@ -442,7 +417,7 @@ msgstr ""
 msgid "Airplane Mode"
 msgstr ""
 
-#: src/network_applet.rs:411 src/network_applet.rs:1141 src/network_applet.rs:1193
+#: src/network_applet.rs:411 src/network_applet.rs:1138 src/network_applet.rs:1190
 msgid "Connection Information…"
 msgstr ""
 

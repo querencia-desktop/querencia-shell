@@ -1,9 +1,13 @@
-//! Isolated GUI test of the classic menus (HMP-04).
+//! Isolated GUI test of the classic menus (HMP-04), built with the feature
+//! `gui-test`. A program calls [`isolated_gui_menus`] from an ignored test of
+//! its own and hands over its style and menu buttons ([`Panel`]; the panel:
+//! `crates/querencia-panel/src/menu_gui_test.rs`).
 //!
-//! Runs only inside the isolated session of `gui-test/isoliert.py` (own
-//! headless labwc, own D-Bus, own XDG profile), never in the running desktop
-//! session: it refuses to start unless `QUERENCIA_ISOLATED_GUI=1` and the
-//! runtime directory is one of those throw-away directories. There is no
+//! Runs only inside an isolated session (own headless labwc, own D-Bus, own
+//! XDG profile: `gui-test/isoliert.py`, or the panel check since 0.2.4),
+//! never in the running desktop session: it refuses to start unless
+//! `QUERENCIA_ISOLATED_GUI=1` and the runtime directory is one of those
+//! throw-away directories. There is no
 //! input device in that compositor, so pointer and keys are fed in through
 //! the same methods the event controllers call; GTK itself computes the
 //! style, places the popovers and the compositor maps them.
@@ -183,17 +187,30 @@ fn is_open(button: &MenuButton) -> bool {
     super::is_open(button)
 }
 
-#[test]
-#[ignore = "nur in der isolierten GUI-Umgebung (gui-test/isoliert.py)"]
-fn isolated_gui_menus() {
+/// What the program under test hands over; everything is called only after
+/// GTK has started.
+pub struct Panel {
+    /// Installs the program's style sheet (menu colours).
+    pub install_style: fn(),
+    /// The three main menu buttons Anwendungen, Orte and System, each with a
+    /// classic menu ([`super::attach`]).
+    pub main_menus: fn() -> [MenuButton; 3],
+    /// A main menu button with the label and a classic menu for the model.
+    pub menu_button: fn(&str, &gio::Menu) -> MenuButton,
+}
+
+/// The test itself; panics on the first failed check.
+pub fn isolated_gui_menus(program: &Panel) {
     let runtime = std::env::var("XDG_RUNTIME_DIR").unwrap_or_default();
     assert!(
         std::env::var("QUERENCIA_ISOLATED_GUI").as_deref() == Ok("1")
-            && (runtime.contains("/hmp04-runtime-") || runtime.contains("/hmp05-runtime-")),
+            && (runtime.contains("/hmp04-runtime-")
+                || runtime.contains("/hmp05-runtime-")
+                || runtime.contains("/qp24-runtime-")),
         "Abbruch: nur in der isolierten Sitzung von isoliert.py (XDG_RUNTIME_DIR={runtime})"
     );
     gtk4::init().expect("GTK in the isolated session");
-    crate::install_panel_style();
+    (program.install_style)();
     // No input device here, so no input serial for a popup grab: the top
     // levels must not grab in this test (submenus never grab, HMP-05). Real
     // pointer and keyboard with grabs: tools/isolierte-gui-pruefung.
@@ -207,9 +224,7 @@ fn isolated_gui_menus() {
     panel.add_css_class("querencia-panel");
     panel.set_valign(gtk4::Align::Start);
     panel.set_halign(gtk4::Align::Start);
-    let apps = crate::app_menu::button(crate::layout::DEFAULT_HEIGHT);
-    let places = crate::places_menu::button();
-    let system = crate::system_menu::button();
+    let [apps, places, system] = (program.main_menus)();
     for button in [&apps, &places, &system] {
         no_grab(button);
         panel.append(button);
@@ -456,7 +471,7 @@ fn isolated_gui_menus() {
     sub.append(Some("Deaktiviert"), None);
     sub.append(Some("Ausführen"), Some("probe.ran"));
     probe.append_submenu(Some("Prüfmenü"), &sub);
-    let probe_button = crate::app_menu::menu_button("Probe", None, &probe);
+    let probe_button = (program.menu_button)("Probe", &probe);
     no_grab(&probe_button);
     let action = gio::SimpleAction::new("ran", None);
     action.connect_activate(glib::clone!(
