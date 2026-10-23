@@ -75,6 +75,12 @@ pub fn breite_fuer(eigene: i32, breiteste: i32, gleich: bool, grenze: i32) -> i3
     }
 }
 
+/// Rows of a column that fit into `hoehe` px with icons of `symbol` px and
+/// text lines of `zeile` px (at least one).
+pub fn zeilen(hoehe: i32, symbol: i32, zeile: i32) -> u32 {
+    (hoehe / (symbol.max(zeile) + 2).max(1)).max(1) as u32
+}
+
 /// The `n` longest names (by characters) of `namen`: the candidates for
 /// the widest one.
 pub fn laengste<'a>(namen: impl Iterator<Item = &'a str>, n: usize) -> Vec<&'a str> {
@@ -107,10 +113,11 @@ impl Kompaktansicht {
         let grid = gtk4::GridView::new(None::<gtk4::MultiSelection>, Some(factory.clone()));
         grid.set_orientation(gtk4::Orientation::Horizontal);
         grid.set_enable_rubberband(true);
-        // in this orientation „columns“ are the rows of a column: as many
-        // as fit into the height (GTK computes them from the cell height)
+        // in this orientation „columns“ are the rows of a column; GTK keeps
+        // max_columns × about 32 cells alive (measured: 8,192 cells with 256,
+        // 3 s for 10,000 entries), so `zeilen_anpassen` sets what fits
         grid.set_min_columns(1);
-        grid.set_max_columns(256);
+        grid.set_max_columns(16);
         grid.add_css_class("querencia-kompakt");
         let scroller = gtk4::ScrolledWindow::builder()
             .hscrollbar_policy(gtk4::PolicyType::Automatic)
@@ -152,6 +159,15 @@ impl Kompaktansicht {
             }
         });
         ansicht.rad_waagrecht();
+        let weak = Rc::downgrade(&ansicht);
+        ansicht
+            .scroller
+            .vadjustment()
+            .connect_page_size_notify(move |_| {
+                if let Some(a) = weak.upgrade() {
+                    a.zeilen_anpassen();
+                }
+            });
         // the model may be read already (the view is made on first use)
         ansicht.messen_planen();
         ansicht
@@ -192,6 +208,23 @@ impl Kompaktansicht {
 
     fn symbolgroesse(&self) -> i32 {
         symbolgroesse(self.kern.zoom())
+    }
+
+    /// As many rows as cells of the current zoom fit into the height of the
+    /// view (cell: the icon or one line of text, whichever is higher, and
+    /// the child's padding of 1 px above and below, `STIL`).
+    fn zeilen_anpassen(&self) {
+        let hoehe = self.kern.wurzel.height();
+        if hoehe <= 0 {
+            return;
+        }
+        let m = self.grid.pango_context().metrics(None, None);
+        let zeile = (m.ascent() + m.descent()) / pango::SCALE;
+        let zeilen = zeilen(hoehe, self.symbolgroesse(), zeile);
+        if zeilen != self.grid.max_columns() {
+            protokoll(&format!("Kompaktansicht: {zeilen} Zeilen (Höhe {hoehe})"));
+            self.grid.set_max_columns(zeilen);
+        }
     }
 
     /// The text limit of equal columns in px: [`zeichen_grenze`] characters
@@ -343,6 +376,7 @@ impl Kompaktansicht {
             return;
         }
         self.kern.zoom_merken(prozent);
+        self.zeilen_anpassen();
         self.neu_binden();
         protokoll(&format!(
             "Zoom Kompaktansicht {prozent} % ({} px)",
@@ -500,6 +534,15 @@ mod tests {
         assert_eq!(breite_fuer(40, 400, false, 150), 40);
         assert_eq!(breite_fuer(900, 400, false, 75), 900);
         assert_eq!(breite_fuer(0, 0, true, 150), 1);
+    }
+
+    #[test]
+    fn rows_that_fit_the_height() {
+        // 50 %: 24 px icons, a 19 px line: 26 px per row (measured in K02)
+        assert_eq!(zeilen(426, 24, 19), 16);
+        assert_eq!(zeilen(426, 96, 19), 4);
+        assert_eq!(zeilen(426, 16, 19), 20);
+        assert_eq!(zeilen(10, 48, 19), 1);
     }
 
     #[test]
