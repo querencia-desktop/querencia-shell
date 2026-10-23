@@ -7,7 +7,7 @@ foto 01-fotos-symbolansicht-100
 gehe "$HOME/Bilder/Gemischt"; warte_log "Miniaturen fertig" 30; q "wait 600"
 foto 02-bildarten-alpha-svg-kaputt-zu-gross
 gehe "$HOME/Dokumente/PDF"; warte_log "Miniaturen fertig" 30; q "wait 600"
-foto 03-pdf-thumbnailer
+foto 03-pdf-ohne-sandkasten-nur-symbol
 gehe "$HOME/Bilder/Fotos"; q "wait 500"
 taste ctrl+plus; taste ctrl+plus; q "wait 1500"
 foto 04-fotos-200

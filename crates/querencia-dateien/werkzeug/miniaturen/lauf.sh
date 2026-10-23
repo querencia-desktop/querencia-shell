@@ -2,7 +2,8 @@
 # Querencia Dateien, Welle C2 (Miniaturen und Suche): isolierter GUI-Lauf im
 # Prüfrahmen Stufe L (headless labwc 0.9.8, Wegwerf-HOME, eigener Bus und
 # XDG_RUNTIME_DIR, kein Netz). Abgeleitet von ../pruefung/lauf.sh (B1);
-# zusätzlich Testmaterial (material.sh), ein PDF-Thumbnailer-Stellvertreter,
+# zusätzlich Testmaterial (material.sh), ein PDF-Thumbnailer-Stellvertreter (läuft
+# in der Hülle nicht: dort gibt es kein bwrap; Sandkasten-Test in erzeuger.rs),
 # eine vorbelegte dateien.ini und QUERENCIA_DATEIEN_DEBUG=1.
 #
 #   lauf.sh NAME SZENARIO.sh

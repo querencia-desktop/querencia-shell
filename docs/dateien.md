@@ -348,7 +348,7 @@ ebenso.
 | `miniaturen/mod.rs` | Regeln, Zustand im Hauptfaden (Bindungen, wartende Zellen, LRU 48 MB der fertigen Texturen), `bildquelle`, `registrieren` |
 | `miniaturen/cache.rs` | Thumbnail Managing Standard 0.9: `$XDG_CACHE_HOME/thumbnails/{normal,large}/<MD5 der URI>.png`, `fail/querencia-dateien/`, PNG-`tEXt` lesen und schreiben (CRC selbst), Lesen ohne Symlinks/FIFOs mit Größengrenze (Prüfung nach Files, MIT-Vermerk), Schreiben atomar 0600 in Ordnern 0700 |
 | `miniaturen/erzeuger.rs` | Erzeugen: GdkPixbuf, GTK-Lader, `*.thumbnailer` (`TryExec`, `Exec` mit `%u %i %o %s`, Zeitlimit 20 s, je Auftrag ein eigener Ordner 0700) |
-| `miniaturen/sandkasten.rs` | fremde Thumbnailer in bwrap wie GNOME: `--unshare-all` (kein Netz), `--clearenv`, `/usr` und wenige `/etc`-Dateien lesend, Eingabe lesend als `/tmp/eingabe.<ext>`, Auftragsordner als `/tmp`, `--die-with-parent`; ohne funktionierendes bwrap laufen keine fremden Thumbnailer (Ausnahme: in der Prüfhülle, die selbst ohne Netz im eigenen Namensraum läuft und keinen verschachtelten erlaubt) |
+| `miniaturen/sandkasten.rs` | fremde Thumbnailer nur in bwrap (Bedingung der Status-Session, Recherche C §2): `--ro-bind / /`, `--dev`, `--proc`, `/tmp`, `/run` und das echte HOME als leeres tmpfs (`/run`: keine Bus-, Wayland- oder GVfs-Sockets – ein Netz-Namensraum verdeckt Dateisystem-Sockets nicht), dann nur die Eingabe lesend und der Auftragsordner schreibbar an ihren echten Pfaden, `--clearenv`, `--unshare-all` (kein Netz), `--die-with-parent`, `--new-session`, Zeitlimit 20 s. Fehlt bwrap oder startet es keinen Sandkasten, ist kein Thumbnailer verfügbar (nie ohne Sandkasten; eine Logzeile je Lauf). GdkPixbuf/glycin im Prozess unverändert (glycin hat eine eigene Sandbox) |
 | `miniaturen/warteschlange.rs` | Arbeitsfäden (Kerne/2, 2–4: höchstens so viele Aufträge zugleich), Warteschlange in Ankunftsfolge, Zurücknehmen (wartend: entfernt; laufend: Abbruch-Merker, ein Thumbnailer wird beendet), Auslieferung über `glib::idle_add_once` |
 | `miniaturen/bild.rs` | Pixel: Verkleinern über Flächenmittel, Rahmen, Textur |
 
@@ -366,7 +366,10 @@ Fehleintrag → keine Miniatur, sonst erzeugen und in den Eimer schreiben
 Änderung der Datei). Eimer `normal` bis 128 px Anzeige, darüber `large`.
 Erzeugen: **GdkPixbuf zuerst** (mit glycin dekodiert ein Laderprozess
 und skaliert beim Dekodieren), PNG/JPEG/TIFF bei einem Fehler über GTKs
-eigene Lader, alle anderen Typen über einen installierten Thumbnailer.
+eigene Lader, alle anderen Typen über einen installierten Thumbnailer im
+Sandkasten (`sandkasten.rs`); ein Thumbnailer prüft `try_wait` alle 5 ms,
+weil er auch beim Lösen der Zelle (Merker aus dem Hauptfaden) enden muss
+und std kein Warten mit Zeitlimit kennt.
 Auf der VM gibt es nur die glycin-Thumbnailer für Bilder; PDF bekommen
 eine Miniatur erst, wenn ein PDF-Thumbnailer (Poppler, Querencia
 Dokumente) installiert ist. Gezeigt wird verkleinert auf die Anzeige;
@@ -405,7 +408,8 @@ Treffer.
 (Testmaterial: 200 Fotos 1920×1080, Bildarten, kaputtes und zu großes
 Bild, drei PDF, 10.092 Einträge für die Suche), `lauf.sh` (Prüfrahmen
 Stufe L wie `../pruefung/lauf.sh`, dazu Material, PDF-Thumbnailer-
-Stellvertreter `qd-pdf-miniatur`, Attrappe `querencia-dateisuche`,
+Stellvertreter `qd-pdf-miniatur` (in der Hülle ohne bwrap nicht
+gestartet; `--versuche` für den Sandkasten-Test), Attrappe `querencia-dateisuche`,
 `QUERENCIA_DATEIEN_DEBUG=1`), `cache-pruefen.py` (Cache gegen die
 Spezifikation), Szenarien `pruefung` (26 Fälle M01–M11, S01–S15),
 `messung`, `messung-ohne`, `plateau`, `fotos`. Belege unter
@@ -414,17 +418,17 @@ unter .
 
 Messung (Release, Prüfrahmen L, headless labwc mit Software-Rendering,
 1920×1080, 16 Kerne; `nachweis/miniaturen/laeufe/messung-1920/messung.csv`,
-Spannen aus vier Läufen):
+Spannen aus fünf Läufen):
 
 | Messung | Wert |
 |---|---|
-| 200 Miniaturen neu (JPEG 1920×1080, Symbolansicht 100 %, 4 Fäden) | 1,0–1,8 s (je nach Last der VM durch parallele Bauten) |
-| 200 Miniaturen aus dem Cache (neuer Prozess) | 79–141 ms |
+| 200 Miniaturen neu (JPEG 1920×1080, Symbolansicht 100 %, 4 Fäden) | 0,96–1,8 s (je nach Last der VM durch parallele Bauten) |
+| 200 Miniaturen aus dem Cache (neuer Prozess) | 74–141 ms |
 | dieselben im selben Prozess (Speicher) | sofort, kein Auftrag |
 | Zoom 200 % (128 px aus `normal`) / Liste (24 px) | 52–123 ms / 82–105 ms |
-| Ordnerwechsel 150 ms nach dem Lesen von 200 neuen Fotos | 339–400 Aufträge zurückgenommen, 0–66 erzeugt |
-| Suche „rechnung“ über 10.092 Einträge (111 Ordner, 37 Treffer) | Faden 143–165 ms, Anzeige ≤ 185 ms |
-| Suche „datei“ (9.942 Treffer) | Faden 185–198 ms, Anzeige ≤ 213 ms |
+| Ordnerwechsel 150 ms nach dem Lesen von 200 neuen Fotos | 320–400 Aufträge zurückgenommen, 0–66 erzeugt |
+| Suche „rechnung“ über 10.092 Einträge (111 Ordner, 37 Treffer) | Faden 133–165 ms, Anzeige ≤ 185 ms |
+| Suche „datei“ (9.942 Treffer) | Faden 169–198 ms, Anzeige ≤ 213 ms |
 | VmRSS Start (Ordner ohne Bilder) | 230 MB (ohne Miniaturen auch 230/235 MB) |
 | nach 200 neuen Miniaturen | VmRSS ±0, VmHWM +28 MB (vorübergehend) |
 | nach 600 neuen Miniaturen (`plateau`) | +7–9 MB |
@@ -434,14 +438,18 @@ Spannen aus vier Läufen):
 ### 7.5 Grenzen (Stand dateien/miniaturen-1)
 
 - Kein PDF-/Dokument-Thumbnailer auf der VM: geprüft ist der Weg mit dem
-  Stellvertreter `qd-pdf-miniatur`; echte PDF-Miniaturen brauchen einen
-  installierten Thumbnailer.
+  Stellvertreter `qd-pdf-miniatur` im Sandkasten (Integrationstest); echte
+  PDF-Miniaturen brauchen einen installierten Thumbnailer (QD-143).
 - In der Prüfhülle erlaubt der Kern keinen verschachtelten
   Nutzer-Namensraum: glycin läuft dort ohne Sandbox („Glycin running
-  without sandbox“), fremde Thumbnailer laufen im Sandkasten der Hülle
-  (kein Netz) statt in eigenem bwrap. Der bwrap-Weg ist im Unit-Test auf
-  der VM belegt (nur `lo`, kein `/home`, leere Umgebung, Zeitlimit,
-  Abbruch); in der Sitzung nicht gemessen.
+  without sandbox“), fremde Thumbnailer sind dort nicht verfügbar (M06,
+  M11). Den Sandkasten belegt der Integrationstest
+  `the_pdf_stand_in_runs_sandboxed_in_a_throwaway_home` außerhalb der Hülle
+  mit `qd-pdf-miniatur --versuche` in einem Wegwerf-HOME (Schreiben nach
+  `/var/tmp`, ins HOME und neben die Eingabe, Lesen einer Datei im HOME,
+  Netz zu 127.0.0.1, Sitzungsvariablen, `/run/user`: alles scheitert;
+  Gegenprobe ohne Sandkasten: alles gelingt) sowie der Test für Zeitlimit
+  und Abbruch.
 - Auch eine verdeckte Ansicht (Liste neben der Symbolansicht) bindet ihre
   Zellen und fragt Miniaturen an (Cache-Lesen, kein zweites Erzeugen).
 - „Immer“ für entfernte Orte (sftp, smb) liest die Datei über GIO; im

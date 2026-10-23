@@ -7,8 +7,16 @@ evince-/papers-thumbnailer, kein Poppler-Werkzeug). Damit der Weg über
 diese Datei mit `qd-pdf.thumbnailer` ins Prüfprofil. Sie zeichnet eine
 A4-Seite mit grauen Zeilen; kein Teil des Programms.
 
-Aufruf: qd-pdf-miniatur EINGABE AUSGABE GRÖSSE
+Aufruf: qd-pdf-miniatur [--versuche DRAUSSEN PORT GEHEIM] EINGABE AUSGABE GRÖSSE
+
+Mit --versuche (Integrationstest des Sandkastens, erzeuger.rs) versucht er
+vorher, was ein bösartiger Thumbnailer täte: DRAUSSEN, $HOME/boese.txt und
+eine Datei neben der Eingabe schreiben (der Test prüft draußen, dass nichts
+ankam), 127.0.0.1:PORT erreichen, GEHEIM lesen, Sitzungsvariablen und
+/run/user sehen. Gelingt eines der letzten vier, endet er mit Status 10–13.
 """
+import os
+import socket
 import struct
 import sys
 import zlib
@@ -23,8 +31,36 @@ def png(breite, hoehe, zeilen):
             + chunk(b"IDAT", zlib.compress(roh)) + chunk(b"IEND", b""))
 
 
+def versuche(draussen, port, geheim, eingabe):
+    for ziel in (draussen, os.path.join(os.environ.get("HOME", "/"), "boese.txt"),
+                 os.path.join(os.path.dirname(eingabe), "daneben.txt")):
+        try:
+            with open(ziel, "w") as f:
+                f.write("boese")
+        except OSError:
+            pass
+    try:
+        socket.create_connection(("127.0.0.1", int(port)), timeout=1).close()
+        sys.exit(10)
+    except OSError:
+        pass
+    try:
+        open(geheim, "rb").read()
+        sys.exit(11)
+    except OSError:
+        pass
+    if any(os.environ.get(v) for v in ("DBUS_SESSION_BUS_ADDRESS", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR")):
+        sys.exit(12)
+    if os.path.exists("/run/user"):
+        sys.exit(13)
+
+
 def main():
-    eingabe, ausgabe, groesse = sys.argv[1], sys.argv[2], int(sys.argv[3])
+    args = sys.argv[1:]
+    if args[:1] == ["--versuche"]:
+        versuche(args[1], args[2], args[3], args[4])
+        args = args[4:]
+    eingabe, ausgabe, groesse = args[0], args[1], int(args[2])
     with open(eingabe, "rb") as f:
         if not f.read(5).startswith(b"%PDF-"):
             sys.exit("kein PDF")
