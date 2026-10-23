@@ -14,10 +14,15 @@ use gtk4::{glib, pango};
 
 use querencia_oberflaeche::symbole;
 
-use crate::ansichtskern::{Art, Eintrag, Kern, protokoll, teile};
+use crate::ansicht::Ansicht;
+use crate::ansichtskern::{self, Art, Darstellung, Eintrag, Kern, Modul, protokoll, teile};
 use crate::ansichtsregeln::{
     self, ZEILEN, ZUSATZ_VORGABE, Zusatz, datumsmuster, symbolgroesse, zellbreite, zusatzzeilen,
 };
+use crate::app::Register;
+use crate::konfig::Werte;
+use crate::regeln;
+use crate::regeln::Ansichtsart;
 
 pub struct Symbolansicht {
     pub kern: Rc<Kern>,
@@ -216,13 +221,13 @@ impl Symbolansicht {
             .filter_map(|z| match z {
                 Zusatz::Nichts => None,
                 Zusatz::Groesse => {
-                    (!d.ist_ordner).then(|| glib::format_size(d.groesse).to_string())
+                    (!d.ist_ordner).then(|| regeln::groesse(ansichtskern::groesse(eintrag)))
                 }
-                Zusatz::Datum => glib::DateTime::from_unix_local(d.zeit)
+                Zusatz::Datum => glib::DateTime::from_unix_local(ansichtskern::zeit(eintrag))
                     .ok()
                     .and_then(|t| t.format(datumsmuster(self.iso.get())).ok())
                     .map(|t| t.to_string()),
-                Zusatz::Typ => Some(d.typ_text.clone()),
+                Zusatz::Typ => Some(ansichtskern::typ_text(eintrag)),
             })
             .collect::<Vec<_>>()
             .join("\n")
@@ -299,4 +304,46 @@ impl Symbolansicht {
             }
         }
     }
+}
+
+impl Darstellung for Symbolansicht {
+    fn neu(auswahl: &gtk4::MultiSelection) -> Rc<Self> {
+        Self::new(auswahl)
+    }
+
+    fn kern(&self) -> &Rc<Kern> {
+        &self.kern
+    }
+
+    fn widget(&self) -> gtk4::Widget {
+        Symbolansicht::widget(self)
+    }
+
+    fn zoom_setzen(self: &Rc<Self>, prozent: u32) {
+        Symbolansicht::zoom_setzen(self, prozent);
+    }
+
+    fn einstellungen(self: &Rc<Self>, werte: &Werte) {
+        self.zusatz_setzen([werte.zusatz, werte.zusatz_gross]);
+        self.datumsformat_setzen(werte.datum_iso);
+    }
+}
+
+/// Registers the icon view (kind „Symbole“) and the view styles with the
+/// frame (`main.rs`, `erweiterungen`).
+pub fn registrieren(register: &mut Register) {
+    register.ansicht(Ansichtsart::Symbole, || {
+        Modul::<Symbolansicht>::neu(Ansichtsart::Symbole) as Rc<dyn Ansicht>
+    });
+    register.anwendung(|_| ansichtskern::stil_laden());
+    // Übergang bis zum Gerüst nach geruest-1: die App hält ihre Fenster nur
+    // schwach (app.rs `fenster_merken`), das Fenster samt Ordnermodell fiel
+    // gleich nach dem Bau weg und das Lesen brach ab („Wird geladen …“).
+    // Das Fenster hält sich hier selbst bis zu seinem Ende.
+    register.fenster(|fenster| {
+        let halten = std::cell::RefCell::new(Some(fenster.clone()));
+        fenster.window().connect_destroy(move |_| {
+            halten.borrow_mut().take();
+        });
+    });
 }

@@ -9,12 +9,11 @@
 //! cell comes again.
 
 use gtk4::prelude::*;
-use gtk4::{gio, glib};
 
 use querencia_dateiarbeit::namen::{self, Problem};
 
 use crate::ansichtskern::Eintrag;
-use crate::i18n::{gettext, gettext_f, pgettext};
+use crate::i18n::{gettext, gettext_f};
 
 /// The characters the field selects at first, as (start, end): a file's
 /// name without its extension („bericht.final“ of „bericht.final.odt“),
@@ -225,20 +224,13 @@ impl Mietvertrag {
     }
 }
 
-/// Sets the display name of `datei`; the result is the renamed file.
-pub async fn ausfuehren(datei: gio::File, neu: String) -> Result<gio::File, glib::Error> {
-    datei
-        .set_display_name_future(&neu, glib::Priority::DEFAULT)
-        .await
-}
-
 /// GNOME 2's message for a rename that did not work.
 pub fn fehler_zeigen(fenster: Option<&gtk4::Window>, grund: &str) {
     let dialog = gtk4::AlertDialog::builder()
         .modal(true)
         .message(gettext("The item could not be renamed."))
         .detail(grund)
-        .buttons([pgettext("dialog", "_Close").replace('_', "")])
+        .buttons([crate::menue::ohne_zugriffstaste(&gettext("_Close"))])
         .build();
     dialog.show(fenster);
 }

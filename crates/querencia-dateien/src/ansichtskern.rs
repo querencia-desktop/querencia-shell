@@ -23,11 +23,16 @@ use gtk4::{gdk, gio, glib};
 
 use querencia_dateiarbeit::namen;
 
+use crate::ansicht::{Ansicht, Kontextziel};
+pub use crate::eintrag::Eintrag;
 use crate::i18n::gettext;
+use crate::konfig::Werte;
 use crate::kontextmenue;
+use crate::modell::{Ordnermodell, Zustand as Ladezustand};
+use crate::regeln::{Ansichtsart, Zoom};
+pub use crate::regeln::{Kriterium, Sortierung};
 use crate::tippsuche::Tippsuche;
 use crate::umbenennen::{self, Feld, Mietvertrag};
-pub use crate::vorlauf_modell::{Eintrag, Kriterium, Sortierung};
 
 // GTK 4.12: gtk_grid_view_scroll_to and gtk_column_view_scroll_to. The
 // workspace builds gtk4-rs with the feature v4_10 only; both functions
@@ -62,6 +67,78 @@ pub fn protokoll(text: &str) {
     if AN.with(|a| *a) {
         eprintln!("{PROGRAMM}: {text}");
     }
+}
+
+thread_local! {
+    /// Type descriptions per content type (few types, many files).
+    static TYPEN: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
+}
+
+/// Size in bytes (the sort key the entry keeps).
+pub fn groesse(e: &Eintrag) -> u64 {
+    e.daten().sort.groesse
+}
+
+/// Modification time, seconds since 1970.
+pub fn zeit(e: &Eintrag) -> i64 {
+    e.daten().sort.zeit
+}
+
+/// The description of the entry's type („Einfaches Textdokument“).
+pub fn typ_text(e: &Eintrag) -> String {
+    let typ = &e.daten().typ;
+    TYPEN.with(|t| {
+        t.borrow_mut()
+            .entry(typ.clone())
+            .or_insert_with(|| gio::content_type_get_description(typ).to_string())
+            .clone()
+    })
+}
+
+/// `st_mode` of the entry, if the backend reports it.
+pub fn modus(e: &Eintrag) -> Option<u32> {
+    let info = &e.daten().info;
+    info.has_attribute("unix::mode")
+        .then(|| info.attribute_uint32("unix::mode"))
+}
+
+/// Owner and group names (`owner::user`, `owner::group`; empty when the
+/// folder read did not ask for them).
+pub fn eigentuemer(e: &Eintrag) -> String {
+    e.daten()
+        .info
+        .attribute_string("owner::user")
+        .map(|s| s.to_string())
+        .unwrap_or_default()
+}
+
+pub fn gruppe(e: &Eintrag) -> String {
+    e.daten()
+        .info
+        .attribute_string("owner::group")
+        .map(|s| s.to_string())
+        .unwrap_or_default()
+}
+
+/// Runs `f` once after the next frame of `widget` is painted (GDK frame
+/// clock `after-paint`): the Messung lines include layout and drawing.
+fn nach_dem_zeichnen(widget: &gtk4::Widget, f: impl FnOnce() + 'static) {
+    let Some(uhr) = widget.frame_clock() else {
+        return;
+    };
+    let f = RefCell::new(Some(f));
+    let id: Rc<RefCell<Option<glib::SignalHandlerId>>> = Rc::new(RefCell::new(None));
+    let fuer_ende = id.clone();
+    let handler = uhr.connect_after_paint(move |uhr| {
+        if let Some(f) = f.borrow_mut().take() {
+            f();
+        }
+        if let Some(h) = fuer_ende.borrow_mut().take() {
+            uhr.disconnect(h);
+        }
+    });
+    *id.borrow_mut() = Some(handler);
+    widget.queue_draw();
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -104,6 +181,8 @@ pub struct Rueckrufe {
     pub umbenennen: Rueckruf<(Eintrag, String)>,
     /// A message for the status bar.
     pub melden: Rueckruf<String>,
+    /// A click on a column header asks for this order (list view).
+    pub sortieren: Rueckruf<Sortierung>,
     /// The folder shown and the sort order, for the context menus.
     pub umgebung: RefCell<Option<UmgebungFn>>,
 }
@@ -567,12 +646,11 @@ impl Kern {
                 t0.elapsed().as_millis()
             );
             let art = self.art.name();
-            self.liste.add_tick_callback(move |_, _| {
+            nach_dem_zeichnen(&self.liste, move || {
                 eprintln!(
                     "{PROGRAMM}: Messung Umordnen {art}: Bild nach {} ms",
                     t0.elapsed().as_millis()
                 );
-                glib::ControlFlow::Break
             });
         }
         // A lease whose object left the model ends without a rename.
@@ -942,13 +1020,39 @@ impl Kern {
 
     // --- focus, selection --------------------------------------------
 
+    /// Keyboard focus into the list: on the cursor object, else on the
+    /// first selected one (after switching views the selection is shared,
+    /// the cursor is the other view's), else the list itself.
     pub fn fokus(&self) {
-        match self.cursor_position() {
+        let erste_gewaehlte = || {
+            let a = self.auswahl.selection();
+            (a.size() > 0).then(|| a.nth(0))
+        };
+        match self.cursor_position().or_else(erste_gewaehlte) {
             Some(pos) => self.fokus_auf(pos, false),
             None => {
                 self.liste.grab_focus();
             }
         }
+    }
+
+    /// The object whose icon or name is at (x, y) in the list widget (not
+    /// the free space of a cell), for drag and drop.
+    pub fn eintrag_bei_punkt(&self, x: f64, y: f64) -> Option<Eintrag> {
+        let w = self.liste.pick(x, y, gtk4::PickFlags::DEFAULT)?;
+        if !(w.is::<gtk4::Image>() || w.is::<gtk4::Label>()) {
+            return None;
+        }
+        let (Some((e, zelle)), _) = self.eintrag_bei(Some(w.clone())) else {
+            return None;
+        };
+        (w.parent().as_ref() == Some(&zelle)).then_some(e)
+    }
+
+    // called by the frame through `Ansicht::umbenennen_laeuft`
+    #[allow(dead_code)]
+    pub fn umbenennen_laeuft(&self) -> bool {
+        self.z.borrow().umbenennen.is_some()
     }
 
     fn scrollen(&self, pos: u32, flags: u32) {
@@ -1011,19 +1115,11 @@ impl Kern {
         self.position_von(&name)
     }
 
-    pub fn cursor(&self) -> Option<String> {
-        self.z.borrow().cursor.clone()
-    }
-
     pub fn gewaehlte(&self) -> Vec<Eintrag> {
         let auswahl = self.auswahl.selection();
         (0..auswahl.size())
             .filter_map(|i| self.eintrag(auswahl.nth(i as u32)))
             .collect()
-    }
-
-    pub fn alles_auswaehlen(&self) {
-        self.auswahl.select_all();
     }
 
     /// Selects the objects called `namen` (file names) and focuses the
@@ -1056,18 +1152,6 @@ impl Kern {
         }
     }
 
-    /// For a new folder or document: rename `name` as soon as it is in
-    /// the model.
-    pub fn umbenennen_wenn_da(self: &Rc<Self>, name: &str) {
-        match self.position_von(name) {
-            Some(pos) => {
-                self.fokus_auf(pos, true);
-                self.umbenennen_starten(false);
-            }
-            None => self.z.borrow_mut().warten_auf = Some((name.to_owned(), true)),
-        }
-    }
-
     /// A new folder `pfad` is read: forget cursor, rename and type-ahead.
     pub fn ordner_gewechselt(self: &Rc<Self>, pfad: &str) {
         self.umbenennen_ende(false);
@@ -1088,12 +1172,11 @@ impl Kern {
         if !self.liste.is_mapped() {
             return;
         }
-        self.liste.add_tick_callback(move |_, _| {
+        nach_dem_zeichnen(&self.liste, move || {
             eprintln!(
                 "{PROGRAMM}: Messung {pfad}: erstes Bild nach {} ms",
                 t0.elapsed().as_millis()
             );
-            glib::ControlFlow::Break
         });
     }
 
@@ -1108,17 +1191,27 @@ impl Kern {
                 "{PROGRAMM}: Messung {pfad}: {n} Objekte im Modell nach {} ms",
                 t0.elapsed().as_millis()
             );
-            self.liste.add_tick_callback(move |_, _| {
+            nach_dem_zeichnen(&self.liste, move || {
                 eprintln!(
                     "{PROGRAMM}: Messung {pfad}: Ordner vollständig gezeigt nach {} ms",
                     t0.elapsed().as_millis()
                 );
-                glib::ControlFlow::Break
             });
         }
         self.liste.grab_focus();
-        match name.and_then(|n| self.position_von(n)) {
-            Some(pos) => self.fokus_auf(pos, true),
+        // the folder one came from (selected), else what the window chose
+        // meanwhile (cursor, selection), else the first object
+        let erste_gewaehlte = || {
+            let a = self.auswahl.selection();
+            (a.size() > 0).then(|| (a.nth(0), false))
+        };
+        let ziel = name
+            .and_then(|n| self.position_von(n))
+            .map(|p| (p, true))
+            .or_else(|| self.cursor_position().map(|p| (p, false)))
+            .or_else(erste_gewaehlte);
+        match ziel {
+            Some((pos, waehlen)) => self.fokus_auf(pos, waehlen),
             None if self.auswahl.n_items() > 0 => self.fokus_auf(0, false),
             None => {}
         }
@@ -1427,25 +1520,6 @@ impl Kern {
         });
     }
 
-    /// Strg+A while renaming: the whole text of the field (the window's
-    /// „Alles auswählen“ must not select objects then).
-    pub fn feld_alles_markieren(&self) -> bool {
-        let feld = self
-            .z
-            .borrow()
-            .umbenennen
-            .as_ref()
-            .and_then(|u| u.feld.as_ref().map(|(f, _)| f.clone()));
-        match feld {
-            Some(f) => {
-                let n = f.text().chars().count() as i32;
-                f.setzen(&f.text(), Some((0, n)));
-                true
-            }
-            None => false,
-        }
-    }
-
     pub fn umbenennen_beenden(self: &Rc<Self>, uebernehmen: bool) {
         if self.z.borrow().umbenennen.is_some() {
             self.umbenennen_ende(uebernehmen);
@@ -1680,3 +1754,296 @@ menubutton.menue-anker > button {
   }
 }
 ";
+
+// --- the views as `Ansicht` of the frame -------------------------------
+
+/// What [`Modul`] needs of a view (icon view, list view).
+pub trait Darstellung: 'static {
+    fn neu(auswahl: &gtk4::MultiSelection) -> Rc<Self>;
+    fn kern(&self) -> &Rc<Kern>;
+    fn widget(&self) -> gtk4::Widget;
+    fn zoom_setzen(self: &Rc<Self>, prozent: u32);
+    fn einstellungen(self: &Rc<Self>, werte: &Werte);
+}
+
+type RueckrufZelle = Rc<RefCell<Option<Rc<dyn crate::ansicht::Rueckruf>>>>;
+
+/// A view of kind `art` as the frame's trait [`Ansicht`] (B1,
+/// `ansicht.rs`): the view is built in `set_modell` on the model's
+/// selection; its kern talks to the window through the [`Rueckruf`].
+pub struct Modul<D: Darstellung> {
+    art: Ansichtsart,
+    halter: gtk4::Box,
+    innen: RefCell<Option<Rc<D>>>,
+    modell: RefCell<Option<Ordnermodell>>,
+    rueckruf: RueckrufZelle,
+    zoom: Cell<u32>,
+    werte: RefCell<Option<Werte>>,
+}
+
+impl<D: Darstellung> Modul<D> {
+    pub fn neu(art: Ansichtsart) -> Rc<Self> {
+        let halter = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        halter.set_hexpand(true);
+        halter.set_vexpand(true);
+        Rc::new(Self {
+            art,
+            halter,
+            innen: RefCell::new(None),
+            modell: RefCell::new(None),
+            rueckruf: Rc::new(RefCell::new(None)),
+            zoom: Cell::new(match art {
+                Ansichtsart::Symbole => crate::ansichtsregeln::ZOOM_SYMBOLE,
+                _ => crate::ansichtsregeln::ZOOM_LISTE,
+            }),
+            werte: RefCell::new(None),
+        })
+    }
+
+    fn innen(&self) -> Option<Rc<D>> {
+        self.innen.borrow().clone()
+    }
+
+    fn kern(&self) -> Option<Rc<Kern>> {
+        self.innen().map(|d| d.kern().clone())
+    }
+
+    /// The window's callbacks of the kern.
+    fn verdrahten(&self, d: &Rc<D>, modell: &Ordnermodell) {
+        let kern = d.kern();
+        let r = self.rueckruf.clone();
+        let mit = move |f: &dyn Fn(&Rc<dyn crate::ansicht::Rueckruf>)| {
+            if let Some(r) = r.borrow().clone() {
+                f(&r);
+            }
+        };
+        let m = mit.clone();
+        *kern.rueckrufe.aktiviert.borrow_mut() =
+            Some(Rc::new(move |(liste, neu): (Vec<Eintrag>, bool)| {
+                let namen: Vec<&str> = liste.iter().map(|e| e.daten().name.as_str()).collect();
+                protokoll(&format!(
+                    "aktiviert{}: {}",
+                    if neu { " (neues Fenster)" } else { "" },
+                    namen.join(", ")
+                ));
+                m(&|r| r.aktivieren(&liste, neu));
+            }));
+        let m = mit.clone();
+        *kern.rueckrufe.nach_oben.borrow_mut() = Some(Rc::new(move |()| m(&|r| r.nach_oben())));
+        let m = mit.clone();
+        *kern.rueckrufe.ortsfeld.borrow_mut() = Some(Rc::new(move |c: char| {
+            protokoll(&format!("Ortsfeld mit „{c}“"));
+            m(&|r| r.adresse_tippen(&c.to_string()));
+        }));
+        let m = mit.clone();
+        let weak = Rc::downgrade(d);
+        *kern.rueckrufe.zoom.borrow_mut() = Some(Rc::new(move |schritt: i32| {
+            let Some(d) = weak.upgrade() else { return };
+            let neu = crate::ansichtsregeln::zoom_schritt(d.kern().zoom(), schritt);
+            d.zoom_setzen(neu);
+            m(&|r| r.zoom_geaendert(Zoom(neu)));
+        }));
+        let m = mit.clone();
+        let liste = kern.liste.downgrade();
+        *kern.rueckrufe.kontextmenue.borrow_mut() =
+            Some(Rc::new(move |(objekte, x, y): (bool, f64, f64)| {
+                let Some(liste) = liste.upgrade() else { return };
+                let ziel = if objekte {
+                    Kontextziel::Auswahl
+                } else {
+                    Kontextziel::Hintergrund
+                };
+                m(&|r| r.kontextmenue(ziel, &liste, x, y));
+            }));
+        let m = mit.clone();
+        *kern.rueckrufe.umbenennen.borrow_mut() =
+            Some(Rc::new(move |(e, neu): (Eintrag, String)| {
+                m(&|r| r.umbenennen(e.datei(), &neu));
+            }));
+        let m = mit;
+        *kern.rueckrufe.melden.borrow_mut() = Some(Rc::new(move |text: String| {
+            protokoll(&format!("Meldung: {text}"));
+            m(&|r| r.melden(&text));
+        }));
+        // the window's actions keep the menu state and dateien.ini in step;
+        // without them the model alone
+        let fuer_sortieren = modell.clone();
+        let liste = kern.liste.downgrade();
+        *kern.rueckrufe.sortieren.borrow_mut() = Some(Rc::new(move |s: Sortierung| {
+            let m = &fuer_sortieren;
+            let liste = liste.upgrade();
+            let aktion = |name: &str, ziel: Option<glib::Variant>| {
+                liste.as_ref().is_some_and(|l| {
+                    kontextmenue::aktion_verfuegbar(l, name)
+                        && l.activate_action(name, ziel.as_ref()).is_ok()
+                })
+            };
+            if s.kriterium != m.sortierung().kriterium
+                && !aktion("win.anordnen", Some(s.kriterium.kennung().to_variant()))
+            {
+                m.sortierung_setzen(Sortierung {
+                    kriterium: s.kriterium,
+                    ..m.sortierung()
+                });
+            }
+            if s.umgekehrt != m.sortierung().umgekehrt && !aktion("win.umgekehrt", None) {
+                m.sortierung_setzen(Sortierung {
+                    umgekehrt: s.umgekehrt,
+                    ..m.sortierung()
+                });
+            }
+        }));
+        let fuer_umgebung = modell.clone();
+        *kern.rueckrufe.umgebung.borrow_mut() = Some(Rc::new(move || {
+            (fuer_umgebung.ordner(), fuer_umgebung.sortierung())
+        }));
+        // reading a folder: forget cursor and rename, Messung lines,
+        // keyboard focus when it is read
+        let weak = Rc::downgrade(kern);
+        modell.bei_zustand(move |z| {
+            let Some(k) = weak.upgrade() else { return };
+            protokoll(&format!("Modell {}: {z:?}", k.art.name()));
+            match z {
+                Ladezustand::Laedt(ordner) => k.ordner_gewechselt(&ordner.parse_name()),
+                Ladezustand::ErsterBlock => k.erster_block(),
+                Ladezustand::Geladen(_) | Ladezustand::Gestoppt if k.liste.is_mapped() => {
+                    k.geladen(None)
+                }
+                _ => {}
+            }
+        });
+    }
+}
+
+impl<D: Darstellung> Ansicht for Modul<D> {
+    fn art(&self) -> Ansichtsart {
+        self.art
+    }
+
+    fn widget(&self) -> gtk4::Widget {
+        self.halter.clone().upcast()
+    }
+
+    fn set_modell(&self, modell: &Ordnermodell) {
+        if self.innen.borrow().is_some() {
+            return;
+        }
+        protokoll(&format!("Ansicht {:?} am Modell", self.art));
+        let d = D::neu(modell.auswahl());
+        let w = d.widget();
+        w.set_hexpand(true);
+        w.set_vexpand(true);
+        self.halter.append(&w);
+        self.verdrahten(&d, modell);
+        d.zoom_setzen(self.zoom.get());
+        if let Some(werte) = self.werte.borrow().as_ref() {
+            d.kern().einfacher_klick(werte.einfacher_klick);
+            d.einstellungen(werte);
+        }
+        *self.modell.borrow_mut() = Some(modell.clone());
+        *self.innen.borrow_mut() = Some(d);
+    }
+
+    fn modell(&self) -> Option<Ordnermodell> {
+        self.modell.borrow().clone()
+    }
+
+    fn verbinden(&self, rueckruf: Rc<dyn crate::ansicht::Rueckruf>) {
+        *self.rueckruf.borrow_mut() = Some(rueckruf);
+    }
+
+    fn zoom(&self) -> Zoom {
+        Zoom(self.kern().map_or(self.zoom.get(), |k| k.zoom()))
+    }
+
+    fn zoom_setzen(&self, zoom: Zoom) {
+        let prozent = crate::ansichtsregeln::zoom_stufe(zoom.0);
+        self.zoom.set(prozent);
+        if let Some(d) = self.innen() {
+            d.zoom_setzen(prozent);
+        }
+    }
+
+    fn zoomstufen(&self) -> &'static [u32] {
+        &crate::ansichtsregeln::STUFEN
+    }
+
+    fn fokus(&self) {
+        if let Some(k) = self.kern() {
+            k.fokus();
+        }
+    }
+
+    fn fokus_auf(&self, datei: &gio::File, waehlen: bool) {
+        let (Some(k), Some(m)) = (self.kern(), self.modell()) else {
+            return;
+        };
+        match m.position_von(datei) {
+            Some(pos) => {
+                if waehlen {
+                    m.waehlen(std::slice::from_ref(datei));
+                }
+                k.fokus_auf(pos, false);
+            }
+            None => {
+                if let Some(name) = datei.basename() {
+                    k.waehlen(&[name.to_string_lossy().into_owned()]);
+                }
+            }
+        }
+    }
+
+    fn umbenennen_anstossen(&self, datei: &gio::File, ganzer_name: bool) {
+        let (Some(k), Some(m)) = (self.kern(), self.modell()) else {
+            return;
+        };
+        let Some(pos) = m.position_von(datei) else {
+            return;
+        };
+        if !k.auswahl.is_selected(pos) || k.auswahl.selection().size() != 1 {
+            m.waehlen(std::slice::from_ref(datei));
+        }
+        k.fokus_auf(pos, false);
+        k.umbenennen_starten(ganzer_name);
+    }
+
+    fn umbenennen_laeuft(&self) -> bool {
+        self.kern().is_some_and(|k| k.umbenennen_laeuft())
+    }
+
+    fn eintrag_bei(&self, x: f64, y: f64) -> Option<Eintrag> {
+        let k = self.kern()?;
+        let p = self
+            .halter
+            .compute_point(&k.liste, &gtk4::graphene::Point::new(x as f32, y as f32))?;
+        k.eintrag_bei_punkt(f64::from(p.x()), f64::from(p.y()))
+    }
+
+    fn einstellungen_anwenden(&self, werte: &Werte) {
+        *self.werte.borrow_mut() = Some(werte.clone());
+        if let Some(d) = self.innen() {
+            d.kern().einfacher_klick(werte.einfacher_klick);
+            d.einstellungen(werte);
+        }
+    }
+}
+
+/// The view rules of [`STIL`] for the whole program (once, at startup).
+pub fn stil_laden() {
+    thread_local! {
+        static GELADEN: Cell<bool> = const { Cell::new(false) };
+    }
+    if GELADEN.with(|g| g.replace(true)) {
+        return;
+    }
+    let css = gtk4::CssProvider::new();
+    querencia_oberflaeche::farbschema::folgen(&css, PROGRAMM);
+    css.load_from_data(STIL);
+    if let Some(display) = gdk::Display::default() {
+        gtk4::style_context_add_provider_for_display(
+            &display,
+            &css,
+            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+    }
+}

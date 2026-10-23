@@ -54,6 +54,14 @@ printf 'XDG_DESKTOP_DIR="$HOME/Schreibtisch"\nXDG_TEMPLATES_DIR="$HOME/Vorlagen"
 for c in querencia-dateien querencia-oberflaeche querencia-dateiarbeit; do
     (cd "$WT/crates/$c" && python3 -I werkzeug/i18n.py mo "$PROFIL/locale" >/dev/null)
 done
+# Testprogramm für Textdateien (Prüfrahmen-Regel 10: eigene mimeapps.list,
+# nichts Echtes startet): schreibt nur auf, was es öffnen soll
+mkdir -p "$PROFIL/data/applications"
+printf '#!/bin/sh\nfor f in "$@"; do printf "%%s\\n" "$f" >>"%s/geoeffnet.log"; done\n' "$OUT" >"$PROFIL/bin/qd-oeffnen"
+chmod +x "$PROFIL/bin/qd-oeffnen"
+printf '[Desktop Entry]\nType=Application\nName=Prüfprogramm\nExec=qd-oeffnen %%F\nMimeType=text/plain;\n' \
+    >"$PROFIL/data/applications/qd-pruef.desktop"
+printf '[Default Applications]\ntext/plain=qd-pruef.desktop\n' >"$PROFIL/config/mimeapps.list"
 # xdg-open-Attrappe (nichts startet wirklich)
 printf '#!/bin/sh\nprintf "%%s\\n" "$*" >>"%s/xdg-open.log"\n' "$OUT" >"$PROFIL/bin/xdg-open"
 chmod +x "$PROFIL/bin/xdg-open"

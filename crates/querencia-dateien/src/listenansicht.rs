@@ -8,7 +8,7 @@
 //! The ColumnView does not sort itself: its sorter only reports the
 //! clicks, the order stays the folder model's (one order for both views).
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -17,12 +17,17 @@ use gtk4::{glib, pango};
 
 use querencia_oberflaeche::symbole;
 
-use crate::ansichtskern::{Art, Eintrag, Kern, Sortierung, protokoll, teile};
+use crate::ansicht::Ansicht;
+use crate::ansichtskern::{
+    self, Art, Darstellung, Eintrag, Kern, Modul, Sortierung, protokoll, teile,
+};
 use crate::ansichtsregeln::{
     self, Spalte, datumsmuster, groesse_text, rechte_text, sichtbare_spalten, sortierung_nach_klick,
 };
-
-type SortRueckruf = Rc<dyn Fn(Sortierung)>;
+use crate::app::Register;
+use crate::konfig::Werte;
+use crate::regeln;
+use crate::regeln::Ansichtsart;
 
 pub struct Listenansicht {
     pub kern: Rc<Kern>,
@@ -32,25 +37,22 @@ pub struct Listenansicht {
     /// Set while the view itself moves the header arrow.
     zeigt: Cell<bool>,
     sortierung: Cell<Sortierung>,
-    bei_klick: RefCell<Option<SortRueckruf>>,
 }
 
 fn text_der_spalte(spalte: Spalte, e: &Eintrag, iso: bool) -> String {
     let d = e.daten();
     match spalte {
         Spalte::Name => d.anzeige.clone(),
-        Spalte::Groesse => groesse_text(d.ist_ordner, d.groesse, |n| {
-            glib::format_size(n).to_string()
-        }),
-        Spalte::Typ => d.typ_text.clone(),
-        Spalte::Datum => glib::DateTime::from_unix_local(d.zeit)
+        Spalte::Groesse => groesse_text(d.ist_ordner, ansichtskern::groesse(e), regeln::groesse),
+        Spalte::Typ => ansichtskern::typ_text(e),
+        Spalte::Datum => glib::DateTime::from_unix_local(ansichtskern::zeit(e))
             .ok()
             .and_then(|t| t.format(datumsmuster(iso)).ok())
             .map(|t| t.to_string())
             .unwrap_or_default(),
-        Spalte::Rechte => d.modus.map(rechte_text).unwrap_or_default(),
-        Spalte::Eigentuemer => d.eigentuemer.clone(),
-        Spalte::Gruppe => d.gruppe.clone(),
+        Spalte::Rechte => ansichtskern::modus(e).map(rechte_text).unwrap_or_default(),
+        Spalte::Eigentuemer => ansichtskern::eigentuemer(e),
+        Spalte::Gruppe => ansichtskern::gruppe(e),
     }
 }
 
@@ -98,7 +100,6 @@ impl Listenansicht {
             iso: Cell::new(false),
             zeigt: Cell::new(false),
             sortierung: Cell::new(Sortierung::default()),
-            bei_klick: RefCell::new(None),
         });
         for (spalte, _, factory) in &spalten {
             liste.fabrik(*spalte, factory);
@@ -176,12 +177,6 @@ impl Listenansicht {
         self.kern.wurzel.clone().upcast()
     }
 
-    /// `f` gets the order a click on a column header asks for; the window
-    /// sets it on the model (and calls [`Self::sortierung_zeigen`]).
-    pub fn bei_sortierklick(&self, f: impl Fn(Sortierung) + 'static) {
-        *self.bei_klick.borrow_mut() = Some(Rc::new(f));
-    }
-
     fn kopf_geklickt(self: &Rc<Self>) {
         if self.zeigt.get() {
             return;
@@ -218,7 +213,7 @@ impl Listenansicht {
             neu.umgekehrt
         ));
         self.sortierung.set(neu);
-        if let Some(f) = self.bei_klick.borrow().clone() {
+        if let Some(f) = self.kern.rueckrufe.sortieren.borrow().clone() {
             f(neu);
         }
         self.kern.nach_umordnen();
@@ -378,4 +373,49 @@ impl Listenansicht {
             }
         });
     }
+}
+
+impl Darstellung for Listenansicht {
+    fn neu(auswahl: &gtk4::MultiSelection) -> Rc<Self> {
+        Self::new(auswahl)
+    }
+
+    fn kern(&self) -> &Rc<Kern> {
+        &self.kern
+    }
+
+    fn widget(&self) -> gtk4::Widget {
+        Listenansicht::widget(self)
+    }
+
+    fn zoom_setzen(self: &Rc<Self>, prozent: u32) {
+        Listenansicht::zoom_setzen(self, prozent);
+    }
+
+    fn einstellungen(self: &Rc<Self>, werte: &Werte) {
+        let mut spalten = Vec::new();
+        for (an, s) in [
+            (werte.spalte_groesse, Spalte::Groesse),
+            (werte.spalte_typ, Spalte::Typ),
+            (werte.spalte_datum, Spalte::Datum),
+            (werte.spalte_rechte, Spalte::Rechte),
+            (werte.spalte_eigentuemer, Spalte::Eigentuemer),
+            (werte.spalte_gruppe, Spalte::Gruppe),
+        ] {
+            if an {
+                spalten.push(s);
+            }
+        }
+        self.spalten_setzen(&spalten);
+        self.datumsformat_setzen(werte.datum_iso);
+    }
+}
+
+/// Registers the list view (kind „Liste“) and the view styles with the
+/// frame (`main.rs`, `erweiterungen`).
+pub fn registrieren(register: &mut Register) {
+    register.ansicht(Ansichtsart::Liste, || {
+        Modul::<Listenansicht>::neu(Ansichtsart::Liste) as Rc<dyn Ansicht>
+    });
+    register.anwendung(|_| ansichtskern::stil_laden());
 }
