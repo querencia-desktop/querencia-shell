@@ -104,3 +104,19 @@
 #      nur S004 in der Kopie integration/panel-030-2 (Skript, tausch-panel-3.py,
 #      vorlage-erzeugen.sh wie integration/panel-030) und die höhere Zählung
 #      bei P002; sie fallen unter die Ausnahmen oben.
+# oberflaeche (23.10.2026): neu gegenüber main a1b3e53 sind vor allem
+#      verschobene Befunde: classic_menu.rs, classic_menu/gui_test.rs,
+#      symbole.rs, icon_theme.rs, farbschema.rs und portal.rs stehen jetzt
+#      unter crates/querencia-oberflaeche/src (gleiche S003/S004/S005/Q003
+#      wie vorher unter crates/querencia-panel/src). Wirklich neu: H002 für
+#      crates/querencia-oberflaeche/CHANGELOG.md (CHANGELOG je Crate wie
+#      Panel und Desktop, in der Doc-Map), S003/S004/S005 in
+#      crates/querencia-oberflaeche/{Cargo.toml,src/lib.rs,src/i18n.rs,
+#      werkzeug/i18n.py} und crates/querencia-panel/src/menu_gui_test.rs
+#      (i18n-Muster und Projektstil wie Lautstärke/Netzwerk), S005 in
+#      crates/querencia-desktop/Cargo.toml (englischer Kommentar wie in den
+#      übrigen Cargo.toml), S003/S004/S005/H003 in den Kopien
+#      integration/panel-031 und integration/desktop-027 (Prüfwerkzeuge wie
+#      integration/panel-030-2 und desktop-026-2) und die höhere Zählung bei
+#      P002; sie fallen unter die Ausnahmen oben
+#     .
