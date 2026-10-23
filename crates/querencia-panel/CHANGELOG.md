@@ -1,5 +1,25 @@
 # Änderungen – querencia-panel
 
+## 0.3.1 – 2026-10-23
+
+Nur ein Umbau, sichtbar ändert sich nichts gegenüber 0.3.0.
+
+- Die Bausteine `classic_menu`, `symbole`, `icon_theme`, `farbschema` und
+  `portal` stehen jetzt in der Bibliothek `querencia-oberflaeche` des
+  Workspace (`crates/querencia-oberflaeche`), die auch der Desktop und der
+  kommende Dateimanager nutzen. Das Panel bindet sie über `use` ein; die
+  Menüs laden ihre Symbole weiter ohne GTKs Vorladen (QD-106).
+- Die Tastennamen der Kürzel (`Strg`, `Umschalt`, `Entf`, `Eingabe`,
+  `Druck`) kommen aus der Textdomäne `querencia-oberflaeche`; das Panel
+  bindet sie wie Lautstärke und Netzwerk an sein Katalogverzeichnis und
+  liefert `querencia-oberflaeche.mo` mit. In `po/` des Panels fallen die
+  fünf Einträge weg. Ohne diesen Katalog stünde im System-Menü
+  „Ctrl+Alt+L“ statt „Strg+Alt+L“.
+- Der GUI-Test der Menüs liegt in der Bibliothek
+  (`classic_menu::gui_test`, Feature `gui-test`); das Panel ruft ihn mit
+  seinen eigenen Menüknöpfen auf (`src/menu_gui_test.rs`, ignoriert, nur
+  isoliert).
+
 ## 0.3.0 – 2026-10-22
 
 Integrationsstand 0.3.0-2 (Tags `panel/0.3.0-2`, `panel/0.3.0-2-int`):

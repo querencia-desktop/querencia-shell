@@ -1,0 +1,26 @@
+[package]
+name = "querencia-oberflaeche"
+version = "0.1.0"
+description = "Querencia Oberfläche: gemeinsame GTK-Bausteine von Panel, Desktop und Dateimanager (klassische Menüs, Symbole ohne Vorladen, Symbolthema, Farbschema, Settings-Portal)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "querencia_oberflaeche"
+path = "src/lib.rs"
+
+[features]
+# Builds `classic_menu::gui_test`, the isolated GUI test of the classic
+# menus; only the tests of a program enable it (dev-dependency), never a
+# release build.
+gui-test = []
+
+[dependencies]
+# Translations through GNU gettext (own text domain querencia-oberflaeche,
+# po/), as querencia-panel: gettext-system uses the gettext of glibc.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
+# Same crate and version as querencia-panel and querencia-desktop; gio and
+# glib come through gtk4.
+gtk4 = { version = "0.11", features = ["v4_10"] }

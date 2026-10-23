@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/querencia-panel", "crates/querencia-desktop", "crates/querencia-kuerzel", "crates/querencia-lautstaerke", "crates/querencia-netzwerk"]
+members = ["crates/querencia-panel", "crates/querencia-desktop", "crates/querencia-kuerzel", "crates/querencia-lautstaerke", "crates/querencia-netzwerk", "crates/querencia-oberflaeche"]
 
 [workspace.package]
 edition = "2024"

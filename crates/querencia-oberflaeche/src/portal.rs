@@ -1,5 +1,4 @@
-//! The settings portal at start (QD-062, G2-AI; shared with
-//! querencia-desktop through `#[path]`).
+//! The settings portal at start (QD-062, G2-AI; panel and desktop first).
 //!
 //! GTK 4.22 reads theme, font and cursor only from the settings portal
 //! (`org.freedesktop.portal.Settings`). While opening the display it asks

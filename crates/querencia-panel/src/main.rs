@@ -6,38 +6,39 @@ mod applet_move;
 mod applets;
 mod apps;
 mod arbeitsflaeche_zeigen;
-mod classic_menu;
 mod clock;
 mod ergaenzung;
-mod farbschema;
 mod fensterliste;
 mod glocke;
 mod i18n;
 mod icon_reload;
-mod icon_theme;
 mod launcher;
 mod layout;
 mod layout_editor;
 mod layout_store;
 mod links;
 mod logo;
+#[cfg(test)]
+mod menu_gui_test;
 mod network_applet;
 mod network_dialogs;
 mod neuladen;
 mod panel;
 mod panel_menu;
 mod places_menu;
-mod portal;
 mod session;
 mod sitzung_start;
 mod symbol_farbe;
-mod symbole;
 mod system_menu;
 mod ueberwachung;
 mod volume_applet;
 mod window_icons;
 mod window_list;
 mod workspace_switcher;
+
+// The building blocks shared with querencia-desktop (until 0.3.0 modules of
+// the panel); imported here, so `crate::symbole` and the others keep working.
+use querencia_oberflaeche::{classic_menu, farbschema, icon_theme, portal, symbole};
 
 use std::cell::RefCell;
 use std::rc::Rc;

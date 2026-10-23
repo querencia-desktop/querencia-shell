@@ -18,29 +18,23 @@
 //!
 //! Only one instance per session (GApplication ID); a second start exits.
 
-// The panel's classic GNOME 2 menus (HMP-03/05), shared source: the desktop
-// menu looks and behaves exactly like the panel menus.
-#[allow(dead_code)]
-#[path = "../../querencia-panel/src/classic_menu.rs"]
-mod classic_menu;
 mod config;
 mod desktop_view;
-#[path = "../../querencia-panel/src/farbschema.rs"]
-mod farbschema;
 mod fileops;
 mod i18n;
-// The icon theme rule of the panel (G2-AD), shared source.
-#[path = "../../querencia-panel/src/icon_theme.rs"]
-mod icon_theme;
 mod icons;
 mod layout;
-// The settings portal check of the panel (QD-062), shared source.
-#[path = "../../querencia-panel/src/portal.rs"]
-mod portal;
 mod rename;
 mod store;
 mod volumes;
 mod wallpaper;
+
+// The panel's building blocks, as a library of the workspace (until 0.2.6
+// the panel's source files through #[path]): the classic GNOME 2 menus
+// (HMP-03/05), so the desktop menu looks and behaves exactly like the panel
+// menus; the icon theme rule (G2-AD); the dark rules (QD-081); the settings
+// portal check (QD-062).
+use querencia_oberflaeche::{classic_menu, farbschema, icon_theme, portal};
 
 use std::cell::RefCell;
 use std::path::PathBuf;
@@ -145,6 +139,9 @@ fn main() -> glib::ExitCode {
         }
         // keep running without visible windows while monitors change
         std::mem::forget(app.hold());
+        // The desktop menu keeps GTK's own way of loading icons, as up to
+        // 0.2.6 (the panel loads them without preloading, QD-106).
+        classic_menu::set_icon_loading(classic_menu::IconLoading::Gtk);
         icon_theme::follow("querencia-desktop");
         install_style();
         farbschema::startfehler_beheben();

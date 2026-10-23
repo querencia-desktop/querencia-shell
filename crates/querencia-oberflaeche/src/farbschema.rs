@@ -1,6 +1,5 @@
-//! The dark rules of the panel's and the desktop's own style sheets
-//! (QD-081, CSS-Welle dunkel, Thema 0.2; shared with querencia-desktop
-//! through `#[path]`).
+//! The dark rules of a program's own style sheet (QD-081, CSS-Welle dunkel,
+//! Thema 0.2; panel and desktop first).
 //!
 //! Two facts of GTK 4.22, measured in isolation (Bilder 0.2.4, Dokumente
 //! 0.1.2, Benachrichtigungen 0.2.1 and again for this module,

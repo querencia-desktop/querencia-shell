@@ -39,6 +39,9 @@ pub fn init() {
     }
     let _ = bind_textdomain_codeset(DOMAIN, "UTF-8");
     let _ = textdomain(DOMAIN);
+    // the key names of shortcuts in the classic menus (none on the desktop
+    // so far), from the catalog of the library in the same folder
+    querencia_oberflaeche::i18n::bind(dir.as_path());
 }
 
 /// Verzeichnis der Kataloge (siehe Modulbeschreibung).
