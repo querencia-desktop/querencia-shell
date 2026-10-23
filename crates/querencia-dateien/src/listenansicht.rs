@@ -211,6 +211,11 @@ impl Listenansicht {
     /// Shows the arrow of `s` in the header (after a change from the menu).
     pub fn sortierung_zeigen(&self, s: Sortierung) {
         self.sortierung.set(s);
+        protokoll(&format!(
+            "Spaltenkopf: Pfeil {} umgekehrt {}",
+            s.kriterium.kennung(),
+            s.umgekehrt
+        ));
         let spalte = Spalte::fuer_kriterium(s.kriterium);
         let col = self
             .spalten

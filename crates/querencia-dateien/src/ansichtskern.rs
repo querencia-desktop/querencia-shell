@@ -1965,6 +1965,9 @@ impl<D: Darstellung> Ansicht for Modul<D> {
         w.set_vexpand(true);
         self.halter.append(&w);
         self.verdrahten(&d, modell);
+        // a view made later (list after a sort in the icon view) starts
+        // with the model's order in its header
+        d.sortierung_geaendert(modell.sortierung());
         d.zoom_setzen(self.zoom.get());
         if let Some(werte) = self.werte.borrow().as_ref() {
             d.kern().einfacher_klick(werte.einfacher_klick);
