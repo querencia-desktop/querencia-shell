@@ -25,6 +25,7 @@ use gtk4::{Align, gdk, gio, glib};
 use querencia_dateiarbeit::{oeffnen, typ};
 use querencia_oberflaeche::symbole;
 
+use crate::fenster::Fenster;
 use crate::i18n::{gettext, gettext_f, ngettext_f, pgettext};
 use crate::operationen::{Operationen, fehler, protokoll};
 
@@ -244,8 +245,28 @@ fn inhalt_text(s: &Zaehlung) -> String {
     }
 }
 
+/// `win.eigenschaften` of `fenster` (B1 hangs it on its action): the
+/// properties of each selected entry, at most eight windows as Nautilus
+/// 2.30 opened them, else of the shown folder.
+pub fn zeigen(fenster: &Rc<Fenster>) {
+    let ops = Operationen::fuer(fenster);
+    let mut ziele: Vec<gio::File> = fenster
+        .modell()
+        .gewaehlte()
+        .iter()
+        .map(|e| e.datei().clone())
+        .collect();
+    if ziele.is_empty() {
+        ziele.extend(fenster.ort());
+    }
+    let parent: gtk4::Window = fenster.window().clone().upcast();
+    for datei in ziele.into_iter().take(8) {
+        zeigen_fuer(Some(&parent), datei, &ops);
+    }
+}
+
 /// Shows the properties of `datei` (a window of its own, built anew).
-pub fn zeigen(parent: Option<&gtk4::Window>, datei: gio::File, ops: &Rc<Operationen>) {
+pub fn zeigen_fuer(parent: Option<&gtk4::Window>, datei: gio::File, ops: &Rc<Operationen>) {
     let info = match datei.query_info(
         ATTRIBUTE,
         gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
