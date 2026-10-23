@@ -109,6 +109,18 @@ if [ -x "$BENACHRICHTIGUNGEN" ]; then
     gtk_exec "$BENACHRICHTIGUNGEN" </dev/null >>"$QUERENCIA_STATE_DIR/benachrichtigungen.log" 2>&1 &
 fi
 
+# X11-Zwischenablage nachreichen (QD-155, 23.10.2026): labwc gibt die
+# Zwischenablage an X11-Programme (Wine, XWayland-Firefox) nur heraus, solange
+# ein X11-Fenster den Fokus hat, setzt den X11-Besitzer aber schon beim
+# Kopieren. Wine liest genau dann (XFixes) und danach nie wieder, also bleibt
+# Strg+V dort leer. Der Helfer legt den Inhalt beim Fokuswechsel auf ein
+# X11-Fenster erneut ab. Optional; ohne Datei bleibt alles wie bisher.
+# Ersatz bis zum labwc-Patch (Besitzer beim Fokuswechsel neu setzen).
+HELFER=${QUERENCIA_X11_ZWISCHENABLAGE:-~/opt/querencia/bin/x11-zwischenablage-helfer}
+if [ -x "$HELFER" ]; then
+    "$HELFER" </dev/null >>"$QUERENCIA_STATE_DIR/x11-zwischenablage-helfer.log" 2>&1 &
+fi
+
 # Querencia Sitzung (G2-K): idle lock. Ends with labwc (Wayland connection
 # closes); no record needed. QUERENCIA_SITZUNG is empty without the program.
 if [ -n "${QUERENCIA_SITZUNG-}" ] && [ -x "$QUERENCIA_SITZUNG" ]; then
