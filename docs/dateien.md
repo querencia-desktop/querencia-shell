@@ -62,8 +62,9 @@ Modell ein neues `Eintrag` an dieselbe Stelle (recycelte Zellen werden
   Inhaltstyp, Ordner `inode/directory`), `suchname` (Tippsuche), `sort`.
 - Abkürzungen: `datei()`, `name()`, `ist_ordner()`, `ziel()` (bei
   `computer:///` und Papierkorb `standard::target-uri`, sonst die Datei),
-  `gewaehlt()` (für die Statusleiste).
-- Abgefragte Attribute: `eintrag::ATTRIBUTE` (lokal, ohne
+  `gewaehlt()` (für die Statusleiste), `beschreibung()` (Typbeschreibung).
+- Abgefragte Attribute: `eintrag::ATTRIBUTE` (lokal, mit `unix::mode`,
+  `owner::user`, `owner::group` für die Listenspalten, ohne
   `standard::icon` und `standard::content-type`, C §1), bei GVfs-Orten
   zusätzlich `ATTRIBUTE_ORTE` (`standard::icon`, `standard::target-uri`,
   `trash::orig-path`, `trash::deletion-date`); `attribute_fuer(&ordner)`.
@@ -87,6 +88,7 @@ Reihenfolge gehören dem Modell.
 | `sortierung()`, `sortierung_setzen(Sortierung)`, `verborgene_zeigen()`, `verborgene_setzen(bool)` | Ordnung und Filter |
 | `bei_zustand(Fn(&Zustand))` | `Laedt(ordner)`, `ErsterBlock`, `Geladen(n)`, `Gestoppt`, `Fehler(text)`, `OrdnerWeg` |
 | `bei_erscheinen(&datei, FnOnce(&Eintrag))` | sobald eine Datei im Ordner ist (sofort, wenn schon da) |
+| `bei_sortierung(Fn(Sortierung))` | nach jeder neuen Sortierung (Menü, Einstellungen, Spaltenkopf) |
 
 Änderungen kommen über `dateiarbeit::ueberwachung::FolderWatch`
 (gebündelt): neue und geänderte Dateien werden neu abgefragt und
