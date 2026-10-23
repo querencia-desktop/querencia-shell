@@ -9,7 +9,7 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 use gtk4::prelude::*;
 use gtk4::{gio, glib};
@@ -94,7 +94,9 @@ pub struct App {
     papierkorb: Papierkorb,
     lesezeichen: Rc<Lesezeichen>,
     laufwerke: gio::VolumeMonitor,
-    fenster: RefCell<Vec<Weak<Fenster>>>,
+    /// The open windows; a window leaves the list when GTK destroys it
+    /// (callbacks of the window only hold weak references).
+    fenster: RefCell<Vec<Rc<Fenster>>>,
     auftraege: RefCell<HashMap<JobId, glib::WeakRef<gtk4::Window>>>,
 }
 
@@ -191,19 +193,20 @@ impl App {
         self.auftraege.borrow_mut().remove(&id);
     }
 
-    pub(crate) fn fenster_merken(&self, fenster: &Rc<Fenster>) {
-        let mut alle = self.fenster.borrow_mut();
-        alle.retain(|f| f.strong_count() > 0);
-        alle.push(Rc::downgrade(fenster));
+    pub(crate) fn fenster_merken(self: &Rc<Self>, fenster: &Rc<Fenster>) {
+        self.fenster.borrow_mut().push(fenster.clone());
+        let app = Rc::downgrade(self);
+        let weg = Rc::downgrade(fenster);
+        fenster.window().connect_destroy(move |_| {
+            if let (Some(app), Some(weg)) = (app.upgrade(), weg.upgrade()) {
+                app.fenster.borrow_mut().retain(|f| !Rc::ptr_eq(f, &weg));
+            }
+        });
     }
 
     /// All open windows.
     pub fn alle_fenster(&self) -> Vec<Rc<Fenster>> {
-        self.fenster
-            .borrow()
-            .iter()
-            .filter_map(Weak::upgrade)
-            .collect()
+        self.fenster.borrow().clone()
     }
 
     /// Finds the `Fenster` behind a GTK window (for dialogs that only know
