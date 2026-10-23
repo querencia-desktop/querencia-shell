@@ -293,6 +293,13 @@ marke; strg 1; q "wait 500"; taste Right; q "wait 300"
 fall A15 "Strg+1 zurück zur Symbolansicht" im_log 'Fokus Symbolansicht: '
 stopp
 
+# --- A17 Pfeil im Spaltenkopf einer später angelegten Liste ---------------
+start "$B"
+marke; aktion anordnen groesse; q "wait 400"
+marke; strg 2; q "wait 800"
+fall A17 "Liste nach Sortierung in der Symbolansicht angelegt: Pfeil auf „Größe“" im_log 'Spaltenkopf: Pfeil groesse'
+stopp
+
 # --- A16 Zusatzzeilen und Spalten nach Einstellung -------------------------
 ini "[Ansichten]" "ZoomSymbole=150" "[Anzeige]" "Zusatz=datum" "ZusatzGross=typ" \
     "[Listenspalten]" "Groesse=true" "Typ=true" "Datum=true" "Rechte=true" "Eigentuemer=true" "Gruppe=true"
