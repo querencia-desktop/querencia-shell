@@ -20,11 +20,9 @@
 
 mod config;
 mod desktop_view;
-mod fileops;
 mod i18n;
 mod icons;
 mod layout;
-mod rename;
 mod store;
 mod volumes;
 mod wallpaper;
@@ -103,14 +101,34 @@ fn main() -> glib::ExitCode {
             "Laufwerke: Wechsel={} Optisch={} Netz={} Eingebaut={}",
             settings.removable, settings.optical, settings.network, settings.internal
         );
-        for mount in gio::VolumeMonitor::get().mounts() {
-            let facts = volumes::facts(&mount);
+        let monitor = gio::VolumeMonitor::get();
+        for mount in monitor.mounts() {
+            let facts = querencia_dateiarbeit::laufwerke::facts(&mount);
             println!(
                 "{}\t{}\t{}\t{}",
                 facts.name,
                 facts.root_uri,
-                volumes::classify(&facts).map_or("nie", volumes::VolumeType::name),
+                querencia_dateiarbeit::laufwerke::classify(&facts)
+                    .map_or("nie", volumes::VolumeType::name),
                 if volumes::shown(&facts, &settings) {
+                    "Symbol"
+                } else {
+                    "kein Symbol"
+                }
+            );
+        }
+        // 0.3.0 (E3): media that are not mounted, with an icon to mount them
+        for volume in monitor.volumes() {
+            if volume.get_mount().is_some() {
+                continue;
+            }
+            let facts = querencia_dateiarbeit::laufwerke::volume_facts(&volume);
+            let typ = querencia_dateiarbeit::laufwerke::classify_unmounted(&facts);
+            println!(
+                "{}\t(nicht eingehängt)\t{}\t{}",
+                facts.name,
+                typ.map_or("nie", volumes::VolumeType::name),
+                if typ.is_some_and(|t| volumes::offered_unmounted(t, &settings)) {
                     "Symbol"
                 } else {
                     "kein Symbol"
@@ -139,9 +157,9 @@ fn main() -> glib::ExitCode {
         }
         // keep running without visible windows while monitors change
         std::mem::forget(app.hold());
-        // The desktop menu keeps GTK's own way of loading icons, as up to
-        // 0.2.6 (the panel loads them without preloading, QD-106).
-        classic_menu::set_icon_loading(classic_menu::IconLoading::Gtk);
+        // 0.3.0: menu icons without GTK's preloading in the thread pool,
+        // as in the panel (QD-106); up to 0.2.7 the desktop kept GTK's way.
+        classic_menu::set_icon_loading(classic_menu::IconLoading::WithoutPreload);
         icon_theme::follow("querencia-desktop");
         install_style();
         farbschema::startfehler_beheben();

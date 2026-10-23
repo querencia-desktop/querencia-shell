@@ -1,12 +1,15 @@
 //! Desktop icons (HMP-09), the parts without a display: which icons there
-//! are, their order and grid, and names for new folders and documents.
+//! are, their order and the templates for new documents. Names for new
+//! objects, types by name and the wait for a missing desktop directory come
+//! from `querencia_dateiarbeit` (`namen`, `typ`, `ueberwachung`) since 0.3.0.
 //!
 //! The icons, as on a GNOME 2 desktop:
 //! - Rechner, Persönlicher Ordner, Papierkorb: only when Querencia Files
 //!   (or, for the home folder, any folder program) can open them;
 //! - Querencia Terminal: only when its desktop entry is installed;
 //! - every file and folder in the XDG desktop directory;
-//! - QE-03: every mounted removable volume (`volumes.rs`), never remembered.
+//! - QE-03: every mounted removable volume (`volumes.rs`), never remembered;
+//!   0.3.0 (E3): also removable media that are not mounted yet.
 //!
 //! Where the icons are is `layout.rs` and `store.rs` (HMP-10); here is
 //! the order in which icons without a place get one: the order of the
@@ -34,7 +37,7 @@ pub enum Kind {
     File(PathBuf),
     /// A folder in the desktop directory (HMP-10).
     Folder(PathBuf),
-    /// QE-03: a mounted volume, by the URI of its root.
+    /// QE-03: a volume (0.3.0: also one that is not mounted, E3).
     Volume(Volume),
 }
 
@@ -104,7 +107,7 @@ fn ident(kind: &Kind) -> String {
         Kind::Home => "home".to_owned(),
         Kind::Trash => "trash".to_owned(),
         Kind::App(id) => id.clone(),
-        Kind::Volume(volume) => volume.uri.clone(),
+        Kind::Volume(volume) => volume.slot.clone(),
         Kind::Launcher(path) | Kind::File(path) | Kind::Folder(path) => path
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
@@ -116,26 +119,6 @@ fn ident(kind: &Kind) -> String {
 /// falls back to $HOME for unset directories; GNOME 2 then showed no files).
 pub fn desktop_dir(special: Option<PathBuf>, home: &Path) -> Option<PathBuf> {
     special.filter(|dir| dir != home)
-}
-
-/// QD-112: where to wait for a desktop directory that does not exist yet:
-/// its nearest existing ancestor (usually the home folder). `None` when
-/// the directory exists (it is watched itself) or nothing above it does.
-pub fn waiting_point(dir: &Path, exists: impl Fn(&Path) -> bool) -> Option<PathBuf> {
-    if exists(dir) {
-        return None;
-    }
-    dir.ancestors()
-        .skip(1)
-        .find(|a| exists(a))
-        .map(Path::to_path_buf)
-}
-
-/// QD-112: whether a change of `path` (an entry of the watched ancestor)
-/// may have made the desktop directory `dir` appear or vanish: `path` is
-/// the directory itself or a folder on the way to it.
-pub fn concerns_desktop(dir: &Path, path: &Path) -> bool {
-    dir.starts_with(path)
 }
 
 /// Valid templates: visible regular files directly in the templates
@@ -156,28 +139,6 @@ pub fn templates(dir: Option<&Path>, home: &Path) -> Vec<PathBuf> {
         .collect();
     list.sort();
     list
-}
-
-/// "Name.ext" → ("Name", ".ext"); hidden files and names without a dot
-/// have no extension.
-pub fn split_extension(name: &str) -> (&str, &str) {
-    match name.rfind('.') {
-        Some(0) | None => (name, ""),
-        Some(i) => (&name[..i], &name[i..]),
-    }
-}
-
-/// `base` if free, else "stem 2.ext", "stem 3.ext", …: never a name for
-/// which `exists` is true, so nothing is overwritten.
-pub fn unique_name(base: &str, exists: impl Fn(&str) -> bool) -> String {
-    if !exists(base) {
-        return base.to_owned();
-    }
-    let (stem, ext) = split_extension(base);
-    (2..)
-        .map(|n| format!("{stem} {n}{ext}"))
-        .find(|candidate| !exists(candidate))
-        .unwrap_or_default()
 }
 
 /// `items` in the saved order; items without a saved place keep their
@@ -210,22 +171,6 @@ pub fn by_name(mut items: Vec<Item>) -> Vec<Item> {
     items
 }
 
-/// Whether GIO's content type means an empty file.
-pub fn is_empty_document(content_type: Option<&str>) -> bool {
-    content_type == Some("application/x-zerosize")
-}
-
-/// Desktop 0.2.2: the type a file opens as when no program handles GIO's
-/// own type for it. An empty file is `application/x-zerosize`, which no
-/// program takes; as Nautilus does, the file name decides then
-/// (`leer.txt` → `text/plain`). `None` when the name says nothing
-/// either (no or an unknown extension): then nothing is started.
-pub fn type_from_name(file_name: &str) -> Option<String> {
-    let (guess, _) = gtk4::gio::content_type_guess(Some(file_name), None);
-    (!gtk4::gio::content_type_is_unknown(&guess) && !is_empty_document(Some(&guess)))
-        .then(|| guess.to_string())
-}
-
 /// The saved order: one key per line.
 pub fn parse_order(text: &str) -> Vec<String> {
     text.lines()
@@ -246,45 +191,13 @@ mod tests {
     fn volume(name: &str) -> Item {
         Item::new(
             Kind::Volume(Volume {
-                uri: format!("file:///run/media/u/{name}"),
+                uri: Some(format!("file:///run/media/u/{name}")),
+                slot: format!("volume:/dev/{name}"),
                 picture: crate::volumes::Picture::Removable,
                 removal: Some(crate::volumes::Removal::Unmount),
             }),
             name,
         )
-    }
-
-    #[test]
-    fn new_names_never_overwrite() {
-        let taken = ["Neuer Ordner", "Neuer Ordner 2", "Notiz.txt", ".hidden"];
-        let exists = |n: &str| taken.contains(&n);
-        assert_eq!(unique_name("Neues Dokument", exists), "Neues Dokument");
-        assert_eq!(unique_name("Neuer Ordner", exists), "Neuer Ordner 3");
-        assert_eq!(unique_name("Notiz.txt", exists), "Notiz 2.txt");
-        assert_eq!(unique_name(".hidden", exists), ".hidden 2");
-        assert_eq!(split_extension("archiv.tar.gz"), ("archiv.tar", ".gz"));
-        assert_eq!(split_extension("README"), ("README", ""));
-    }
-
-    #[test]
-    fn an_empty_file_is_a_blank_document() {
-        assert!(is_empty_document(Some("application/x-zerosize")));
-        assert!(!is_empty_document(Some("text/plain")));
-        assert!(!is_empty_document(None));
-    }
-
-    /// Desktop 0.2.2: an empty file opens by its name; without a telling
-    /// name nothing is guessed (shared-mime-info of the system).
-    #[test]
-    fn an_empty_file_opens_as_the_type_of_its_name() {
-        assert_eq!(
-            type_from_name("leer.txt").as_deref(),
-            Some("text/plain")
-        );
-        assert_eq!(type_from_name("Notiz.TXT").as_deref(), Some("text/plain"));
-        assert_eq!(type_from_name("bild.png").as_deref(), Some("image/png"));
-        assert_eq!(type_from_name("Leere Datei"), None);
-        assert_eq!(type_from_name("notiz"), None);
     }
 
     #[test]
@@ -384,26 +297,8 @@ mod tests {
         assert_eq!(launcher.name, "Mein Browser");
         assert_eq!(Item::new(Kind::Home, "H").ident(), "home");
         let stick = volume("QDTEST");
-        assert_eq!(stick.key, "laufwerk:file:///run/media/u/QDTEST");
+        assert_eq!(stick.key, "laufwerk:volume:/dev/QDTEST");
         assert_eq!(stick.art(), Art::Volume);
         assert!(stick.is_transient() && !folder.is_transient());
-    }
-
-    #[test]
-    fn a_missing_desktop_directory_is_awaited_in_its_parent() {
-        let home = Path::new("/home/u");
-        let dir = home.join("Schreibtisch");
-        let only_home = |p: &Path| p == home || p == Path::new("/home") || p == Path::new("/");
-        assert_eq!(waiting_point(&dir, only_home), Some(home.to_path_buf()));
-        // two levels missing: the nearest existing ancestor
-        let deep = home.join("a/b/Desktop");
-        assert_eq!(waiting_point(&deep, only_home), Some(home.to_path_buf()));
-        // an existing directory is watched itself
-        assert_eq!(waiting_point(&dir, |_| true), None);
-        // only events on the way to the directory count
-        assert!(concerns_desktop(&dir, &dir));
-        assert!(concerns_desktop(&deep, &home.join("a")));
-        assert!(!concerns_desktop(&dir, &home.join(".bash_history")));
-        assert!(!concerns_desktop(&dir, &home.join("Schreibtisch2")));
     }
 }

@@ -14,15 +14,24 @@
 //!   offers only moving, Umschalt in Files); a drop on a folder icon puts
 //!   them into it, on the trash icon into the trash. Inside the desktop a
 //!   drop on free space only moves the icons, as before (HMP-10).
-//! - Every operation runs through GIO off the main thread (`fileops`); what
-//!   fails is shown in a dialog, not only logged. The desktop folder's
-//!   monitor shows the result.
+//! - Desktop 0.3.0: every operation is a job of `querencia_dateiarbeit`
+//!   (`auftraege::Queue`, its own thread): the window "Dateioperationen"
+//!   shows longer jobs with "Abbrechen" (`fortschritt.rs`); a name that is
+//!   taken is asked about, with Überspringen as the default (E2,
+//!   `frage.rs`) – up to 0.2.7 a copy took a free name silently and a move
+//!   was refused. What fails is shown in a dialog, not only logged. The
+//!   desktop folder's monitor shows the result.
 //! - Öffnen mit (the programs for the type, "Andere Anwendung …" with GTK's
 //!   app chooser) and Eigenschaften (name, type, size, place, date).
 
 use super::*;
-use crate::fileops::{self, Op};
 use crate::i18n::{gettext, gettext_f, ngettext_f};
+use querencia_dateiarbeit::auftraege::{self, Event, JobId, Op, Outcome};
+use querencia_dateiarbeit::{typ, uri};
+
+/// The desktop's own drags of icons that are no files (Rechner, Papierkorb,
+/// …): only the desktop itself accepts it.
+pub const OWN_ICONS: &str = "application/x-querencia-desktop-icons";
 
 /// The desktop's own drag of icons (HMP-10 moves, now a real drag so that
 /// files can leave the desktop).
@@ -110,18 +119,18 @@ fn file_content(paths: &[PathBuf], cut: Option<bool>) -> gdk::ContentProvider {
     let mut providers = vec![
         gdk::ContentProvider::for_value(&gdk::FileList::from_array(&files).to_value()),
         gdk::ContentProvider::for_bytes(
-            fileops::URI_LIST,
-            &glib::Bytes::from_owned(fileops::uri_list(&uris).into_bytes()),
+            uri::URI_LIST,
+            &glib::Bytes::from_owned(uri::uri_list(&uris).into_bytes()),
         ),
     ];
     if let Some(cut) = cut {
         providers.push(gdk::ContentProvider::for_bytes(
-            fileops::GNOME_COPIED_FILES,
-            &glib::Bytes::from_owned(fileops::gnome_copied_files(cut, &uris).into_bytes()),
+            uri::GNOME_COPIED_FILES,
+            &glib::Bytes::from_owned(uri::gnome_copied_files(cut, &uris).into_bytes()),
         ));
         if cut {
             providers.push(gdk::ContentProvider::for_bytes(
-                fileops::KDE_CUT_SELECTION,
+                uri::KDE_CUT_SELECTION,
                 &glib::Bytes::from_static(b"1"),
             ));
         }
@@ -141,10 +150,10 @@ fn content_type_of(path: &Path) -> Option<String> {
         .ok()
         .and_then(|info| info.content_type())
         .map(|t| t.to_string());
-    if icons::is_empty_document(found.as_deref()) {
+    if typ::is_empty_document(found.as_deref()) {
         return path
             .file_name()
-            .and_then(|n| icons::type_from_name(&n.to_string_lossy()))
+            .and_then(|n| typ::type_from_name(&n.to_string_lossy()))
             .or(found);
     }
     found
@@ -176,18 +185,18 @@ async fn clipboard_bytes(clipboard: &gdk::Clipboard, mime: &str) -> Option<glib:
 /// URI list (with KDE's cut marker).
 async fn clipboard_files(clipboard: &gdk::Clipboard) -> Option<(bool, Vec<String>)> {
     let formats = clipboard.formats();
-    if formats.contain_mime_type(fileops::GNOME_COPIED_FILES)
-        && let Some(found) = clipboard_bytes(clipboard, fileops::GNOME_COPIED_FILES)
+    if formats.contain_mime_type(uri::GNOME_COPIED_FILES)
+        && let Some(found) = clipboard_bytes(clipboard, uri::GNOME_COPIED_FILES)
             .await
-            .and_then(|bytes| fileops::parse_gnome_copied_files(&bytes))
+            .and_then(|bytes| uri::parse_gnome_copied_files(&bytes))
     {
         return Some(found);
     }
     let kde_cut = async {
-        formats.contain_mime_type(fileops::KDE_CUT_SELECTION)
-            && clipboard_bytes(clipboard, fileops::KDE_CUT_SELECTION)
+        formats.contain_mime_type(uri::KDE_CUT_SELECTION)
+            && clipboard_bytes(clipboard, uri::KDE_CUT_SELECTION)
                 .await
-                .is_some_and(|b| b.as_ref() == b"1")
+                .is_some_and(|b| uri::parse_kde_cut_selection(&b))
     };
     if formats.contains_type(gdk::FileList::static_type())
         && let Ok(value) = clipboard
@@ -200,10 +209,10 @@ async fn clipboard_files(clipboard: &gdk::Clipboard) -> Option<(bool, Vec<String
             return Some((kde_cut.await, uris));
         }
     }
-    if formats.contain_mime_type(fileops::URI_LIST)
-        && let Some(bytes) = clipboard_bytes(clipboard, fileops::URI_LIST).await
+    if formats.contain_mime_type(uri::URI_LIST)
+        && let Some(bytes) = clipboard_bytes(clipboard, uri::URI_LIST).await
     {
-        let uris = fileops::parse_uri_list(&String::from_utf8_lossy(&bytes));
+        let uris = uri::parse_uri_list(&String::from_utf8_lossy(&bytes));
         if !uris.is_empty() {
             return Some((kde_cut.await, uris));
         }
@@ -221,28 +230,51 @@ async fn dropped_files(drop: &gdk::Drop) -> Vec<String> {
     {
         return list.files().iter().map(|f| f.uri().to_string()).collect();
     }
-    if drop.formats().contain_mime_type(fileops::URI_LIST)
+    if drop.formats().contain_mime_type(uri::URI_LIST)
         && let Ok((stream, _)) = drop
-            .read_future(&[fileops::URI_LIST], glib::Priority::DEFAULT)
+            .read_future(&[uri::URI_LIST], glib::Priority::DEFAULT)
             .await
         && let Some(bytes) = read_all(stream).await
     {
-        return fileops::parse_uri_list(&String::from_utf8_lossy(&bytes));
+        return uri::parse_uri_list(&String::from_utf8_lossy(&bytes));
     }
     Vec::new()
 }
 
-/// One copy, move, trash or delete.
-struct Job {
-    op: Op,
-    sources: Vec<String>,
-    /// The folder for copy and move.
-    target: Option<PathBuf>,
+/// One job of the desktop: copy, move, trash, delete, empty the trash, new
+/// folder or document, rename.
+pub(super) struct Job {
+    pub(super) op: Op,
+    pub(super) sources: Vec<String>,
+    /// The folder for copy, move and new objects.
+    pub(super) target: Option<PathBuf>,
     /// Desktop: where the first arrived icon goes (a drop, a paste from
     /// the desktop menu).
-    at: Option<Point>,
+    pub(super) at: Option<Point>,
     /// Cut files were pasted: the clipboard is emptied afterwards.
+    pub(super) clear_clipboard: bool,
+}
+
+impl Job {
+    pub(super) fn new(op: Op, sources: Vec<String>, target: Option<PathBuf>) -> Self {
+        Self {
+            op,
+            sources,
+            target,
+            at: None,
+            clear_clipboard: false,
+        }
+    }
+}
+
+/// A job that runs, with what follows when it ends.
+pub(super) struct Running {
+    op: Op,
+    target: Option<PathBuf>,
+    at: Option<Point>,
     clear_clipboard: bool,
+    /// Umbenennen: the old name and the new one (the place goes along).
+    rename: Option<(String, String)>,
 }
 
 impl Icons {
@@ -261,8 +293,8 @@ impl Icons {
     pub(super) fn clipboard_has_files(&self) -> bool {
         let formats = self.window.clipboard().formats();
         formats.contains_type(gdk::FileList::static_type())
-            || formats.contain_mime_type(fileops::URI_LIST)
-            || formats.contain_mime_type(fileops::GNOME_COPIED_FILES)
+            || formats.contain_mime_type(uri::URI_LIST)
+            || formats.contain_mime_type(uri::GNOME_COPIED_FILES)
     }
 
     /// Ausschneiden (`cut`) or Kopieren: the selected files go onto the
@@ -450,9 +482,15 @@ impl Icons {
         );
     }
 
-    /// Runs `job` off the main thread; afterwards shows what failed, places
-    /// dropped or pasted icons and refreshes.
-    fn start_job(self: &Rc<Self>, job: Job) {
+    /// Starts `job` in the desktop's job queue (its own thread); its events
+    /// come to `job_event`.
+    pub(super) fn start_job(self: &Rc<Self>, job: Job) {
+        self.start_job_renaming(job, None);
+    }
+
+    /// `start_job`; `rename`: the old and the new name of an icon that is
+    /// renamed (its place goes along when the job succeeds).
+    pub(super) fn start_job_renaming(self: &Rc<Self>, job: Job, rename: Option<(String, String)>) {
         let Job {
             op,
             sources,
@@ -460,56 +498,188 @@ impl Icons {
             at,
             clear_clipboard,
         } = job;
+        let names: Vec<String> = sources.iter().map(|u| uri::name_of(u)).collect();
         log(&format!(
             "{}: {}{}",
             op.verb(),
-            sources
-                .iter()
-                .map(|uri| gio::File::for_uri(uri)
-                    .basename()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| uri.clone()))
-                .collect::<Vec<_>>()
-                .join(", "),
+            names.join(", "),
             target
                 .as_ref()
                 .map_or(String::new(), |t| format!(" → {}", t.display()))
         ));
-        let target_uri = target.as_deref().map(uri_of);
-        let handle = gio::spawn_blocking(move || fileops::run(op, &sources, target_uri.as_deref()));
-        let weak = Rc::downgrade(self);
-        glib::MainContext::default().spawn_local(async move {
-            let Ok(outcome) = handle.await else {
-                log("Dateioperation abgebrochen");
-                return;
-            };
-            if let Some(icons) = weak.upgrade() {
-                icons.job_done(op, &outcome, target.as_deref(), at, clear_clipboard);
-            }
-        });
+        let target_name = target
+            .as_ref()
+            .and_then(|t| t.file_name())
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let title = fortschritt::title(
+            &op,
+            names.len() as u64,
+            names.first().map_or("", String::as_str),
+            &target_name,
+        );
+        let id = self.queue.start(auftraege::Job::new(
+            op.clone(),
+            sources,
+            target.as_deref().map(uri_of),
+        ));
+        self.running.borrow_mut().insert(
+            id,
+            Running {
+                op,
+                target,
+                at,
+                clear_clipboard,
+                rename,
+            },
+        );
+        self.fortschritt.begonnen(id, title);
     }
 
-    fn job_done(
-        self: &Rc<Self>,
-        op: Op,
-        outcome: &fileops::Outcome,
-        target: Option<&Path>,
-        at: Option<Point>,
-        clear_clipboard: bool,
-    ) {
+    /// An event of a job (on the main thread).
+    pub(super) fn job_event(self: &Rc<Self>, event: &Event) {
+        match event {
+            Event::Started {
+                id,
+                total_items,
+                total_bytes,
+                ..
+            } => {
+                if debugging() {
+                    log(&format!(
+                        "Auftrag {id} gezählt: {total_items:?} Objekte, {total_bytes:?} Bytes"
+                    ));
+                }
+                self.fortschritt.stand(*id, None, |stand| {
+                    stand.total_items = *total_items;
+                    stand.total_bytes = *total_bytes;
+                });
+            }
+            Event::Progress {
+                id,
+                done_items,
+                done_bytes,
+                current,
+                bytes_per_s,
+            } => {
+                if debugging() {
+                    log(&format!(
+                        "Fortschritt {id}: {done_items} Objekte, {done_bytes} Bytes, {current}"
+                    ));
+                }
+                self.fortschritt.stand(*id, None, |stand| {
+                    stand.done_items = *done_items;
+                    stand.done_bytes = *done_bytes;
+                    stand.current = current.clone();
+                    stand.bytes_per_s = *bytes_per_s;
+                });
+            }
+            Event::Ask {
+                id,
+                conflict,
+                reply,
+            } => {
+                let folder = self
+                    .running
+                    .borrow()
+                    .get(id)
+                    .and_then(|r| r.target.as_ref())
+                    .and_then(|t| t.file_name())
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                // the window "Dateioperationen" waits for the answer: it would
+                // take the keyboard from the question
+                self.fortschritt.frage(*id, true);
+                let fortschritt = Rc::downgrade(&self.fortschritt);
+                let job = *id;
+                self.fragen
+                    .fragen(*id, conflict, reply.clone(), &folder, move || {
+                        if let Some(fortschritt) = fortschritt.upgrade() {
+                            fortschritt.frage(job, false);
+                        }
+                    });
+            }
+            Event::Failed { id, name, why } => {
+                if debugging() {
+                    log(&format!("Auftrag {id}: {name}: {why}"));
+                }
+            }
+            Event::Finished {
+                id,
+                outcome,
+                cancelled,
+            } => {
+                self.fragen.schliessen(*id);
+                self.fortschritt.beendet(*id);
+                if let Some(running) = self.running.borrow_mut().remove(id) {
+                    self.job_done(running, outcome, *cancelled);
+                }
+            }
+        }
+    }
+
+    /// The cancel of the window "Dateioperationen".
+    pub(super) fn cancel_job(&self, id: JobId) {
+        log(&format!("Auftrag {id} abbrechen"));
+        self.queue.cancel(id);
+    }
+
+    fn job_done(self: &Rc<Self>, running: Running, outcome: &Outcome, cancelled: bool) {
+        let Running {
+            op,
+            target,
+            at,
+            clear_clipboard,
+            rename,
+        } = running;
         log(&format!(
-            "{} fertig: {} erledigt, {} nicht{}",
+            "{} fertig: {} erledigt, {} nicht{}{}",
             op.verb(),
             outcome.done,
             outcome.failed.len(),
+            if outcome.skipped > 0 {
+                format!(", {} übersprungen", outcome.skipped)
+            } else {
+                String::new()
+            },
             if outcome.arrived.is_empty() {
                 String::new()
             } else {
                 format!(" (angekommen: {})", outcome.arrived.join(", "))
             }
         ));
+        if cancelled {
+            log(&format!("{} abgebrochen", op.verb()));
+        }
         for (name, why) in &outcome.failed {
             log(&format!("nicht {}: {name}: {why}", op.verb()));
+        }
+        match &op {
+            Op::NewFolder { .. } => {
+                for name in &outcome.arrived {
+                    log(&format!("Ordner angelegt: {name}"));
+                }
+            }
+            Op::NewFile { .. } => {
+                for name in &outcome.arrived {
+                    log(&format!("Dokument angelegt: {name}"));
+                }
+            }
+            Op::EmptyTrash => log(&format!(
+                "Papierkorb geleert: {} gelöscht, {} nicht",
+                outcome.done,
+                outcome.failed.len()
+            )),
+            Op::Rename { .. } => {
+                if let (Some((old, _)), Some(new)) = (&rename, outcome.arrived.first()) {
+                    // the place goes with the name (the folder monitor may
+                    // have done so already)
+                    self.store.borrow_mut().rename(old, new);
+                    self.save();
+                    log(&format!("umbenannt: {old} → {new}"));
+                }
+            }
+            _ => {}
         }
         if clear_clipboard && outcome.done > 0 {
             // cut files are where they belong now: nothing left to paste
@@ -522,18 +692,32 @@ impl Icons {
             }
             self.clip.borrow_mut().take();
         }
-        let on_desktop = target.is_some_and(|t| desktop_dir().is_some_and(|d| d == t));
+        let on_desktop = target
+            .as_deref()
+            .is_some_and(|t| desktop_dir().is_some_and(|d| d == t));
         match at {
             Some(at) if on_desktop && !outcome.arrived.is_empty() => {
                 self.place_arrived(&outcome.arrived, at);
             }
             _ => self.reload(),
         }
-        if op == Op::Trash {
-            self.update_trash_soon();
+        if outcome.failed.is_empty() || cancelled {
+            return;
         }
-        if !outcome.failed.is_empty() {
-            show_error(&op.failure_title(), &fileops::failure_text(op, outcome));
+        match (&op, &rename) {
+            (Op::Rename { .. }, Some((old, new))) => show_error(
+                &gettext_f(
+                    "“{name}” could not be renamed to “{new}”.",
+                    &[("name", old), ("new", new)],
+                ),
+                &outcome
+                    .failed
+                    .iter()
+                    .map(|(_, why)| why.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            ),
+            _ => show_error(&op.failure_title(), &auftraege::failure_text(&op, outcome)),
         }
     }
 
@@ -634,8 +818,8 @@ impl Icons {
 
         let formats = gdk::ContentFormatsBuilder::new()
             .add_type(gdk::FileList::static_type())
-            .add_mime_type(fileops::URI_LIST)
-            .add_mime_type(fileops::OWN_ICONS)
+            .add_mime_type(uri::URI_LIST)
+            .add_mime_type(OWN_ICONS)
             .build();
         let target = gtk4::DropTargetAsync::new(
             Some(formats),
@@ -703,8 +887,7 @@ impl Icons {
         });
         // no picture of GTK's own; `OwnDrag::show_picture` sets ours
         source.set_icon(Some(&gdk::Paintable::new_empty(1, 1)), 0, 0);
-        let own =
-            gdk::ContentProvider::for_bytes(fileops::OWN_ICONS, &glib::Bytes::from_static(b""));
+        let own = gdk::ContentProvider::for_bytes(OWN_ICONS, &glib::Bytes::from_static(b""));
         let content = if paths.is_empty() {
             own
         } else {
@@ -736,7 +919,13 @@ impl Icons {
         // pointer is over it
         for &m in &own.members {
             let Some(item) = items.get(m) else { continue };
-            let ghost = icon_widget(item, self.trash_full.get().unwrap_or(false), size, tile);
+            let ghost = icon_widget(
+                item,
+                self.trash_full.get().unwrap_or(false),
+                size,
+                tile,
+                self.window.scale_factor(),
+            );
             ghost.add_css_class("dragging");
             ghost.add_css_class("selected");
             ghost.set_can_target(false);
@@ -854,7 +1043,7 @@ impl Icons {
         self.highlight(None);
         let own = drop.drag().is_some()
             && self.own_drag.borrow().is_some()
-            && drop.formats().contain_mime_type(fileops::OWN_ICONS);
+            && drop.formats().contain_mime_type(OWN_ICONS);
         if own {
             self.drop_own(drop, x, y);
             return true;
@@ -1064,7 +1253,7 @@ impl Icons {
         let size = gtk4::Label::new(Some(&if folder {
             gettext("counting …")
         } else {
-            fileops::size_text(u64::try_from(info.size()).unwrap_or(0))
+            typ::size_text(u64::try_from(info.size()).unwrap_or(0))
         }));
         let modified = info
             .modification_date_time()
@@ -1092,8 +1281,8 @@ impl Icons {
             .margin_start(12)
             .margin_end(12)
             .build();
-        let image = Image::from_gicon(&icon_for(item, false));
-        image.set_pixel_size(48);
+        // QD-106: without GTK's preloading in the thread pool
+        let image = querencia_oberflaeche::symbole::image(&icon_for(item, false), 48);
         image.set_valign(Align::Start);
         grid.attach(&image, 0, 0, 1, 5);
         let rows: [(String, gtk4::Label); 5] = [
@@ -1147,14 +1336,14 @@ impl Icons {
         log(&format!("Eigenschaften: {} ({kind})", item.name));
         if folder {
             let dir = path.to_path_buf();
-            let handle = gio::spawn_blocking(move || fileops::tally(&dir));
+            let handle = gio::spawn_blocking(move || typ::tally(&dir));
             glib::MainContext::default().spawn_local(async move {
                 if let Ok((count, bytes)) = handle.await {
                     size.set_text(&ngettext_f(
                         "{n} item, totalling {size}",
                         "{n} items, totalling {size}",
                         u32::try_from(count).unwrap_or(u32::MAX),
-                        &[("size", &fileops::size_text(bytes))],
+                        &[("size", &typ::size_text(bytes))],
                     ));
                 }
             });
