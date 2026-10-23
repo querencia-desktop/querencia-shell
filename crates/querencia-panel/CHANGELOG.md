@@ -2,6 +2,11 @@
 
 ## 0.3.1 – 2026-10-23
 
+Integrationsstand 0.3.1-2 (Tags `panel/0.3.1-2`, `panel/0.3.1-2-int`):
+derselbe Code, gemergt auf runtime main `5a5b65c` (Dateiarbeit 0.1.1,
+Prüfrahmen 0.1.1). Binary und Kataloge sind byte-gleich mit 0.3.1
+(`panel/0.3.1`); `panel/0.3.1-int` wird nicht aktiviert.
+
 Nur ein Umbau, sichtbar ändert sich nichts gegenüber 0.3.0.
 
 - Die Bausteine `classic_menu`, `symbole`, `icon_theme`, `farbschema` und
