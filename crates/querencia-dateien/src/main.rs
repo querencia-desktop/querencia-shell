@@ -34,6 +34,13 @@ mod statusleiste;
 mod werkzeugleiste;
 
 // Welle B2 (dateien-ansichten): mod-Zeilen unter dieser Zeile.
+mod ansichtskern;
+mod ansichtsregeln;
+mod kontextmenue;
+mod listenansicht;
+mod symbolansicht;
+mod tippsuche;
+mod umbenennen;
 
 // Welle B3 (dateien-operationen): mod-Zeilen unter dieser Zeile.
 #[allow(dead_code)] // eigenschaften_dialog::zeigen hängt B1 an win.eigenschaften (Integration)
@@ -59,6 +66,9 @@ const STIL: &str = include_str!("style.css");
 fn erweiterungen(register: &mut app::Register) {
     let _ = register;
     // Welle B2: Aufrufe unter dieser Zeile.
+    symbolansicht::registrieren(register);
+    listenansicht::registrieren(register);
+    kontextmenue::registrieren(register);
 
     // Welle B3: Aufrufe unter dieser Zeile.
     operationen::registrieren(register);
