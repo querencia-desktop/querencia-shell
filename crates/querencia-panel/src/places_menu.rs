@@ -8,9 +8,10 @@
 //! `inode/directory` nothing could be opened, so the menu shows only a hint
 //! instead. Which application opens directories is GIO's choice; only if
 //! GIO has none, an installed entry declaring `inode/directory` is used,
-//! Querencia Files first ([`directory_handler`], HMP-04). The menu is rebuilt when applications change (a file manager is
-//! installed or removed), like the applications menu; `user-dirs.dirs` is
-//! not watched.
+//! Querencia Dateien first, then Querencia Files ([`directory_handler`],
+//! HMP-04, migration M3). The menu is rebuilt when applications change (a
+//! file manager is installed or removed), like the applications menu;
+//! `user-dirs.dirs` is not watched.
 
 use std::path::{Path, PathBuf};
 
