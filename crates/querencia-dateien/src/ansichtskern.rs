@@ -204,6 +204,8 @@ struct Zustand {
     gedrueckt: Option<(f64, f64, bool)>,
     /// Umschalt+Gummiband: start point in list coordinates.
     gummiband: Option<(f64, f64)>,
+    /// The folder a drag hovers over (drop target mark, B3).
+    ablage: Option<Eintrag>,
     umordnen_geplant: bool,
     /// Start of a reorder (sort, filter), set before the list rebuilds.
     umordnen_start: Option<Instant>,
@@ -435,6 +437,12 @@ impl Kern {
     /// From a view's bind: removes a field that is not this object's and
     /// puts the field back when this is the object being renamed.
     pub fn gebunden(self: &Rc<Self>, zelle: &gtk4::Box, eintrag: &Eintrag) {
+        let ziel = self.z.borrow().ablage.as_ref() == Some(eintrag);
+        if ziel {
+            zelle.add_css_class("ablageziel");
+        } else {
+            zelle.remove_css_class("ablageziel");
+        }
         let (gehoert, ziel) = {
             let z = self.z.borrow();
             let u = z.umbenennen.as_ref();
@@ -1047,6 +1055,31 @@ impl Kern {
             return None;
         };
         (w.parent().as_ref() == Some(&zelle)).then_some(e)
+    }
+
+    /// Marks the cell of `eintrag` as the drop target while something is
+    /// dragged over it (`None`: no mark); only folders take a drop.
+    // called by drag and drop (B3) through `Ansicht::ablage_markieren`
+    #[allow(dead_code)]
+    pub fn ablage_markieren(&self, eintrag: Option<&Eintrag>) {
+        let neu = eintrag.filter(|e| e.daten().ist_ordner).cloned();
+        if self.z.borrow().ablage == neu {
+            return;
+        }
+        self.z.borrow_mut().ablage = neu.clone();
+        for (zelle, li) in self.lebende_zellen() {
+            let ziel = neu.is_some() && li.item().as_ref() == neu.as_ref().map(|e| e.upcast_ref());
+            if ziel {
+                zelle.add_css_class("ablageziel");
+            } else {
+                zelle.remove_css_class("ablageziel");
+            }
+        }
+        protokoll(&format!(
+            "Ablageziel {}: {}",
+            self.art.name(),
+            neu.as_ref().map_or("keins", |e| e.daten().name.as_str())
+        ));
     }
 
     // called by the frame through `Ansicht::umbenennen_laeuft`
@@ -1752,6 +1785,12 @@ frame.suchfeld {
 frame.suchfeld.ohne-treffer label {
   color: @error_color;
 }
+box.zelle.ablageziel,
+box.namenszelle.ablageziel {
+  outline: 2px solid @theme_selected_bg_color;
+  outline-offset: 1px;
+  border-radius: 3px;
+}
 .gummiband {
   border: 1px solid @theme_selected_bg_color;
   background-color: alpha(@theme_selected_bg_color, 0.25);
@@ -2038,6 +2077,12 @@ impl<D: Darstellung> Ansicht for Modul<D> {
         }
         k.fokus_auf(pos, false);
         k.umbenennen_starten(ganzer_name);
+    }
+
+    fn ablage_markieren(&self, eintrag: Option<&Eintrag>) {
+        if let Some(k) = self.kern() {
+            k.ablage_markieren(eintrag);
+        }
     }
 
     fn umbenennen_laeuft(&self) -> bool {
