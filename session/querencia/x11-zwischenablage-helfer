@@ -1,0 +1,56 @@
+#!/bin/bash
+# x11-zwischenablage-helfer – reicht die Wayland-Zwischenablage an X11-Programme nach
+#
+# Hintergrund (gemessen am 23.10.2026, labwc 0.9.3 / wlroots 0.19 / Wine 10.0):
+#  * labwc setzt den X11-Besitzer der Zwischenablage sofort beim Kopieren, egal
+#    welches Fenster den Fokus hat (wlroots selection.c, handle_seat_set_selection).
+#  * Wine liest die Zwischenablage genau in diesem Moment über XFixes ein und
+#    danach nie wieder (winex11 clipboard.c: X11DRV_UpdateClipboard kehrt bei
+#    XFixes sofort zurück).
+#  * wlroots verweigert X11-Programmen das Lesen, solange kein X11-Fenster den
+#    Fokus hat (outgoing.c: „no xwayland surface focused“).
+#  Folge: Kopieren in Thunderbird, Klick in Banking4, Strg+V → leer.
+#
+# Dieser Helfer legt den aktuellen Inhalt erneut in die Zwischenablage, sobald
+# ein X11-Fenster den Fokus bekommt. Dann bekommt Wine ein neues XFixes-Ereignis
+# und darf lesen. Nur ein Typ wird nachgereicht (Text bevorzugt, sonst PNG).
+
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+export DISPLAY="${DISPLAY:-:0}"
+
+protokoll="${QUERENCIA_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/querencia}/x11-zwischenablage-helfer.log"
+mkdir -p "$(dirname "$protokoll")"
+meldung() { printf '%s %s\n' "$(date +%T)" "$*" >> "$protokoll"; }
+
+eigener_pid=""     # wl-copy-Prozess, der gerade unseren Inhalt anbietet
+
+nachreichen() {
+    # Bietet schon unser eigener wl-copy an? Dann ist nichts zu tun.
+    if [ -n "$eigener_pid" ] && kill -0 "$eigener_pid" 2>/dev/null; then
+        return
+    fi
+    local typen typ="" inhalt
+    typen=$(wl-paste -l 2>/dev/null) || return
+    for t in 'text/plain;charset=utf-8' 'text/plain' 'UTF8_STRING' 'image/png'; do
+        if grep -qxF -- "$t" <<< "$typen"; then typ=$t; break; fi
+    done
+    [ -n "$typ" ] || return
+    inhalt=$(mktemp) || return
+    if wl-paste -n -t "$typ" > "$inhalt" 2>/dev/null && [ -s "$inhalt" ]; then
+        wl-copy -f -t "$typ" < "$inhalt" &
+        eigener_pid=$!
+        meldung "nachgereicht: $typ, $(wc -c < "$inhalt") Byte"
+    fi
+    rm -f "$inhalt"
+}
+
+meldung "gestartet (PID $$)"
+trap 'meldung "beendet"; [ -n "$eigener_pid" ] && kill "$eigener_pid" 2>/dev/null; exit 0' TERM INT
+
+vorher=0
+while sleep 0.3; do
+    if xdotool getactivewindow >/dev/null 2>&1; then aktiv=1; else aktiv=0; fi
+    if (( aktiv && ! vorher )); then nachreichen; fi
+    vorher=$aktiv
+done
