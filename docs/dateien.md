@@ -377,7 +377,7 @@ gekürzt. Der breiteste Name wird an den 48 längsten Namen gemessen
 | Nr. | Stand nach C3 |
 |---|---|
 | M1 Lesezeichen | unverändert `~/.config/gtk-3.0/bookmarks`, dieselbe Datei wie Files; geprüft (Szenario `migration`) |
-| M3 Panel, Desktop | Panel `places_menu.rs`: `org.querencia.Dateien.desktop` vor Files und der Strata-Brücke, Name „Querencia Dateien“ vor „Querencia Files“ (der englische Name „Files“ zählt nicht, er ist auch GNOMEs); Desktop nutzt seit 0.3.0 `querencia_dateiarbeit::oeffnen::FILE_MANAGERS` mit Dateien an erster Stelle (unverändert). `window_icons.rs` braucht keinen Eintrag in `RENAMED` (App-ID = Desktop-ID). GIO-Vorgabe gewinnt immer |
+| M3 Panel, Desktop | **keine Änderung nötig:** Panel `places_menu.rs` nimmt für Ordner zuerst die GIO-Vorgabe (live seit 23.10. 21:05:59 `inode/directory=org.querencia.Dateien.desktop`), die eigene Liste `QUERENCIA_FILES_IDS` greift nur ohne Vorgabe; Desktop 0.3.0 hat Dateien in `querencia_dateiarbeit::oeffnen::FILE_MANAGERS` vorn. Die Ergänzung der Panel-Liste (Dateien vor Files, Tests) liegt als Patch für einen eigenen Folgezug bereit (Bericht §3). `window_icons.rs` braucht keinen Eintrag in `RENAMED` (App-ID = Desktop-ID) |
 | M6 Konfiguration | einmal beim ersten Start aus `~/.config/querencia-files/settings.toml`: `show_hidden`, `browser_mode` (`icons`/`grid` → Symbole, `list`/`explorer` → Liste, `columns` und Unbekanntes → Liste), `sort_key`, `folders_first`, `sidebar_expanded`, Klicks; Vermerk `[Migration] AusFiles=1`, die Files-Datei wird nur gelesen. **Klicks wie Files QF-0t** (`ui/preferences.rs`): die TOML-Schlüssel heißen nach den Ansichten des alten Strata – Symbole `grid_*_clicks`, Liste `explorer_*_clicks`, Spalten `list_*_clicks`; „Einfacher Klick“ nur, wenn im Modus Ordner **und** Dateien mit einem Klick öffnen. Der erste Start ohne Files-Datei schreibt `dateien.ini` sofort, eine später auftauchende `settings.toml` wird nicht übernommen. `tabs.toml` nie |
 | M8 Texte | Kürzelübersicht und Handbuch nennen noch Querencia Files: Textliste für C4 in  §6 |
 | M2, M4, M5, M7, M9 | Paketierung (C4) bzw. Ansicht je Ordner (später) |
@@ -401,10 +401,13 @@ gekürzt. Der breiteste Name wird an den 48 längsten Namen gemessen
 `cargo test`: `reiter::regeln` (Position, Nachbarn ohne Umlauf, Alt+Ziffer,
 Leiste ab zwei), `kompaktansicht` (Grenzen in px und Zeichen, Breite je
 Einstellung, Kandidaten), `konfig` (M6-Klicks je Modus, erster Start ohne
-Files), Panel `places_menu` (Rangfolge). Isoliert (`werkzeug/pruefung/`,
+Files). Isoliert (`werkzeug/pruefung/`,
 `lauf.sh NAME szenarien/X.sh`): `reiter` (20 Fälle), `kompakt` (14),
 `migration` (mit `LAUF_FILES_TOML=…/daten/files-settings.toml` und ohne,
-je 3). Die Probe `daten/files-settings.toml` hat seit C3 `list_file_clicks`.
+je 3), `kompakt-messung` (10 000 Einträge). Die Probe `daten/files-settings.toml` hat seit C3
+`list_file_clicks`. Umschaltskript `integration/dateien-010/dateien-standard.sh` (M2, von der
+Status-Session, unverändert) mit Probe `integration/dateien-010/werkzeug/probe-dateien-standard.sh`
+im Prüfrahmen (Ergebnis `nachweis/probe-dateien-standard.txt`).
 
 ### 7.6 Grenzen
 
