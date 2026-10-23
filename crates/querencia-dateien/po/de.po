@@ -15,7 +15,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. TRANSLATORS: Desktop-Datei, Schlüssel Name
-#: data/org.querencia.Dateien.desktop.in:4 src/main.rs:101
+#: data/org.querencia.Dateien.desktop.in:4 src/main.rs:114
 msgid "Files"
 msgstr "Querencia Dateien"
 
@@ -34,72 +34,219 @@ msgstr "Ordner durchsuchen und Dateien verwalten"
 msgid "folder;file manager;files;explorer;"
 msgstr "Ordner;Dateimanager;Dateien;Explorer;"
 
-#: src/adressleiste.rs:179
+#: src/adressleiste.rs:198
 msgid "Show the folders before"
 msgstr "Die Ordner davor zeigen"
 
-#: src/adressleiste.rs:180
+#: src/adressleiste.rs:199
 msgid "Show the folders after"
 msgstr "Die Ordner danach zeigen"
 
-#: src/adressleiste.rs:187 src/eigenschaften.rs:82
+#: src/adressleiste.rs:206 src/eigenschaften_dialog.rs:459
 msgid "Location:"
 msgstr "Ort:"
 
-#: src/adressleiste.rs:420 src/orte.rs:20 src/regeln.rs:351 src/seitenleiste.rs:83
+#: src/adressleiste.rs:444 src/orte.rs:20 src/regeln.rs:325 src/seitenleiste.rs:83
 msgid "File System"
 msgstr "Dateisystem"
 
-#: src/adressleiste.rs:498
+#: src/adressleiste.rs:522
 #, no-c-format
 msgid "The location “{location}” could not be found."
-msgstr "Der Ort »{location}« wurde nicht gefunden."
+msgstr "Der Ort „{location}“ wurde nicht gefunden."
 
-#: src/ansicht.rs:535
+#: src/ansicht.rs:519
 msgid "Renaming is not possible in this view."
 msgstr "In dieser Ansicht ist Umbenennen nicht möglich."
 
-#. TRANSLATORS: date and time in the properties, strftime format; German "%d.%m.%Y %H:%M"
-#: src/eigenschaften.rs:26
-msgid "%m/%d/%Y %I:%M %p"
+#: src/ansichtskern.rs:1368
+msgid "Only one item can be renamed at a time."
+msgstr "Es kann nur ein Objekt auf einmal umbenannt werden."
+
+#: src/ansichtsregeln.rs:173
+msgid "Name"
+msgstr "Name"
+
+#: src/ansichtsregeln.rs:174 src/einstellungen.rs:232
+msgid "Size"
+msgstr "Größe"
+
+#: src/ansichtsregeln.rs:175 src/einstellungen.rs:234
+msgid "Type"
+msgstr "Typ"
+
+#: src/ansichtsregeln.rs:176 src/einstellungen.rs:233
+msgid "Date Modified"
+msgstr "Änderungsdatum"
+
+#: src/ansichtsregeln.rs:177 src/eigenschaften_dialog.rs:304
+msgid "Permissions"
+msgstr "Zugriffsrechte"
+
+#: src/ansichtsregeln.rs:178
+msgid "Owner"
+msgstr "Eigentümer"
+
+#: src/ansichtsregeln.rs:179
+msgid "Group"
+msgstr "Gruppe"
+
+#. TRANSLATORS: no access at all for group or others (Nautilus 2.30)
+#: src/eigenschaften_dialog.rs:60
+msgctxt "permissions"
+msgid "None"
+msgstr "Keine"
+
+#: src/eigenschaften_dialog.rs:63
+msgid "List files only"
+msgstr "Nur Dateien auflisten"
+
+#: src/eigenschaften_dialog.rs:64
+msgid "Access files"
+msgstr "Zugriff auf Dateien"
+
+#: src/eigenschaften_dialog.rs:65
+msgid "Create and delete files"
+msgstr "Dateien erstellen und löschen"
+
+#: src/eigenschaften_dialog.rs:67
+msgid "Read-only"
+msgstr "Nur lesen"
+
+#: src/eigenschaften_dialog.rs:68
+msgid "Read and write"
+msgstr "Lesen und Schreiben"
+
+#. TRANSLATORS: date and time of the last change (strftime format of GLib's GDateTime)
+#: src/eigenschaften_dialog.rs:132 src/konflikt.rs:106
+msgid "%Y-%m-%d %H:%M"
 msgstr "%d.%m.%Y %H:%M"
 
-#: src/eigenschaften.rs:57
+#: src/eigenschaften_dialog.rs:134
+msgid "unknown"
+msgstr "unbekannt"
+
+#: src/eigenschaften_dialog.rs:232
 #, no-c-format
-msgid "{name} Properties"
-msgstr "Eigenschaften von »{name}«"
+msgid "{n} item, totalling {size}"
+msgid_plural "{n} items, totalling {size}"
+msgstr[0] "{n} Objekt, insgesamt {size}"
+msgstr[1] "{n} Objekte, insgesamt {size}"
 
-#: src/eigenschaften.rs:69
-msgid "Name:"
-msgstr "Name:"
+#: src/eigenschaften_dialog.rs:239
+#, no-c-format
+msgid "{contents} (some contents unreadable)"
+msgstr "{contents} (einige Inhalte sind nicht lesbar)"
 
-#: src/eigenschaften.rs:69
-msgid "Type:"
-msgstr "Typ:"
+#: src/eigenschaften_dialog.rs:279
+#, no-c-format
+msgid "The properties of “{name}” cannot be read."
+msgstr "Die Eigenschaften von „{name}“ sind nicht lesbar."
 
-#: src/eigenschaften.rs:73
-msgid "Link target:"
-msgstr "Verknüpfungsziel:"
+#: src/eigenschaften_dialog.rs:291
+#, no-c-format
+msgid "“{name}” Properties"
+msgstr "Eigenschaften von „{name}“"
 
-#: src/eigenschaften.rs:77
-msgid "Size:"
-msgstr "Größe:"
+#: src/eigenschaften_dialog.rs:300
+msgid "Basic"
+msgstr "Grundlegend"
 
-#: src/eigenschaften.rs:85
-msgid "Modified:"
-msgstr "Geändert:"
+#: src/eigenschaften_dialog.rs:313
+msgid "Open With"
+msgstr "Öffnen mit"
 
-#: src/eigenschaften.rs:88
-msgid "Accessed:"
-msgstr "Zugriff:"
-
-#: src/eigenschaften.rs:102 src/einstellungen.rs:384 src/info.rs:186 src/menue.rs:260
+#: src/eigenschaften_dialog.rs:322 src/einstellungen.rs:384 src/info.rs:186 src/menue.rs:260 src/umbenennen.rs:233
 msgid "_Close"
 msgstr "_Schließen"
 
-#: src/eigenschaften.rs:116
-msgid "Basic"
-msgstr "Grundlegend"
+#: src/eigenschaften_dialog.rs:385
+msgid "Name:"
+msgstr "Name:"
+
+#: src/eigenschaften_dialog.rs:393
+msgid "Link"
+msgstr "Verknüpfung"
+
+#: src/eigenschaften_dialog.rs:400
+msgid "Type:"
+msgstr "Typ:"
+
+#: src/eigenschaften_dialog.rs:406
+msgid "Link target:"
+msgstr "Verknüpfungsziel:"
+
+#: src/eigenschaften_dialog.rs:412
+msgid "counting …"
+msgstr "wird gezählt …"
+
+#: src/eigenschaften_dialog.rs:413
+msgid "Contents:"
+msgstr "Inhalt:"
+
+#: src/eigenschaften_dialog.rs:446
+msgid "Size:"
+msgstr "Größe:"
+
+#: src/eigenschaften_dialog.rs:467
+msgid "Free space:"
+msgstr "Freier Speicherplatz:"
+
+#: src/eigenschaften_dialog.rs:475
+msgid "Accessed:"
+msgstr "Zugegriffen:"
+
+#: src/eigenschaften_dialog.rs:486
+msgid "Modified:"
+msgstr "Geändert:"
+
+#: src/eigenschaften_dialog.rs:499
+#, no-c-format
+msgid "The permissions of “{name}” could not be determined."
+msgstr "Die Zugriffsrechte von „{name}“ konnten nicht ermittelt werden."
+
+#: src/eigenschaften_dialog.rs:520
+msgid "Owner:"
+msgstr "Besitzer:"
+
+#: src/eigenschaften_dialog.rs:524 src/eigenschaften_dialog.rs:554 src/eigenschaften_dialog.rs:561
+msgid "Access:"
+msgstr "Zugriff:"
+
+#: src/eigenschaften_dialog.rs:525 src/eigenschaften_dialog.rs:529
+msgid "Group:"
+msgstr "Gruppe:"
+
+#: src/eigenschaften_dialog.rs:526 src/eigenschaften_dialog.rs:559
+msgid "Others:"
+msgstr "Andere:"
+
+#: src/eigenschaften_dialog.rs:570
+msgid "Allow _executing file as program"
+msgstr "Datei als Programm _ausführen"
+
+#: src/eigenschaften_dialog.rs:580
+msgid "Execute:"
+msgstr "Ausführen:"
+
+#: src/eigenschaften_dialog.rs:584
+msgid "You are not the owner, so you cannot change these permissions."
+msgstr ""
+"Sie sind nicht der Besitzer und können diese Zugriffsrechte daher nicht ändern."
+
+#: src/eigenschaften_dialog.rs:618
+msgid "The permissions could not be changed."
+msgstr "Die Zugriffsrechte konnten nicht geändert werden."
+
+#: src/eigenschaften_dialog.rs:630
+#, no-c-format
+msgid "Select an application to open “{type}” and other files of this type:"
+msgstr ""
+"Wählen Sie ein Programm zum Öffnen von „{type}“ und anderen Dateien dieses Typs:"
+
+#: src/eigenschaften_dialog.rs:647
+msgid "No applications are installed for this type."
+msgstr "Für diesen Typ sind keine Programme installiert."
 
 #: src/einstellungen.rs:98
 msgid "Default View"
@@ -191,7 +338,7 @@ msgstr "Vor dem _Leeren des Papierkorbs und vor dem Löschen nachfragen"
 
 #: src/einstellungen.rs:210
 msgid "Include a Dele_te command that bypasses the trash"
-msgstr "Befehl »_Löschen« anbieten, der den Papierkorb umgeht"
+msgstr "Befehl „_Löschen“ anbieten, der den Papierkorb umgeht"
 
 #: src/einstellungen.rs:218
 msgid "Location"
@@ -204,18 +351,6 @@ msgstr "Adressleiste immer als _Textfeld"
 #: src/einstellungen.rs:231
 msgid "None"
 msgstr "Nichts"
-
-#: src/einstellungen.rs:232
-msgid "Size"
-msgstr "Größe"
-
-#: src/einstellungen.rs:233
-msgid "Date Modified"
-msgstr "Änderungsdatum"
-
-#: src/einstellungen.rs:234
-msgid "Type"
-msgstr "Typ"
 
 #: src/einstellungen.rs:240
 msgid "Icon Captions"
@@ -325,7 +460,7 @@ msgstr "Anzeige"
 msgid "Preview"
 msgstr "Vorschau"
 
-#: src/einstellungen.rs:383 src/menue.rs:689
+#: src/einstellungen.rs:383 src/menue.rs:688
 msgid "_Help"
 msgstr "_Hilfe"
 
@@ -333,13 +468,140 @@ msgstr "_Hilfe"
 msgid "Empty Trash…"
 msgstr "Papierkorb leeren …"
 
+#: src/fortschritt.rs:54
+#, no-c-format
+msgid "Copying “{name}” to “{target}”"
+msgstr "Kopieren von „{name}“ nach „{target}“"
+
+#: src/fortschritt.rs:58
+#, no-c-format
+msgid "Copying {n} file to “{target}”"
+msgid_plural "Copying {n} files to “{target}”"
+msgstr[0] "Kopieren von {n} Datei nach „{target}“"
+msgstr[1] "Kopieren von {n} Dateien nach „{target}“"
+
+#: src/fortschritt.rs:64
+#, no-c-format
+msgid "Moving “{name}” to “{target}”"
+msgstr "Verschieben von „{name}“ nach „{target}“"
+
+#: src/fortschritt.rs:68
+#, no-c-format
+msgid "Moving {n} file to “{target}”"
+msgid_plural "Moving {n} files to “{target}”"
+msgstr[0] "Verschieben von {n} Datei nach „{target}“"
+msgstr[1] "Verschieben von {n} Dateien nach „{target}“"
+
+#: src/fortschritt.rs:74
+#, no-c-format
+msgid "Moving “{name}” to the trash"
+msgstr "„{name}“ wird in den Papierkorb verschoben"
+
+#: src/fortschritt.rs:75
+#, no-c-format
+msgid "Moving {n} file to the trash"
+msgid_plural "Moving {n} files to the trash"
+msgstr[0] "{n} Datei wird in den Papierkorb verschoben"
+msgstr[1] "{n} Dateien werden in den Papierkorb verschoben"
+
+#: src/fortschritt.rs:81
+#, no-c-format
+msgid "Deleting “{name}”"
+msgstr "„{name}“ wird gelöscht"
+
+#: src/fortschritt.rs:82
+#, no-c-format
+msgid "Deleting {n} file"
+msgid_plural "Deleting {n} files"
+msgstr[0] "{n} Datei wird gelöscht"
+msgstr[1] "{n} Dateien werden gelöscht"
+
+#: src/fortschritt.rs:83
+msgid "Emptying the trash"
+msgstr "Papierkorb wird geleert"
+
+#: src/fortschritt.rs:84
+#, no-c-format
+msgid "Working on “{name}”"
+msgstr "„{name}“ wird bearbeitet"
+
+#: src/fortschritt.rs:92
+#, no-c-format
+msgid "{n} second left"
+msgid_plural "{n} seconds left"
+msgstr[0] "noch {n} Sekunde"
+msgstr[1] "noch {n} Sekunden"
+
+#: src/fortschritt.rs:100
+#, no-c-format
+msgid "{n} minute left"
+msgid_plural "{n} minutes left"
+msgstr[0] "noch {n} Minute"
+msgstr[1] "noch {n} Minuten"
+
+#: src/fortschritt.rs:103
+#, no-c-format
+msgid "{n} hour left"
+msgid_plural "{n} hours left"
+msgstr[0] "noch {n} Stunde"
+msgstr[1] "noch {n} Stunden"
+
+#: src/fortschritt.rs:112
+#, no-c-format
+msgid "{done} of {total}"
+msgstr "{done} von {total}"
+
+#: src/fortschritt.rs:122
+#, no-c-format
+msgid "{amount} — {left} ({rate}/s)"
+msgstr "{amount} – {left} ({rate}/s)"
+
+#: src/fortschritt.rs:134
+#, no-c-format
+msgid "{done} of {n} file"
+msgid_plural "{done} of {n} files"
+msgstr[0] "{done} von {n} Datei"
+msgstr[1] "{done} von {n} Dateien"
+
+#: src/fortschritt.rs:194
+msgid "Copying Files"
+msgstr "Dateien werden kopiert …"
+
+#: src/fortschritt.rs:196
+msgid "Moving Files"
+msgstr "Dateien werden verschoben …"
+
+#: src/fortschritt.rs:198
+msgid "Moving Files to the Trash"
+msgstr "Dateien werden in den Papierkorb verschoben …"
+
+#: src/fortschritt.rs:200
+msgid "Deleting Files"
+msgstr "Dateien werden gelöscht …"
+
+#: src/fortschritt.rs:202
+msgid "Emptying the Trash"
+msgstr "Papierkorb wird geleert …"
+
+#: src/fortschritt.rs:204 src/fortschritt.rs:368
+msgid "File Operations"
+msgstr "Dateioperationen"
+
+#: src/fortschritt.rs:411 src/operationen.rs:785 src/operationen.rs:818
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: src/fortschritt.rs:455
+msgid "Preparing…"
+msgstr "Vorbereitung …"
+
 #. TRANSLATORS: Dezimalzeichen in Größen („3.4 GB“, deutsch „3,4 GB“)
 #: src/i18n.rs:128
 msgctxt "decimal separator"
 msgid "."
 msgstr ","
 
-#: src/i18n.rs:150 src/regeln.rs:259
+#: src/i18n.rs:150 src/regeln.rs:233
 #, no-c-format
 msgid "{n} item"
 msgid_plural "{n} items"
@@ -387,6 +649,233 @@ msgstr "Lizenz: GPL-3.0-or-later"
 msgid "Contains code from Strata, MIT"
 msgstr "Enthält Code aus Strata, MIT"
 
+#: src/konflikt.rs:38 src/konflikt.rs:50 src/konflikt.rs:62
+msgid "File conflict"
+msgstr "Dateikonflikt"
+
+#: src/konflikt.rs:39
+#, no-c-format
+msgid "Replace folder “{name}”?"
+msgstr "Ordner „{name}“ ersetzen?"
+
+#: src/konflikt.rs:42 src/konflikt.rs:66
+#, no-c-format
+msgid "Another folder with the same name already exists in “{folder}”."
+msgstr "In „{folder}“ gibt es bereits einen Ordner mit diesem Namen."
+
+#: src/konflikt.rs:46
+msgid "Replacing it will remove all files in the folder."
+msgstr "Wenn Sie ihn ersetzen, werden alle Dateien in diesem Ordner entfernt."
+
+#: src/konflikt.rs:51
+#, no-c-format
+msgid "Replace file “{name}”?"
+msgstr "Datei „{name}“ ersetzen?"
+
+#: src/konflikt.rs:54
+#, no-c-format
+msgid "Another file with the same name already exists in “{folder}”."
+msgstr "In „{folder}“ gibt es bereits eine Datei mit diesem Namen."
+
+#: src/konflikt.rs:58
+msgid "Replacing it will overwrite its content."
+msgstr "Wenn Sie sie ersetzen, wird ihr Inhalt überschrieben."
+
+#: src/konflikt.rs:63
+#, no-c-format
+msgid "Merge folder “{name}”?"
+msgstr "Ordner „{name}“ zusammenführen?"
+
+#: src/konflikt.rs:70
+msgid ""
+"Merging will ask for confirmation before replacing any files in the folder that conflict with the files being copied."
+msgstr ""
+"Beim Zusammenführen wird nachgefragt, bevor Dateien im Ordner ersetzt werden, die mit den kopierten Dateien in Konflikt stehen."
+
+#: src/konflikt.rs:77
+msgid "No trash"
+msgstr "Kein Papierkorb"
+
+#: src/konflikt.rs:78
+#, no-c-format
+msgid ""
+"Cannot move “{name}” to the trash. Do you want to delete it immediately?"
+msgstr ""
+"„{name}“ kann nicht in den Papierkorb verschoben werden. Wollen Sie es sofort löschen?"
+
+#: src/konflikt.rs:82
+msgid "This place has no trash. Deleted items cannot be restored."
+msgstr ""
+"Dieser Ort hat keinen Papierkorb. Gelöschte Objekte lassen sich nicht wiederherstellen."
+
+#: src/konflikt.rs:85
+msgid "Error"
+msgstr "Fehler"
+
+#: src/konflikt.rs:86
+#, no-c-format
+msgid "“{name}” could not be handled."
+msgstr "„{name}“ konnte nicht bearbeitet werden."
+
+#: src/konflikt.rs:96
+#, no-c-format
+msgid "Size: {size}"
+msgstr "Größe: {size}"
+
+#: src/konflikt.rs:108
+#, no-c-format
+msgid "Last modified: {when}"
+msgstr "Zuletzt geändert: {when}"
+
+#: src/konflikt.rs:220
+msgid "Original file"
+msgstr "Ursprüngliche Datei"
+
+#: src/konflikt.rs:221
+msgid "Replace with"
+msgstr "Ersetzen durch"
+
+#: src/konflikt.rs:240
+msgid "Select a new _name for the destination"
+msgstr "Einen neuen _Namen für das Ziel wählen"
+
+#: src/konflikt.rs:246
+msgid "Apply this action to all _files"
+msgstr "Diese Aktion auf alle _Dateien anwenden"
+
+#: src/konflikt.rs:254 src/oeffnen.rs:212 src/oeffnen.rs:293 src/oeffnen.rs:298
+msgid "_Cancel"
+msgstr "_Abbrechen"
+
+#: src/konflikt.rs:259 src/konflikt.rs:270 src/konflikt.rs:285 src/konflikt.rs:292
+msgid "_Skip"
+msgstr "_Überspringen"
+
+#: src/konflikt.rs:261 src/konflikt.rs:272
+msgid "Re_name"
+msgstr "_Umbenennen"
+
+#: src/konflikt.rs:265 src/konflikt.rs:276
+msgid "_Replace"
+msgstr "_Ersetzen"
+
+#: src/konflikt.rs:280
+msgid "_Merge"
+msgstr "_Zusammenführen"
+
+#: src/konflikt.rs:287
+msgid "_Delete"
+msgstr "_Löschen"
+
+#: src/konflikt.rs:294
+msgid "_Retry"
+msgstr "_Wiederholen"
+
+#: src/kontextmenue.rs:125
+#, no-c-format
+msgid "Open with “{app}”"
+msgstr "Mit „{app}“ öffnen"
+
+#: src/kontextmenue.rs:129 src/menue.rs:227 src/seitenleiste.rs:557
+msgid "_Open"
+msgstr "Ö_ffnen"
+
+#: src/kontextmenue.rs:133 src/menue.rs:233 src/seitenleiste.rs:564
+msgid "Open in New _Window"
+msgstr "In neuem F_enster öffnen"
+
+#: src/kontextmenue.rs:150 src/menue.rs:238
+msgid "Open Wit_h"
+msgstr "Öffnen _mit"
+
+#: src/kontextmenue.rs:156 src/menue.rs:273
+msgid "Cu_t"
+msgstr "_Ausschneiden"
+
+#: src/kontextmenue.rs:157 src/menue.rs:279
+msgid "_Copy"
+msgstr "_Kopieren"
+
+#: src/kontextmenue.rs:161
+msgid "Paste Into Folder"
+msgstr "In Ordner einfügen"
+
+#: src/kontextmenue.rs:166 src/kontextmenue.rs:168 src/menue.rs:305
+msgid "_Rename…"
+msgstr "_Umbenennen …"
+
+#: src/kontextmenue.rs:174 src/menue.rs:308
+msgid "Mo_ve to Trash"
+msgstr "In den _Papierkorb verschieben"
+
+#: src/kontextmenue.rs:175 src/kontextmenue.rs:183 src/kontextmenue.rs:250 src/menue.rs:241
+msgid "_Properties"
+msgstr "Ei_genschaften"
+
+#: src/kontextmenue.rs:181 src/menue.rs:319
+msgid "_Restore"
+msgstr "_Wiederherstellen"
+
+#: src/kontextmenue.rs:182 src/menue.rs:314
+msgid "_Delete…"
+msgstr "_Löschen …"
+
+#: src/kontextmenue.rs:192 src/menue.rs:594
+msgid "No templates installed"
+msgstr "Keine Vorlagen installiert"
+
+#: src/kontextmenue.rs:202 src/menue.rs:604
+msgid "Empty File"
+msgstr "Leere Datei"
+
+#: src/kontextmenue.rs:207 src/menue.rs:217
+msgid "Create _Folder"
+msgstr "_Ordner anlegen"
+
+#: src/kontextmenue.rs:209 src/menue.rs:223
+msgid "Create _Document"
+msgstr "_Dokument anlegen"
+
+#: src/kontextmenue.rs:219 src/menue.rs:390
+msgid "By _Name"
+msgstr "Nach _Name"
+
+#: src/kontextmenue.rs:220 src/menue.rs:391
+msgid "By _Size"
+msgstr "Nach _Größe"
+
+#: src/kontextmenue.rs:221 src/menue.rs:392
+msgid "By _Type"
+msgstr "Nach _Typ"
+
+#: src/kontextmenue.rs:222 src/menue.rs:393
+msgid "By Modification _Date"
+msgstr "Nach Änderungs_datum"
+
+#: src/kontextmenue.rs:230 src/menue.rs:358
+msgid "Arran_ge Items"
+msgstr "Objekte _anordnen"
+
+#: src/kontextmenue.rs:234 src/menue.rs:395
+msgid "Re_versed Order"
+msgstr "Umge_kehrte Reihenfolge"
+
+#: src/kontextmenue.rs:242 src/menue.rs:285
+msgid "_Paste"
+msgstr "_Einfügen"
+
+#: src/kontextmenue.rs:245 src/menue.rs:362
+msgid "Zoom _In"
+msgstr "Ver_größern"
+
+#: src/kontextmenue.rs:246 src/menue.rs:368
+msgid "Zoom _Out"
+msgstr "Ver_kleinern"
+
+#: src/kontextmenue.rs:247 src/menue.rs:374
+msgid "Normal Si_ze"
+msgstr "_Normale Größe"
+
 #. TRANSLATORS: shortcut shown in the Go menu, deutsch „<Alt>Pos1“
 #: src/menue.rs:189
 msgctxt "accel"
@@ -397,49 +886,13 @@ msgstr "<Alt>Pos1"
 msgid "New _Window"
 msgstr "Neues _Fenster"
 
-#: src/menue.rs:217
-msgid "Create _Folder"
-msgstr "_Ordner anlegen"
-
-#: src/menue.rs:223
-msgid "Create _Document"
-msgstr "_Dokument anlegen"
-
-#: src/menue.rs:227 src/seitenleiste.rs:522
-msgid "_Open"
-msgstr "Ö_ffnen"
-
-#: src/menue.rs:233 src/seitenleiste.rs:529
-msgid "Open in New _Window"
-msgstr "In neuem F_enster öffnen"
-
-#: src/menue.rs:238
-msgid "Open Wit_h"
-msgstr "Öffnen _mit"
-
-#: src/menue.rs:241
-msgid "_Properties"
-msgstr "Ei_genschaften"
-
-#: src/menue.rs:247 src/seitenleiste.rs:578
+#: src/menue.rs:247 src/seitenleiste.rs:613
 msgid "_Empty Trash…"
 msgstr "Papierkorb _leeren …"
 
 #: src/menue.rs:254
 msgid "Close _All Windows"
 msgstr "_Alle Fenster schließen"
-
-#: src/menue.rs:273
-msgid "Cu_t"
-msgstr "_Ausschneiden"
-
-#: src/menue.rs:279
-msgid "_Copy"
-msgstr "_Kopieren"
-
-#: src/menue.rs:285
-msgid "_Paste"
-msgstr "_Einfügen"
 
 #: src/menue.rs:293
 msgid "Select _All"
@@ -448,22 +901,6 @@ msgstr "Alles au_swählen"
 #: src/menue.rs:299
 msgid "_Invert Selection"
 msgstr "Aus_wahl umkehren"
-
-#: src/menue.rs:305
-msgid "_Rename…"
-msgstr "_Umbenennen …"
-
-#: src/menue.rs:308
-msgid "Mo_ve to Trash"
-msgstr "In den _Papierkorb verschieben"
-
-#: src/menue.rs:314
-msgid "_Delete…"
-msgstr "_Löschen …"
-
-#: src/menue.rs:319
-msgid "_Restore"
-msgstr "_Wiederherstellen"
 
 #: src/menue.rs:322
 msgid "Prefere_nces"
@@ -497,22 +934,6 @@ msgstr "S_tatusleiste"
 msgid "Show _Hidden Files"
 msgstr "_Verborgene Dateien anzeigen"
 
-#: src/menue.rs:358
-msgid "Arran_ge Items"
-msgstr "Objekte _anordnen"
-
-#: src/menue.rs:362
-msgid "Zoom _In"
-msgstr "Ver_größern"
-
-#: src/menue.rs:368
-msgid "Zoom _Out"
-msgstr "Ver_kleinern"
-
-#: src/menue.rs:374
-msgid "Normal Si_ze"
-msgstr "_Normale Größe"
-
 #: src/menue.rs:381
 msgid "_Icons"
 msgstr "_Symbole"
@@ -520,26 +941,6 @@ msgstr "_Symbole"
 #: src/menue.rs:382
 msgid "_List"
 msgstr "_Liste"
-
-#: src/menue.rs:390
-msgid "By _Name"
-msgstr "Nach _Name"
-
-#: src/menue.rs:391
-msgid "By _Size"
-msgstr "Nach _Größe"
-
-#: src/menue.rs:392
-msgid "By _Type"
-msgstr "Nach _Typ"
-
-#: src/menue.rs:393
-msgid "By Modification _Date"
-msgstr "Nach Änderungs_datum"
-
-#: src/menue.rs:395
-msgid "Re_versed Order"
-msgstr "Umge_kehrte Reihenfolge"
 
 #: src/menue.rs:403
 msgid "Open _Parent"
@@ -581,57 +982,49 @@ msgstr "_Fehler melden"
 msgid "_About"
 msgstr "_Info"
 
-#: src/menue.rs:543
+#: src/menue.rs:542
 msgid "_Add Bookmark"
 msgstr "Lesezeichen _hinzufügen"
 
-#: src/menue.rs:595
-msgid "No templates installed"
-msgstr "Keine Vorlagen installiert"
-
-#: src/menue.rs:605
-msgid "Empty File"
-msgstr "Leere Datei"
-
-#: src/menue.rs:684
+#: src/menue.rs:683
 msgid "_File"
 msgstr "_Datei"
 
-#: src/menue.rs:685
+#: src/menue.rs:684
 msgid "_Edit"
 msgstr "_Bearbeiten"
 
-#: src/menue.rs:686
+#: src/menue.rs:685
 msgid "_View"
 msgstr "_Ansicht"
 
-#: src/menue.rs:687
+#: src/menue.rs:686
 msgid "_Go"
 msgstr "_Gehe zu"
 
-#: src/menue.rs:688
+#: src/menue.rs:687
 msgid "_Bookmarks"
 msgstr "_Lesezeichen"
 
 #: src/oeffnen.rs:78 src/oeffnen.rs:120
 #, no-c-format
 msgid "“{name}” could not be opened."
-msgstr "»{name}« konnte nicht geöffnet werden."
+msgstr "„{name}“ konnte nicht geöffnet werden."
 
 #: src/oeffnen.rs:130 src/oeffnen.rs:266
 #, no-c-format
 msgid "“{name}” cannot be opened."
-msgstr "»{name}« kann nicht geöffnet werden."
+msgstr "„{name}“ kann nicht geöffnet werden."
 
 #: src/oeffnen.rs:131
 #, no-c-format
 msgid "There is no program installed for “{type}” files."
-msgstr "Für Dateien vom Typ »{type}« ist kein Programm installiert."
+msgstr "Für Dateien vom Typ „{type}“ ist kein Programm installiert."
 
 #: src/oeffnen.rs:150 src/oeffnen.rs:170 src/oeffnen.rs:191
 #, no-c-format
 msgid "“{program}” could not be started."
-msgstr "»{program}« konnte nicht gestartet werden."
+msgstr "„{program}“ konnte nicht gestartet werden."
 
 #: src/oeffnen.rs:206
 msgid "Untrusted application launcher"
@@ -642,11 +1035,7 @@ msgstr "Nicht vertrauenswürdiger Anwendungsstarter"
 msgid ""
 "The application launcher “{name}” has not been marked as trusted. If you do not know the source of this file, launching it may be unsafe."
 msgstr ""
-"Der Anwendungsstarter »{name}« wurde nicht als vertrauenswürdig markiert. Wenn Sie die Herkunft dieser Datei nicht kennen, kann das Starten unsicher sein."
-
-#: src/oeffnen.rs:212 src/oeffnen.rs:293 src/oeffnen.rs:298
-msgid "_Cancel"
-msgstr "_Abbrechen"
+"Der Anwendungsstarter „{name}“ wurde nicht als vertrauenswürdig markiert. Wenn Sie die Herkunft dieser Datei nicht kennen, kann das Starten unsicher sein."
 
 #: src/oeffnen.rs:212
 msgid "_Trust and Launch"
@@ -659,7 +1048,7 @@ msgstr "Der Starter konnte nicht als vertrauenswürdig markiert werden."
 #: src/oeffnen.rs:251
 #, no-c-format
 msgid "“{name}” could not be run."
-msgstr "»{name}« konnte nicht ausgeführt werden."
+msgstr "„{name}“ konnte nicht ausgeführt werden."
 
 #: src/oeffnen.rs:270
 msgid "There is no program installed for text files."
@@ -668,7 +1057,7 @@ msgstr "Für Textdateien ist kein Programm installiert."
 #: src/oeffnen.rs:289
 #, no-c-format
 msgid "Do you want to run “{name}”, or display its contents?"
-msgstr "Möchten Sie »{name}« ausführen oder seinen Inhalt anzeigen?"
+msgstr "Möchten Sie „{name}“ ausführen oder seinen Inhalt anzeigen?"
 
 #: src/oeffnen.rs:293
 msgid "_Display"
@@ -681,12 +1070,66 @@ msgstr "A_usführen"
 #: src/oeffnen.rs:297
 #, no-c-format
 msgid "Do you want to run “{name}”?"
-msgstr "Möchten Sie »{name}« ausführen?"
+msgstr "Möchten Sie „{name}“ ausführen?"
 
 #: src/oeffnen.rs:303
 #, no-c-format
 msgid "“{name}” is an executable file."
-msgstr "»{name}« ist eine ausführbare Datei."
+msgstr "„{name}“ ist eine ausführbare Datei."
+
+#: src/operationen.rs:378
+msgid "Close"
+msgstr "Schließen"
+
+#: src/operationen.rs:722
+#, no-c-format
+msgid "“{name}” cannot be renamed."
+msgstr "„{name}“ kann nicht umbenannt werden."
+
+#: src/operationen.rs:769
+#, no-c-format
+msgid "Are you sure you want to permanently delete “{name}”?"
+msgstr "Möchten Sie „{name}“ wirklich endgültig löschen?"
+
+#: src/operationen.rs:773
+#, no-c-format
+msgid "Are you sure you want to permanently delete the {n} selected item?"
+msgid_plural "Are you sure you want to permanently delete the {n} selected items?"
+msgstr[0] "Möchten Sie das {n} ausgewählte Objekt wirklich endgültig löschen?"
+msgstr[1] "Möchten Sie die {n} ausgewählten Objekte wirklich endgültig löschen?"
+
+#: src/operationen.rs:782
+msgid "If you delete an item, it will be permanently lost."
+msgstr "Wenn Sie ein Objekt löschen, ist es unwiderruflich verloren."
+
+#: src/operationen.rs:785
+msgid "Delete"
+msgstr "Löschen"
+
+#: src/operationen.rs:814
+msgid "Empty all items from the trash?"
+msgstr "Möchten Sie alle Dateien im Papierkorb endgültig löschen?"
+
+#: src/operationen.rs:815
+msgid "If you empty the trash, all items in it will be permanently lost."
+msgstr ""
+"Wenn Sie den Papierkorb leeren, werden alle darin befindlichen Objekte unwiderruflich gelöscht."
+
+#: src/operationen.rs:818
+msgid "Empty Trash"
+msgstr "Papierkorb leeren"
+
+#: src/operationen.rs:852
+msgid "New Folder"
+msgstr "Neuer Ordner"
+
+#: src/operationen.rs:861
+msgid "New Document"
+msgstr "Neues Dokument"
+
+#: src/operationen.rs:870
+msgid "Template"
+msgstr "Vorlage"
 
 #: src/orte.rs:14
 msgid "Computer"
@@ -696,7 +1139,7 @@ msgstr "Rechner"
 msgid "Network"
 msgstr "Netzwerk"
 
-#: src/orte.rs:26 src/regeln.rs:345 src/seitenleiste.rs:69
+#: src/orte.rs:26 src/regeln.rs:319 src/seitenleiste.rs:69
 msgid "Home Folder"
 msgstr "Persönlicher Ordner"
 
@@ -718,43 +1161,43 @@ msgstr "Listenansicht"
 msgid "Compact View"
 msgstr "Kompaktansicht"
 
-#: src/regeln.rs:244
+#: src/regeln.rs:218
 #, no-c-format
 msgid "{n} byte"
 msgid_plural "{n} bytes"
 msgstr[0] "{n} Byte"
 msgstr[1] "{n} Bytes"
 
-#: src/regeln.rs:265
+#: src/regeln.rs:239
 #, no-c-format
 msgid "{items}, Free space: {size}"
 msgstr "{items}, freier Speicherplatz: {size}"
 
-#: src/regeln.rs:295
+#: src/regeln.rs:269
 #, no-c-format
 msgid "“{name}” selected"
-msgstr "»{name}« ausgewählt"
+msgstr "„{name}“ ausgewählt"
 
-#: src/regeln.rs:297
+#: src/regeln.rs:271
 #, no-c-format
 msgid "“{name}” selected ({size})"
-msgstr "»{name}« ausgewählt ({size})"
+msgstr "„{name}“ ausgewählt ({size})"
 
-#: src/regeln.rs:303
+#: src/regeln.rs:277
 #, no-c-format
 msgid "{n} folder selected"
 msgid_plural "{n} folders selected"
 msgstr[0] "{n} Ordner ausgewählt"
 msgstr[1] "{n} Ordner ausgewählt"
 
-#: src/regeln.rs:306
+#: src/regeln.rs:280
 #, no-c-format
 msgid "{n} item selected ({size})"
 msgid_plural "{n} items selected ({size})"
 msgstr[0] "{n} Objekt ausgewählt ({size})"
 msgstr[1] "{n} Objekte ausgewählt ({size})"
 
-#: src/regeln.rs:313
+#: src/regeln.rs:287
 #, no-c-format
 msgid "{n} other item selected ({size})"
 msgid_plural "{n} other items selected ({size})"
@@ -762,7 +1205,7 @@ msgstr[0] "{n} anderes Objekt ausgewählt ({size})"
 msgstr[1] "{n} andere Objekte ausgewählt ({size})"
 
 #. TRANSLATORS: "2 folders selected, 3 other items selected (1.2 MB)"
-#: src/regeln.rs:320
+#: src/regeln.rs:294
 #, no-c-format
 msgid "{folders}, {others}"
 msgstr "{folders}, {others}"
@@ -771,27 +1214,27 @@ msgstr "{folders}, {others}"
 msgid "Desktop"
 msgstr "Arbeitsfläche"
 
-#: src/seitenleiste.rs:181
+#: src/seitenleiste.rs:215
 msgid "Places"
 msgstr "Orte"
 
-#: src/seitenleiste.rs:187
+#: src/seitenleiste.rs:221
 msgid "Close the side pane"
 msgstr "Die Seitenleiste schließen"
 
-#: src/seitenleiste.rs:540
+#: src/seitenleiste.rs:575
 msgid "_Remove Bookmark"
 msgstr "Lesezeichen _entfernen"
 
-#: src/seitenleiste.rs:550
+#: src/seitenleiste.rs:585
 msgid "_Mount"
 msgstr "_Einhängen"
 
-#: src/seitenleiste.rs:559
+#: src/seitenleiste.rs:594
 msgid "_Eject"
 msgstr "_Auswerfen"
 
-#: src/seitenleiste.rs:566
+#: src/seitenleiste.rs:601
 msgid "_Unmount"
 msgstr "_Aushängen"
 
@@ -803,6 +1246,17 @@ msgstr "Der Ordner konnte nicht gelesen werden: {error}"
 #: src/statusleiste.rs:117
 msgid "Loading…"
 msgstr "Wird geladen …"
+
+#: src/umbenennen.rs:38
+#, no-c-format
+msgid ""
+"The name “{name}” is already used in this folder. Please use a different name."
+msgstr ""
+"Der Name „{name}“ wird in diesem Ordner bereits verwendet. Bitte verwenden Sie einen anderen Namen."
+
+#: src/umbenennen.rs:231
+msgid "The item could not be renamed."
+msgstr "Das Objekt konnte nicht umbenannt werden."
 
 #: src/werkzeugleiste.rs:55
 msgid "Back"

@@ -35,6 +35,9 @@ window.querencia-dateien box.querencia-seitenleiste row { padding: 0 6px; min-he
 window.querencia-dateien box.querencia-seitenleiste row:selected { background-color: @theme_selected_bg_color; color: @theme_selected_fg_color; }
 window.querencia-dateien box.querencia-seitenleiste row button { padding: 0 2px; min-height: 0; min-width: 0; }
 
+/* cut objects waiting for "Einfügen" (as the desktop's .cut) */
+window.querencia-dateien image.ausgeschnitten { opacity: 0.45; }
+
 /* fallback view */
 window.querencia-dateien listview.querencia-ersatzansicht { background-color: @theme_base_color; }
 window.querencia-dateien listview.querencia-ersatzansicht > row:selected { background-color: @theme_selected_bg_color; color: @theme_selected_fg_color; }

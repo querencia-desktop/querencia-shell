@@ -892,7 +892,6 @@ impl Operationen {
 }
 
 /// For the views (B2): whether `uri` was cut and waits (shown faded).
-#[allow(dead_code)] // interface for the views, docs/dateien.md §3 (B3)
 pub fn ist_ausgeschnitten(uri: &str) -> bool {
     Zwischenablage::get().ist_ausgeschnitten(uri)
 }

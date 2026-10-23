@@ -6,28 +6,20 @@
 //! Symbole über `querencia-oberflaeche`. Aufbau und Schnittstellen der
 //! Welle B: `docs/dateien.md`.
 
-#[allow(dead_code)] // Schnittstelle der Welle B (docs/dateien.md §3), bis zur Integration
 mod adressleiste;
-#[allow(dead_code)] // Schnittstelle der Welle B (docs/dateien.md §3), bis zur Integration
 mod ansicht;
-#[allow(dead_code)] // Schnittstelle der Welle B (docs/dateien.md §3), bis zur Integration
 mod app;
-mod eigenschaften;
 mod einstellungen;
 mod eintrag;
-#[allow(dead_code)] // Schnittstelle der Welle B (docs/dateien.md §3), bis zur Integration
 mod fenster;
 mod i18n;
 mod info;
 mod konfig;
 mod lesezeichen;
-#[allow(dead_code)] // Schnittstelle der Welle B (docs/dateien.md §3), bis zur Integration
 mod menue;
-#[allow(dead_code)] // Schnittstelle der Welle B (docs/dateien.md §3), bis zur Integration
 mod modell;
 mod oeffnen;
 mod orte;
-#[allow(dead_code)] // Schnittstelle der Welle B (docs/dateien.md §3), bis zur Integration
 mod regeln;
 mod seitenleiste;
 mod statusleiste;
@@ -43,7 +35,6 @@ mod tippsuche;
 mod umbenennen;
 
 // Welle B3 (dateien-operationen): mod-Zeilen unter dieser Zeile.
-#[allow(dead_code)] // eigenschaften_dialog::zeigen hängt B1 an win.eigenschaften (Integration)
 mod eigenschaften_dialog;
 mod fortschritt;
 mod konflikt;
@@ -64,7 +55,6 @@ const STIL: &str = include_str!("style.css");
 /// The hooks of the modules of Welle B2 and B3 (`docs/dateien.md` §3.5).
 /// Each module adds one line here.
 fn erweiterungen(register: &mut app::Register) {
-    let _ = register;
     // Welle B2: Aufrufe unter dieser Zeile.
     symbolansicht::registrieren(register);
     listenansicht::registrieren(register);

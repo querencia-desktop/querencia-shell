@@ -125,18 +125,6 @@ pub trait Ansicht {
     /// Settings changed (and once at the start): click policy, label
     /// lines, list columns … (`konfig::Werte`).
     fn einstellungen_anwenden(&self, _werte: &Werte) {}
-
-    /// The selected entries (from the model).
-    fn auswahl(&self) -> Vec<Eintrag> {
-        self.modell().map(|m| m.gewaehlte()).unwrap_or_default()
-    }
-
-    /// Selects exactly `dateien` (in the model).
-    fn auswahl_setzen(&self, dateien: &[gio::File]) {
-        if let Some(m) = self.modell() {
-            m.waehlen(dateien);
-        }
-    }
 }
 
 /// Makes a view of one kind for a window.
@@ -183,11 +171,6 @@ impl Ansichten {
     /// The widget the window places (holds all views).
     pub fn widget(&self) -> &gtk4::Stack {
         &self.stapel
-    }
-
-    /// Whether a real view (not the fallback) is registered for `art`.
-    pub fn hat(&self, art: Ansichtsart) -> bool {
-        self.fabriken.contains_key(&art)
     }
 
     /// The kind shown.

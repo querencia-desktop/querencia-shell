@@ -135,13 +135,9 @@ impl Ordnermodell {
     // ---------------------------------------------------------------- models
 
     /// All entries of the folder, unsorted, hidden ones included.
+    #[cfg(test)]
     pub fn alle(&self) -> &gio::ListStore {
         &self.0.store
-    }
-
-    /// The shown entries in order (hidden files filtered out unless shown).
-    pub fn sortiert(&self) -> &gtk4::SortListModel {
-        &self.0.sortiert
     }
 
     /// The selection on top of [`Self::sortiert`]: the model of every view.
@@ -281,10 +277,6 @@ impl Ordnermodell {
     /// e.g. to show the arrow in the list view's column heads.
     pub fn bei_sortierung(&self, f: impl Fn(Sortierung) + 'static) {
         self.0.sortier_handler.borrow_mut().push(Rc::new(f));
-    }
-
-    pub fn verborgene_zeigen(&self) -> bool {
-        self.0.verborgene.get()
     }
 
     pub fn verborgene_setzen(&self, zeigen: bool) {

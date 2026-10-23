@@ -249,6 +249,17 @@ pub fn teile(zelle: &gtk4::Box) -> (gtk4::Image, gtk4::Label) {
     (bild, text)
 }
 
+/// Cut objects waiting for "Einfügen" are shown faded (class
+/// `ausgeschnitten` on the icon, as the desktop's `cut`), B3's clipboard.
+fn ausgeschnitten_zeigen(zelle: &gtk4::Box, eintrag: &Eintrag) {
+    let bild = teile(zelle).0;
+    if crate::operationen::ist_ausgeschnitten(&eintrag.datei().uri()) {
+        bild.add_css_class("ausgeschnitten");
+    } else {
+        bild.remove_css_class("ausgeschnitten");
+    }
+}
+
 /// A rename field left in a cell (it carries the class `umbenennen`).
 fn feld_rest(zelle: &gtk4::Box) -> Option<gtk4::Widget> {
     let mut kind = zelle.first_child();
@@ -294,6 +305,17 @@ impl Kern {
                 && weg == neu
             {
                 k.z.borrow_mut().umordnen_start = Some(Instant::now());
+            }
+        });
+        // the faded cut objects follow the clipboard
+        let weak = Rc::downgrade(&kern);
+        crate::zwischenablage::Zwischenablage::get().beobachten(move || {
+            if let Some(k) = weak.upgrade() {
+                for (zelle, li) in k.lebende_zellen() {
+                    if let Some(e) = li.item().and_downcast::<Eintrag>() {
+                        ausgeschnitten_zeigen(&zelle, &e);
+                    }
+                }
             }
         });
         let _ = scroller;
@@ -437,6 +459,7 @@ impl Kern {
     /// From a view's bind: removes a field that is not this object's and
     /// puts the field back when this is the object being renamed.
     pub fn gebunden(self: &Rc<Self>, zelle: &gtk4::Box, eintrag: &Eintrag) {
+        ausgeschnitten_zeigen(zelle, eintrag);
         let ziel = self.z.borrow().ablage.as_ref() == Some(eintrag);
         if ziel {
             zelle.add_css_class("ablageziel");

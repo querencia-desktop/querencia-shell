@@ -104,12 +104,6 @@ thread_local! {
     static APP: RefCell<Option<Rc<App>>> = const { RefCell::new(None) };
 }
 
-/// The application of this process (after `startup`).
-pub fn app() -> Rc<App> {
-    APP.with(|a| a.borrow().clone())
-        .expect("App vor dem Start benutzt")
-}
-
 /// The application, if started (for code that may run in tests).
 pub fn app_wenn() -> Option<Rc<App>> {
     APP.with(|a| a.borrow().clone())
