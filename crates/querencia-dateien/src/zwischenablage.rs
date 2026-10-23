@@ -257,6 +257,7 @@ impl Zwischenablage {
 
     /// Whether `uri` was cut by this process and waits to be pasted (views
     /// show it faded).
+    #[allow(dead_code)] // through operationen::ist_ausgeschnitten for the views
     pub fn ist_ausgeschnitten(&self, uri: &str) -> bool {
         self.eigenes
             .borrow()
