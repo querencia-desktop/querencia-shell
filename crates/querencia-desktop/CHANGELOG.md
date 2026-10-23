@@ -40,7 +40,10 @@ Einfügen in denselben Ordner legt wie bisher eine Kopie mit freiem Namen an.
 - **Symbole ohne Vorladen (QD-106):** Arbeitsfläche, Eigenschaften und das
   Desktop-Menü laden Symbole wie das Panel ohne GTKs Vorladen im
   Thread-Pool (`symbole`, `IconLoading::WithoutPreload`). Gewollte
-  Verhaltensänderung gegenüber 0.2.7; belegt mit dem Belastungslauf.
+  Verhaltensänderung gegenüber 0.2.7; belegt mit dem Belastungslauf. Die
+  eingebauten Laufwerksbilder (SVG) behält der Desktop geladen: ohne
+  Vorladen hätte er sie bei jedem Neuaufbau im Hauptfaden neu geladen, nach
+  einem abgebrochenen großen Auftrag bis zu 7 s ohne Reaktion.
 - Programm für Ordner, Rechner, Papierkorb und Datenträger aus
   `oeffnen::FILE_MANAGERS`: Querencia Dateien zuerst, dann Querencia Files
   (neue und alte Kennung).

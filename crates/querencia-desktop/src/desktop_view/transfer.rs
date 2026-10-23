@@ -919,7 +919,13 @@ impl Icons {
         // pointer is over it
         for &m in &own.members {
             let Some(item) = items.get(m) else { continue };
-            let ghost = icon_widget(item, self.trash_full.get().unwrap_or(false), size, tile);
+            let ghost = icon_widget(
+                item,
+                self.trash_full.get().unwrap_or(false),
+                size,
+                tile,
+                self.window.scale_factor(),
+            );
             ghost.add_css_class("dragging");
             ghost.add_css_class("selected");
             ghost.set_can_target(false);
