@@ -738,9 +738,10 @@ mod tests {
 
     #[test]
     fn a_folder_is_counted_in_a_thread() {
-        let basis = std::env::current_dir()
-            .unwrap()
-            .join("target/tmp/eigenschaften-zaehlen");
+        // the temporary folder, not the source tree (read only in the
+        // test harness werkzeug/dateien-pruefrahmen)
+        let basis =
+            std::env::temp_dir().join(format!("qdat-eigenschaften-zaehlen-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&basis);
         std::fs::create_dir_all(basis.join("a/b")).unwrap();
         std::fs::write(basis.join("a/eins"), vec![0u8; 1000]).unwrap();

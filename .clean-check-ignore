@@ -139,3 +139,16 @@
 #      tools/dateien-operationen-pruefung/szenarien/hilfen.sh Zeile 7
 #      (gemessene Koordinaten im Kommentar, kein auskommentierter Code); sie
 #      fallen unter die Ausnahmen oben.
+# dateien 0.1.0 (23.10.2026, Zusammenbau B1/B2/B3): neu gegenüber main
+#      c8d5e66 sind H001 für die Logs der isolierten Läufe unter
+#      crates/querencia-dateien/nachweis/ansichten/laeufe/ (Belege von B2,
+#      gefiltert, wie die übrigen nachweis-Ordner), H002 für
+#      crates/querencia-dateien/CHANGELOG.md (CHANGELOG je Crate, in der
+#      Doc-Map), H003 für die Protokolldateien
+#      virtual-keyboard-unstable-v1.xml (Name des Wayland-Protokolls) in
+#      crates/querencia-dateien/werkzeug/{ansichten,pruefung}/ und
+#      tools/dateien-operationen-pruefung/, Q007 aus dateien-operationen
+#      (siehe oben), S003/S004/S005 in crates/querencia-dateien und den
+#      Prüfwerkzeugen (Rust englisch kommentiert, Typografie in
+#      Oberflächentexten) und die höhere Zählung bei P002; sie fallen unter
+#      die Ausnahmen oben.

@@ -1,8 +1,12 @@
 # Querencia Dateien (`crates/querencia-dateien`)
 
-**Stand:** 23.10.2026, Welle B „Dateien 0.1“ (QD-140), Zweig `dateien`,
-Gerüst `dateien/geruest-1`. Eigener Dateimanager nach Nautilus 2.30
-(Browser-Modus), Rust/GTK 4 ohne libadwaita. Nichts ist aktiviert.
+**Stand:** 23.10.2026, Querencia Dateien 0.1.0 (Welle B, QD-140), Zweig
+`dateien`: Gerüst `dateien/geruest-1` (B1), Ansichten `dateien/ansichten-1`
+(B2), Operationen `dateien/operationen-1` (B3), zusammengebaut mit main
+c8d5e66. Eigener Dateimanager nach Nautilus 2.30 (Browser-Modus), Rust/GTK 4
+ohne libadwaita. 0.1 läuft neben Querencia Files (kein Ordnerprogramm).
+Ansichten: `docs/dateien-ansichten-pruefung.md`; Operationen:
+`docs/dateien-operationen-pruefung.md`.
 Grundlage:  (Soll, Menüs, Abnahme 0.1),
 , `docs/querencia-oberflaeche.md`,
 `docs/dateiarbeit.md`.
@@ -34,9 +38,9 @@ Drei Worker arbeiten parallel im selben Crate, jeder in eigenen Dateien.
 | `werkzeugleiste.rs`, `adressleiste.rs`, `seitenleiste.rs`, `statusleiste.rs` | Leisten | B1 |
 | `oeffnen.rs` | Öffnen über `dateiarbeit::oeffnen::plan_open`, Rückfrage ausführbarer Texte | B1 |
 | `konfig.rs`, `einstellungen.rs` | `dateien.ini`, Migration M6, Einstellungen mit fünf Reitern | B1 |
-| `lesezeichen.rs`, `orte.rs`, `regeln.rs`, `info.rs`, `eigenschaften.rs`, `i18n.rs` | Hilfen, Info/Hilfe, Eigenschaften „Grundlegend“ | B1 |
-| `symbolansicht.rs`, `listenansicht.rs`, `umbenennen.rs`, `kontextmenue.rs` | Ansichten gegen das Trait, Umbenennen im Platz, Kontextmenüs | B2 „dateien-ansichten“ |
-| `operationen.rs`, `zwischenablage.rs`, `ziehen.rs`, `fortschritt.rs`, `konflikt.rs` | Dateioperationen über `dateiarbeit::auftraege` | B3 „dateien-operationen“ |
+| `lesezeichen.rs`, `orte.rs`, `regeln.rs`, `info.rs`, `i18n.rs` | Hilfen, Info/Hilfe | B1 |
+| `symbolansicht.rs`, `listenansicht.rs`, `ansichtskern.rs`, `ansichtsregeln.rs`, `tippsuche.rs`, `umbenennen.rs`, `kontextmenue.rs` | Ansichten gegen das Trait (gemeinsamer Kern), Tippsuche, Umbenennen im Platz, Kontextmenüs | B2 „dateien-ansichten“ |
+| `operationen.rs`, `zwischenablage.rs`, `ziehen.rs`, `fortschritt.rs`, `konflikt.rs`, `eigenschaften_dialog.rs` | Dateioperationen über `dateiarbeit::auftraege`, Eigenschaften (Grundlegend, Zugriffsrechte, Öffnen mit; an `win.eigenschaften`) | B3 „dateien-operationen“ |
 
 Die Symbolansicht ist ausdrücklich **austauschbar**: Jede Implementierung
 von `Ansicht`, die für `Ansichtsart::Symbole` registriert ist, ersetzt
@@ -82,7 +86,7 @@ Reihenfolge gehören dem Modell.
 | Methode | Zweck |
 |---|---|
 | `laden(&ordner)`, `neu_laden()`, `stoppen()`, `ordner()`, `laedt()` | asynchron in Blöcken (200, dann 1000) lesen; `neu_laden` behält die Auswahl |
-| `auswahl() -> &MultiSelection`, `sortiert()`, `alle()` | Modelle für Ansichten |
+| `auswahl() -> &MultiSelection` | Modell jeder Ansicht |
 | `eintrag(pos)`, `anzahl()`, `eintrag_von(&datei)`, `position_von(&datei)` | Zugriff, Positionen in `sortiert`/`auswahl` |
 | `gewaehlte()`, `waehlen(&[datei])`, `alle_waehlen()`, `auswahl_umkehren()` | Auswahl über die Identität |
 | `sortierung()`, `sortierung_setzen(Sortierung)`, `verborgene_zeigen()`, `verborgene_setzen(bool)` | Ordnung und Filter |
@@ -117,8 +121,6 @@ pub trait Ansicht {
     fn eintrag_bei(&self, x: f64, y: f64) -> Option<Eintrag>;      // nur Symbol/Beschriftung
     fn ablage_markieren(&self, _: Option<&Eintrag>) {}
     fn einstellungen_anwenden(&self, _: &Werte) {}                  // Klickart, Spalten …
-    fn auswahl(&self) -> Vec<Eintrag> { … }                         // aus dem Modell
-    fn auswahl_setzen(&self, dateien: &[gio::File]) { … }
 }
 
 pub trait Rueckruf {                                    // implementiert das Fenster
@@ -166,13 +168,13 @@ der Vorgabe aus `dateien.ini` und danach die Haken `neue_ansicht` (§3.5).
 ### 3.4 `Fenster` (`fenster.rs`)
 
 Für B2/B3: `window()`, `app()`, `ort()`, `modell()`, `ansicht()` (die
-gezeigte), `ansichten()`, `ansichtsbereich()` (Box um die Ansichten),
+gezeigte), `ansichten()`,
 `gehe_zu(&ort)`, `zurueck()`, `vor()`, `nach_oben()`,
 `bei_ortswechsel(Fn(&gio::File))`, `bei_auswahl(Fn())`,
 `melden(text)`, `nach_erscheinen_umbenennen(&datei)` (neuer Ordner,
 neues Dokument: wählen, zeigen, Umbenennen starten),
 `nach_erscheinen_waehlen(&[datei])` (Ergebnis von Einfügen, Kopieren).
-`App` (`app::app()`): `konfig()`, `queue()`, `auftrag_starten(job,
+`App` (`app::app_wenn()` oder `fenster.app()`): `konfig()`, `queue()`, `auftrag_starten(job,
 Some(fenster))`, `fenster_fuer_auftrag(id)`, `auftrag_vergessen(id)`,
 `papierkorb()`, `lesezeichen()`, `laufwerke()`, `alle_fenster()`,
 `fenster_von(&window)`, `neues_fenster(Some(&ort))`.
@@ -229,7 +231,7 @@ Modell neu füllen, `set_pointing_to`, `popup()` (Muster
 `seitenleiste.rs`). „Eigenschaften“ ist `win.eigenschaften`, „Öffnen“
 `win.oeffnen`, „Umbenennen …“ `win.umbenennen`.
 
-### 3.7 Übersetzungen
+### 3.7 Übersetzungen (während der Welle; seit dem Zusammenbau gibt es nur `po/de.po`)
 
 msgid englisch, Wortlaut der Menüs nach B §3.3. **B2 und B3 tragen ihr
 Deutsch in eigene Teilkataloge** `po/de.ansichten.po` bzw.
@@ -288,11 +290,20 @@ nutzen können.
   (`ergebnis.txt`, `programm.log`, `fotos/`). Szenarien: `menues`,
   `navigation`, `dialoge`, `oeffnen`, `einstellungen`, `laufwerke`, `start`.
 
-## 6. Grenzen (Stand Gerüst)
+## 6. Grenzen (Stand 0.1.0)
 
 - Die klassischen Menüs zeigen keine Zugriffstasten in Einträgen und keine
   Haken; Haken und Auswahlpunkte kommen als Symbol
   (`object-select-symbolic`, `media-record-symbolic`), Alt+Buchstabe
   öffnet nur die Menüs der Leiste (GTK-Mnemonik der Knöpfe).
 - Seitenleiste nur „Orte“ (Baum: Beta), Reiter, Suche, Netzwerk,
-  Kompaktansicht: Beta.
+  Kompaktansicht, „Mit anderer Anwendung öffnen …“, Menühinweise in der
+  Statusleiste: Beta.
+- Ohne GVfs (Prüfrahmen Stufe L) gibt es `trash:///` und `computer:///`
+  nicht; der Papierkorb ist dann `$XDG_DATA_HOME/Trash/files` (Menü
+  „Wiederherstellen“/„Papierkorb leeren …“ erkennen ihn, die Leiste nicht).
+- Aushängen und die Frage „noch belegt“ brauchen udisks/GVfs mit echten
+  Geräten (Stufe H); im Prüfrahmen sind nur Öffnen und die Fehlermeldungen
+  gemessen.
+- Das Fortschrittsfenster nimmt beim Erscheinen die Tastatur (wie im
+  Desktop 0.3.0).

@@ -721,9 +721,9 @@ mod tests {
 
     #[test]
     fn the_situation_of_real_files() {
-        let basis = std::env::current_dir()
-            .unwrap()
-            .join("target/tmp/ziehen-lage");
+        // the temporary folder, not the source tree (read only in the
+        // test harness werkzeug/dateien-pruefrahmen)
+        let basis = std::env::temp_dir().join(format!("qdat-ziehen-lage-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&basis);
         std::fs::create_dir_all(basis.join("a/innen")).unwrap();
         std::fs::create_dir_all(basis.join("b")).unwrap();
