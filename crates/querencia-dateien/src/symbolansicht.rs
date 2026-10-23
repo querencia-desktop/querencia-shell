@@ -12,8 +12,6 @@ use std::time::Instant;
 use gtk4::prelude::*;
 use gtk4::{glib, pango};
 
-use querencia_oberflaeche::symbole;
-
 use crate::ansicht::Ansicht;
 use crate::ansichtskern::{self, Art, Darstellung, Eintrag, Kern, Modul, protokoll, teile};
 use crate::ansichtsregeln::{
@@ -21,6 +19,7 @@ use crate::ansichtsregeln::{
 };
 use crate::app::Register;
 use crate::konfig::Werte;
+use crate::miniaturen::bildquelle;
 use crate::regeln;
 use crate::regeln::Ansichtsart;
 
@@ -186,6 +185,7 @@ impl Symbolansicht {
             };
             if let Some(zelle) = li.child().and_downcast::<gtk4::Box>() {
                 a.kern.geloest(&zelle);
+                bildquelle::loesen(&teile(&zelle).0);
             }
         });
     }
@@ -200,8 +200,9 @@ impl Symbolansicht {
             zelle.set_size_request(zellbreite(groesse), -1);
         }
         let d = eintrag.daten();
-        // QD-106: theme icons only through querencia-oberflaeche
-        symbole::set(&bild, &d.symbol);
+        // QD-106: theme icons only through querencia-oberflaeche; the
+        // thumbnail through the Bildquelle je Eintrag (Welle C2)
+        bildquelle::binden(&bild, eintrag, bildquelle::Groesse::symbolansicht(groesse));
         text.set_text(&d.anzeige);
         beschriftung_breite(&text, groesse);
         self.beschriftung_einstellen(&text, gewaehlt);

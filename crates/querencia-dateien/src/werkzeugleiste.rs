@@ -1,5 +1,5 @@
 //! The toolbar (B §3.4): Zurück · Vor · Nach oben · Stopp · Aktualisieren |
-//! Persönlicher Ordner · Rechner | Suchen (Beta, left out) — right: zoom
+//! Persönlicher Ordner · Rechner | Suchen (`suche/`) — right: zoom
 //! (−, percentage, +), the view drop-down and the busy indicator. 16 px
 //! icons, text only beside Zurück and Vor (GNOME 2 "important buttons
 //! labelled"), tooltips everywhere, `can_focus=false` as in Dokumente.
@@ -93,6 +93,9 @@ impl Werkzeugleiste {
             &gettext("Browse all local and remote disks and folders accessible from this computer"),
             "win.rechner",
         ));
+        // Welle C2 (dateien-miniaturen-suche): Suchen
+        leiste.append(&trenner());
+        leiste.append(&crate::suche::werkzeugknopf());
         let luecke = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
         luecke.set_hexpand(true);
         leiste.append(&luecke);
