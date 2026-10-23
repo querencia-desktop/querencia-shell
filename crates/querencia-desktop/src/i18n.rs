@@ -20,7 +20,7 @@
 use std::path::{Path, PathBuf};
 
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
-pub use gettextrs::{gettext, ngettext, pgettext};
+pub use gettextrs::{gettext, ngettext};
 
 /// Textdomäne = Name der .mo-Dateien.
 pub const DOMAIN: &str = "querencia-desktop";
@@ -42,6 +42,9 @@ pub fn init() {
     // the key names of shortcuts in the classic menus (none on the desktop
     // so far), from the catalog of the library in the same folder
     querencia_oberflaeche::i18n::bind(dir.as_path());
+    // 0.3.0: the texts of the file work (reasons of failures, names of
+    // copies, volumes) from the catalog of `querencia-dateiarbeit`
+    querencia_dateiarbeit::i18n::bind(dir.as_path());
 }
 
 /// Verzeichnis der Kataloge (siehe Modulbeschreibung).
