@@ -73,10 +73,14 @@ read -r X Y < <(mitte_von 5 0); q "move $X $Y" "keydown Control_L" "click" "keyu
 fall A05 "Strg+Klick nimmt eines dazu (5)" auswahl_ist 5
 q "wait 800" "keydown Control_L" "click" "keyup Control_L" "wait 250"
 fall A05 "Strg+Klick noch einmal nimmt es weg (4)" auswahl_ist 4
-marke; q "key Return" "wait 300"
-fall A05 "Eingabe mit vier gewählten öffnet alle vier" bash -c "tail -n +$((MARKE + 1)) '$LOG' | grep -a 'aktiviert:' | grep -q ', .*, .*, '"
 q "move $((BX / 2)) $((BY - 150))" "click" "wait 300"
 fall A05 "Klick ins Leere hebt die Auswahl auf" auswahl_ist 0
+tippe datei1; taste Escape; umschalt_taste Right
+fall A05 "Umschalt+Pfeil erweitert die Auswahl (2)" auswahl_ist 2
+marke; q "key Return" "wait 300"
+warte_bis 5 test -s "$OUT/geoeffnet.log"
+fall A05 "Eingabe mit zwei gewählten Textdateien öffnet beide (Prüfprogramm)" bash -c "grep -q '/datei1.txt$' '$OUT/geoeffnet.log' && grep -q '/datei2.txt$' '$OUT/geoeffnet.log'"
+q "move $((BX / 2)) $((BY - 150))" "click" "wait 300"
 
 # --- A06 Gummiband (frei, Strg, Umschalt) ----------------------------------
 read -r X2 Y2 < <(mitte_von 2 0)
@@ -176,8 +180,12 @@ marke; taste BackSpace; warte_log 5 'vollständig gezeigt'; q "wait 300"
 read -r X Y < <(mitte_von 1 0)
 marke; q "move $X $Y" "down middle" "up middle" "wait 400"
 fall A11 "mittlere Taste auf Ordner: neues Fenster" im_log 'aktiviert (neues Fenster): Ablage'
+# das neue Fenster (Gerüst) hat den Fokus; schließen, zurück ins erste
+q "wait 1500"; foto a11-neues-fenster 100; strg w; q "wait 800"
+q "move $((BX / 2)) $((BY - 150))" "click" "wait 300"
 marke; tippe /
 fall A11 "„/“ öffnet das Ortsfeld" im_log 'Ortsfeld mit „/“'
+taste Escape; q "move $((BX / 2)) $((BY - 150))" "click" "wait 300"
 
 # --- A12 Kontextmenüs (D16) -------------------------------------------------
 tippe noti; taste Escape
@@ -185,22 +193,28 @@ read -r FX FY FW FH < <(fokus_lage)
 marke; q "move $((FX + FW / 2)) $((FY + 20))" "rclick" "wait 600"
 foto a12-menue-datei
 M=$(zeile 'Kontextmenü:' | sed 's/.*Kontextmenü: //')
+# gesperrte Einträge stehen in [ ]; Aktionen von B3 fehlen vor dem Zusammenbau
+MO=$(printf '%s' "$M" | tr -d '[]')
 info "A12 Datei: $M"
 fall A12 "Datei: Öffnen mit ▸, Ausschneiden, Kopieren, Umbenennen …, Papierkorb, Eigenschaften" bash -c \
-    'case $1 in *"Öffnen mit ▸"*"Ausschneiden"*"Kopieren"*"Umbenennen …"*"In den Papierkorb verschieben"*"Eigenschaften"*) exit 0 ;; esac; exit 1' _ "$M"
+    'case $1 in *"Öffnen mit ▸"*"Ausschneiden"*"Kopieren"*"Umbenennen …"*"In den Papierkorb verschieben"*"Eigenschaften"*) exit 0 ;; esac; exit 1' _ "$MO"
 taste Escape; q "wait 300"
 tippe rechn; taste Escape
 read -r FX FY FW FH < <(fokus_lage)
 marke; q "move $((FX + FW / 2)) $((FY + 20))" "rclick" "wait 600"
 M=$(zeile 'Kontextmenü:' | sed 's/.*Kontextmenü: //')
+# gesperrte Einträge stehen in [ ]; Aktionen von B3 fehlen vor dem Zusammenbau
+MO=$(printf '%s' "$M" | tr -d '[]')
 info "A12 Ordner: $M"
 fall A12 "Ordner: Öffnen, In neuem Fenster öffnen, In Ordner einfügen" bash -c \
-    'case $1 in "Öffnen In neuem Fenster öffnen"*"In Ordner einfügen"*) exit 0 ;; esac; exit 1' _ "$M"
+    'case $1 in "Öffnen In neuem Fenster öffnen"*"In Ordner einfügen"*) exit 0 ;; esac; exit 1' _ "$MO"
 taste Escape; q "wait 300"
 read -r X Y < <(mitte_von 0 1); klick "$X" "$Y"
 read -r X2 Y2 < <(mitte_von 2 1); q "move $X2 $Y2" "keydown Control_L" "click" "keyup Control_L" "wait 300"
 marke; q "rclick" "wait 600"
 M=$(zeile 'Kontextmenü:' | sed 's/.*Kontextmenü: //')
+# gesperrte Einträge stehen in [ ]; Aktionen von B3 fehlen vor dem Zusammenbau
+MO=$(printf '%s' "$M" | tr -d '[]')
 info "A12 Mehrfachauswahl: $M"
 fall A12 "Mehrfachauswahl: „Umbenennen …“ ausgegraut" bash -c 'case $1 in *"[Umbenennen …]"*) exit 0 ;; esac; exit 1' _ "$M"
 fall A12 "Mehrfachauswahl: Auswahl bleibt (2)" auswahl_ist 2
@@ -208,9 +222,11 @@ taste Escape; q "wait 300"
 marke; q "move $((BX / 2)) $((BY - 150))" "rclick" "wait 600"
 foto a12-menue-hintergrund
 M=$(zeile 'Kontextmenü:' | sed 's/.*Kontextmenü: //')
+# gesperrte Einträge stehen in [ ]; Aktionen von B3 fehlen vor dem Zusammenbau
+MO=$(printf '%s' "$M" | tr -d '[]')
 info "A12 Hintergrund: $M"
 fall A12 "Hintergrund: Ordner anlegen, Dokument anlegen ▸, Objekte anordnen ▸, Einfügen, Eigenschaften" bash -c \
-    'case $1 in "Ordner anlegen Dokument anlegen ▸"*"Objekte anordnen ▸"*"Einfügen"*"Eigenschaften"*) exit 0 ;; esac; exit 1' _ "$M"
+    'case $1 in "Ordner anlegen Dokument anlegen ▸"*"Objekte anordnen ▸"*"Einfügen"*"Eigenschaften"*) exit 0 ;; esac; exit 1' _ "$MO"
 fall A12 "Rechtsklick ins Leere hebt die Auswahl auf" auswahl_ist 0
 taste Escape; q "wait 300"
 marke; tippe noti; taste Escape; umschalt_taste F10; q "wait 500"
@@ -218,11 +234,9 @@ fall A12 "Umschalt+F10 öffnet das Menü der Auswahl" im_log 'Kontextmenü: '
 taste Escape; q "wait 300"
 
 # --- A13 Ordner anlegen und gleich umbenennen (D18) ------------------------
-marke; aktion neuer-ordner; q "wait 800"
-fall A13 "neuer Ordner „Neuer Ordner“ sofort im Umbenennen-Feld" im_log 'Umbenennen begonnen Symbolansicht: Neuer Ordner'
-tippe "Projekte"; taste Return
-warte_bis 5 test -d "$B/Projekte"
-fall A13 "eingetippter Name gilt: Ordner „Projekte“" test -d "$B/Projekte"
+# „Ordner anlegen“ (win.ordner-anlegen) liefert B3; geprüft wird hier nur
+# der Weg des Gerüsts: neue Datei erscheint → umbenennen_anstossen.
+info "A13 Ordner anlegen: Aktion von B3, Prüfung nach dem Zusammenbau"
 
 # --- A14 Umbenennen über das Scrollen hinweg (Mietvertrag) ----------------
 marke; tippe 10000; taste Return; warte_log 10 'vollständig gezeigt'; q "wait 400"
@@ -263,15 +277,17 @@ strg 0
 q "move $((BX / 2)) $((BY - 100))" "click" "wait 300"
 fall A15 "Liste: Klick ins Leere hebt die Auswahl auf" auswahl_ist 0
 marke; q "rclick" "wait 600"
-fall A15 "Liste: Hintergrundmenü" im_log 'Kontextmenü: Ordner anlegen'
+fall A15 "Liste: Hintergrundmenü" im_log 'Kontextmenü: \[*Ordner anlegen'
 taste Escape
-strg 1; q "wait 500"
-fall A15 "Strg+1 zurück zur Symbolansicht" im_log 'Ansicht: Symbolansicht'
+marke; strg 1; q "wait 500"; taste Right; q "wait 300"
+fall A15 "Strg+1 zurück zur Symbolansicht" im_log 'Fokus Symbolansicht: '
 stopp
 
 # --- A16 Zusatzzeilen und Spalten nach Einstellung -------------------------
-start "$B" QUERENCIA_DATEIEN_ZUSATZ=datum,typ QUERENCIA_DATEIEN_ZOOM=150 QUERENCIA_DATEIEN_SPALTEN=groesse,typ,datum,rechte,eigentuemer,gruppe
-fall A16 "Zoom 150 % aus der Einstellung" im_log 'Zoom Symbolansicht 150 %'
+ini "[Ansichten]" "ZoomSymbole=150" "[Anzeige]" "Zusatz=datum" "ZusatzGross=typ" \
+    "[Listenspalten]" "Groesse=true" "Typ=true" "Datum=true" "Rechte=true" "Eigentuemer=true" "Gruppe=true"
+start "$B"
+fall A16 "Zoom 150 % aus dateien.ini" im_log 'Zoom Symbolansicht 150 %'
 foto a16-zusatzzeilen-150
 strg 2; q "wait 800"
 fall A16 "Liste mit Zugriffsrechten, Eigentümer, Gruppe" bash -c "grep -a -q 'Spaltenkopf gruppe bei' '$LOG' && grep -a -q 'Spaltenkopf rechte bei' '$LOG'"

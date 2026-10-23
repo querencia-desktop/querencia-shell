@@ -59,6 +59,8 @@ warte_bis 5 hat_besitzer org.freedesktop.portal.Desktop && ok "Portal-Ersatz" ||
 "$QA" "${BX}x$BY" 1 2>>"$OUT/qausgabe.log"; sleep 1
 info "querencia-dateien $(sha256sum "$BIN" | cut -c1-16), ${BX}x$BY, dunkel $DUNKEL, Ablauf $ABLAUF"
 
+# dateien.ini des Profils (Einstellungen des Gerüsts, konfig.rs)
+ini() { mkdir -p "$XDG_CONFIG_HOME/querencia"; printf '%s\n' "$@" >"$XDG_CONFIG_HOME/querencia/dateien.ini"; }
 start() { # [Ordner] [Umgebung…]
     local ordner=${1:-$BEISPIEL}; shift || true
     START_NR=$((${START_NR:-0} + 1)); LOG=$OUT/dateien-$START_NR.log
@@ -68,7 +70,7 @@ start() { # [Ordner] [Umgebung…]
         "$BIN" "$ordner" >"$LOG" 2>&1 8>&- &
     PID=$!
     warte_log 20 'vollständig gezeigt' && warte_log 5 ': Fokus [A-Za-z]*ansicht: ' \
-        && ok "Start: $(zeile 'gelesen und sortiert' | sed 's/.*Messung //')" \
+        && ok "Start: $(zeile 'Objekte im Modell' | sed 's/.*Messung //')" \
         || nok "Start ohne Messzeile"
     hat_besitzer org.querencia.Dateien || nok "App-ID nicht auf dem Bus"
     # die erste Taste nach dem Anstecken der virtuellen Tastatur geht verloren

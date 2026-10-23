@@ -5,9 +5,8 @@
 G="$BEISPIEL/10000 Einträge"
 ms() { sed -E 's/.* nach ([0-9]+) ms.*/\1/'; }
 oeffnen_messen() { # Ansicht (symbole|liste) Lauf
-    local umg=()
-    [ "$1" = liste ] && umg=(QUERENCIA_DATEIEN_ANSICHT=liste)
-    start "$G" "${umg[@]}"
+    if [ "$1" = liste ]; then ini "[Ansichten]" "Ansicht=liste"; else ini "[Ansichten]" "Ansicht=symbole"; fi
+    start "$G"
     local erst ganz
     erst=$(zeile 'erstes Bild nach' | ms)
     ganz=$(zeile 'vollständig gezeigt nach' | ms)

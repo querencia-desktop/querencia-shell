@@ -10,14 +10,15 @@
 //! `gio::Menu` the classic menu shows.
 
 use std::cell::RefCell;
-use std::path::{Path, PathBuf};
 
 use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib};
 
 use querencia_oberflaeche::classic_menu;
 
+use crate::ansicht::Kontextziel;
 use crate::ansichtskern::{Eintrag, Kriterium, Sortierung, protokoll};
+use crate::app::Register;
 use crate::i18n::{gettext, gettext_f};
 
 /// What was clicked.
@@ -52,7 +53,7 @@ pub struct Umgebung {
     pub im_papierkorb: bool,
     /// Default program first, then the recommended ones.
     pub programme: Vec<Programm>,
-    /// Templates as (shown name, path).
+    /// Templates as (shown name, URI).
     pub vorlagen: Vec<(String, String)>,
     pub sortierung: Sortierung,
 }
@@ -71,6 +72,12 @@ pub enum Zeile {
         text: String,
         gruppen: Vec<Vec<Zeile>>,
     },
+}
+
+/// A translated menu text without its access key mark (the classic menus
+/// show none; the msgids are the menu bar's, B §3.3).
+fn t(text: String) -> String {
+    crate::menue::ohne_zugriffstaste(&text)
 }
 
 fn eintrag(text: String, aktion: &'static str) -> Zeile {
@@ -119,72 +126,61 @@ fn objekte(a: &Auswahlinfo, u: &Umgebung) -> Vec<Vec<Zeile>> {
                 "win.oeffnen",
             ));
         }
-        _ => oeffnen.push(eintrag(gettext("Open"), "win.oeffnen")),
+        _ => oeffnen.push(eintrag(t(gettext("_Open")), "win.oeffnen")),
     }
     if nur_ordner {
         oeffnen.push(eintrag(
-            gettext("Open in New Window"),
+            t(gettext("Open in New _Window")),
             "win.oeffnen-neues-fenster",
         ));
     }
     // „Öffnen mit“ only where one program list fits all (Nautilus: same
-    // type); folders count as one type among themselves.
+    // type), without the program „Öffnen“ already names; „Mit anderer
+    // Anwendung öffnen …“ (the chooser) comes with the Beta (B21).
     if a.gemeinsamer_typ.is_some() {
-        let mut andere: Vec<Zeile> = u
+        let ohne_standard = usize::from(a.ordner == 0);
+        let andere: Vec<Zeile> = u
             .programme
             .iter()
-            .skip(usize::from(a.ordner == 0))
+            .skip(ohne_standard)
             .map(|p| mit_ziel(p.name.clone(), "win.oeffnen-mit", &p.id))
             .collect();
-        if a.ordner > 0 {
-            andere = u
-                .programme
-                .iter()
-                .map(|p| mit_ziel(p.name.clone(), "win.oeffnen-mit", &p.id))
-                .collect();
-        }
-        let mut gruppen = Vec::new();
         if !andere.is_empty() {
-            gruppen.push(andere);
+            oeffnen.push(Zeile::Unter {
+                text: t(gettext("Open Wit_h")),
+                gruppen: vec![andere],
+            });
         }
-        gruppen.push(vec![eintrag(
-            gettext("Other Application…"),
-            "win.oeffnen-mit-anderer",
-        )]);
-        oeffnen.push(Zeile::Unter {
-            text: gettext("Open With"),
-            gruppen,
-        });
     }
     let mut ablage = vec![
-        eintrag(gettext("Cut"), "win.ausschneiden"),
-        eintrag(gettext("Copy"), "win.kopieren"),
+        eintrag(t(gettext("Cu_t")), "win.ausschneiden"),
+        eintrag(t(gettext("_Copy")), "win.kopieren"),
     ];
     if a.anzahl == 1 && a.ordner == 1 {
         ablage.push(eintrag(
-            gettext("Paste Into Folder"),
+            t(gettext("Paste Into Folder")),
             "win.in-ordner-einfuegen",
         ));
     }
     let umbenennen = if a.anzahl == 1 {
-        eintrag(gettext("Rename…"), "win.umbenennen")
+        eintrag(t(gettext("_Rename…")), "win.umbenennen")
     } else {
-        gesperrt(gettext("Rename…"))
+        gesperrt(t(gettext("_Rename…")))
     };
     vec![
         oeffnen,
         ablage,
         vec![umbenennen],
-        vec![eintrag(gettext("Move to Trash"), "win.papierkorb")],
-        vec![eintrag(gettext("Properties"), "win.eigenschaften")],
+        vec![eintrag(t(gettext("Mo_ve to Trash")), "win.papierkorb")],
+        vec![eintrag(t(gettext("_Properties")), "win.eigenschaften")],
     ]
 }
 
 fn papierkorb_objekt(_a: &Auswahlinfo) -> Vec<Vec<Zeile>> {
     vec![
-        vec![eintrag(gettext("Restore"), "win.wiederherstellen")],
-        vec![eintrag(gettext("Delete…"), "win.loeschen")],
-        vec![eintrag(gettext("Properties"), "win.eigenschaften")],
+        vec![eintrag(t(gettext("_Restore")), "win.wiederherstellen")],
+        vec![eintrag(t(gettext("_Delete…")), "win.loeschen")],
+        vec![eintrag(t(gettext("_Properties")), "win.eigenschaften")],
     ]
 }
 
@@ -193,24 +189,24 @@ fn hintergrund(u: &Umgebung) -> Vec<Vec<Zeile>> {
     if !u.im_papierkorb {
         let mut dokumente = Vec::new();
         if u.vorlagen.is_empty() {
-            dokumente.push(vec![gesperrt(gettext("No templates installed"))]);
+            dokumente.push(vec![gesperrt(t(gettext("No templates installed")))]);
         } else {
             dokumente.push(
                 u.vorlagen
                     .iter()
-                    .map(|(name, pfad)| mit_ziel(name.clone(), "win.neues-dokument", pfad))
+                    .map(|(name, uri)| mit_ziel(name.clone(), "win.dokument-anlegen", uri))
                     .collect(),
             );
         }
         dokumente.push(vec![mit_ziel(
-            gettext("Empty File"),
-            "win.neues-dokument",
+            t(gettext("Empty File")),
+            "win.dokument-anlegen",
             "",
         )]);
         gruppen.push(vec![
-            eintrag(gettext("Create Folder"), "win.neuer-ordner"),
+            eintrag(t(gettext("Create _Folder")), "win.ordner-anlegen"),
             Zeile::Unter {
-                text: gettext("Create Document"),
+                text: t(gettext("Create _Document")),
                 gruppen: dokumente,
             },
         ]);
@@ -220,23 +216,22 @@ fn hintergrund(u: &Umgebung) -> Vec<Vec<Zeile>> {
         .into_iter()
         .map(|k| Zeile::Eintrag {
             text: match k {
-                Kriterium::Name => gettext("By _Name"),
-                Kriterium::Groesse => gettext("By _Size"),
-                Kriterium::Typ => gettext("By _Type"),
-                Kriterium::Datum => gettext("By Modification _Date"),
-            }
-            .replace('_', ""),
+                Kriterium::Name => t(gettext("By _Name")),
+                Kriterium::Groesse => t(gettext("By _Size")),
+                Kriterium::Typ => t(gettext("By _Type")),
+                Kriterium::Datum => t(gettext("By Modification _Date")),
+            },
             aktion: Some("win.anordnen"),
             ziel: Some(k.kennung().to_owned()),
             haken: s.kriterium == k,
         })
         .collect();
     gruppen.push(vec![Zeile::Unter {
-        text: gettext("Arrange Items"),
+        text: t(gettext("Arran_ge Items")),
         gruppen: vec![
             kriterien,
             vec![Zeile::Eintrag {
-                text: gettext("Re_versed Order").replace('_', ""),
+                text: t(gettext("Re_versed Order")),
                 aktion: Some("win.umgekehrt"),
                 ziel: None,
                 haken: s.umgekehrt,
@@ -244,14 +239,17 @@ fn hintergrund(u: &Umgebung) -> Vec<Vec<Zeile>> {
         ],
     }]);
     if !u.im_papierkorb {
-        gruppen.push(vec![eintrag(gettext("Paste"), "win.einfuegen")]);
+        gruppen.push(vec![eintrag(t(gettext("_Paste")), "win.einfuegen")]);
     }
     gruppen.push(vec![
-        eintrag(gettext("Zoom In"), "win.vergroessern"),
-        eintrag(gettext("Zoom Out"), "win.verkleinern"),
-        eintrag(gettext("Normal Size"), "win.normale-groesse"),
+        eintrag(t(gettext("Zoom _In")), "win.vergroessern"),
+        eintrag(t(gettext("Zoom _Out")), "win.verkleinern"),
+        eintrag(t(gettext("Normal Si_ze")), "win.normale-groesse"),
     ]);
-    gruppen.push(vec![eintrag(gettext("Properties"), "win.eigenschaften")]);
+    gruppen.push(vec![eintrag(
+        t(gettext("_Properties")),
+        "win.eigenschaften",
+    )]);
     gruppen
 }
 
@@ -374,10 +372,7 @@ pub fn zeigen(
         _ => Vec::new(),
     };
     let vorlagen = if ort == Ort::Hintergrund {
-        vorlagen(
-            glib::user_special_dir(glib::UserDirectory::Templates).as_deref(),
-            &glib::home_dir(),
-        )
+        crate::menue::vorlagen_liste()
     } else {
         Vec::new()
     };
@@ -471,55 +466,39 @@ pub fn aktion_verfuegbar(widget: &impl IsA<gtk4::Widget>, name: &str) -> bool {
     }
 }
 
-/// The programs for `typ`: the default first, then the recommended ones
-/// shown in menus (as the desktop's „Öffnen mit“).
+/// The programs for `typ`: the default first, then the recommended and
+/// the other ones shown in menus (the frame's „Öffnen mit“ uses the same
+/// list, `querencia_dateiarbeit::oeffnen::apps_for`).
 pub fn programme_fuer(typ: &str) -> Vec<Programm> {
-    let mut liste: Vec<Programm> = Vec::new();
-    let alle = gio::AppInfo::default_for_type(typ, false)
+    querencia_dateiarbeit::oeffnen::apps_for(typ)
         .into_iter()
-        .chain(gio::AppInfo::recommended_for_type(typ));
-    for app in alle {
-        let Some(id) = app.id().map(|i| i.to_string()) else {
-            continue;
-        };
-        if !app.should_show() || liste.iter().any(|p| p.id == id) {
-            continue;
-        }
-        liste.push(Programm {
-            id,
-            name: app.display_name().to_string(),
-        });
-    }
-    liste
-}
-
-/// The templates of `ordner` (`~/Vorlagen`) as (name, path), sorted; none
-/// when the templates folder is the home folder (XDG default without a
-/// templates folder), as the desktop.
-pub fn vorlagen(ordner: Option<&Path>, home: &Path) -> Vec<(String, String)> {
-    let Some(ordner) = ordner.filter(|o| *o != home) else {
-        return Vec::new();
-    };
-    let Ok(eintraege) = std::fs::read_dir(ordner) else {
-        return Vec::new();
-    };
-    let mut liste: Vec<PathBuf> = eintraege
-        .filter_map(Result::ok)
-        .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
-        .filter(|e| e.file_type().is_ok_and(|t| t.is_file()))
-        .map(|e| e.path())
-        .collect();
-    liste.sort();
-    liste
-        .into_iter()
-        .map(|p| {
-            let name = p
-                .file_stem()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            (name, p.to_string_lossy().into_owned())
+        .filter_map(|app| {
+            Some(Programm {
+                id: app.id()?.to_string(),
+                name: app.display_name().to_string(),
+            })
         })
         .collect()
+}
+
+/// Registers the context menus of the views with the frame (B1's hook:
+/// the window passes the target, the list widget and the point).
+pub fn registrieren(register: &mut Register) {
+    register.kontextmenue(|fenster, ziel, widget, x, y| {
+        let modell = fenster.modell();
+        let gewaehlt = match ziel {
+            Kontextziel::Auswahl => modell.gewaehlte(),
+            Kontextziel::Hintergrund => Vec::new(),
+        };
+        zeigen(
+            widget,
+            x,
+            y,
+            &gewaehlt,
+            fenster.ort().as_ref(),
+            modell.sortierung(),
+        );
+    });
 }
 
 #[cfg(test)]
@@ -607,7 +586,7 @@ mod tests {
                     name: "Dokumente".into(),
                 },
             ],
-            vorlagen: vec![("Brief".into(), "/v/Brief.odt".into())],
+            vorlagen: vec![("Brief".into(), "file:///v/Brief.odt".into())],
             ..Umgebung::default()
         }
     }
@@ -624,7 +603,7 @@ mod tests {
     fn file_menu_after_nautilus() {
         assert_eq!(
             beschreibung(&zeilen(&datei(), &umgebung())),
-            "Open with “Editor”, Open With ▸ {Dokumente | Other Application…} \
+            "Open with “Editor”, Open With ▸ {Dokumente} \
              | Cut, Copy | Rename… | Move to Trash | Properties"
         );
     }
@@ -640,7 +619,7 @@ mod tests {
         u.programme.truncate(1);
         assert_eq!(
             beschreibung(&zeilen(&ordner, &u)),
-            "Open, Open in New Window, Open With ▸ {Editor | Other Application…} \
+            "Open, Open in New Window, Open With ▸ {Editor} \
              | Cut, Copy, Paste Into Folder | Rename… | Move to Trash | Properties"
         );
     }
@@ -671,14 +650,15 @@ mod tests {
     }
 
     #[test]
-    fn file_without_programs_offers_other_application() {
+    fn file_without_other_programs_has_no_open_with() {
         let mut u = umgebung();
-        u.programme.clear();
+        u.programme.truncate(1);
         assert_eq!(
             beschreibung(&zeilen(&datei(), &u)),
-            "Open, Open With ▸ {Other Application…} | Cut, Copy | Rename… \
-             | Move to Trash | Properties"
+            "Open with “Editor” | Cut, Copy | Rename… | Move to Trash | Properties"
         );
+        u.programme.clear();
+        assert!(beschreibung(&zeilen(&datei(), &u)).starts_with("Open | Cut"));
     }
 
     #[test]
@@ -716,20 +696,5 @@ mod tests {
             !text.contains("Create Folder") && !text.contains("Paste |"),
             "{text}"
         );
-    }
-
-    #[test]
-    fn templates_skip_hidden_files_folders_and_home() {
-        let tmp = std::env::temp_dir().join(format!("qd-vorlagen-{}", std::process::id()));
-        std::fs::create_dir_all(tmp.join("Unterordner")).unwrap();
-        std::fs::write(tmp.join("Brief.odt"), "").unwrap();
-        std::fs::write(tmp.join("Arbeitsblatt"), "").unwrap();
-        std::fs::write(tmp.join(".versteckt"), "").unwrap();
-        let liste = vorlagen(Some(&tmp), Path::new("/home/niemand"));
-        let namen: Vec<&str> = liste.iter().map(|(n, _)| n.as_str()).collect();
-        assert_eq!(namen, ["Arbeitsblatt", "Brief"]);
-        assert!(vorlagen(Some(&tmp), &tmp).is_empty());
-        assert!(vorlagen(None, &tmp).is_empty());
-        std::fs::remove_dir_all(&tmp).unwrap();
     }
 }

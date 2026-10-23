@@ -4,7 +4,10 @@
 //! column header and the sort order. Tested in `cargo test`.
 
 use crate::ansichtskern::{Kriterium, Sortierung};
-use crate::i18n::{gettext, gettext_f};
+use crate::i18n::gettext;
+/// What an icon shows under its name (Nautilus `icon_view/captions`), the
+/// setting of the frame (Reiter „Anzeige“).
+pub use crate::konfig::Zusatz;
 
 /// The zoom levels of both views in percent: Nautilus 2.30's smaller,
 /// small, standard, large and larger (33 % and 400 % stay out, B §5.1 D10).
@@ -45,12 +48,6 @@ pub fn zoom_stufe(prozent: u32) -> u32 {
     zoom_schritt(prozent, 0)
 }
 
-/// "100 %" (German) or "100%" (English) for the zoom display.
-pub fn zoom_text(prozent: u32) -> String {
-    // TRANSLATORS: zoom level in the tool bar; German puts a space before %
-    gettext_f("{percent}%", &[("percent", &prozent.to_string())])
-}
-
 /// Width of an icon view cell at icon size `symbol`: room for about twelve
 /// characters at 100 %, as Nautilus 2.30's text width, never narrower than
 /// a short word.
@@ -70,33 +67,6 @@ pub fn zellbreite(symbol: i32) -> i32 {
 /// (prototype report §5 A1).
 pub fn spalten(breite: i32, symbol: i32) -> u32 {
     (breite / zellbreite(symbol)).max(1) as u32
-}
-
-/// What an icon shows under its name (Nautilus `icon_view/captions`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Zusatz {
-    Nichts,
-    Groesse,
-    Datum,
-    Typ,
-}
-
-impl Zusatz {
-    pub const ALLE: [Zusatz; 4] = [Zusatz::Nichts, Zusatz::Groesse, Zusatz::Datum, Zusatz::Typ];
-
-    /// The value in `dateien.ini`.
-    pub fn kennung(self) -> &'static str {
-        match self {
-            Zusatz::Nichts => "nichts",
-            Zusatz::Groesse => "groesse",
-            Zusatz::Datum => "datum",
-            Zusatz::Typ => "typ",
-        }
-    }
-
-    pub fn aus_kennung(kennung: &str) -> Option<Self> {
-        Self::ALLE.into_iter().find(|z| z.kennung() == kennung)
-    }
 }
 
 /// The extra lines under the name at zoom `prozent`: the first setting from
@@ -192,6 +162,7 @@ impl Spalte {
         }
     }
 
+    #[cfg(test)]
     pub fn aus_kennung(kennung: &str) -> Option<Self> {
         Self::ALLE.into_iter().find(|s| s.kennung() == kennung)
     }
@@ -350,12 +321,6 @@ mod tests {
                 .iter()
                 .all(|p| zellbreite(symbolgroesse(*p)) > symbolgroesse(*p))
         );
-    }
-
-    #[test]
-    fn zoom_text_without_catalog_is_english() {
-        assert_eq!(zoom_text(100), "100%");
-        assert_eq!(zoom_text(50), "50%");
     }
 
     #[test]
