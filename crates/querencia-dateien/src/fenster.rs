@@ -538,7 +538,11 @@ impl Fenster {
                 self.gehe_zu(&ziel);
             }
             Zustand::ErsterBlock => {
-                if self.ansicht_hat_fokus() || GtkWindowExt::focus(&self.window).is_none() {
+                // the view takes the keyboard after every change of folder,
+                // unless the user is typing a location (Nautilus 2.30)
+                let tippt = GtkWindowExt::focus(&self.window)
+                    .is_some_and(|f| f.is_ancestor(self.adressleiste().widget()));
+                if !tippt {
                     self.ansicht().fokus();
                 }
             }
