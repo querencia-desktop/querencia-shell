@@ -336,14 +336,4 @@ pub fn registrieren(register: &mut Register) {
         Modul::<Symbolansicht>::neu(Ansichtsart::Symbole) as Rc<dyn Ansicht>
     });
     register.anwendung(|_| ansichtskern::stil_laden());
-    // Übergang bis zum Gerüst nach geruest-1: die App hält ihre Fenster nur
-    // schwach (app.rs `fenster_merken`), das Fenster samt Ordnermodell fiel
-    // gleich nach dem Bau weg und das Lesen brach ab („Wird geladen …“).
-    // Das Fenster hält sich hier selbst bis zu seinem Ende.
-    register.fenster(|fenster| {
-        let halten = std::cell::RefCell::new(Some(fenster.clone()));
-        fenster.window().connect_destroy(move |_| {
-            halten.borrow_mut().take();
-        });
-    });
 }

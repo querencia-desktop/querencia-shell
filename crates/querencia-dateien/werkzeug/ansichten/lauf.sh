@@ -13,7 +13,8 @@
 #         dauer     Speicher beim Scrollen in „10000 Einträge“ (LAUF_MINUTEN)
 # Umgebung: LAUF_GROESSE 1920x1080|1024x768, LAUF_DUNKEL 0|1.
 # Programm: target/release/querencia-dateien des Worktrees (bauen.sh).
-# Ergebnis: nachweis/ansichten/laeufe/<tag>/, Fotos nachweis/ansichten/fotos/<tag>/.
+# Ergebnis: nachweis/ansichten/laeufe/<tag>/ im Repo, Fotos außerhalb unter
+#  (LAUF_FOTOS).
 set -euo pipefail
 W=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 K=$(cd "$W/../.." && pwd)
@@ -33,7 +34,8 @@ TQ=$(readlink -f "$HOME/.local/share/themes/Querencia-Klassisch")
 BASIS=$HOME/.cache/querencia-dateien-ansichten/pruefung
 PROFIL=$BASIS/profil-$TAG
 OUT=$K/nachweis/ansichten/laeufe/$TAG
-FOTOS=$K/nachweis/ansichten/fotos/$TAG
+# Belegbilder nie ins Repo (Regel der Status-Session): ~/review
+FOTOS=${LAUF_FOTOS:-$HOME/review/dateien-ansichten-bilder}/$TAG
 case $PROFIL in "$HOME"/.cache/querencia-dateien-ansichten/pruefung/profil-*) ;; *) exit 2 ;; esac
 if [ -d "$PROFIL" ]; then chmod -R u+w "$PROFIL"; rm -rf "$PROFIL"; fi
 rm -rf "$OUT" "$FOTOS"
