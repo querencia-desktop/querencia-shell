@@ -136,7 +136,35 @@ QD_QEINGABE=<bin-ordner>/qeingabe QD_LOCALE=<kataloge> QD_DESKTOP=<desktop> QD_F
   bash tools/dateien-operationen-pruefung/gesamt.sh target/debug/querencia-dateien <ausgabe> [dunkel]
 ```
 
-ERGEBNISTABELLE
+**Ergebnis (23.10.2026, Stand `d1113bc` + Szenario-Korrektur, Kataloge de):**
+
+| Lauf | ziehen | fortschritt | konflikt | papierkorb | zwischenablage | eigenschaften | Summe |
+|---|---|---|---|---|---|---|---|
+| L 1280×720 hell | 10/10 | 4/4 | 6/6 | 7/7 | 6/6 | 8/8 | 41/41 |
+| G 1280×720 hell (`papierkorb-g` über `trash:///`) | 10/10 | 4/4 | 6/6 | 8/8 | 6/6 | 8/8 | 42/42 |
+| L 1024×768 hell | – | 4/4 | 6/6 | 7/7 ¹ | – | 8/8 | 25/25 |
+| L 1024×768 dunkel | – | 4/4 | 6/6 | 7/7 ¹ | – | 8/8 | 25/25 |
+| L 1920×1080 hell | – | 4/4 | 6/6 | 7/7 | – | 8/8 | 25/25 |
+| L 1920×1080 dunkel | – | 4/4 | 6/6 | 7/7 | – | 8/8 | 25/25 |
+
+**183 von 183 Fällen bestanden**, alle 28 Hüllen ohne Reste (Exit 0).
+¹ Erster Lauf je 6/7: Entf direkt nach dem Umschalt-Klick ging verloren
+(Zeitproblem im Szenario, nicht im Programm; die Folgeschritte liefen
+versetzt). Nach 0,5 s Pause vor Entf wiederholt: 7/7. Beide ersten Läufe
+liegen mit im Nachweis (`papierkorb-erster-lauf`).
+
+| Fall | Was geprüft wird |
+|---|---|
+| Z1–Z4 | Ziehen auf einen Ordner: ohne Taste gleiches Dateisystem verschiebt, Strg kopiert, ohne Taste über die tmpfs-Grenze kopiert, Umschalt verschiebt über die Grenze |
+| Z5, Z6 | auf „Persönlicher Ordner“ der Seitenleiste, auf den Knopf des Elternordners |
+| Z7 | auf die freie Fläche des eigenen Ordners: nichts |
+| Z8 | aus dem Papierkorb mit Strg: nur Verschieben, `.trashinfo` geht mit |
+| Z9, Z10 | Symbolansicht: Datei auf Ordnersymbol; Gummiband auf freier Fläche bleibt |
+| F1–F4 | zwei Kopien (je 80.000 Dateien) im Fenster „Dateien werden kopiert …“, beide fertig und vollständig, Abbrechen einer dritten räumt den Bauordner weg, Fenster schließt |
+| K1–K6 | Eingabe = Überspringen, Alt+E Ersetzen (ohne Baunamen-Rest), Alt+U Umbenennen („x (Kopie).txt“), Esc bricht ab, „auf alle anwenden“ fragt einmal, Ordner zusammenführen mit Frage darin |
+| P1–P7 | Entf ohne Frage (3 `.trashinfo`), Wiederherstellen, Entf im Papierkorb fragt, Leeren Eingabe = Abbrechen, Leeren bestätigt, Umschalt+Entf Esc / bestätigt (nicht im Papierkorb); G zusätzlich G0 (`trash:///` gezeigt) und Knopf der Leiste |
+| C1–C6 | Strg+C in Files → Strg+V hier; Formate beim Ausschneiden (`GdkFileList`, `text/uri-list`, GNOME „cut“, KDE 1); Strg+X hier → Strg+V in Files verschiebt; Arbeitsfläche → hier; hier → Arbeitsfläche verschiebt; „In Ordner einfügen“ |
+| E1–E3, N1–N5 | Ordnergröße 41 Objekte, chmod über „Datei als Programm ausführen“ (644 → 755), anderes Programm als Standard (`mimeapps.list`); Umschalt+Strg+N, **D18** (Name sofort tippen, Eingabe: umbenannt über die Warteschlange), Leere Datei, Vorlage, zweiter Ordner „Neuer Ordner 2“ |
 
 ## 5. Fotos
 
