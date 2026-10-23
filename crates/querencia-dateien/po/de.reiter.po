@@ -35,3 +35,19 @@ msgstr "_Kompakt"
 
 msgid "A_ll columns have the same width"
 msgstr "Alle S_palten haben dieselbe Breite"
+
+msgctxt "accel"
+msgid "<Control>PageUp"
+msgstr "<Control>Bild↑"
+
+msgctxt "accel"
+msgid "<Control>PageDown"
+msgstr "<Control>Bild↓"
+
+msgctxt "accel"
+msgid "<Shift><Control>PageUp"
+msgstr "<Shift><Control>Bild↑"
+
+msgctxt "accel"
+msgid "<Shift><Control>PageDown"
+msgstr "<Shift><Control>Bild↓"
