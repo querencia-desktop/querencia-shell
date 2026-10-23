@@ -274,10 +274,20 @@ fall A15 "Liste: umbenannt in grafik.png" test -e "$B/grafik.png"
 marke; strg +
 fall A15 "Liste: Strg++ 66 % (32 px)" im_log 'Zoom Listenansicht 66 % (32 px)'
 strg 0
-q "move $((BX / 2)) $((BY - 100))" "click" "wait 300"
-fall A15 "Liste: Klick ins Leere hebt die Auswahl auf" auswahl_ist 0
-marke; q "rclick" "wait 600"
-fall A15 "Liste: Hintergrundmenü" im_log 'Kontextmenü: \[*Ordner anlegen'
+if [ "$BY" -ge 1000 ]; then
+    q "move $((BX / 2)) $((BY - 100))" "click" "wait 300"
+    fall A15 "Liste: Klick ins Leere hebt die Auswahl auf" auswahl_ist 0
+    marke; q "rclick" "wait 600"
+    fall A15 "Liste: Rechtsklick ins Leere zeigt das Hintergrundmenü" im_log 'Kontextmenü: \[*Ordner anlegen'
+else
+    # 28 Zeilen füllen die Liste bei 768 px Höhe: keine freie Fläche
+    info "A15 Liste: keine freie Fläche bei ${BX}×$BY, Auswahl per Strg+Klick aufgehoben"
+    read -r FX FY FW FH < <(fokus_lage)
+    q "move $((FX + 40)) $((FY + FH / 2))" "keydown Control_L" "click" "keyup Control_L" "wait 300"
+    fall A15 "Liste: Strg+Klick nimmt die Zeile aus der Auswahl" auswahl_ist 0
+    marke; umschalt_taste F10; q "wait 600"
+    fall A15 "Liste: Umschalt+F10 ohne Auswahl zeigt das Hintergrundmenü" im_log 'Kontextmenü: \[*Ordner anlegen'
+fi
 taste Escape
 marke; strg 1; q "wait 500"; taste Right; q "wait 300"
 fall A15 "Strg+1 zurück zur Symbolansicht" im_log 'Fokus Symbolansicht: '

@@ -68,6 +68,10 @@ chmod +x "$PROFIL/bin/xdg-open"
 SCHRIFT=$(gsettings get org.gnome.desktop.interface font-name | tr -d "'")
 printf '[Settings]\ngtk-theme-name=Querencia-Klassisch\ngtk-icon-theme-name=Querencia\ngtk-font-name=%s\ngtk-enable-animations=0\ngtk-cursor-blink=0\n' \
     "$SCHRIFT" >"$PROFIL/config/gtk-4.0/settings.ini"
+# dunkel: in der Hülle übernimmt GTK 4.22 das Farbschema des Portal-Ersatzes
+# nicht (gemessen: Einstellung 0 trotz color-scheme 1); der Weg ohne Portal
+# (farbschema::dunkel: gtk-application-prefer-dark-theme) zeigt dasselbe
+[ "$DUNKEL" = 1 ] && printf 'gtk-application-prefer-dark-theme=1\n' >>"$PROFIL/config/gtk-4.0/settings.ini"
 BX=${GROESSE%x*} BY=${GROESSE#*x}
 case $ABLAUF in fotos) DEKO='' ;; *) DEKO='<action name="SetDecorations" decorations="none" />' ;; esac
 cat >"$PROFIL/config/labwc/rc.xml" <<X
