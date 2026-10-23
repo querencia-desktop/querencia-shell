@@ -9,6 +9,7 @@
 //! the query; hidden files and folders are left out (here: unless the
 //! window shows hidden files); a folder reached twice (bind mounts, links)
 //! is read once (`id::file`); symbolic links to folders are not followed.
+//! Limits ([`Grenzen`]): 64 folder levels, 50,000 hits.
 
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
@@ -154,7 +155,28 @@ pub enum Meldung {
         fehler: u64,
         ms: u128,
         abgebrochen: bool,
+        /// Stopped at [`Grenzen`] (hits or depth).
+        begrenzt: bool,
     },
+}
+
+/// Limits of a search: folders deeper than `tiefe` below the start are
+/// not read, after `treffer` hits it stops.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Grenzen {
+    pub tiefe: u32,
+    pub treffer: usize,
+}
+
+impl Default for Grenzen {
+    /// 64 levels, 50,000 hits (a home folder of half a million files
+    /// stays answerable; the list of hits stays below ~200 MB).
+    fn default() -> Self {
+        Self {
+            tiefe: 64,
+            treffer: 50_000,
+        }
+    }
 }
 
 /// A batch goes out after this many hits or this time.
@@ -176,17 +198,27 @@ pub fn suchen(
     wurzel: &gio::File,
     worte: &[String],
     verborgene: bool,
+    grenzen: Grenzen,
     abbruch: &gio::Cancellable,
     melden: &dyn Fn(Meldung),
 ) {
     let start = Instant::now();
     let attribute = format!("{},id::file", eintrag::attribute_fuer(wurzel));
-    let mut warteschlange = VecDeque::from([wurzel.clone()]);
+    let mut warteschlange = VecDeque::from([(wurzel.clone(), 0u32)]);
     let mut gesehen: HashSet<String> = HashSet::new();
+    // the start folder counts as seen (a bind mount back to it is a loop)
+    if let Some(id) = wurzel
+        .query_info("id::file", gio::FileQueryInfoFlags::NONE, Some(abbruch))
+        .ok()
+        .and_then(|i| i.attribute_string("id::file"))
+    {
+        gesehen.insert(id.to_string());
+    }
     let mut funde = Vec::new();
     let mut zuletzt = Instant::now();
-    let (mut eintraege, mut ordner, mut fehler) = (0u64, 0u64, 0u64);
-    while let Some(dir) = warteschlange.pop_front() {
+    let (mut eintraege, mut ordner, mut fehler, mut treffer) = (0u64, 0u64, 0u64, 0usize);
+    let mut begrenzt = false;
+    'ordner: while let Some((dir, tiefe)) = warteschlange.pop_front() {
         if abbruch.is_cancelled() {
             break;
         }
@@ -217,14 +249,26 @@ pub fn suchen(
             }
             if passt(worte, &info.display_name()) {
                 funde.push(Fund::aus(&dir, &info));
+                treffer += 1;
+                if treffer >= grenzen.treffer {
+                    begrenzt = true;
+                    let _ = liste.close(gio::Cancellable::NONE);
+                    break 'ordner;
+                }
             }
+            // symbolic links are never entered (NOFOLLOW: their type is
+            // SymbolicLink), a folder reached twice is read once
             if info.file_type() == gio::FileType::Directory {
+                if tiefe + 1 > grenzen.tiefe {
+                    begrenzt = true;
+                    continue;
+                }
                 let id = info
                     .attribute_string("id::file")
                     .map(|s| s.to_string())
                     .unwrap_or_default();
                 if id.is_empty() || gesehen.insert(id) {
-                    warteschlange.push_back(dir.child(info.name()));
+                    warteschlange.push_back((dir.child(info.name()), tiefe + 1));
                 }
             }
             if funde.len() >= BATCH || (!funde.is_empty() && zuletzt.elapsed() >= BATCH_ZEIT) {
@@ -243,6 +287,7 @@ pub fn suchen(
         fehler,
         ms: start.elapsed().as_millis(),
         abgebrochen: abbruch.is_cancelled(),
+        begrenzt,
     });
 }
 
@@ -260,7 +305,7 @@ pub fn starten(
     std::thread::Builder::new()
         .name("qd-suche".to_owned())
         .spawn(move || {
-            suchen(&wurzel, &worte, verborgene, &ab, &|m| {
+            suchen(&wurzel, &worte, verborgene, Grenzen::default(), &ab, &|m| {
                 glib::idle_add_once(move || empfang(nummer, m));
             });
         })
@@ -312,6 +357,7 @@ mod tests {
                 &gio::File::for_path(&d),
                 &worte("rechnung"),
                 verborgene,
+                Grenzen::default(),
                 &gio::Cancellable::new(),
                 &|m| match m {
                     Meldung::Funde(f) => funde.borrow_mut().extend(f),
@@ -335,11 +381,18 @@ mod tests {
         let c = gio::Cancellable::new();
         c.cancel();
         let ende = RefCell::new(false);
-        suchen(&gio::File::for_path(&d), &worte("r"), false, &c, &|m| {
-            if let Meldung::Ende { abgebrochen, .. } = m {
-                *ende.borrow_mut() = abgebrochen;
-            }
-        });
+        suchen(
+            &gio::File::for_path(&d),
+            &worte("r"),
+            false,
+            Grenzen::default(),
+            &c,
+            &|m| {
+                if let Meldung::Ende { abgebrochen, .. } = m {
+                    *ende.borrow_mut() = abgebrochen;
+                }
+            },
+        );
         assert!(*ende.borrow());
         // a hit becomes an entry of its own folder
         let f = Fund::aus(
@@ -356,6 +409,63 @@ mod tests {
         assert_eq!(e.name(), "Rechnung 2.pdf");
         assert_eq!(e.datei().path().unwrap(), d.join("a/Rechnung 2.pdf"));
         assert_eq!(e.daten().typ, "application/pdf");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn limits_stop_the_search_and_link_loops_are_not_entered() {
+        let d = std::env::temp_dir().join(format!("qd-suche-grenzen-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        let tief = d.join("e1/e2/e3/e4");
+        std::fs::create_dir_all(&tief).unwrap();
+        for (i, p) in ["", "e1", "e1/e2", "e1/e2/e3", "e1/e2/e3/e4"]
+            .iter()
+            .enumerate()
+        {
+            for k in 0..3 {
+                std::fs::write(d.join(p).join(format!("treffer-{i}-{k}")), b"x").unwrap();
+            }
+        }
+        // links back to the start and to itself: never entered
+        std::os::unix::fs::symlink(&d, tief.join("zurueck")).unwrap();
+        std::os::unix::fs::symlink(d.join("e1/schleife"), d.join("e1/schleife")).unwrap();
+        let lauf = |g: Grenzen| {
+            let n = RefCell::new(0usize);
+            let ende = RefCell::new((0u64, false));
+            suchen(
+                &gio::File::for_path(&d),
+                &worte("treffer"),
+                false,
+                g,
+                &gio::Cancellable::new(),
+                &|m| match m {
+                    Meldung::Funde(f) => *n.borrow_mut() += f.len(),
+                    Meldung::Ende {
+                        ordner, begrenzt, ..
+                    } => *ende.borrow_mut() = (ordner, begrenzt),
+                },
+            );
+            (n.into_inner(), ende.into_inner())
+        };
+        assert_eq!(
+            lauf(Grenzen::default()),
+            (15, (5, false)),
+            "alle, ohne Schleife"
+        );
+        let (n, (ordner, begrenzt)) = lauf(Grenzen {
+            tiefe: 2,
+            treffer: 1000,
+        });
+        assert_eq!(
+            (n, ordner, begrenzt),
+            (9, 3, true),
+            "bis zwei Ebenen unter dem Start"
+        );
+        let (n, (_, begrenzt)) = lauf(Grenzen {
+            tiefe: 64,
+            treffer: 4,
+        });
+        assert_eq!((n, begrenzt), (4, true), "nach 4 Treffern Schluss");
         let _ = std::fs::remove_dir_all(&d);
     }
 }

@@ -13,7 +13,7 @@
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
@@ -23,6 +23,7 @@ use gtk4::{gdk, gdk_pixbuf, gio, glib};
 
 use super::bild::Bild;
 use super::cache::{self, Eimer};
+use super::sandkasten;
 
 /// What GTK's own loaders decode (the fallback when GdkPixbuf fails).
 const GTK_TYPEN: [&str; 4] = ["image/png", "image/jpeg", "image/tiff", "image/x-tiff"];
@@ -193,7 +194,10 @@ fn pixbuf_laedt(typ: &str) -> bool {
 /// Whether anything here can make a thumbnail of `typ` (asked on the main
 /// thread before a job is queued).
 pub fn moeglich(typ: &str) -> bool {
-    gtk_laedt(typ) || pixbuf_laedt(typ) || thumbnailer_fuer(alle(), typ).is_some()
+    gtk_laedt(typ)
+        || pixbuf_laedt(typ)
+        || (*sandkasten::huelle() != sandkasten::Huelle::Keine
+            && thumbnailer_fuer(alle(), typ).is_some())
 }
 
 /// The arguments of an `Exec` line (whitespace separates, double quotes
@@ -312,45 +316,92 @@ fn ueber_pixbuf(q: &Quelle, kante: u32) -> Result<Bild, Fehler> {
 
 static NUMMER: AtomicU64 = AtomicU64::new(0);
 
-/// A private folder for thumbnailer output (0700, below the temporary
-/// folder, one per process).
-fn ausgabe_ordner() -> Option<&'static Path> {
-    static ORDNER: OnceLock<Option<PathBuf>> = OnceLock::new();
-    ORDNER
-        .get_or_init(|| {
-            use std::os::unix::fs::DirBuilderExt;
-            let d = std::env::temp_dir().join(format!(
-                "querencia-dateien-miniaturen-{}",
-                std::process::id()
-            ));
-            let _ = std::fs::remove_dir_all(&d);
-            std::fs::DirBuilder::new().mode(0o700).create(&d).ok()?;
-            Some(d)
-        })
-        .as_deref()
+/// A new private folder for one thumbnailer job: 0700, below the
+/// temporary folder, a fresh name (creating fails if it exists), removed
+/// after the job.
+fn auftrags_ordner() -> Option<PathBuf> {
+    use std::os::unix::fs::DirBuilderExt;
+    let d = std::env::temp_dir().join(format!(
+        "querencia-dateien-miniatur-{}-{}",
+        std::process::id(),
+        NUMMER.fetch_add(1, Ordering::Relaxed)
+    ));
+    std::fs::DirBuilder::new().mode(0o700).create(&d).ok()?;
+    Some(d)
 }
 
-/// Removes the output folder (at exit).
-pub fn aufraeumen() {
-    if let Some(d) = ausgabe_ordner() {
-        let _ = std::fs::remove_dir_all(d);
+/// The file name extension of `uri` for the sandbox's input (some
+/// thumbnailers look at it): letters and digits only, at most 10.
+fn endung(uri: &str) -> String {
+    let name = uri.rsplit('/').next().unwrap_or_default();
+    match name.rsplit_once('.') {
+        Some((_, e))
+            if !e.is_empty() && e.len() <= 10 && e.bytes().all(|b| b.is_ascii_alphanumeric()) =>
+        {
+            format!(".{e}")
+        }
+        _ => String::new(),
     }
 }
 
-fn ueber_thumbnailer(
+/// Runs thumbnailer `t` for `q` in the sandbox (`sandkasten.rs`) with
+/// `zeitlimit`; the PNG it wrote, at most `kante` px.
+pub fn ueber_thumbnailer(
     q: &Quelle,
     t: &Thumbnailer,
     kante: u32,
     abbruch: &AtomicBool,
+    zeitlimit: Duration,
 ) -> Result<Vec<u8>, Fehler> {
-    let ordner = ausgabe_ordner()
+    let huelle = sandkasten::huelle();
+    if *huelle == sandkasten::Huelle::Keine {
+        return Err(Fehler::KeinWeg);
+    }
+    let auftrag = auftrags_ordner()
         .ok_or_else(|| Fehler::Fehlgeschlagen("kein temporärer Ordner".to_owned()))?;
-    let ausgabe = ordner.join(format!("{}.png", NUMMER.fetch_add(1, Ordering::Relaxed)));
-    let args =
-        befehl(&t.exec, &q.uri, q.pfad.as_deref(), &ausgabe, kante).ok_or(Fehler::KeinWeg)?;
+    let ergebnis = im_auftrag(q, t, kante, abbruch, zeitlimit, huelle, &auftrag);
+    let _ = std::fs::remove_dir_all(&auftrag);
+    ergebnis
+}
+
+fn im_auftrag(
+    q: &Quelle,
+    t: &Thumbnailer,
+    kante: u32,
+    abbruch: &AtomicBool,
+    zeitlimit: Duration,
+    huelle: &sandkasten::Huelle,
+    auftrag: &Path,
+) -> Result<Vec<u8>, Fehler> {
+    let endung = endung(&q.uri);
+    // files without a path (GIO) are copied into the job folder first
+    let eingabe = match &q.pfad {
+        Some(p) => p.clone(),
+        None => {
+            let p = auftrag.join(format!("eingabe{endung}"));
+            std::fs::write(&p, inhalt(q)?).map_err(|e| Fehler::Fehlgeschlagen(e.to_string()))?;
+            p
+        }
+    };
+    let pfade = sandkasten::pfade(huelle, auftrag, &eingabe, &q.uri, &endung);
+    let args = befehl(
+        &t.exec,
+        &pfade.uri,
+        Some(&pfade.eingabe),
+        &pfade.ausgabe,
+        kante,
+    )
+    .ok_or(Fehler::KeinWeg)?;
+    let programm = if args[0].contains('/') {
+        PathBuf::from(&args[0])
+    } else {
+        glib::find_program_in_path(&args[0])
+            .ok_or_else(|| Fehler::Fehlgeschlagen(format!("{}: {} fehlt", t.name, args[0])))?
+    };
+    let mut c = sandkasten::befehl(huelle, auftrag, &eingabe, &endung, &programm, &args[1..])
+        .ok_or(Fehler::KeinWeg)?;
     let start = Instant::now();
-    let mut kind = Command::new(&args[0])
-        .args(&args[1..])
+    let mut kind = c
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -360,25 +411,24 @@ fn ueber_thumbnailer(
         if let Ok(Some(s)) = kind.try_wait() {
             break Some(s);
         }
-        if abbruch.load(Ordering::Relaxed) || start.elapsed() > ZEITLIMIT {
+        if abbruch.load(Ordering::Relaxed) || start.elapsed() > zeitlimit {
             let _ = kind.kill();
             let _ = kind.wait();
             break None;
         }
         std::thread::sleep(Duration::from_millis(5));
     };
+    if abbruch.load(Ordering::Relaxed) {
+        return Err(Fehler::Abgebrochen);
+    }
+    let ausgabe = auftrag.join("ausgabe.png");
     let lesen = || -> Option<Vec<u8>> {
         let f = std::fs::File::open(&ausgabe).ok()?;
         let mut v = Vec::new();
         f.take(MAX_AUSGABE).read_to_end(&mut v).ok()?;
         Some(v)
     };
-    let bytes = status.filter(|s| s.success()).and_then(|_| lesen());
-    let _ = std::fs::remove_file(&ausgabe);
-    if abbruch.load(Ordering::Relaxed) {
-        return Err(Fehler::Abgebrochen);
-    }
-    let Some(bytes) = bytes else {
+    let Some(bytes) = status.filter(|s| s.success()).and_then(|_| lesen()) else {
         return Err(Fehler::Fehlgeschlagen(match status {
             None => format!("{}: Zeitlimit", t.name),
             Some(s) => format!("{}: {s}", t.name),
@@ -429,7 +479,7 @@ pub fn erzeugen(q: &Quelle, eimer: Eimer, abbruch: &AtomicBool) -> Result<(Vec<u
     if ergebnis.is_none()
         && let Some(t) = thumbnailer_fuer(alle(), &q.typ)
     {
-        match ueber_thumbnailer(q, t, kante, abbruch) {
+        match ueber_thumbnailer(q, t, kante, abbruch, ZEITLIMIT) {
             Ok(b) => ergebnis = Some((b, Weg::Thumbnailer)),
             Err(e) => fehler = e,
         }
@@ -522,5 +572,83 @@ mod tests {
         assert!(gtk_laedt("image/png"));
         assert!(!gtk_laedt("image/webp"));
         assert!(!gtk_laedt("application/pdf"));
+    }
+
+    /// A thumbnailer script in a temporary folder and a PNG to read.
+    fn probe(name: &str, skript: &str) -> (PathBuf, Thumbnailer, Quelle) {
+        use std::os::unix::fs::PermissionsExt;
+        let d = std::env::temp_dir().join(format!("qd-thumbnailer-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let s = d.join("t.sh");
+        std::fs::write(&s, format!("#!/bin/sh\n{skript}\n")).unwrap();
+        std::fs::set_permissions(&s, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let bild = d.join("bild.png");
+        let mut b = Bild::leer(40, 30);
+        b.px.chunks_exact_mut(4).for_each(|p| p.fill(255));
+        std::fs::write(&bild, b.png()).unwrap();
+        let t = Thumbnailer {
+            name: "probe.thumbnailer".to_owned(),
+            exec: format!("{} %i %o %s", s.display()),
+            typen: vec!["application/x-qd-probe".to_owned()],
+        };
+        let q = Quelle {
+            uri: gio::File::for_path(&bild).uri().to_string(),
+            pfad: Some(bild),
+            typ: "application/x-qd-probe".to_owned(),
+            mtime: 1,
+            groesse: 1,
+        };
+        (d, t, q)
+    }
+
+    #[test]
+    fn thumbnailers_run_in_bwrap_without_network_home_or_session() {
+        if !matches!(sandkasten::huelle(), sandkasten::Huelle::Bwrap(_)) {
+            eprintln!(
+                "bwrap geht hier nicht ({:?}): übersprungen",
+                sandkasten::huelle()
+            );
+            return;
+        }
+        // fails unless: only lo, no /home, empty environment, input at
+        // /tmp/eingabe.png, output to /tmp
+        let (d, t, q) = probe(
+            "netz",
+            r#"[ "$(grep -c : /proc/net/dev)" = 1 ] || exit 3
+[ ! -e /home ] || exit 4
+[ -z "$DBUS_SESSION_BUS_ADDRESS$WAYLAND_DISPLAY$XDG_RUNTIME_DIR" ] || exit 5
+[ "$1" = /tmp/eingabe.png ] && [ "$2" = /tmp/ausgabe.png ] || exit 6
+cp "$1" "$2""#,
+        );
+        let nein = AtomicBool::new(false);
+        let png = ueber_thumbnailer(&q, &t, 128, &nein, ZEITLIMIT).expect("im Sandkasten");
+        assert_eq!(cache::png_masse(&png), Some((40, 30)));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn thumbnailers_are_stopped_at_the_time_limit_and_on_withdrawal() {
+        if *sandkasten::huelle() == sandkasten::Huelle::Keine {
+            return;
+        }
+        let (d, t, q) = probe("zeit", "sleep 30");
+        let nein = AtomicBool::new(false);
+        let start = Instant::now();
+        let e = ueber_thumbnailer(&q, &t, 128, &nein, Duration::from_millis(300));
+        assert!(
+            matches!(&e, Err(Fehler::Fehlgeschlagen(g)) if g.contains("Zeitlimit")),
+            "{e:?}"
+        );
+        assert!(start.elapsed() < Duration::from_secs(5));
+        let ja = AtomicBool::new(true);
+        assert_eq!(
+            ueber_thumbnailer(&q, &t, 128, &ja, ZEITLIMIT),
+            Err(Fehler::Abgebrochen)
+        );
+        let _ = std::fs::remove_dir_all(&d);
+        assert_eq!(endung("file:///a/b.PDF"), ".PDF");
+        assert_eq!(endung("file:///a/b"), "");
+        assert_eq!(endung("file:///a/b.x%20y"), "");
     }
 }

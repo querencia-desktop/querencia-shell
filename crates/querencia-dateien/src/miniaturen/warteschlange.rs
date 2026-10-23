@@ -126,6 +126,9 @@ fn leer(a: &Anfrage, herkunft: Herkunft) -> Ergebnis {
 }
 
 type Ausliefern = Arc<dyn Fn(Ergebnis) + Send + Sync>;
+/// What a thread does with a job (`bearbeiten` with the cache root; the
+/// tests put their own in).
+type Verarbeiten = Arc<dyn Fn(&Auftrag, &AtomicBool) -> Ergebnis + Send + Sync>;
 
 #[derive(Default)]
 struct Schlange {
@@ -153,6 +156,16 @@ impl Pool {
     /// `anzahl` threads; `ausliefern` gets every result on the worker
     /// thread (it passes them on to the main thread).
     pub fn new(anzahl: usize, wurzel: PathBuf, ausliefern: Ausliefern) -> Self {
+        Self::mit(
+            anzahl,
+            Arc::new(move |a, abbruch| bearbeiten(&wurzel, a, abbruch)),
+            ausliefern,
+        )
+    }
+
+    /// `anzahl` threads (at most that many jobs at once) running
+    /// `verarbeiten`.
+    pub fn mit(anzahl: usize, verarbeiten: Verarbeiten, ausliefern: Ausliefern) -> Self {
         let geteilt = Arc::new(Geteilt {
             schlange: Mutex::new(Schlange::default()),
             signal: Condvar::new(),
@@ -160,11 +173,11 @@ impl Pool {
         let faeden = (0..anzahl.max(1))
             .map(|i| {
                 let g = geteilt.clone();
-                let wurzel = wurzel.clone();
+                let v = verarbeiten.clone();
                 let aus = ausliefern.clone();
                 std::thread::Builder::new()
                     .name(format!("qd-miniatur-{i}"))
-                    .spawn(move || arbeiten(&g, &wurzel, &aus))
+                    .spawn(move || arbeiten(&g, &v, &aus))
                     .expect("Faden für Miniaturen")
             })
             .collect();
@@ -235,7 +248,7 @@ fn speicher_zurueckgeben() {
     }
 }
 
-fn arbeiten(g: &Geteilt, wurzel: &Path, ausliefern: &Ausliefern) {
+fn arbeiten(g: &Geteilt, verarbeiten: &Verarbeiten, ausliefern: &Ausliefern) {
     let mut gearbeitet = false;
     loop {
         let (auftrag, abbruch) = {
@@ -259,7 +272,7 @@ fn arbeiten(g: &Geteilt, wurzel: &Path, ausliefern: &Ausliefern) {
                 s = g.signal.wait(s).unwrap_or_else(|e| e.into_inner());
             }
         };
-        let ergebnis = bearbeiten(wurzel, &auftrag, &abbruch);
+        let ergebnis = verarbeiten(&auftrag, &abbruch);
         sperren(g).laufend.remove(&auftrag.anfrage);
         gearbeitet = true;
         ausliefern(ergebnis);
@@ -393,5 +406,80 @@ mod tests {
         assert!(cache::fehlgeschlagen(&wurzel, &uri3, 1));
         assert_eq!(bearbeiten(&wurzel, &a3, &nein).herkunft, Herkunft::Fehl);
         let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn at_most_n_jobs_run_and_withdrawn_jobs_stop() {
+        use std::sync::atomic::AtomicUsize;
+        use std::time::Duration;
+        let jetzt = Arc::new(AtomicUsize::new(0));
+        let hoechst = Arc::new(AtomicUsize::new(0));
+        let (j, h) = (jetzt.clone(), hoechst.clone());
+        // a job runs until it is withdrawn or 150 ms passed
+        let verarbeiten: Verarbeiten = Arc::new(move |a: &Auftrag, abbruch: &AtomicBool| {
+            let n = j.fetch_add(1, Ordering::SeqCst) + 1;
+            h.fetch_max(n, Ordering::SeqCst);
+            let start = std::time::Instant::now();
+            let mut herkunft = Herkunft::KeinWeg;
+            while start.elapsed() < Duration::from_millis(150) {
+                if abbruch.load(Ordering::Relaxed) {
+                    herkunft = Herkunft::Abgebrochen;
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            j.fetch_sub(1, Ordering::SeqCst);
+            leer(&a.anfrage, herkunft)
+        });
+        let (tx, rx) = mpsc::channel();
+        let tx = Mutex::new(tx);
+        let pool = Pool::mit(
+            3,
+            verarbeiten,
+            Arc::new(move |e: Ergebnis| {
+                let _ = tx.lock().unwrap().send((e.anfrage.uri, e.herkunft));
+            }),
+        );
+        for i in 0..12 {
+            pool.einreihen(auftrag(&format!("file:///{i}"), "image/png"));
+        }
+        let bis_drei = |p: &Pool| {
+            let start = std::time::Instant::now();
+            while p.offen().1 < 3 && start.elapsed() < Duration::from_secs(5) {
+                std::thread::sleep(Duration::from_millis(2));
+            }
+        };
+        bis_drei(&pool);
+        assert_eq!(pool.offen(), (9, 3), "3 laufen, 9 warten");
+        // unbind of a running and of a waiting job
+        let laufend = Anfrage {
+            uri: "file:///0".to_owned(),
+            mtime: 1,
+            px: 64,
+        };
+        let wartend = Anfrage {
+            uri: "file:///11".to_owned(),
+            ..laufend.clone()
+        };
+        pool.zuruecknehmen(&laufend);
+        pool.zuruecknehmen(&wartend);
+        let mut alle = Vec::new();
+        for _ in 0..11 {
+            alle.push(rx.recv_timeout(Duration::from_secs(5)).unwrap());
+        }
+        assert!(
+            rx.recv_timeout(Duration::from_millis(400)).is_err(),
+            "file:///11 nie bearbeitet"
+        );
+        assert!(alle.contains(&("file:///0".to_owned(), Herkunft::Abgebrochen)));
+        assert!(!alle.iter().any(|(u, _)| u == "file:///11"));
+        assert_eq!(hoechst.load(Ordering::SeqCst), 3, "höchstens 3 zugleich");
+        // a folder change drops the rest of the queue
+        for i in 20..30 {
+            pool.einreihen(auftrag(&format!("file:///{i}"), "image/png"));
+        }
+        bis_drei(&pool);
+        assert_eq!(pool.sieben(|_| false), 7);
+        drop(pool);
     }
 }

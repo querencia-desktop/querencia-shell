@@ -25,6 +25,10 @@ NR=M05; ok $CP --fehl "$HOME/Bilder/Gemischt/kaputt.png" && fall M05 "Kaputtes B
 markiere; gehe "$HOME/Dokumente/PDF"; warte_log "Miniaturen fertig" 30; q "wait 400"
 foto M06-pdf
 NR=M06; ok $CP "$HOME"/Dokumente/PDF/*.pdf && fall M06 "PDF über einen Thumbnailer (%i %o %s; Stellvertreter qd-pdf.thumbnailer)" 1 "beleg-M06.txt" || fall M06 "PDF" 0 "beleg-M06.txt"
+# Fremde Thumbnailer: außerhalb in bwrap (Unit-Test), in der Prüfhülle
+# (kein verschachtelter Namensraum) in deren eigenem Sandkasten
+NR=M11; z=$(grep "Thumbnailer (" "$LOG" | head -1)
+[[ $z == *"Prüfhülle ohne eigenes bwrap"* ]] && fall M11 "Thumbnailer laufen nur im Sandkasten (hier: Prüfhülle ohne Netz; bwrap-Weg im Unit-Test)" 1 "${z#*: }" || fall M11 "Sandkasten" 0 "${z:-keine Zeile}"
 # Zoom und Liste
 markiere; gehe "$HOME/Bilder/Fotos"; q "wait 500"
 taste ctrl+plus; q "wait 1500"; taste ctrl+plus; q "wait 1500"
@@ -90,6 +94,14 @@ foto S07-angehalten
 markiere; q "key Escape" "wait 400"
 NR=S08; warte_log "Suche beendet" 3 && fall S08 "Zweites Esc beendet die Suche, die Ansicht kommt zurück" 1 "Logzeile" || fall S08 "Esc beendet" 0 "-"
 foto S08-nach-esc
+# Abbruch bei jeder Eingabe: Suche starten, sofort weitertippen
+taste ctrl+f
+markiere; q "key ctrl+a" "type datei" "key Return" "type x"
+NR=S15; if warte_log "Suche bei Eingabe angehalten" 5; then
+  warte_log "Suche [0-9]* fertig" 10; z=$(gefunden)
+  [[ $z == *angehalten* ]] && fall S15 "Jede Eingabe ins Suchfeld hält die laufende Suche an" 1 "${z#*: }" || fall S15 "Eingabe hält an" 0 "$z"
+else fall S15 "Eingabe hält an" 0 "keine Zeile (Suche vielleicht schneller als die Eingabe)"; fi
+q "key Escape" "wait 300" "key Escape" "wait 300"
 # Treffer öffnen: Ordner-Treffer mit Doppelklick
 taste ctrl+f; suchen "ordner-05"
 q "wait 300" "move 260 199" "dclick" "wait 300"
