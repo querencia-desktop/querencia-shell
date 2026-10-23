@@ -41,7 +41,9 @@ pruefe() {
   echo "$nr $e $fall" >> "$QD_AUS/innen.log"
 }
 starte() { # [ARG …]
-  env QUERENCIA_DATEIEN_DEBUG=1 ${QD_LOCALE:+QUERENCIA_DATEIEN_LOCALEDIR=$QD_LOCALE QD_PROBE_LOCALE=$QD_LOCALE} \
+  # QD_DUNKEL=1: dunkle Fotos (Adwaita dunkel; die Programme setzen keine eigenen Farben)
+  env QUERENCIA_DATEIEN_DEBUG=1 ${QD_LOCALE:+QUERENCIA_DATEIEN_LOCALEDIR=$QD_LOCALE} \
+    ${QD_DUNKEL:+GTK_THEME=Adwaita:dark} \
     "$QD_PROG" "$@" >> "$LOG" 2>&1 &
   APP=$!
   echo "Programm PID $APP: $QD_PROG $*" >> "$QD_AUS/innen.log"
@@ -64,7 +66,7 @@ E
 umgebung() {
   {
     echo "HOME=$HOME"; echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR"; echo "LANG=$LANG"
-    echo "GIO_USE_VFS=${GIO_USE_VFS:-}"; echo "Papierkorb=$HOME/.local/share/Trash"
+    echo "GIO_USE_VFS=${GIO_USE_VFS:-}"; echo "Papierkorb=${XDG_DATA_HOME:-$HOME/.local/share}/Trash"
     echo "grenze=$QD_PROFIL/grenze ($(stat -f -c %T "$QD_PROFIL/grenze"))"
   } >> "$QD_AUS/innen.log"
 }

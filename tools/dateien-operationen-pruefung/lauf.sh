@@ -22,7 +22,7 @@ bash "$RAHMEN/huelle.sh" --labwc --sprache "$SPRACHE" \
   ${QD_LOCALE:+--lesen "$QD_LOCALE"} \
   --schreiben "$AUS" --tmpfs grenze:64M \
   --setenv "QD_PROG=$PROG" --setenv "QD_SZ=$SZ" --setenv "QD_AUS=$AUS" --setenv "QD_QE=$QE" \
-  ${QD_LOCALE:+--setenv "QD_LOCALE=$QD_LOCALE"} \
+  ${QD_LOCALE:+--setenv "QD_LOCALE=$QD_LOCALE"} ${QD_DUNKEL:+--setenv "QD_DUNKEL=1"} \
   --protokoll "$AUS/huelle.json" --zeitlimit "${QD_ZEITLIMIT:-600}" "$@" \
   L -- bash "$HIER/innen.sh"
 rc=$?
