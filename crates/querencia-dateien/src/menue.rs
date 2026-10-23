@@ -477,7 +477,16 @@ fn gehe_zu() -> Vec<Vec<Punkt>> {
                 Some("network-workgroup"),
             ),
         ],
-        vec![p(N_("_Location…"), "win.ort", Some("<Control>l"), None)],
+        vec![
+            p(N_("_Location…"), "win.ort", Some("<Control>l"), None),
+            // Welle C2 (dateien-miniaturen-suche)
+            p(
+                N_("_Search…"),
+                "win.suchen",
+                Some("<Control>f"),
+                Some("system-search"),
+            ),
+        ],
     ]
 }
 

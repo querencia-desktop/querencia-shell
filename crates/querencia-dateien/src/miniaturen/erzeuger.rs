@@ -1,0 +1,759 @@
+//! Making a thumbnail for the cache (worker threads only): pictures through
+//! GdkPixbuf (with glycin: decoded in a loader process, scaled while
+//! decoding), PNG, JPEG and TIFF also by GTK's own loaders if GdkPixbuf
+//! fails, everything else (and pictures both fail on) through the
+//! installed thumbnailers of the freedesktop.org scheme
+//! (`$XDG_DATA_HOME/thumbnailers`, `$XDG_DATA_DIRS/thumbnailers`,
+//! `*.thumbnailer` with `TryExec`, `Exec` and `MimeType`). PDF and other
+//! documents get a thumbnail only if such a thumbnailer is installed
+//! (e.g. one of Querencia Dokumente or Poppler's); none is not an error.
+//!
+//! The result is the PNG for the cache with the tags of the standard
+//! (`cache::mit_tags`).
+
+use std::path::{Path, PathBuf};
+use std::process::Stdio;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
+
+use gtk4::prelude::*;
+use gtk4::{gdk, gdk_pixbuf, gio, glib};
+
+use super::bild::Bild;
+use super::cache::{self, Eimer};
+use super::sandkasten;
+
+/// What GTK's own loaders decode (the fallback when GdkPixbuf fails).
+const GTK_TYPEN: [&str; 4] = ["image/png", "image/jpeg", "image/tiff", "image/x-tiff"];
+/// A thumbnailer that takes longer is stopped (a broken file must not
+/// hold a worker).
+const ZEITLIMIT: Duration = Duration::from_secs(20);
+/// Output of a thumbnailer beyond this is not read.
+const MAX_AUSGABE: u64 = 8 * 1024 * 1024;
+
+/// One `.thumbnailer` file.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Thumbnailer {
+    pub name: String,
+    pub exec: String,
+    pub typen: Vec<String>,
+}
+
+/// Why no thumbnail was made.
+#[derive(Debug, PartialEq)]
+pub enum Fehler {
+    /// Nothing here can make one for this type (no note in `fail/`).
+    KeinWeg,
+    /// The job was withdrawn while running.
+    Abgebrochen,
+    /// Tried and failed (noted in `fail/`, tried again when the file
+    /// changes).
+    Fehlgeschlagen(String),
+}
+
+/// The file to make a thumbnail of.
+#[derive(Clone, Debug)]
+pub struct Quelle {
+    pub uri: String,
+    /// Local path (native files); `None` reads through GIO.
+    pub pfad: Option<PathBuf>,
+    pub typ: String,
+    pub mtime: i64,
+    pub groesse: u64,
+}
+
+/// Reads one `.thumbnailer` file (key file, group `Thumbnailer Entry`).
+pub fn thumbnailer_lesen(name: &str, text: &str) -> Option<Thumbnailer> {
+    let mut gruppe = false;
+    let (mut exec, mut try_exec, mut typen) = (None, None, Vec::new());
+    for zeile in text.lines().map(str::trim) {
+        if zeile.starts_with('[') {
+            gruppe = zeile == "[Thumbnailer Entry]";
+            continue;
+        }
+        if !gruppe || zeile.starts_with('#') {
+            continue;
+        }
+        let Some((k, v)) = zeile.split_once('=') else {
+            continue;
+        };
+        match k.trim() {
+            "Exec" => exec = Some(v.trim().to_owned()),
+            "TryExec" => try_exec = Some(v.trim().to_owned()),
+            "MimeType" => {
+                typen = v
+                    .split(';')
+                    .map(str::trim)
+                    .filter(|t| !t.is_empty())
+                    .map(str::to_owned)
+                    .collect();
+            }
+            _ => {}
+        }
+    }
+    let exec = exec?;
+    let programm = try_exec.or_else(|| argumente(&exec).into_iter().next())?;
+    if !ausfuehrbar(&programm) || typen.is_empty() {
+        return None;
+    }
+    Some(Thumbnailer {
+        name: name.to_owned(),
+        exec,
+        typen,
+    })
+}
+
+/// Whether `programm` (absolute or in `PATH`) can be run.
+fn ausfuehrbar(programm: &str) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    let laeuft = |p: &Path| {
+        std::fs::metadata(p).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+    };
+    if programm.contains('/') {
+        return laeuft(Path::new(programm));
+    }
+    std::env::var_os("PATH")
+        .is_some_and(|path| std::env::split_paths(&path).any(|d| laeuft(&d.join(programm))))
+}
+
+/// The installed thumbnailers, the user's first (a file of the same name
+/// in a later folder is hidden by an earlier one, as GNOME does).
+pub fn alle() -> &'static [Thumbnailer] {
+    static ALLE: OnceLock<Vec<Thumbnailer>> = OnceLock::new();
+    ALLE.get_or_init(|| {
+        let mut ordner = vec![glib::user_data_dir()];
+        ordner.extend(glib::system_data_dirs());
+        let mut gesehen = std::collections::HashSet::new();
+        let mut out = Vec::new();
+        for d in ordner {
+            let Ok(liste) = std::fs::read_dir(d.join("thumbnailers")) else {
+                continue;
+            };
+            let mut namen: Vec<PathBuf> = liste
+                .filter_map(|e| e.ok().map(|e| e.path()))
+                .filter(|p| p.extension().is_some_and(|e| e == "thumbnailer"))
+                .collect();
+            namen.sort();
+            for p in namen {
+                let name = p
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                if !gesehen.insert(name.clone()) {
+                    continue;
+                }
+                if let Some(t) = std::fs::read_to_string(&p)
+                    .ok()
+                    .and_then(|text| thumbnailer_lesen(&name, &text))
+                {
+                    out.push(t);
+                }
+            }
+        }
+        out
+    })
+}
+
+/// The thumbnailer for `typ`: one that names it, else one that names a
+/// type `typ` is a kind of.
+pub fn thumbnailer_fuer<'a>(liste: &'a [Thumbnailer], typ: &str) -> Option<&'a Thumbnailer> {
+    liste
+        .iter()
+        .find(|t| t.typen.iter().any(|m| m == typ))
+        .or_else(|| {
+            liste.iter().find(|t| {
+                t.typen
+                    .iter()
+                    .any(|m| gio::content_type_is_a(typ, m.as_str()))
+            })
+        })
+}
+
+/// The MIME types GdkPixbuf can load.
+fn pixbuf_typen() -> &'static [String] {
+    static TYPEN: OnceLock<Vec<String>> = OnceLock::new();
+    TYPEN.get_or_init(|| {
+        gdk_pixbuf::Pixbuf::formats()
+            .iter()
+            .flat_map(|f| f.mime_types())
+            .map(|t| t.to_string())
+            .collect()
+    })
+}
+
+fn gtk_laedt(typ: &str) -> bool {
+    GTK_TYPEN.contains(&typ)
+}
+
+fn pixbuf_laedt(typ: &str) -> bool {
+    typ.starts_with("image/") && pixbuf_typen().iter().any(|t| t == typ)
+}
+
+/// Whether anything here can make a thumbnail of `typ` (asked on the main
+/// thread before a job is queued).
+pub fn moeglich(typ: &str) -> bool {
+    gtk_laedt(typ)
+        || pixbuf_laedt(typ)
+        || (*sandkasten::huelle() != sandkasten::Huelle::Keine
+            && thumbnailer_fuer(alle(), typ).is_some())
+}
+
+/// The arguments of an `Exec` line (whitespace separates, double quotes
+/// group, backslash escapes inside quotes).
+pub fn argumente(exec: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut jetzt = String::new();
+    let mut in_quote = false;
+    let mut hat = false;
+    let mut zeichen = exec.chars();
+    while let Some(c) = zeichen.next() {
+        match c {
+            '"' => {
+                in_quote = !in_quote;
+                hat = true;
+            }
+            '\\' if in_quote => {
+                if let Some(n) = zeichen.next() {
+                    jetzt.push(n);
+                }
+            }
+            c if c.is_whitespace() && !in_quote => {
+                if hat || !jetzt.is_empty() {
+                    out.push(std::mem::take(&mut jetzt));
+                    hat = false;
+                }
+            }
+            c => jetzt.push(c),
+        }
+    }
+    if hat || !jetzt.is_empty() {
+        out.push(jetzt);
+    }
+    out
+}
+
+/// The command line of `exec` for one file: `%u` URI, `%i` path, `%o`
+/// output, `%s` size, `%%` a percent sign. `None` if `%i` is asked for a
+/// file without a path.
+pub fn befehl(
+    exec: &str,
+    uri: &str,
+    pfad: Option<&Path>,
+    ausgabe: &Path,
+    kante: u32,
+) -> Option<Vec<String>> {
+    let mut out = Vec::new();
+    for arg in argumente(exec) {
+        let mut neu = String::new();
+        let mut z = arg.chars();
+        while let Some(c) = z.next() {
+            if c != '%' {
+                neu.push(c);
+                continue;
+            }
+            match z.next() {
+                Some('u') => neu.push_str(uri),
+                Some('i') => neu.push_str(&pfad?.to_string_lossy()),
+                Some('o') => neu.push_str(&ausgabe.to_string_lossy()),
+                Some('s') => neu.push_str(&kante.to_string()),
+                Some('%') => neu.push('%'),
+                _ => {}
+            }
+        }
+        out.push(neu);
+    }
+    (!out.is_empty()).then_some(out)
+}
+
+/// The bytes of the file (local or through GIO).
+fn inhalt(q: &Quelle) -> Result<Vec<u8>, Fehler> {
+    match &q.pfad {
+        Some(p) => std::fs::read(p).map_err(|e| Fehler::Fehlgeschlagen(e.to_string())),
+        None => gio::File::for_uri(&q.uri)
+            .load_contents(gio::Cancellable::NONE)
+            .map(|(b, _)| b.to_vec())
+            .map_err(|e| Fehler::Fehlgeschlagen(e.to_string())),
+    }
+}
+
+fn ueber_gtk(q: &Quelle, kante: u32) -> Result<Bild, Fehler> {
+    let bytes = glib::Bytes::from_owned(inhalt(q)?);
+    let textur =
+        gdk::Texture::from_bytes(&bytes).map_err(|e| Fehler::Fehlgeschlagen(e.to_string()))?;
+    let bild = Bild::aus_textur(&textur)
+        .ok_or_else(|| Fehler::Fehlgeschlagen("leeres Bild".to_owned()))?;
+    drop(textur);
+    Ok(bild.verkleinert(kante))
+}
+
+fn ueber_pixbuf(q: &Quelle, kante: u32) -> Result<Bild, Fehler> {
+    let k = kante as i32;
+    let pixbuf = match &q.pfad {
+        Some(p) => gdk_pixbuf::Pixbuf::from_file_at_scale(p, k, k, true),
+        None => {
+            let bytes = glib::Bytes::from_owned(inhalt(q)?);
+            let strom = gio::MemoryInputStream::from_bytes(&bytes);
+            gdk_pixbuf::Pixbuf::from_stream_at_scale(&strom, k, k, true, gio::Cancellable::NONE)
+        }
+    }
+    .map_err(|e| Fehler::Fehlgeschlagen(e.to_string()))?;
+    let (b, h) = (pixbuf.width(), pixbuf.height());
+    if b <= 0 || h <= 0 {
+        return Err(Fehler::Fehlgeschlagen("leeres Bild".to_owned()));
+    }
+    let daten = pixbuf.read_pixel_bytes();
+    let bild = Bild::aus_rgba(
+        b as u32,
+        h as u32,
+        pixbuf.n_channels() as u32,
+        pixbuf.rowstride() as usize,
+        &daten,
+    );
+    Ok(bild.verkleinert(kante))
+}
+
+static NUMMER: AtomicU64 = AtomicU64::new(0);
+
+/// A new private folder for one thumbnailer job: 0700, below the
+/// temporary folder, a fresh name (creating fails if it exists), removed
+/// after the job.
+fn auftrags_ordner() -> Option<PathBuf> {
+    use std::os::unix::fs::DirBuilderExt;
+    let d = std::env::temp_dir().join(format!(
+        "querencia-dateien-miniatur-{}-{}",
+        std::process::id(),
+        NUMMER.fetch_add(1, Ordering::Relaxed)
+    ));
+    std::fs::DirBuilder::new().mode(0o700).create(&d).ok()?;
+    Some(d)
+}
+
+/// The file name extension of `uri` for the sandbox's input (some
+/// thumbnailers look at it): letters and digits only, at most 10.
+fn endung(uri: &str) -> String {
+    let name = uri.rsplit('/').next().unwrap_or_default();
+    match name.rsplit_once('.') {
+        Some((_, e))
+            if !e.is_empty() && e.len() <= 10 && e.bytes().all(|b| b.is_ascii_alphanumeric()) =>
+        {
+            format!(".{e}")
+        }
+        _ => String::new(),
+    }
+}
+
+/// Runs thumbnailer `t` for `q` in the sandbox (`sandkasten.rs`) with
+/// `zeitlimit`; the PNG it wrote, at most `kante` px.
+pub fn ueber_thumbnailer(
+    q: &Quelle,
+    t: &Thumbnailer,
+    kante: u32,
+    abbruch: &AtomicBool,
+    zeitlimit: Duration,
+) -> Result<Vec<u8>, Fehler> {
+    ueber_thumbnailer_in(&glib::home_dir(), q, t, kante, abbruch, zeitlimit)
+}
+
+/// As [`ueber_thumbnailer`] with `heim` as the folder the sandbox hides
+/// (tests: a throwaway home folder).
+fn ueber_thumbnailer_in(
+    heim: &Path,
+    q: &Quelle,
+    t: &Thumbnailer,
+    kante: u32,
+    abbruch: &AtomicBool,
+    zeitlimit: Duration,
+) -> Result<Vec<u8>, Fehler> {
+    let huelle = sandkasten::huelle();
+    if *huelle == sandkasten::Huelle::Keine {
+        return Err(Fehler::KeinWeg);
+    }
+    let auftrag = auftrags_ordner()
+        .ok_or_else(|| Fehler::Fehlgeschlagen("kein temporärer Ordner".to_owned()))?;
+    let ergebnis = im_auftrag(heim, q, t, kante, abbruch, zeitlimit, huelle, &auftrag);
+    let _ = std::fs::remove_dir_all(&auftrag);
+    ergebnis
+}
+
+#[allow(clippy::too_many_arguments)]
+fn im_auftrag(
+    heim: &Path,
+    q: &Quelle,
+    t: &Thumbnailer,
+    kante: u32,
+    abbruch: &AtomicBool,
+    zeitlimit: Duration,
+    huelle: &sandkasten::Huelle,
+    auftrag: &Path,
+) -> Result<Vec<u8>, Fehler> {
+    // files without a path (GIO) are copied into the job folder first
+    let (eingabe, uri) = match &q.pfad {
+        Some(p) => (p.clone(), q.uri.clone()),
+        None => {
+            let p = auftrag.join(format!("eingabe{}", endung(&q.uri)));
+            std::fs::write(&p, inhalt(q)?).map_err(|e| Fehler::Fehlgeschlagen(e.to_string()))?;
+            let uri = gio::File::for_path(&p).uri().to_string();
+            (p, uri)
+        }
+    };
+    let ausgabe = auftrag.join("ausgabe.png");
+    let args = befehl(&t.exec, &uri, Some(&eingabe), &ausgabe, kante).ok_or(Fehler::KeinWeg)?;
+    let programm = if args[0].contains('/') {
+        PathBuf::from(&args[0])
+    } else {
+        glib::find_program_in_path(&args[0])
+            .ok_or_else(|| Fehler::Fehlgeschlagen(format!("{}: {} fehlt", t.name, args[0])))?
+    };
+    let mut c = sandkasten::befehl(huelle, heim, auftrag, &eingabe, &programm, &args[1..])
+        .ok_or(Fehler::KeinWeg)?;
+    let start = Instant::now();
+    let mut kind = c
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| Fehler::Fehlgeschlagen(format!("{}: {e}", t.name)))?;
+    // try_wait every 5 ms instead of a blocking wait: the job must also end
+    // when its cell is unbound (the flag is set by the main thread), which
+    // a blocking wait cannot notice, and std has no wait with a time
+    // limit; the cost is a few wake-ups of this worker thread while a
+    // thumbnailer runs
+    let status = loop {
+        if let Ok(Some(s)) = kind.try_wait() {
+            break Some(s);
+        }
+        if abbruch.load(Ordering::Relaxed) || start.elapsed() > zeitlimit {
+            let _ = kind.kill();
+            let _ = kind.wait();
+            break None;
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    };
+    if abbruch.load(Ordering::Relaxed) {
+        return Err(Fehler::Abgebrochen);
+    }
+    // the thumbnailer wrote the job folder itself: only a regular file is
+    // taken, never a symlink (it could point anywhere on the host) or a
+    // FIFO (it would block this thread forever)
+    let lesen = || cache::lies_regulaer(&ausgabe, MAX_AUSGABE);
+    let Some(bytes) = status.filter(|s| s.success()).and_then(|_| lesen()) else {
+        return Err(Fehler::Fehlgeschlagen(match status {
+            None => format!("{}: Zeitlimit", t.name),
+            Some(s) if s.success() => format!("{}: keine reguläre Ausgabedatei", t.name),
+            Some(s) => format!("{}: {s}", t.name),
+        }));
+    };
+    // a PNG of the right size is kept as the thumbnailer wrote it; others
+    // (too big, another format) are decoded and written anew
+    if cache::png_masse(&bytes).is_some_and(|(b, h)| b.max(h) <= kante && b > 0 && h > 0) {
+        return Ok(bytes);
+    }
+    let textur = gdk::Texture::from_bytes(&glib::Bytes::from_owned(bytes))
+        .map_err(|e| Fehler::Fehlgeschlagen(format!("{}: {e}", t.name)))?;
+    let bild = Bild::aus_textur(&textur)
+        .ok_or_else(|| Fehler::Fehlgeschlagen("leeres Bild".to_owned()))?;
+    Ok(bild.verkleinert(kante).png())
+}
+
+/// How a thumbnail of `typ` is made (for the log and the checks).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Weg {
+    Gtk,
+    Pixbuf,
+    Thumbnailer,
+}
+
+/// Makes the PNG for `eimer` (with tags) of `q`; the way taken is
+/// returned for the statistics.
+pub fn erzeugen(q: &Quelle, eimer: Eimer, abbruch: &AtomicBool) -> Result<(Vec<u8>, Weg), Fehler> {
+    let kante = eimer.kante();
+    let mut fehler = Fehler::KeinWeg;
+    let mut ergebnis: Option<(Vec<u8>, Weg)> = None;
+    // GdkPixbuf first: it scales while decoding, and with glycin the
+    // decoder runs in its own process; GTK's loaders decode the whole
+    // picture in this process (measured: +54 MB after 200 photos against
+    // +4 MB, same time; docs/dateien.md)
+    if pixbuf_laedt(&q.typ) {
+        match ueber_pixbuf(q, kante) {
+            Ok(b) => ergebnis = Some((b.png(), Weg::Pixbuf)),
+            Err(e) => fehler = e,
+        }
+    }
+    if ergebnis.is_none() && gtk_laedt(&q.typ) {
+        match ueber_gtk(q, kante) {
+            Ok(b) => ergebnis = Some((b.png(), Weg::Gtk)),
+            Err(e) => fehler = e,
+        }
+    }
+    if ergebnis.is_none()
+        && let Some(t) = thumbnailer_fuer(alle(), &q.typ)
+    {
+        match ueber_thumbnailer(q, t, kante, abbruch, ZEITLIMIT) {
+            Ok(b) => ergebnis = Some((b, Weg::Thumbnailer)),
+            // an earlier real failure (a broken picture) stays the answer
+            Err(Fehler::KeinWeg) => {}
+            Err(e) => fehler = e,
+        }
+    }
+    let Some((png, weg)) = ergebnis else {
+        return Err(fehler);
+    };
+    let mtime = q.mtime.to_string();
+    let groesse = q.groesse.to_string();
+    let tags = cache::tags(&q.uri, &mtime, &groesse, &q.typ);
+    cache::mit_tags(&png, &tags)
+        .map(|p| (p, weg))
+        .ok_or_else(|| Fehler::Fehlgeschlagen("kein PNG".to_owned()))
+}
+
+/// The note of a failure: a 1×1 PNG with the tags.
+pub fn fehl_png(q: &Quelle) -> Option<Vec<u8>> {
+    let png = Bild::leer(1, 1).png();
+    let mtime = q.mtime.to_string();
+    let groesse = q.groesse.to_string();
+    cache::mit_tags(&png, &cache::tags(&q.uri, &mtime, &groesse, &q.typ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    #[test]
+    fn exec_lines_are_split_and_filled_in() {
+        assert_eq!(
+            argumente(r#"/usr/bin/x -s %s "%u" %o"#),
+            ["/usr/bin/x", "-s", "%s", "%u", "%o"]
+        );
+        assert_eq!(argumente(r#"a "b c" "" d\e"#), ["a", "b c", "", r"d\e"]);
+        let b = befehl(
+            "glycin-thumbnailer --input %u --output %o --size %s 100%%",
+            "file:///a%20b.jpg",
+            Some(Path::new("/a b.jpg")),
+            Path::new("/tmp/1.png"),
+            128,
+        )
+        .unwrap();
+        assert_eq!(
+            b,
+            [
+                "glycin-thumbnailer",
+                "--input",
+                "file:///a%20b.jpg",
+                "--output",
+                "/tmp/1.png",
+                "--size",
+                "128",
+                "100%"
+            ]
+        );
+        assert_eq!(
+            befehl("x %i %o", "sftp://h/a", None, Path::new("/o"), 128),
+            None,
+            "%i braucht einen Pfad"
+        );
+    }
+
+    #[test]
+    fn thumbnailer_files_need_exec_types_and_a_program() {
+        let text = "[Thumbnailer Entry]\nTryExec=/bin/sh\nExec=/bin/sh -c x %u %o\n\
+                    MimeType=application/pdf;application/x-pdf;\n";
+        let t = thumbnailer_lesen("p.thumbnailer", text).unwrap();
+        assert_eq!(t.typen, ["application/pdf", "application/x-pdf"]);
+        assert!(
+            thumbnailer_lesen(
+                "q",
+                "[Thumbnailer Entry]\nTryExec=/gibt/es/nicht\nExec=x\nMimeType=a/b;\n"
+            )
+            .is_none()
+        );
+        assert!(thumbnailer_lesen("q", "[Andere]\nExec=/bin/sh\nMimeType=a/b;\n").is_none());
+        assert!(thumbnailer_lesen("q", "[Thumbnailer Entry]\nExec=/bin/sh\n").is_none());
+        // without TryExec the program of Exec counts
+        assert!(
+            thumbnailer_lesen("q", "[Thumbnailer Entry]\nExec=sh %u\nMimeType=a/b;\n").is_some()
+        );
+        let liste = vec![t];
+        assert!(thumbnailer_fuer(&liste, "application/pdf").is_some());
+        assert!(thumbnailer_fuer(&liste, "text/plain").is_none());
+    }
+
+    #[test]
+    fn gtk_types_are_decoded_in_process() {
+        assert!(gtk_laedt("image/jpeg"));
+        assert!(gtk_laedt("image/png"));
+        assert!(!gtk_laedt("image/webp"));
+        assert!(!gtk_laedt("application/pdf"));
+    }
+
+    /// A thumbnailer script in a temporary folder and a PNG to read.
+    fn probe(name: &str, skript: &str) -> (PathBuf, Thumbnailer, Quelle) {
+        use std::os::unix::fs::PermissionsExt;
+        let d = std::env::temp_dir().join(format!("qd-thumbnailer-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let s = d.join("t.sh");
+        std::fs::write(&s, format!("#!/bin/sh\n{skript}\n")).unwrap();
+        std::fs::set_permissions(&s, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let bild = d.join("bild.png");
+        let mut b = Bild::leer(40, 30);
+        b.px.chunks_exact_mut(4).for_each(|p| p.fill(255));
+        std::fs::write(&bild, b.png()).unwrap();
+        let t = Thumbnailer {
+            name: "probe.thumbnailer".to_owned(),
+            exec: format!("{} %i %o %s", s.display()),
+            typen: vec!["application/x-qd-probe".to_owned()],
+        };
+        let q = Quelle {
+            uri: gio::File::for_path(&bild).uri().to_string(),
+            pfad: Some(bild),
+            typ: "application/x-qd-probe".to_owned(),
+            mtime: 1,
+            groesse: 1,
+        };
+        (d, t, q)
+    }
+
+    /// Integration test of the sandbox with the PDF stand-in of the checks
+    /// (`werkzeug/miniaturen/qd-pdf-miniatur`) in a throwaway home folder:
+    /// it renders the page, and its attempts to write outside the output
+    /// folder, to read the home folder, to reach the session or the
+    /// network all fail.
+    #[test]
+    fn the_pdf_stand_in_runs_sandboxed_in_a_throwaway_home() {
+        if !matches!(sandkasten::huelle(), sandkasten::Huelle::Bwrap(_)) {
+            eprintln!(
+                "bwrap geht hier nicht ({:?}): übersprungen",
+                sandkasten::huelle()
+            );
+            return;
+        }
+        let d = std::env::temp_dir().join(format!("qd-sandkasten-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        let heim = d.join("heim");
+        std::fs::create_dir_all(heim.join("Dokumente")).unwrap();
+        let pdf = heim.join("Dokumente/rechnung.pdf");
+        std::fs::write(&pdf, b"%PDF-1.4\n%%EOF\n").unwrap();
+        let geheim = heim.join("geheim.txt");
+        std::fs::write(&geheim, b"geheim").unwrap();
+        // writable on the host, read-only in the sandbox
+        let draussen = PathBuf::from(format!(
+            "/var/tmp/qd-sandkasten-boese-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&draussen);
+        let lauscher = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        lauscher.set_nonblocking(true).unwrap();
+        let port = lauscher.local_addr().unwrap().port();
+        let skript =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("werkzeug/miniaturen/qd-pdf-miniatur");
+        let t = Thumbnailer {
+            name: "qd-pdf.thumbnailer".to_owned(),
+            exec: format!(
+                "{} --versuche {} {port} {} %i %o %s",
+                skript.display(),
+                draussen.display(),
+                geheim.display()
+            ),
+            typen: vec!["application/pdf".to_owned()],
+        };
+        let q = Quelle {
+            uri: gio::File::for_path(&pdf).uri().to_string(),
+            pfad: Some(pdf.clone()),
+            typ: "application/pdf".to_owned(),
+            mtime: 1,
+            groesse: 15,
+        };
+        let nein = AtomicBool::new(false);
+        let png = ueber_thumbnailer_in(&heim, &q, &t, 128, &nein, ZEITLIMIT)
+            .expect("Stellvertreter im Sandkasten");
+        let (b, h) = cache::png_masse(&png).unwrap();
+        assert_eq!((b, h), (90, 128), "A4-Seite");
+        assert!(!draussen.exists(), "Schreiben ins System gelang");
+        assert!(
+            !heim.join("boese.txt").exists(),
+            "Schreiben ins HOME gelang"
+        );
+        assert!(
+            !heim.join("Dokumente/daneben.txt").exists(),
+            "Schreiben neben die Eingabe gelang"
+        );
+        assert!(lauscher.accept().is_err(), "Netz erreicht");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn thumbnailers_are_stopped_at_the_time_limit_and_on_withdrawal() {
+        if *sandkasten::huelle() == sandkasten::Huelle::Keine {
+            return;
+        }
+        let (d, t, q) = probe("zeit", "sleep 30");
+        let nein = AtomicBool::new(false);
+        let start = Instant::now();
+        let e = ueber_thumbnailer(&q, &t, 128, &nein, Duration::from_millis(300));
+        assert!(
+            matches!(&e, Err(Fehler::Fehlgeschlagen(g)) if g.contains("Zeitlimit")),
+            "{e:?}"
+        );
+        assert!(start.elapsed() < Duration::from_secs(5));
+        let ja = AtomicBool::new(true);
+        assert_eq!(
+            ueber_thumbnailer(&q, &t, 128, &ja, ZEITLIMIT),
+            Err(Fehler::Abgebrochen)
+        );
+        let _ = std::fs::remove_dir_all(&d);
+        assert_eq!(endung("file:///a/b.PDF"), ".PDF");
+        assert_eq!(endung("file:///a/b"), "");
+        assert_eq!(endung("file:///a/b.x%20y"), "");
+    }
+
+    /// The output of a thumbnailer as a symlink to a readable file outside
+    /// or as a FIFO: refused at once, the host never reads through it.
+    #[test]
+    fn output_links_and_fifos_fail_at_once() {
+        if *sandkasten::huelle() == sandkasten::Huelle::Keine {
+            eprintln!("bwrap geht hier nicht: übersprungen");
+            return;
+        }
+        let draussen =
+            std::env::temp_dir().join(format!("qd-ausgabe-ziel-{}.png", std::process::id()));
+        let mut b = Bild::leer(10, 10);
+        b.px.chunks_exact_mut(4).for_each(|p| p.fill(255));
+        std::fs::write(&draussen, b.png()).unwrap();
+        for (name, skript) in [
+            ("link", format!("ln -s {} \"$2\"", draussen.display())),
+            ("link-etc", "ln -s /etc/hostname \"$2\"".to_owned()),
+            ("fifo", "mkfifo \"$2\"".to_owned()),
+        ] {
+            let (d, t, q) = probe(name, &skript);
+            let nein = AtomicBool::new(false);
+            let start = Instant::now();
+            let e = ueber_thumbnailer(&q, &t, 128, &nein, ZEITLIMIT);
+            assert!(
+                matches!(&e, Err(Fehler::Fehlgeschlagen(g)) if g.contains("keine reguläre Ausgabedatei")),
+                "{name}: {e:?}"
+            );
+            assert!(start.elapsed() < Duration::from_secs(3), "{name} hing");
+            let _ = std::fs::remove_dir_all(&d);
+        }
+        // the reader itself: a link and a FIFO are refused, a file is read
+        let d = std::env::temp_dir().join(format!("qd-ausgabe-lesen-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        std::os::unix::fs::symlink(&draussen, d.join("link.png")).unwrap();
+        assert!(
+            Command::new("mkfifo")
+                .arg(d.join("fifo.png"))
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert_eq!(cache::lies_regulaer(&d.join("link.png"), MAX_AUSGABE), None);
+        assert_eq!(cache::lies_regulaer(&d.join("fifo.png"), MAX_AUSGABE), None);
+        assert!(cache::lies_regulaer(&draussen, MAX_AUSGABE).is_some());
+        assert_eq!(cache::lies_regulaer(&draussen, 10), None, "zu groß");
+        let _ = std::fs::remove_dir_all(&d);
+        let _ = std::fs::remove_file(&draussen);
+    }
+}

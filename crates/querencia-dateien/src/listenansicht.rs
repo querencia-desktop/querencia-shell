@@ -15,8 +15,6 @@ use std::time::Instant;
 use gtk4::prelude::*;
 use gtk4::{glib, pango};
 
-use querencia_oberflaeche::symbole;
-
 use crate::ansicht::Ansicht;
 use crate::ansichtskern::{
     self, Art, Darstellung, Eintrag, Kern, Modul, Sortierung, protokoll, teile,
@@ -26,6 +24,7 @@ use crate::ansichtsregeln::{
 };
 use crate::app::Register;
 use crate::konfig::Werte;
+use crate::miniaturen::bildquelle;
 use crate::regeln;
 use crate::regeln::Ansichtsart;
 
@@ -317,6 +316,7 @@ impl Listenansicht {
                 };
                 if let Some(zelle) = li.child().and_downcast::<gtk4::Box>() {
                     l.kern.geloest(&zelle);
+                    bildquelle::loesen(&teile(&zelle).0);
                 }
             });
         }
@@ -329,8 +329,9 @@ impl Listenansicht {
         if bild.pixel_size() != groesse {
             bild.set_pixel_size(groesse);
         }
-        // QD-106: theme icons only through querencia-oberflaeche
-        symbole::set(&bild, &e.daten().symbol);
+        // QD-106: theme icons only through querencia-oberflaeche; the
+        // thumbnail through the Bildquelle je Eintrag (Welle C2)
+        bildquelle::binden(&bild, e, bildquelle::Groesse::liste(groesse));
         text.set_text(&e.daten().anzeige);
     }
 

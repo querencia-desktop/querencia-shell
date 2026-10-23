@@ -23,13 +23,12 @@ use std::rc::Rc;
 use gtk4::prelude::*;
 use gtk4::{gdk, glib, pango};
 
-use querencia_oberflaeche::symbole;
-
 use crate::ansicht::Ansicht;
 use crate::ansichtskern::{self, Art, Darstellung, Eintrag, Kern, Modul, protokoll, teile};
 use crate::ansichtsregeln::{self, symbolgroesse};
 use crate::app::Register;
 use crate::konfig::Werte;
+use crate::miniaturen::bildquelle;
 use crate::regeln::Ansichtsart;
 
 /// Nautilus 2.30: `MAX_TEXT_WIDTH_BESIDE_TOP_TO_BOTTOM`, at 100 %.
@@ -329,6 +328,7 @@ impl Kompaktansicht {
             };
             if let Some(zelle) = li.child().and_downcast::<gtk4::Box>() {
                 a.kern.geloest(&zelle);
+                bildquelle::loesen(&teile(&zelle).0);
             }
         });
     }
@@ -342,8 +342,9 @@ impl Kompaktansicht {
             bild.set_pixel_size(groesse);
         }
         let d = eintrag.daten();
-        // QD-106: theme icons only through querencia-oberflaeche
-        symbole::set(&bild, &d.symbol);
+        // QD-106: theme icons only through querencia-oberflaeche; the
+        // thumbnail through the Bildquelle je Eintrag (Welle C2)
+        bildquelle::binden(&bild, eintrag, bildquelle::Groesse::liste(groesse));
         text.set_text(&d.anzeige);
         let eigene = if self.gleich.get() {
             0
