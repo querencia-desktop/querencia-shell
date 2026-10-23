@@ -653,7 +653,9 @@ Einstellung, Kandidaten), `konfig` (M6-Klicks je Modus, erster Start ohne
 Files). Isoliert (`werkzeug/pruefung/`,
 `lauf.sh NAME szenarien/X.sh`): `reiter` (20 Fälle), `kompakt` (14),
 `migration` (mit `LAUF_FILES_TOML=…/daten/files-settings.toml` und ohne,
-je 3), `kompakt-messung` (10 000 Einträge). Die Probe `daten/files-settings.toml` hat seit C3
+je 3), `reiter-suche` (5, Suche aus §8 je Reiter), `kompakt-messung` (10 000 Einträge).
+Gesamtprüfung auf dem gemergten Stand (main 72a7a64 + C3) mit Belegen unter
+`crates/querencia-dateien/nachweis/reiter/` (`summe.txt`, `uebersicht.txt`). Die Probe `daten/files-settings.toml` hat seit C3
 `list_file_clicks`. Umschaltskript `integration/dateien-010/dateien-standard.sh` (M2; Fassung 2: legt fehlenden
 Abschnitt bzw. fehlende `mimeapps.list` an, blendet ohne Files-Starter nur nicht aus, misst die Zeile
 nach, `zurueck` entfernt genau das Angelegte; Live-Kopie unverändert) mit Probe
