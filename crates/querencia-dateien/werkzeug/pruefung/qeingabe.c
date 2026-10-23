@@ -2,8 +2,8 @@
 // Querencia Dateien 0.1: copy of the icon view prototype's qeingabe.c
 // (dateien/prototyp-2); changed: the guard (only inside the test harness
 // werkzeug/dateien-pruefrahmen/huelle.sh: XDG_RUNTIME_DIR=/tmp/qd-*, QD_HUELLE
-// set), more keys (F1, F9, Insert, Menu, Delete with modifiers) and
-// keydown/keyup for letters.
+// set), more keys (F1, F9, Insert, Menu, Delete with modifiers), keydown/keyup
+// for letters and ":" and "~" (AltGr) for "type".
 //
 // Creates a virtual pointer (zwlr_virtual_pointer_v1) and a virtual keyboard
 // (zwp_virtual_keyboard_v1) on the compositor named by WAYLAND_DISPLAY and
@@ -89,6 +89,8 @@ static int de_key(char c, int *shift) {
     case '_': *shift = 1; return KEY_SLASH;
     case '.': return KEY_DOT;
     case '+': return KEY_RIGHTBRACE;
+    case ':': *shift = 1; return KEY_DOT;
+    case '~': *shift = 2; return KEY_RIGHTBRACE;   /* AltGr + "+" on the de layout */
     case ' ': return KEY_SPACE;
     default: return -1;
     }
@@ -218,14 +220,17 @@ int main(void) {
                 int shift, code = de_key(*t, &shift);
                 if (code < 0) { fprintf(stderr, "qeingabe: Zeichen %c?\n", *t); continue; }
                 if (shift) {
-                    zwp_virtual_keyboard_v1_key(keyboard, now_ms(), KEY_LEFTSHIFT, WL_KEYBOARD_KEY_STATE_PRESSED);
-                    zwp_virtual_keyboard_v1_modifiers(keyboard, 1, 0, 0, 0);
+                    /* 1: Shift (mask 1), 2: AltGr = ISO_Level3_Shift (Mod5, mask 128) */
+                    zwp_virtual_keyboard_v1_key(keyboard, now_ms(), shift == 2 ? KEY_RIGHTALT : KEY_LEFTSHIFT,
+                                                WL_KEYBOARD_KEY_STATE_PRESSED);
+                    zwp_virtual_keyboard_v1_modifiers(keyboard, shift == 2 ? 128 : 1, 0, 0, 0);
                 }
                 zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_PRESSED);
                 wl_display_roundtrip(display); sleep_ms(15);
                 zwp_virtual_keyboard_v1_key(keyboard, now_ms(), code, WL_KEYBOARD_KEY_STATE_RELEASED);
                 if (shift) {
-                    zwp_virtual_keyboard_v1_key(keyboard, now_ms(), KEY_LEFTSHIFT, WL_KEYBOARD_KEY_STATE_RELEASED);
+                    zwp_virtual_keyboard_v1_key(keyboard, now_ms(), shift == 2 ? KEY_RIGHTALT : KEY_LEFTSHIFT,
+                                                WL_KEYBOARD_KEY_STATE_RELEASED);
                     zwp_virtual_keyboard_v1_modifiers(keyboard, 0, 0, 0, 0);
                 }
                 wl_display_roundtrip(display); sleep_ms(15);

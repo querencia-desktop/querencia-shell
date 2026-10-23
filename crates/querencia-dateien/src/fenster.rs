@@ -450,7 +450,7 @@ impl Fenster {
             s.ort_anzeigen(ort);
         }
         self.papierkorb_leiste
-            .set_visible(crate::ziehen::im_papierkorb(ort));
+            .set_visible(ort.uri_scheme().as_deref() == Some("trash"));
         self.aktionen_pruefen();
         let handler: Vec<OrtHandler> = self.ort_handler.borrow().clone();
         for h in handler {
