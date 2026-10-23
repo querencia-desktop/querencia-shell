@@ -1,5 +1,24 @@
 # Änderungen – querencia-panel
 
+## 0.3.2 – 2026-10-24
+
+Migration M3 der Welle C (Querencia Dateien löst Querencia Files ab,
+Folgezug „Runtime nach der Ablösung“, 08 QD-168):
+
+- Das Orte-Menü kennt Querencia Dateien: Hat GIO für `inode/directory`
+  keine Anwendung, nimmt das Panel unter den installierten Einträgen, die
+  selbst `inode/directory` nennen, zuerst `org.querencia.Dateien.desktop`,
+  dann Querencia Files (`org.querencia.Files.desktop`, danach die Brücke
+  `io.github.lgse.Strata.desktop`). Ohne passende Kennung zählt der Name
+  „Querencia Dateien“ vor „Querencia Files“; der englische Name „Files“
+  zählt nicht, weil GNOME Dateien (Nautilus) ihn auch trägt.
+- Die Wahl von GIO gewinnt weiter immer. Live ist `inode/directory` seit
+  23.10.2026 21:05 auf `org.querencia.Dateien.desktop` gesetzt; dort ändert
+  0.3.2 nichts Sichtbares. Die neue Reihenfolge wirkt nur ohne GIO-Vorgabe
+  (z. B. frisches Profil, Paketinstallation ohne `mimeinfo.cache`).
+- Tests: Dateien vor Files, Rangfolge nach Kennung und Name, „Files“ von
+  GNOME zählt nicht (`cargo test -p querencia-panel places`).
+
 ## 0.3.1 – 2026-10-23
 
 Integrationsstand 0.3.1-2 (Tags `panel/0.3.1-2`, `panel/0.3.1-2-int`):
