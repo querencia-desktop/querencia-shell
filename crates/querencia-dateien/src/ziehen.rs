@@ -252,6 +252,11 @@ pub fn quelle(
 ) -> gtk4::DragSource {
     let source = gtk4::DragSource::new();
     source.set_button(gdk::BUTTON_PRIMARY);
+    // before the views' own gestures (rubber band, clicks on the inner
+    // list): it claims the press only once a drag on an entry begins; on
+    // free space `prepare` refuses and the rubber band goes on (measured
+    // with B2's views, which took every press in the bubble phase)
+    source.set_propagation_phase(gtk4::PropagationPhase::Capture);
     source.connect_prepare(move |source, x, y| {
         let dateien = dateien_bei(x, y);
         if dateien.is_empty() {

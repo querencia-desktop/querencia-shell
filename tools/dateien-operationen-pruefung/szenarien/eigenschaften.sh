@@ -29,16 +29,21 @@ pruefe E3 "Öffnen mit: Vim statt Testanzeige" "wird Standard (mimeapps.list)" '
 q "key Escape" "wait 500"
 titel; zklick 0; q "keydown Control_L" "keydown Shift_L" "type n" "keyup Shift_L" "keyup Control_L" "wait 800"
 warte_bis '[ -d "$T/Neuer Ordner" ]' 10
-pruefe N1 "Umschalt+Strg+N" "„Neuer Ordner“" '[ -d "$T/Neuer Ordner" ]' "$(ls "$T" | tr '\n' ' ')"
-q "key Escape" "wait 400"
+pruefe N1 "Umschalt+Strg+N" "„Neuer Ordner“ angelegt" '[ -d "$T/Neuer Ordner" ]' "$(ls "$T" | tr '\n' ' ')"
+warte_log 'Umbenennen begonnen' 5; eingabe <<< "wait 600"
+foto umbenennen-neuer-ordner
+q "type Projekt" "key Return" "wait 1000"
+warte_bis '[ -d "$T/Projekt" ]' 10
+pruefe N2 "D18: Name sofort im Feld tippen, Eingabe" "„Projekt“ statt „Neuer Ordner“ (Umbenennen über die Warteschlange)" '[ -d "$T/Projekt" ] && [ ! -e "$T/Neuer Ordner" ] && grep -a -q "umbenennen fertig: 1 erledigt" "$LOG"' "$(ls "$T" | tr '\n' ' ')"
 titel; aktion dokument-anlegen "''"
 warte_bis '[ -f "$T/Neues Dokument" ]' 10
-pruefe N2 "Dokument anlegen ▸ Leere Datei" "„Neues Dokument“, leer" '[ -f "$T/Neues Dokument" ] && [ ! -s "$T/Neues Dokument" ]' "$(ls "$T" | tr '\n' ' ')"
-q "key Escape" "wait 400"
+pruefe N3 "Dokument anlegen ▸ Leere Datei" "„Neues Dokument“, leer, Umbenennen offen" '[ -f "$T/Neues Dokument" ] && [ ! -s "$T/Neues Dokument" ]' "$(ls "$T" | tr '\n' ' ')"
+q "wait 600" "key Escape" "wait 400"
 titel; aktion dokument-anlegen "'$(uri_von "$VORLAGEN/Brief.txt")'"
 warte_bis '[ -f "$T/Brief.txt" ]' 10
-pruefe N3 "Dokument anlegen ▸ Vorlage Brief" "Kopie der Vorlage" '[ "$(cat "$T/Brief.txt")" = "Sehr geehrte" ]' "$(ls "$T" | tr '\n' ' ')"
-q "key Escape" "wait 400"
-titel; aktion ordner-anlegen
+pruefe N4 "Dokument anlegen ▸ Vorlage Brief" "Kopie der Vorlage" '[ "$(cat "$T/Brief.txt")" = "Sehr geehrte" ]' "$(ls "$T" | tr '\n' ' ')"
+q "wait 600" "key Escape" "wait 400"
+titel; aktion ordner-anlegen; aktion ordner-anlegen
 warte_bis '[ -d "$T/Neuer Ordner 2" ]' 10
-pruefe N4 "zweiter neuer Ordner" "freier Name „Neuer Ordner 2“" '[ -d "$T/Neuer Ordner 2" ]' "$(ls "$T" | tr '\n' ' ')"
+pruefe N5 "zwei neue Ordner nacheinander" "„Neuer Ordner“ und „Neuer Ordner 2“" '[ -d "$T/Neuer Ordner" ] && [ -d "$T/Neuer Ordner 2" ]' "$(ls "$T" | tr '\n' ' ')"
+q "wait 600" "key Escape" "wait 400"

@@ -12,7 +12,7 @@ warte_log 'in den Papierkorb fertig' 10
 pruefe P1 "Entf auf drei Dateien" "ohne Frage im Papierkorb, .trashinfo je Datei" '! grep -a -q "Frage:" "$LOG" && [ "$(ls "$TR/files" | wc -l)" = 3 ] && [ "$(ls "$TR/info" | wc -l)" = 3 ] && [ ! -e "$T/d1.txt" ]' "$(ls "$TR/files" | tr '\n' ' ')"
 # in trash:/// steht über der Liste die Leiste „Papierkorb leeren …“ (B1): Zeilen 43 px tiefer
 LEISTE=0
-zeile() { echo $((229 + 52 * $1 + LEISTE)); }
+zeile() { echo $((241 + 26 * $1 + LEISTE)); }
 zum_papierkorb() { local n; n=$(geladen); aktion papierkorb-zeigen; warte_ordner "$n"; titel; LEISTE=43; }
 zurueck_nach_test() { gehe_zu "$T"; LEISTE=0; }
 zum_papierkorb
