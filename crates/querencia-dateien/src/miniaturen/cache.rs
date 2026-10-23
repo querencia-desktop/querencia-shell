@@ -124,18 +124,27 @@ const O_NONBLOCK: i32 = 0o4000;
 /// Reads a regular file of at most [`MAX_BYTES`] without following a
 /// symlink.
 fn lies_begrenzt(pfad: &Path) -> Option<Vec<u8>> {
+    lies_regulaer(pfad, MAX_BYTES)
+}
+
+/// Reads `pfad` only if it is a regular file of at most `max` bytes:
+/// opened with `O_NOFOLLOW` (a symlink is an error, never followed) and
+/// `O_NONBLOCK` (a FIFO does not block the open), then checked with fstat
+/// on the open file, so it cannot be swapped in between. For the cache and
+/// for what a thumbnailer left in its job folder.
+pub fn lies_regulaer(pfad: &Path, max: u64) -> Option<Vec<u8>> {
     let datei = std::fs::OpenOptions::new()
         .read(true)
         .custom_flags(O_NOFOLLOW | O_NONBLOCK)
         .open(pfad)
         .ok()?;
     let meta = datei.metadata().ok()?;
-    if !meta.is_file() || meta.len() > MAX_BYTES {
+    if !meta.is_file() || meta.len() > max {
         return None;
     }
     let mut bytes = Vec::with_capacity(meta.len() as usize);
-    datei.take(MAX_BYTES + 1).read_to_end(&mut bytes).ok()?;
-    (bytes.len() as u64 <= MAX_BYTES).then_some(bytes)
+    datei.take(max + 1).read_to_end(&mut bytes).ok()?;
+    (bytes.len() as u64 <= max).then_some(bytes)
 }
 
 const SIGNATUR: &[u8] = b"\x89PNG\r\n\x1a\n";
