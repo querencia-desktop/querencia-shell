@@ -237,6 +237,13 @@ fn datei() -> Vec<Vec<Punkt>> {
             ),
             p(N_("Open Wit_h"), "", None, None),
         ],
+        // Welle C1 (dateien-netzwerk)
+        vec![p(
+            N_("Connect to _Server…"),
+            "win.mit-server-verbinden",
+            None,
+            Some("network-server"),
+        )],
         vec![p(
             N_("_Properties"),
             "win.eigenschaften",
@@ -426,6 +433,13 @@ fn gehe_zu() -> Vec<Vec<Punkt>> {
                 "win.papierkorb-zeigen",
                 None,
                 Some("user-trash"),
+            ),
+            // Welle C1 (dateien-netzwerk)
+            p(
+                N_("_Network"),
+                "win.netzwerk",
+                None,
+                Some("network-workgroup"),
             ),
         ],
         vec![
@@ -768,14 +782,14 @@ mod tests {
         assert_eq!(finde("_List").kuerzel, Some("<Control>2"));
         assert_eq!(finde("_Location…").kuerzel, Some("<Control>l"));
         assert_eq!(finde("Online _Help").kuerzel, Some("F1"));
+        // Welle C1: network entries
+        assert_eq!(
+            finde("Connect to _Server…").aktion,
+            "win.mit-server-verbinden"
+        );
+        assert_eq!(finde("_Network").aktion, "win.netzwerk");
         // no B-stage entries in 0.1 (B §3.3)
-        for b in [
-            "New _Tab",
-            "Connect to _Server…",
-            "_Undo",
-            "D_uplicate",
-            "_Compact",
-        ] {
+        for b in ["New _Tab", "_Undo", "D_uplicate", "_Compact"] {
             assert!(!alle.iter().any(|p| p.text == b), "{b} ist Beta");
         }
     }

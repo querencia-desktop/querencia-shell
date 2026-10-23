@@ -4,6 +4,18 @@
 : "${QUERENCIA_STATE_DIR:?nur über querencia-session starten}"
 : "${QUERENCIA_PANEL_RECORD:?nur über querencia-session starten}"
 
+# Software-OpenGL (QD-169): Meldet der Renderer zink auf NVK (nouveau),
+# gibt querencia-session hier LIBGL_ALWAYS_SOFTWARE=1,
+# MESA_LOADER_DRIVER_OVERRIDE=llvmpipe und GALLIUM_DRIVER=llvmpipe mit; sie
+# gelten für alles, was dieses Skript startet, und für das, was Panel und
+# Arbeitsfläche starten. labwc selbst behält zink. Nur diese drei Namen;
+# leer: nichts (docs/sitzung-grafik.md).
+for zuweisung in ${QUERENCIA_GRAFIK_UMGEBUNG-}; do
+    case $zuweisung in
+    LIBGL_ALWAYS_SOFTWARE=* | MESA_LOADER_DRIVER_OVERRIDE=* | GALLIUM_DRIVER=*) export "$zuweisung" ;;
+    esac
+done
+
 # Settings portal guard (QD-062, G2-AI). GTK 4 asks
 # org.freedesktop.portal.Settings while it starts and waits up to 25 s per
 # call for an answer; a portal left over from an earlier session kept panel
@@ -66,8 +78,8 @@ fi
 # Flächen anlegen. Läuft synchron (labwc antwortet sofort, Zeitgrenze 5 s im
 # Programm). Ohne Datei, ohne installierte Einstellungen oder bei Fehler
 # bleibt alles wie von labwc eingerichtet; Ausgabe in bildschirm.log.
-if [ -x ~/opt/querencia/bin/querencia-einstellungen ]; then
-    ~/opt/querencia/bin/querencia-einstellungen --bildschirm-anwenden \
+if [ -x /home/user/opt/querencia/bin/querencia-einstellungen ]; then
+    /home/user/opt/querencia/bin/querencia-einstellungen --bildschirm-anwenden \
         </dev/null >>"$QUERENCIA_STATE_DIR/bildschirm.log" 2>&1 || true
 fi
 
@@ -104,7 +116,7 @@ fi
 # ohne installierten Dienst bleibt die Sitzung wie bisher. Belegt ein anderer
 # Dienst den Namen schon, beendet er sich selbst mit einer Meldung im Log.
 # Bewusst nach dem Panel-Eintrag, damit "$!" oben weiter das Panel ist.
-BENACHRICHTIGUNGEN=${QUERENCIA_BENACHRICHTIGUNGEN:-~/opt/querencia/bin/querencia-benachrichtigungen}
+BENACHRICHTIGUNGEN=${QUERENCIA_BENACHRICHTIGUNGEN:-/home/user/opt/querencia/bin/querencia-benachrichtigungen}
 if [ -x "$BENACHRICHTIGUNGEN" ]; then
     gtk_exec "$BENACHRICHTIGUNGEN" </dev/null >>"$QUERENCIA_STATE_DIR/benachrichtigungen.log" 2>&1 &
 fi
@@ -116,7 +128,7 @@ fi
 # Strg+V dort leer. Der Helfer legt den Inhalt beim Fokuswechsel auf ein
 # X11-Fenster erneut ab. Optional; ohne Datei bleibt alles wie bisher.
 # Ersatz bis zum labwc-Patch (Besitzer beim Fokuswechsel neu setzen).
-HELFER=${QUERENCIA_X11_ZWISCHENABLAGE:-~/opt/querencia/bin/x11-zwischenablage-helfer}
+HELFER=${QUERENCIA_X11_ZWISCHENABLAGE:-/home/user/opt/querencia/bin/x11-zwischenablage-helfer}
 if [ -x "$HELFER" ]; then
     "$HELFER" </dev/null >>"$QUERENCIA_STATE_DIR/x11-zwischenablage-helfer.log" 2>&1 &
 fi
