@@ -269,6 +269,22 @@ nutzen können.
   (Lesen, Sortieren, Filtern, Auswahl über Umbenennen hinweg, Erscheinen,
   Ändern, Löschen, Neu laden, Ordner weg, Lesefehler).
 - Übersetzungen: im Crate-Ordner `python3 -I werkzeug/i18n.py pruefen`.
+- **Isolierte GUI-Läufe** (`crates/querencia-dateien/werkzeug/pruefung/`):
+  `bauen-eingabe.sh` baut `qeingabe`/`qausgabe` (verweigern jede Sitzung
+  außerhalb des Prüfrahmens: `XDG_RUNTIME_DIR=/tmp/qd-*` und `QD_HUELLE`);
+  `lauf.sh NAME szenarien/X.sh` legt ein Profil mit Testbaum
+  (`testbaum.py`: XDG-Ordner, Umlaute, lange Namen, versteckte Dateien,
+  Verweis, ausführbare Textdatei, 200 Dateien, 50 MB, 12 Ebenen, Vorlagen,
+  Attrappen-Programme mit `mimeapps.list`), Thema Querencia-Klassisch,
+  Symbolthema und den drei Katalogen an und startet das Szenario in
+  `werkzeug/dateien-pruefrahmen/huelle.sh` (Stufe L, headless labwc,
+  Fenster per labwc-Regel oben links). Umgebung: `LAUF_GROESSE`,
+  `LAUF_DUNKEL`, `LAUF_SPRACHE`, `LAUF_FILES_TOML` (M6),
+  `LAUF_ATTRAPPEN` (Laufwerks-Attrappen). Hilfen im Szenario
+  (`innen.sh`): `starte`, `q`, `taste`, `menue`, `warte_log`, `foto`,
+  `fall`. Ergebnisse unter `~/projects/dateien-arbeit/laeufe/NAME/`
+  (`ergebnis.txt`, `programm.log`, `fotos/`). Szenarien: `menues`,
+  `navigation`, `dialoge`, `oeffnen`, `einstellungen`, `laufwerke`, `start`.
 
 ## 6. Grenzen (Stand Gerüst)
 
