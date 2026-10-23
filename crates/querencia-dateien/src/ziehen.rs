@@ -28,6 +28,9 @@ use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib};
 use querencia_dateiarbeit::papierkorb;
 
+use crate::ansicht::Ansicht;
+use crate::eintrag::Eintrag;
+use crate::fenster::Fenster;
 use crate::operationen::{Operationen, debugging, protokoll};
 use crate::zwischenablage;
 
@@ -40,11 +43,11 @@ pub enum Ablage {
     Papierkorb,
 }
 
-/// Where a drop goes.
+/// Where a drop goes: a folder (the trash is `trash:///` or the home
+/// trash's `files` folder, [`im_papierkorb`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Ziel {
     Ordner(gio::File),
-    Papierkorb,
 }
 
 /// The actions a source offers (`gdk::DragAction`, without GTK for tests).
@@ -56,6 +59,7 @@ pub struct Angebot {
 }
 
 impl Angebot {
+    #[cfg(test)]
     pub const ALLE: Angebot = Angebot {
         kopieren: true,
         verschieben: true,
@@ -197,7 +201,6 @@ pub fn lage_fuer(quellen: &[gio::File], ziel: &Ziel, angebot: Angebot, keys: (bo
         ..Lage::default()
     };
     match ziel {
-        Ziel::Papierkorb => lage.ziel_papierkorb = true,
         Ziel::Ordner(ordner) => {
             lage.ziel_papierkorb = im_papierkorb(ordner) && !aus_papierkorb;
             lage.schon_dort = !quellen.is_empty()
@@ -333,6 +336,52 @@ fn namen(dateien: &[gio::File]) -> String {
         .join(", ")
 }
 
+/// Drag and drop of a view (hook `neue_ansicht`): the entries under the
+/// pointer leave (the whole selection when the entry is part of it, else
+/// the entry, which becomes the selection, as Nautilus); a drop goes into
+/// the folder under the pointer, else into the shown folder.
+pub fn an_ansicht(fenster: &Rc<Fenster>, ansicht: &Rc<dyn Ansicht>, operationen: &Rc<Operationen>) {
+    let widget = ansicht.widget();
+    let a = Rc::downgrade(ansicht);
+    let f = Rc::downgrade(fenster);
+    quelle(&widget, move |x, y| {
+        let (Some(a), Some(f)) = (a.upgrade(), f.upgrade()) else {
+            return Vec::new();
+        };
+        let Some(eintrag) = a.eintrag_bei(x, y) else {
+            return Vec::new();
+        };
+        let gewaehlt = f.modell().gewaehlte();
+        if gewaehlt.iter().any(|g| g.datei().equal(eintrag.datei())) {
+            gewaehlt.iter().map(|g| g.datei().clone()).collect()
+        } else {
+            f.modell().waehlen(std::slice::from_ref(eintrag.datei()));
+            vec![eintrag.datei().clone()]
+        }
+    });
+    let a = Rc::downgrade(ansicht);
+    let f = Rc::downgrade(fenster);
+    let a2 = a.clone();
+    ziel(
+        &widget,
+        operationen,
+        move |x, y| {
+            let a = a.upgrade()?;
+            match a.eintrag_bei(x, y).filter(Eintrag::ist_ordner) {
+                Some(ordner) => Some(Ziel::Ordner(ordner.ziel())),
+                None => f.upgrade()?.ort().map(Ziel::Ordner),
+            }
+        },
+        move |punkt| {
+            let Some(a) = a2.upgrade() else { return };
+            let ordner = punkt
+                .and_then(|(x, y)| a.eintrag_bei(x, y))
+                .filter(Eintrag::ist_ordner);
+            a.ablage_markieren(ordner.as_ref());
+        },
+    );
+}
+
 /// Files of a foreign drop, read once per drop (motion needs them for the
 /// file system rule).
 #[derive(Default)]
@@ -372,13 +421,14 @@ async fn lesen(drop: &gdk::Drop) -> Vec<gio::File> {
 }
 
 /// A drop target on `widget`. `ziel_bei(x, y)` says where a drop there goes
-/// (`None`: nowhere); `markieren` shows the target under the pointer (a
-/// folder cell or a sidebar row, `None` when the pointer leaves).
+/// (`None`: nowhere); `markieren` gets the point a drop would go to (the
+/// caller marks the folder cell there), `None` when there is none or the
+/// pointer leaves.
 pub fn ziel(
     widget: &impl IsA<gtk4::Widget>,
     operationen: &Rc<Operationen>,
     ziel_bei: impl Fn(f64, f64) -> Option<Ziel> + 'static,
-    markieren: impl Fn(Option<&Ziel>) + 'static,
+    markieren: impl Fn(Option<(f64, f64)>) + 'static,
 ) -> gtk4::DropTargetAsync {
     let formats = gdk::ContentFormatsBuilder::new()
         .add_type(gdk::FileList::static_type())
@@ -436,8 +486,8 @@ pub fn ziel(
         move |target: &gtk4::DropTargetAsync, drop: &gdk::Drop, x: f64, y: f64| match abwaegen(
             target, drop, x, y,
         ) {
-            Some((ziel, _, ablage)) => {
-                markieren(Some(&ziel));
+            Some((_, _, ablage)) => {
+                markieren(Some((x, y)));
                 als_action(ablage)
             }
             None => {
@@ -503,7 +553,6 @@ pub fn ziel(
                 namen(&dateien),
                 match &ziel {
                     Ziel::Ordner(o) => o.uri().to_string(),
-                    Ziel::Papierkorb => "Papierkorb".to_owned(),
                 },
                 angebot,
                 lage.gleiches_dateisystem,

@@ -36,6 +36,12 @@ mod werkzeugleiste;
 // Welle B2 (dateien-ansichten): mod-Zeilen unter dieser Zeile.
 
 // Welle B3 (dateien-operationen): mod-Zeilen unter dieser Zeile.
+mod eigenschaften_dialog;
+mod fortschritt;
+mod konflikt;
+mod operationen;
+mod ziehen;
+mod zwischenablage;
 
 use std::rc::Rc;
 
@@ -54,6 +60,7 @@ fn erweiterungen(register: &mut app::Register) {
     // Welle B2: Aufrufe unter dieser Zeile.
 
     // Welle B3: Aufrufe unter dieser Zeile.
+    operationen::registrieren(register);
 }
 
 fn stil_laden() {

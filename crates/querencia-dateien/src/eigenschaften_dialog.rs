@@ -25,7 +25,7 @@ use gtk4::{Align, gdk, gio, glib};
 use querencia_dateiarbeit::{oeffnen, typ};
 use querencia_oberflaeche::symbole;
 
-use crate::i18n::{gettext, gettext_f, ngettext_f};
+use crate::i18n::{gettext, gettext_f, ngettext_f, pgettext};
 use crate::operationen::{Operationen, fehler, protokoll};
 
 const ATTRIBUTE: &str = "standard::*,time::modified,time::access,unix::mode,unix::uid,\
@@ -55,7 +55,8 @@ impl Klasse {
 pub fn stufen(ordner: bool, klasse: Klasse) -> Vec<String> {
     let mut list = Vec::new();
     if klasse != Klasse::Besitzer {
-        list.push(gettext("None"));
+        // TRANSLATORS: no access at all for group or others (Nautilus 2.30)
+        list.push(pgettext("permissions", "None"));
     }
     if ordner {
         list.push(gettext("List files only"));
