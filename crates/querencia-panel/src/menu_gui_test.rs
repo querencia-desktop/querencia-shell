@@ -10,7 +10,12 @@ use querencia_oberflaeche::classic_menu::gui_test::{Panel, isolated_gui_menus};
 #[ignore = "nur in der isolierten GUI-Umgebung (gui-test/isoliert.py)"]
 fn isolated_gui_menus_of_the_panel() {
     isolated_gui_menus(&Panel {
-        install_style: crate::install_panel_style,
+        // as in main(): catalogs bound after GTK set the locale (the test
+        // looks for German labels; catalogs from QUERENCIA_PANEL_LOCALEDIR)
+        install_style: || {
+            crate::i18n::init();
+            crate::install_panel_style();
+        },
         main_menus: || {
             [
                 crate::app_menu::button(crate::layout::DEFAULT_HEIGHT),
