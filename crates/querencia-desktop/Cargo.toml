@@ -1,6 +1,6 @@
 [package]
 name = "querencia-desktop"
-version = "0.2.7"
+version = "0.3.0"
 description = "Querencia Desktop: Arbeitsfläche (Hintergrund, Symbole, Kontextmenü) als Layer-Shell-Ebenen"
 edition.workspace = true
 rust-version.workspace = true
@@ -18,3 +18,6 @@ gtk4-layer-shell = "0.8.1"
 # Classic menus, icon theme, colour scheme and settings portal of the panel,
 # as a library of the workspace (until 0.2.6 included through #[path]).
 querencia-oberflaeche = { path = "../querencia-oberflaeche" }
+# Desktop 0.3.0: file operations as jobs (progress, cancel, questions),
+# volumes with mounting, trash, folder monitors, opening (QD-140).
+querencia-dateiarbeit = { path = "../querencia-dateiarbeit" }
