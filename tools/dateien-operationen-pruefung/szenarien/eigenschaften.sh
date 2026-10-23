@@ -20,10 +20,10 @@ q "key Escape" "wait 500"
 titel; zklick 1; q "keydown Alt_L" "key Return" "keyup Alt_L" "wait 800"
 warte_log 'Eigenschaften: skript.sh' 10; eingabe <<< "wait 400"
 foto eigenschaften-datei
-klick 552 221; foto eigenschaften-rechte
+klick $REITER_RECHTE; foto eigenschaften-rechte
 alt a
 pruefe E2 "Zugriffsrechte: „Datei als Programm ausführen“" "Modus 644 → 755" '[ "$(stat -c %a "$T/skript.sh")" = 755 ]' "$(grep -a 'Zugriffsrechte' "$LOG" | tail -1 | cut -c1-150)"
-klick 663 221; foto eigenschaften-oeffnen-mit
+klick $REITER_MIT; foto eigenschaften-oeffnen-mit
 klick 430 346
 pruefe E3 "Öffnen mit: Vim statt Testanzeige" "wird Standard (mimeapps.list)" 'grep -q "application/x-shellscript=vim.desktop" "${XDG_CONFIG_HOME:-$HOME/.config}/mimeapps.list"' "$(grep -a 'Standardprogramm' "$LOG" | tail -1)"
 q "key Escape" "wait 500"

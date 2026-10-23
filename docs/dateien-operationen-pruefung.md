@@ -1,7 +1,8 @@
 # Querencia Dateien – Dateioperationen (Welle B3): Aufbau und Prüfprotokoll
 
 **Stand:** 23.10.2026, Zweig `dateien-operationen` (Tag `dateien/operationen-1`),
-Basis Gerüst `dateien/geruest-1` und Zweig `dateien` (dc9719e). Auftrag QD-140
+Basis Gerüst `dateien/geruest-1` und Zweig `dateien` (a63d07b, mit den
+Ansichten von B2, `dateien/ansichten-1`). Auftrag QD-140
 Welle B, Worker B3. Schnittstelle: `docs/dateien.md` §3.
 
 ## 1. Was B3 beiträgt
@@ -93,10 +94,17 @@ Fenster aktiv wird (Wayland gibt die Zwischenablage erst mit der Tastatur).
    Kopien derselben Quelle in ihren eigenen Ordner wählen beide beim Start
    „x (Kopie)“; die zweite fragt dann „Ordner … zusammenführen?“ statt
    „x (Kopie 2)“ zu nehmen.
+10. **Gesten der Ansichten:** B2s Symbol- und Listenansicht nehmen jeden
+    Druck mit eigenen Gesten (Gummiband, Klicks) auf der inneren Liste;
+    eine `DragSource` auf dem äußeren Widget bekam in der Bubble-Phase nie
+    einen Druck. Gelöst mit `PropagationPhase::Capture`: Sie beansprucht die
+    Folge erst ab der Zieh-Schwelle und nur auf einem Eintrag
+    (`eintrag_bei`), auf freier Fläche bleibt das Gummiband (Fall Z10).
 
 ## 3. Unit-Tests
 
-`cargo test -p querencia-dateien`: ERGEBNIS_UNIT. Davon B3: Zwischenablage-Format
+`cargo test -p querencia-dateien`: 73 bestanden, 1 ignoriert (mit B1 und
+B2); Workspace 620 bestanden, 0 fehlgeschlagen, 3 ignoriert. Davon B3 (27): Zwischenablage-Format
 (6: Schreiben, Rücklesen, GNOME vor KDE, KDE-Markierung bei Dolphin,
 Dateiliste vor URI-Liste, nichts einzufügen), Ablage-Regel (8, darunter
 echte Dateien, Papierkorb, GVfs-Ort), Fortschrittstexte (4), Konflikttexte
@@ -113,7 +121,8 @@ Sprache `de_DE.UTF-8`, Kataloge aus `i18n.py mo`. Eingaben über
 `qeingabe` (virtueller Zeiger und Tastatur); Aktionen ohne Taste über den
 privaten Sitzungsbus der Hülle (`org.gtk.Actions.Activate` auf
 `/org/querencia/Dateien/window/1`, derselbe Weg wie Menü und Kürzel).
-Ansicht: die Ersatzliste des Gerüsts (B2 noch nicht eingemerged).
+Ansicht: B2s Listenansicht (Strg+2 beim Start, feste Zeilen), Ziehen
+zusätzlich in der Symbolansicht (Z9, Z10).
 Eigenschaften: mit der Integrationsprobe (Bau mit `b1-anhaengen.patch`),
 denn ohne die Zeile von B1 öffnet `win.eigenschaften` noch B1s Dialog. Für die
 Zwischenablage Querencia Files QF-0t (`f87447156d6c9638`) und Desktop 0.3.0
@@ -145,9 +154,8 @@ Zwischenablage mit dem Desktop. Ergebnis-CSVs und Logs:
 
 - **GVfs-Netzorte:** Kopieren auf SFTP/SMB (Stufe G mit `--sshd`) nicht
   gemessen; `trash:///` mit gvfsd ja (Szenario `papierkorb-g`).
-- **Echte Ansichten (B2):** gemessen mit der Ersatzliste des Gerüsts. In der
-  Symbolansicht muss `eintrag_bei` freie Zellfläche ausnehmen, sonst
-  konkurriert das Ziehen mit dem Gummiband (C §5).
+- Ansichten: Listenansicht durchgehend, Symbolansicht nur für Ziehen und
+  Gummiband (Z9, Z10).
 - Ziehen zu fremden Programmen (Files, Desktop) und von dort: nur über die
   Zwischenablage gemessen; das Ziehformat ist dasselbe (`GdkFileList` und
   `text/uri-list`).

@@ -41,9 +41,7 @@ pruefe() {
   echo "$nr $e $fall" >> "$QD_AUS/innen.log"
 }
 starte() { # [ARG …]
-  # QD_DUNKEL=1: dunkle Fotos (Adwaita dunkel; die Programme setzen keine eigenen Farben)
   env QUERENCIA_DATEIEN_DEBUG=1 ${QD_LOCALE:+QUERENCIA_DATEIEN_LOCALEDIR=$QD_LOCALE} \
-    ${QD_DUNKEL:+GTK_THEME=Adwaita:dark} \
     "$QD_PROG" "$@" >> "$LOG" 2>&1 &
   APP=$!
   echo "Programm PID $APP: $QD_PROG $*" >> "$QD_AUS/innen.log"
@@ -77,6 +75,10 @@ if [ "$QD_AUFLOESUNG" != 1280x720 ]; then
   "$QD_QA" "$QD_AUFLOESUNG" >> "$QD_AUS/innen.log" 2>&1 || echo "qausgabe fehlgeschlagen" >> "$QD_AUS/innen.log"
 fi
 export QE_W=$W QE_H=$H
+# Thema, Symbole, Farbschema: ohne Portal liest das Programm gsettings (keyfile der Hülle)
+gsettings set org.gnome.desktop.interface gtk-theme 'Querencia-Klassisch' 2>> "$QD_AUS/innen.log"
+gsettings set org.gnome.desktop.interface icon-theme 'Querencia' 2>> "$QD_AUS/innen.log"
+gsettings set org.gnome.desktop.interface color-scheme "$([ -n "${QD_DUNKEL:-}" ] && echo prefer-dark || echo default)" 2>> "$QD_AUS/innen.log"
 umgebung
 echo "Auflösung $QD_AUFLOESUNG, Stufe ${GIO_USE_VFS:+L}${GIO_USE_VFS:-G}" >> "$QD_AUS/innen.log"
 # shellcheck disable=SC1090
