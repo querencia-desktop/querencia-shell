@@ -4,7 +4,7 @@
 //! report page), "Info" the about dialog in the form of Querencia
 //! Dokumente: icon, name and version, one sentence, the release of
 //! Querencia Desktop (`/usr/share/querencia/release`, else
-//! `/usr/share/querencia/version`), alpha notice, link, copyright,
+//! `/usr/share/querencia/version`), beta notice, link, copyright,
 //! licence and the MIT notice for the Strata modules (E9). Every dialog
 //! is built afresh when opened and destroyed when closed (QD-076).
 
@@ -162,7 +162,7 @@ pub fn zeigen(parent: &gtk4::Window) {
         body.append(&l);
     }
     body.append(&gtk4::Label::new(Some(&gettext(
-        "Alpha – not released for everyday use.",
+        "Beta – not released for everyday use.",
     ))));
     let link = gtk4::Label::new(None);
     link.set_markup(&format!("<a href=\"{WEBSITE}\">querencialinux.org</a>"));

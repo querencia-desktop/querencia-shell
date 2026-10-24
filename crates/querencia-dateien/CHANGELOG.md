@@ -1,6 +1,47 @@
 # Änderungen – Querencia Dateien (`querencia-dateien`)
 
-## Welle C3 – Reiter, Kompaktansicht, Migration (Tag `dateien/reiter-1`, Version setzt die Zusammenführung)
+## 0.2.0 – 24.10.2026 (Beta, Welle C, QD-168)
+
+Beta des eigenen Dateimanagers: Netzwerk, Miniaturen und Suche, Reiter und
+Kompaktansicht. Querencia Dateien ist ab dieser Fassung das Ordnerprogramm;
+die Desktop-Datei nennt `MimeType=inode/directory;`. Der Info-Dialog nennt die
+Stufe „Beta“.
+
+### Welle C1 – Netzwerk (Tag `dateien/netzwerk-1`)
+
+- Ort „Netzwerk“ (`network:///` über GVfs) in der Seitenleiste und unter
+  Gehe zu → Netzwerk; Doppelklick öffnet, nicht eingehängte Orte werden bei
+  Bedarf eingehängt, Verknüpfungen im Netzwerk öffnen wie Ordner; jedes Gerät
+  steht nur einmal da.
+- „Mit Server verbinden …“ nach Nautilus 2.30 (Datei-Menü und Kontextmenü
+  von „Netzwerk“): SFTP, SMB mit Domäne, FTP, WebDAV und WebDAVS sowie
+  „Eigene Adresse“; Server, Port, Freigabe, Ordner, Benutzer und auf Wunsch
+  ein Lesezeichen.
+- Eigene Kennwortfrage mit Benutzer, Kennwort und Domäne; „Kennwort merken“
+  nur auf Wunsch.
+- Frage nach unbekanntem Serverschlüssel mit lesbarem Fingerabdruck vor dem
+  Kennwort (QD-008), „Trotzdem verbinden“ nur ausdrücklich; keine doppelten
+  Fragen und Meldungen.
+- Eingehängte Netzorte in der Seitenleiste mit ⏏ zum Aushängen; Fehler in
+  deutschen, konkreten Sätzen statt GVfs' bloßem „Verbindung fehlgeschlagen“.
+
+### Welle C2 – Miniaturen und Suche (Tag `dateien/miniaturen-4`)
+
+- Miniaturen (freedesktop-Cache `~/.cache/thumbnails`, derselbe wie in
+  Querencia Files) in Symbol- und Listenansicht; Bilder im Programm, andere
+  Typen über installierte Thumbnailer nur im Sandkasten (bwrap), ohne bwrap
+  keine fremden Thumbnailer.
+- Einstellungen → Vorschau: „Vorschaubilder anzeigen“ Immer / Nur lokale
+  Dateien / Nie und „Nur für Dateien bis“ (Vorgabe 10 MB), wirken sofort;
+  Rahmen um Fotos wie Nautilus 2.30.
+- Namenssuche (Strg+F, Gehe zu → „Suchen …“, Lupe in der Werkzeugleiste):
+  Leiste „Suchen nach:“, sucht ab dem gezeigten Ordner in allen
+  Unterordnern (Groß- und Kleinschreibung egal, jedes Wort), Ergebnisse als
+  Ansicht „Suchergebnisse“ mit Ortsspalte; Esc hält an, ein zweites Esc
+  beendet; „Im Ordner anzeigen“ im Kontextmenü, „Erweiterte Suche …“ öffnet
+  Querencia Dateisuche.
+
+### Welle C3 – Reiter, Kompaktansicht, Migration (Tag `dateien/reiter-1`)
 
 - Reiter wie Nautilus 2.30 (`src/reiter/`): eigenes Ordnermodell, eigene
   Ansicht und eigener Verlauf je Reiter, Leisten folgen dem gezeigten

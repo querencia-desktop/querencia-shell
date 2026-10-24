@@ -16,7 +16,7 @@ Grundlage:  (Soll, Menüs, Abnahme 0.1),
 | | |
 |---|---|
 | Name | de „Querencia Dateien“, en „Files“ (Entscheidung S2) |
-| App-ID, Desktop-ID | `org.querencia.Dateien` (läuft in 0.1 neben Querencia Files, ohne `MimeType=inode/directory`) |
+| App-ID, Desktop-ID | `org.querencia.Dateien` (0.1 lief neben Querencia Files ohne `MimeType=inode/directory`; ab 0.2.0 nennt die Desktop-Datei `MimeType=inode/directory;`, §10) |
 | Binary | `querencia-dateien`, GPL-3.0-or-later |
 | Textdomäne | `querencia-dateien` (msgid englisch, `po/de.po`); dazu die Kataloge `querencia-oberflaeche` und `querencia-dateiarbeit` im selben Ordner |
 | Einstellungen | `~/.config/querencia/dateien.ini` |
@@ -671,3 +671,48 @@ nach, `zurueck` entfernt genau das Angelegte; Live-Kopie unverändert) mit Probe
   (zehn Zeilen), ohne sichtbare Folge; nicht nachgestellt.
 - Die Kompaktansicht nutzt die Schrift der Sitzung in allen Zoomstufen
   (Nautilus verkleinerte sie bei 33 und 50 % um 2 pt).
+
+## 10. 0.2.0 Beta (Zusammenbau, Welle C, QD-168)
+
+Zusammenbau „dateien-020“ auf main `801a016` (C1 `dateien/netzwerk-1`, C2
+`dateien/miniaturen-4`, C3 `dateien/reiter-1`, Runtime-Ablösung Panel
+0.3.2-2/Kürzel 0.2.2-2). Code-Tag `dateien/0.2.0`, Integration
+`dateien/0.2.0-int`.
+
+- **Version und CHANGELOG:** `Cargo.toml` 0.2.0; `CHANGELOG.md` Eintrag
+  `0.2.0 – 24.10.2026 (Beta, Welle C, QD-168)` mit je einem Abschnitt
+  für C1, C2 und C3 (Entscheidung der Status-Session vom 24.10. 00:26).
+- **Ordnerprogramm:** Die Desktop-Datei (`data/org.querencia.Dateien.desktop`
+  aus der `.in`) nennt `MimeType=inode/directory;` (Entscheidung der
+  Startsession, deckt sich mit Packaging C4 Nr. 2). Welches Programm Ordner
+  öffnet, bestimmt weiter `mimeapps.list`; live steht dort seit 23.10.
+  21:05:59 `inode/directory=org.querencia.Dateien.desktop`
+  (`integration/dateien-010/dateien-standard.sh`).
+- **Stufe im Info-Dialog:** „Beta – nicht für den Alltag freigegeben.“
+  (msgid „Beta – not released for everyday use.“); die Version kommt aus
+  `CARGO_PKG_VERSION`.
+- **Integration** `integration/dateien-020/` (Kopie des Arbeitsordners
+  `~/projects/dateien-020-arbeit/integration-020`, ohne Binary und Kataloge):
+  `dateien-020-integrieren.sh pruefen|aktivieren|zurueck` mit
+  `QDA_FREIGABE=ja` ist ein **Update** der installierten 0.1.0 – neue Ablage,
+  Link von der Ablage 0.1.0 auf die Ablage 0.2.0, Starter mit
+  `MimeType=inode/directory;`; `zurueck` stellt Link und Starter von 0.1.0
+  byte-gleich wieder her. Verweigert werden „fehlt“ und fremde Stände. Keine
+  Änderung an `mimeapps.list`, `mimeinfo.cache`, Panel, Desktop, Files; das
+  Skript startet und beendet nichts.
+- **`mimeinfo.cache`:** GLib 2.88 kennt `MimeType=` eines Starters in
+  `~/.local/share/applications` nur über `mimeinfo.cache`
+  (`integration/dateien-020/nachweis/gio-mimeinfo.txt`). Die Vorgabe aus
+  `mimeapps.list` wirkt auch ohne Cache-Eintrag; in „Öffnen mit“-Listen
+  anderer Programme erscheint Dateien für Ordner erst nach
+  `update-desktop-database ~/.local/share/applications` (live listet der
+  Cache für `inode/directory` noch `org.querencia.Files.desktop`). Im Paket
+  erledigt das der dpkg-Trigger.
+- **Files ausmustern** (`integration/files-ausmustern/`, Schritt 7 nach der
+  Beta-Aktivierung, Ergänzung der Startsession 24.10.): `files-ausmustern.sh
+  pruefen|ausmustern|zurueck` mit `QDA_FREIGABE=ja` verschiebt die zwei
+  unsichtbaren Files-Starter und `~/opt/querencia-files/` in eine Sicherung
+  `~/opt/querencia/sicherung-files-<Zeit>/` und holt sie mit `zurueck`
+  zurück; nichts wird gelöscht, Files-Einstellungen bleiben. Vorprüfung:
+  Dateien ist Ordnerprogramm, der Link von Dateien zeigt auf ein Programm.
+  Probe 79 Fälle.
