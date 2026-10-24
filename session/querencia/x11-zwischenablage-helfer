@@ -18,7 +18,7 @@
 # Grenzen (QD-155): Nachgereicht wird nur ein Typ, der Rest geht verloren.
 # Deshalb bleibt die Zwischenablage unangetastet, sobald Dateien darin liegen
 # (text/uri-list, x-special/gnome-copied-files, application/x-kde-cutselection):
-# Dateien in Desktop, Files oder Dateien kopieren oder ausschneiden und danach
+# Dateien in Desktop oder Dateien kopieren oder ausschneiden und danach
 # ein X11-Fenster anklicken darf das Einfügen dort nicht kaputt machen.
 # HTML-Formatierung (Thunderbird) geht beim Nachreichen verloren; der Text
 # bleibt. Die Abfrage läuft alle 0,5 s über xdotool; eine ereignisgesteuerte

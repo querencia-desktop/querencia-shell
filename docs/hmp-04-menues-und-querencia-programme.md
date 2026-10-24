@@ -61,6 +61,11 @@ damit labwc und die Fensterliste die Fenster zuordnen:
 | `org.example.Querencia.Terminal.desktop` | Querencia Terminal | `utilities-terminal` | isolierter Neubau, `…/hmp-04/apps/querencia-terminal/target/debug/querencia-terminal` |
 | `org.querencia.Screenshot.desktop` | Bildschirmfoto aufnehmen | `applets-screenshooter` | `~/projects/querencia-screenshot-dev/target/debug/querencia-screenshot` |
 
+**Nachtrag 24.10.2026:** Die beiden Files-Starter (`io.github.lgse.Strata.desktop`
+und das spätere `org.querencia.Files.desktop`) sind mit `session/grafik-3`
+entfernt; Querencia Files ist ausgemustert, Querencia Dateien bringt
+seinen eigenen Starter mit (`docs/sitzung-grafik.md`, Nachtrag).
+
 Alle mit `Categories=GTK;Utility;…` ohne `System`, also in **Zubehör** (wie
 gnome-terminal und gnome-screenshot in Ubuntu 10.04). Die Pfade sind
 absolute Entwicklungspfade dieser VM, wie `session/querencia.desktop`.

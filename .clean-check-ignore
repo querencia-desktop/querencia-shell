@@ -178,3 +178,8 @@
 #      integration/panel-032-2 und integration/kuerzel-022-2 (S004 in den
 #      Skripten, H001 für nachweis/orte/*/geoeffnet.log); security 0. Sie
 #      fallen unter die Ausnahmen oben.
+# session/grafik-3 (24.10.2026, Worker runtime-abloesung): neu gegenüber
+#      main 2280514 nur S004 ×3 in integration/session-grafik-3 (deutsche
+#      Kommentare und Meldungen mit „“, – und →, Muster session-grafik) und
+#      P002 nur, weil die Basis ohne .git geprüft wurde; security 0
+#     .
