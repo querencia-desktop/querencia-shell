@@ -6,7 +6,9 @@
 #
 # Umgebung: LAUF_GROESSE (1024x768), LAUF_DUNKEL (0|1), LAUF_SPRACHE (de|en),
 #   LAUF_BIN (Programm, Vorgabe target/debug/querencia-dateien des Worktrees),
-#   LAUF_FILES_TOML (Files-settings.toml für M6), LAUF_THEMA (Ordner des
+#   LAUF_FILES_TOML (Files-settings.toml für M6), LAUF_FILES_ORT (strata:
+#   die Datei liegt wie bei Files bis Alpha 2.1 in ~/.config/strata/ statt
+#   ~/.config/querencia-files/), LAUF_THEMA (Ordner des
 #   GTK-Themas, Vorgabe ~/.local/share/themes/Querencia-Klassisch),
 #   LAUF_STUFE (L|G, Vorgabe L: G startet gvfsd im Wegwerf-Bus, trash:///),
 #   LAUF_ATTRAPPEN (Laufwerks-Attrappen des Prüfrahmens, z. B.
@@ -59,6 +61,13 @@ if [ -n "${LAUF_FILES_TOML:-}" ]; then
   TOML=(--files-toml "$LAUF_FILES_TOML"); M6=(--setenv "LAUF_M6=$LAUF_FILES_TOML" --lesen "$LAUF_FILES_TOML")
 fi
 python3 -I "$HIER/testbaum.py" "$PROFIL/heim" "$PROFIL/config" "$PROFIL/data" "${TOML[@]}" > "$OUT/testbaum.log"
+case ${LAUF_FILES_ORT:-querencia-files} in
+querencia-files) ;;
+strata)
+  [ -d "$PROFIL/config/querencia-files" ] && mv "$PROFIL/config/querencia-files" "$PROFIL/config/strata"
+  M6+=(--setenv "LAUF_M6_ORT=strata") ;;
+*) echo "lauf: LAUF_FILES_ORT nur querencia-files oder strata" >&2; exit 1 ;;
+esac
 case $SPRACHE in de) LOC=de_DE.UTF-8; LANGU=de ;; *) LOC=en_US.UTF-8; LANGU=en ;; esac
 ATT=()
 for art in ${LAUF_ATTRAPPEN:-}; do

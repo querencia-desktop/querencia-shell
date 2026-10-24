@@ -251,7 +251,8 @@ Liste 50 %, Name aufsteigend, Ordner zuerst, verborgene aus, Nachfrage
 beim Leeren und Löschen, „Löschen“ ausgeblendet). Jede Änderung wird
 sofort atomar geschrieben und erreicht alle Fenster
 (`Konfig::bei_aenderung`). Der erste Start ohne `dateien.ini` übernimmt
-einmal sechs Werte aus `~/.config/querencia-files/settings.toml` (M6:
+einmal sechs Werte aus `~/.config/querencia-files/settings.toml`, ab 0.2.1
+sonst aus `~/.config/strata/settings.toml` (§10.1; M6:
 `show_hidden`, `browser_mode` mit `columns` → Liste, `sort_key`,
 `folders_first`, beide `*_folder_clicks` = 1 → Einfacher Klick,
 `sidebar_expanded`), Marke `AusFiles=1`; die Files-Datei wird nur
@@ -627,7 +628,7 @@ gekürzt. Der breiteste Name wird an den 48 längsten Namen gemessen
 |---|---|
 | M1 Lesezeichen | unverändert `~/.config/gtk-3.0/bookmarks`, dieselbe Datei wie Files; geprüft (Szenario `migration`) |
 | M3 Panel, Desktop | **keine Änderung nötig:** Panel `places_menu.rs` nimmt für Ordner zuerst die GIO-Vorgabe (live seit 23.10. 21:05:59 `inode/directory=org.querencia.Dateien.desktop`), die eigene Liste `QUERENCIA_FILES_IDS` greift nur ohne Vorgabe; Desktop 0.3.0 hat Dateien in `querencia_dateiarbeit::oeffnen::FILE_MANAGERS` vorn. Die Ergänzung der Panel-Liste (Dateien vor Files, Tests) liegt als Patch für einen eigenen Folgezug bereit (Bericht §3). `window_icons.rs` braucht keinen Eintrag in `RENAMED` (App-ID = Desktop-ID) |
-| M6 Konfiguration | einmal beim ersten Start aus `~/.config/querencia-files/settings.toml`: `show_hidden`, `browser_mode` (`icons`/`grid` → Symbole, `list`/`explorer` → Liste, `columns` und Unbekanntes → Liste), `sort_key`, `folders_first`, `sidebar_expanded`, Klicks; Vermerk `[Migration] AusFiles=1`, die Files-Datei wird nur gelesen. **Klicks wie Files QF-0t** (`ui/preferences.rs`): die TOML-Schlüssel heißen nach den Ansichten des alten Strata – Symbole `grid_*_clicks`, Liste `explorer_*_clicks`, Spalten `list_*_clicks`; „Einfacher Klick“ nur, wenn im Modus Ordner **und** Dateien mit einem Klick öffnen. Der erste Start ohne Files-Datei schreibt `dateien.ini` sofort, eine später auftauchende `settings.toml` wird nicht übernommen. `tabs.toml` nie |
+| M6 Konfiguration | einmal beim ersten Start aus `~/.config/querencia-files/settings.toml` (ab 0.2.1 sonst `~/.config/strata/settings.toml`, §10): `show_hidden`, `browser_mode` (`icons`/`grid` → Symbole, `list`/`explorer` → Liste, `columns` und Unbekanntes → Liste), `sort_key`, `folders_first`, `sidebar_expanded`, Klicks; Vermerk `[Migration] AusFiles=1`, die Files-Datei wird nur gelesen. **Klicks wie Files QF-0t** (`ui/preferences.rs`): die TOML-Schlüssel heißen nach den Ansichten des alten Strata – Symbole `grid_*_clicks`, Liste `explorer_*_clicks`, Spalten `list_*_clicks`; „Einfacher Klick“ nur, wenn im Modus Ordner **und** Dateien mit einem Klick öffnen. Der erste Start ohne Files-Datei schreibt `dateien.ini` sofort, eine später auftauchende `settings.toml` wird nicht übernommen. `tabs.toml` nie |
 | M8 Texte | Kürzelübersicht und Handbuch nennen noch Querencia Files: Textliste für C4 in  §6 |
 | M2, M4, M5, M7, M9 | Paketierung (C4) bzw. Ansicht je Ordner (später) |
 
@@ -716,3 +717,22 @@ Zusammenbau „dateien-020“ auf main `801a016` (C1 `dateien/netzwerk-1`, C2
   zurück; nichts wird gelöscht, Files-Einstellungen bleiben. Vorprüfung:
   Dateien ist Ordnerprogramm, der Link von Dateien zeigt auf ein Programm.
   Probe 79 Fälle.
+
+### 10.1 0.2.1 Pflegestand (Weg-B-Befund P-1)
+
+- **M6 mit zwei Pfaden:** `konfig::files_pfade()` liefert
+  `~/.config/querencia-files/settings.toml` und danach
+  `~/.config/strata/settings.toml`; `Konfig::laden_von` nimmt die erste
+  lesbare Datei. Files bis Alpha 2.1 (Paket 0.1.0~alpha7) schreibt nach
+  `strata/`, Files QF-0t nach `querencia-files/` und lässt `strata` als
+  Verweis darauf. Format und Schlüssel sind gleich (QF-0t
+  `ui/preferences.rs`). Übernommen wird weiter nur einmal, solange
+  `dateien.ini` fehlt.
+- **Prüfung:** Test `migration_m6_reads_querencia_files_first_then_strata`;
+  `werkzeug/pruefung/lauf.sh` mit `LAUF_FILES_ORT=strata` legt die
+  Files-Datei nach `~/.config/strata/`, `szenarien/migration.sh` prüft den
+  Pfad im Protokoll.
+- **Grenze:** Wer Dateien 0.2.0 schon gestartet hat, hat eine `dateien.ini`
+  ohne Übernahme; 0.2.1 holt sie nicht nach.
+- **Integration** `integration/dateien-021/` (Update 0.2.0 → 0.2.1,
+  Rückfall 0.2.0, Muster `integration/dateien-020/`).

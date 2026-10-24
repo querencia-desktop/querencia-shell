@@ -1,5 +1,16 @@
 # Änderungen – Querencia Dateien (`querencia-dateien`)
 
+## 0.2.1 – 24.10.2026 (Pflegestand, Weg-B-Befund P-1)
+
+- Behoben: Beim ersten Start übernahm Dateien die Einstellungen von Querencia
+  Files nur aus `~/.config/querencia-files/settings.toml`. Files bis Alpha 2.1
+  speichert sie unter `~/.config/strata/settings.toml`; nach einem Upgrade von
+  Alpha 2.1 kamen Ansicht, verborgene Dateien, Sortierung, Ordner zuerst,
+  Klickverhalten und Seitenleiste deshalb nicht mit. Jetzt liest der erste
+  Start `querencia-files/` und, wenn dort nichts liegt, `strata/`. Wer
+  Dateien schon gestartet hat (`~/.config/querencia/dateien.ini` besteht),
+  behält seine Einstellungen; übernommen wird weiter nur einmal.
+
 ## 0.2.0 – 24.10.2026 (Beta, Welle C, QD-168)
 
 Beta des eigenen Dateimanagers: Netzwerk, Miniaturen und Suche, Reiter und
