@@ -643,8 +643,8 @@ msgid "Querencia Desktop {release}"
 msgstr "Querencia Desktop {release}"
 
 #: src/info.rs:164
-msgid "Alpha – not released for everyday use."
-msgstr "Alpha – nicht für den Alltag freigegeben."
+msgid "Beta – not released for everyday use."
+msgstr "Beta – nicht für den Alltag freigegeben."
 
 #: src/info.rs:179
 msgid "License: GPL-3.0-or-later"
