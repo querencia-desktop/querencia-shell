@@ -25,7 +25,7 @@ labwc. Alpha software; documentation is in German.
 - **Arbeitsfläche** (`querencia-desktop`): Hintergrund, Symbole für den
   Ordner `Schreibtisch`, Laufwerke und Papierkorb, Kontextmenü, Umbenennen,
   Raster und Mehrfachauswahl.
-- **Dateien** (`querencia-dateien`, Beta): klassischer Dateimanager nach dem
+- **Dateien** (`querencia-dateien`, Beta, seit Alpha 3 der Dateimanager): klassischer Dateimanager nach dem
   Vorbild von Nautilus 2.30 (Reiter, kompakte Ansicht, Miniaturen, Suche,
   Netzwerkorte); dazu die Bibliotheken `querencia-dateiarbeit`
   (Dateioperationen, Laufwerke, Papierkorb) und `querencia-oberflaeche`
@@ -51,7 +51,7 @@ Anwendungskennungen (App-IDs): `org.querencia.Panel` (bis Panel 0.2.3
 
 | | |
 |---|---|
-| Version | Panel 0.3.2 (Tag `panel/0.3.2-2`), Arbeitsfläche 0.3.0 (Tag `desktop/0.3.0`), Dateien 0.1.0 Beta (Tag `dateien/0.1.0-2`), Dateiarbeit 0.1.1 (Tag `dateiarbeit/0.1.1`), Kürzel 0.2.2 (Tag `kuerzel/0.2.2-2`) |
+| Version | Panel 0.3.2 (Tag `panel/0.3.2-2`), Arbeitsfläche 0.3.0 (Tag `desktop/0.3.0`), Dateien 0.2.0 Beta (Tag `dateien/0.2.0`; löst Querencia Files ab), Dateiarbeit 0.1.1 (Tag `dateiarbeit/0.1.1`), Kürzel 0.2.2 (Tag `kuerzel/0.2.2-2`) |
 | Letzte Prüfung | Stand der Quelle vom 24.10.2026: fmt, Clippy und Unit-Tests der Crates; isolierte GUI-Prüfungen je Baustein mit den Werkzeugen unter `tools/` |
 | Bekannte Lücken | `session/` und `tools/` enthalten Pfade der Entwicklungsmaschine (neutral `/home/user`) und sind nicht allgemein einsetzbar |
 | Getestet auf | Ubuntu 26.04, labwc 0.9.8, GTK 4.22, gtk4-layer-shell 1.3, Rust 1.93 |
