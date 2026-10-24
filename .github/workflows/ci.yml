@@ -23,6 +23,9 @@
 #    die Tests aufrufen, gehören in ENTWICKLUNGSPAKETE, ebenso Bibliotheken, die
 #    ein Programm erst zur Laufzeit per dlopen lädt (Querencia Sitzung:
 #    libpolkit-agent-1-0).
+#  - Das Image hat nur C.UTF-8; Tests, die unter `en_US.UTF-8` sortieren oder
+#    übersetzen (Querencia Shell: Anwendungskatalog des Panels), brauchen
+#    `locales-all` in ENTWICKLUNGSPAKETE.
 #  - Der Container darf keine Benutzer-Namensräume anlegen (`unshare -U`:
 #    „Operation not permitted“). Tests, die welche brauchen, schaltet das Repo
 #    über eine eigene Variable im Block `env` ab (Querencia Shell:
@@ -59,7 +62,7 @@ env:
   # (GH-2, 19.10.2026); im Container ubuntu:26.04 nicht getestet. python3 braucht der
   # Schritt „Lizenzen der Abhängigkeiten“ (fehlt im Container sonst):
   ENTWICKLUNGSPAKETE: >-
-    libgtk-4-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev libgraphene-1.0-dev libwayland-dev libgtk4-layer-shell-dev libxkbcommon-dev
+    libgtk-4-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev libgraphene-1.0-dev libwayland-dev libgtk4-layer-shell-dev libxkbcommon-dev locales-all
   # Keine Benutzer-Namensräume im Container: tests/namensraum.rs von
   # querencia-dateiarbeit meldet dann „NICHT GEMESSEN“ statt zu scheitern
   # (docs/dateiarbeit.md §7). Gemessen wird der Test bei der Entwicklung.
