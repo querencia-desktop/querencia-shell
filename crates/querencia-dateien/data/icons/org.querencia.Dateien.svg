@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title description">
+  <title id="title">Querencia Dateien</title>
+  <desc id="description">Dateimanager-Fenster nach Nautilus 2.30: grauer Rahmen wie beim Terminal, helle Fläche, links die Seitenleiste „Orte“ mit einem Eintrag in Querencia-Orange (#F07746), rechts ein Ordner wie im Symbolthema, flächig.</desc>
+  <!-- Fenster -->
+  <rect x="4" y="7" width="56" height="50" rx="4" fill="#5a5a5a"/>
+  <!-- Titelleiste -->
+  <rect x="9" y="10" width="20" height="3" rx="1.5" fill="#9a9a9a"/>
+  <!-- Ansicht -->
+  <rect x="9" y="16" width="46" height="36" rx="1.5" fill="#f4f3f1"/>
+  <!-- Seitenleiste mit Trennlinie und drei Orten, der erste gewählt -->
+  <path d="M10.5 16 H22 V52 H10.5 A1.5 1.5 0 0 1 9 50.5 V17.5 A1.5 1.5 0 0 1 10.5 16 Z" fill="#c9c6c2"/>
+  <rect x="22" y="16" width="2" height="36" fill="#5a5a5a"/>
+  <rect x="12" y="20" width="7" height="3" rx="1.5" fill="#F07746"/>
+  <rect x="12" y="26" width="7" height="3" rx="1.5" fill="#9a9a9a"/>
+  <rect x="12" y="32" width="7" height="3" rx="1.5" fill="#9a9a9a"/>
+  <!-- Ordner: Rückwand mit Reiter, Vorderseite, Glanzkante -->
+  <path d="M26.5 46 V24 A2 2 0 0 1 28.5 22 H35 L38 25 H50.5 A2 2 0 0 1 52.5 27 V46 Z" fill="#c9602f" stroke="#5a5a5a" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="26.5" y="29" width="26" height="19" rx="2" fill="#F07746" stroke="#5a5a5a" stroke-width="3"/>
+  <rect x="29" y="31.5" width="21" height="2" fill="#f59a72"/>
+</svg>

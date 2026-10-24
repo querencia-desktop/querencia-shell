@@ -6,8 +6,10 @@
 //!   [`ENTPRELLEN_MS`] (an editor or a settings program may write in
 //!   several steps), then the file is read once;
 //! - the D-Bus method `org.querencia.Panel.NeuLaden` ([`INTERFACE`]) on the
-//!   panel's bus name and object path (`org.example.Querencia.Panel`,
-//!   `/org/example/Querencia/Panel`), which reads at once and answers
+//!   panel's bus name and object path (`org.querencia.Panel`,
+//!   `/org/querencia/Panel`; until 0.2.3 `org.example.Querencia.Panel`,
+//!   `/org/example/Querencia/Panel`, still offered, see
+//!   [`ALTER_BUSNAME`]), which reads at once and answers
 //!   `(b geladen, s meldung)`.
 //!
 //! Reading again gives what a restart would show ([`Editor::load`]): no
@@ -42,6 +44,12 @@ pub const INTERFACE: &str = "org.querencia.Panel";
 pub const METHOD: &str = "NeuLaden";
 /// G2-AL: minimizes or restores the windows of the current workspace.
 pub const ARBEITSFLAECHE: &str = "ArbeitsflaecheUmschalten";
+/// Bus name and object path of the panel until 0.2.3 (QD-059). The panel
+/// still owns the name and offers [`INTERFACE`] there as well, so callers
+/// written for it keep working: Super+D in the labwc default of Alpha 2 and
+/// 2.1 and in users' copies of it (`~/.config/querencia/labwc/rc.xml`).
+pub const ALTER_BUSNAME: &str = "org.example.Querencia.Panel";
+pub const ALTER_PFAD: &str = "/org/example/Querencia/Panel";
 /// Quiet time after the last change of `panel.ini` before it is read.
 pub const ENTPRELLEN_MS: u32 = 250;
 
@@ -212,7 +220,8 @@ fn watch(panels: &Shared, path: &std::path::Path) {
 }
 
 /// Offers [`METHOD`] and [`ARBEITSFLAECHE`] on the application's D-Bus
-/// connection.
+/// connection, at the application's object path and at [`ALTER_PFAD`]
+/// under [`ALTER_BUSNAME`].
 fn export(app: &Application, panels: &Shared) {
     let (Some(connection), Some(object_path)) = (app.dbus_connection(), app.dbus_object_path())
     else {
@@ -227,42 +236,54 @@ fn export(app: &Application, panels: &Shared) {
         }
     };
     let Some(info) = info else { return };
-    let weak = Rc::downgrade(panels);
-    let registered = connection
-        .register_object(&object_path, &info)
-        .method_call(move |_, sender, _, _, method, _, invocation| {
-            if method == ARBEITSFLAECHE {
+    for path in [object_path.as_str(), ALTER_PFAD] {
+        let weak = Rc::downgrade(panels);
+        let registered = connection
+            .register_object(path, &info)
+            .method_call(move |_, sender, _, _, method, _, invocation| {
+                if method == ARBEITSFLAECHE {
+                    let why = format!("D-Bus {}", sender.unwrap_or("?"));
+                    let (done, message) = crate::window_list::arbeitsflaeche_umschalten(&why);
+                    eprintln!("querencia-panel: Arbeitsfläche anzeigen: {message}");
+                    invocation.return_value(Some(&(done, message).to_variant()));
+                    return;
+                }
+                let Some(panels) = weak.upgrade().filter(|_| method == METHOD) else {
+                    invocation.return_error(
+                        gio::DBusError::UnknownMethod,
+                        &format!("{method} gibt es nicht"),
+                    );
+                    return;
+                };
+                if let Some(pending) = panels.borrow_mut().pending.take() {
+                    pending.remove();
+                }
                 let why = format!("D-Bus {}", sender.unwrap_or("?"));
-                let (done, message) = crate::window_list::arbeitsflaeche_umschalten(&why);
-                eprintln!("querencia-panel: Arbeitsfläche anzeigen: {message}");
-                invocation.return_value(Some(&(done, message).to_variant()));
-                return;
-            }
-            let Some(panels) = weak.upgrade().filter(|_| method == METHOD) else {
-                invocation.return_error(
-                    gio::DBusError::UnknownMethod,
-                    &format!("{method} gibt es nicht"),
+                let (loaded, message) = reload(&panels, &why);
+                invocation.return_value(Some(&(loaded, message).to_variant()));
+            })
+            .build();
+        match registered {
+            Ok(_) => {
+                eprintln!("querencia-panel: Neuladen: D-Bus {INTERFACE}.{METHOD} auf {path}");
+                eprintln!(
+                    "querencia-panel: Arbeitsfläche anzeigen: D-Bus {INTERFACE}.{ARBEITSFLAECHE} \
+                     auf {path}"
                 );
-                return;
-            };
-            if let Some(pending) = panels.borrow_mut().pending.take() {
-                pending.remove();
             }
-            let why = format!("D-Bus {}", sender.unwrap_or("?"));
-            let (loaded, message) = reload(&panels, &why);
-            invocation.return_value(Some(&(loaded, message).to_variant()));
-        })
-        .build();
-    match registered {
-        Ok(_) => {
-            eprintln!("querencia-panel: Neuladen: D-Bus {INTERFACE}.{METHOD} auf {object_path}");
-            eprintln!(
-                "querencia-panel: Arbeitsfläche anzeigen: D-Bus {INTERFACE}.{ARBEITSFLAECHE} \
-                 auf {object_path}"
-            );
+            Err(err) => {
+                eprintln!("querencia-panel: Neuladen: D-Bus auf {path} nicht angeboten: {err}")
+            }
         }
-        Err(err) => eprintln!("querencia-panel: Neuladen: D-Bus nicht angeboten: {err}"),
     }
+    // Queued while an older panel still holds the name (live exchange).
+    gio::bus_own_name_on_connection(
+        &connection,
+        ALTER_BUSNAME,
+        gio::BusNameOwnerFlags::NONE,
+        |_, name| eprintln!("querencia-panel: alter Busname {name} übernommen"),
+        |_, name| eprintln!("querencia-panel: alter Busname {name} nicht verfügbar"),
+    );
 }
 
 /// Reads `panel.ini` again and shows its layout; `why` names the trigger

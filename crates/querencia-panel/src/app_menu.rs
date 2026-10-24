@@ -15,12 +15,12 @@ use gtk4::prelude::*;
 use gtk4::{Box as GtkBox, Image, Label, MenuButton, Orientation, Popover, gdk, gio, glib};
 
 use crate::apps::{AppEntry, Catalog};
+use crate::i18n::gettext;
 use crate::{classic_menu, logo};
 
 const ACTION_GROUP: &str = "menu";
 const LAUNCH: &str = "launch";
 const NAME: &str = "Anwendungsmenü";
-const NO_APPLICATIONS: &str = "Keine Anwendungen";
 
 /// Menu button with the installed applications, kept up to date, on a
 /// panel `panel_height` pixels high (for the size of the logo).
@@ -28,7 +28,12 @@ pub fn button(panel_height: i32) -> MenuButton {
     let menu = gio::Menu::new();
     rebuild(&menu);
 
-    let button = menu_button("Anwendungen", Some(logo::image(panel_height)), &menu);
+    // TRANSLATORS: the first main menu of the top panel, as in GNOME 2
+    let button = menu_button(
+        &gettext("Applications"),
+        Some(logo::image(panel_height)),
+        &menu,
+    );
     add_launch_action(&button, ACTION_GROUP);
     follow_changes(&button, &menu, NAME, rebuild);
     button
@@ -214,11 +219,11 @@ fn fill(menu: &gio::Menu, catalog: &Catalog) {
             submenu.append_item(&launch_item(entry, ACTION_GROUP));
         }
         if submenu.n_items() > 0 {
-            menu.append_item(&submenu_item(group.label(), group.icon(), &submenu));
+            menu.append_item(&submenu_item(&group.label(), group.icon(), &submenu));
         }
     }
     if menu.n_items() == 0 {
-        menu.append(Some(NO_APPLICATIONS), None);
+        menu.append(Some(&gettext("No Applications")), None);
     }
 }
 
@@ -348,7 +353,7 @@ pub(crate) mod tests {
             groups,
             [
                 (
-                    "Zubehör".to_string(),
+                    "Accessories".to_string(),
                     Some("applications-accessories".to_string())
                 ),
                 (
@@ -391,17 +396,14 @@ pub(crate) mod tests {
             structure(&model(&catalog)),
             [
                 group(
-                    "Zubehör",
+                    "Accessories",
                     &[
                         "Bearbeiter -> menu.launch(b.desktop)",
                         "Ölwechsel -> menu.launch(o.desktop)"
                     ]
                 ),
-                group(
-                    "Systemwerkzeuge",
-                    &["Systemmonitor -> menu.launch(s.desktop)"]
-                ),
-                group("Sonstige", &["Zeug -> menu.launch(z.desktop)"]),
+                group("System Tools", &["Systemmonitor -> menu.launch(s.desktop)"]),
+                group("Other", &["Zeug -> menu.launch(z.desktop)"]),
             ]
         );
     }
@@ -416,7 +418,7 @@ pub(crate) mod tests {
         for catalog in [Catalog::default(), only_settings] {
             let menu = model(&catalog);
             assert_eq!(menu.n_items(), 1);
-            assert_eq!(label(menu.upcast_ref(), 0), NO_APPLICATIONS);
+            assert_eq!(label(menu.upcast_ref(), 0), "No Applications");
             assert!(menu.item_attribute_value(0, "action", None).is_none());
             assert!(menu.item_link(0, "submenu").is_none());
         }
@@ -459,19 +461,19 @@ pub(crate) mod tests {
             structure(&menu),
             [
                 group(
-                    "Zubehör",
+                    "Accessories",
                     &[
                         "Abakus -> menu.launch(a.desktop)",
                         "Addierer -> menu.launch(r.desktop)"
                     ]
                 ),
-                group("Entwicklung", &["Text -> menu.launch(t.desktop)"]),
-                group("Sonstige", &["Neu -> menu.launch(n.desktop)"]),
+                group("Programming", &["Text -> menu.launch(t.desktop)"]),
+                group("Other", &["Neu -> menu.launch(n.desktop)"]),
             ]
         );
 
         fill(&menu, &Catalog::default());
-        assert_eq!(label(menu.upcast_ref(), 0), NO_APPLICATIONS);
+        assert_eq!(label(menu.upcast_ref(), 0), "No Applications");
         assert_eq!(menu.n_items(), 1);
         fill(&menu, &before);
         assert_eq!(structure(&menu), structure(&model(&before)));

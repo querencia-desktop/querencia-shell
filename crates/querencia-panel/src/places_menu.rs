@@ -8,9 +8,10 @@
 //! `inode/directory` nothing could be opened, so the menu shows only a hint
 //! instead. Which application opens directories is GIO's choice; only if
 //! GIO has none, an installed entry declaring `inode/directory` is used,
-//! Querencia Files first ([`directory_handler`], HMP-04). The menu is rebuilt when applications change (a file manager is
-//! installed or removed), like the applications menu; `user-dirs.dirs` is
-//! not watched.
+//! Querencia Dateien first, then Querencia Files ([`directory_handler`],
+//! HMP-04, migration M3). The menu is rebuilt when applications change (a
+//! file manager is installed or removed), like the applications menu;
+//! `user-dirs.dirs` is not watched.
 
 use std::path::{Path, PathBuf};
 
@@ -18,6 +19,7 @@ use gtk4::prelude::*;
 use gtk4::{MenuButton, gdk, gio, glib};
 
 use crate::app_menu;
+use crate::i18n::gettext;
 
 const ACTION_GROUP: &str = "places";
 const OPEN: &str = "open";
@@ -37,6 +39,24 @@ const SPECIAL: [(&str, glib::UserDirectory); 6] = [
     ("Downloads", glib::UserDirectory::Downloads),
 ];
 
+/// The shown (translated) name of a place; the German GNOME 2 labels above
+/// stay the internal keys of the places (icons, log, tests).
+fn shown(label: &str) -> String {
+    match label {
+        "Persönlicher Ordner" => gettext("Home Folder"),
+        "Arbeitsfläche" => gettext("Desktop"),
+        "Dokumente" => gettext("Documents"),
+        "Musik" => gettext("Music"),
+        "Bilder" => gettext("Pictures"),
+        "Videos" => gettext("Videos"),
+        "Downloads" => gettext("Downloads"),
+        "Computer" => gettext("Computer"),
+        "Netzwerk" => gettext("Network"),
+        "Papierkorb" => gettext("Trash"),
+        other => other.to_string(),
+    }
+}
+
 /// GNOME 2 icon of a place, by its label (all in GNOME Human).
 fn place_icon(label: &str) -> &'static str {
     match label {
@@ -54,10 +74,33 @@ fn place_icon(label: &str) -> &'static str {
     }
 }
 
-/// Name and desktop ID of the Querencia file manager (desktop entry in
-/// `session/querencia/applications`; the ID is its GApplication ID).
+/// Names and desktop IDs of the Querencia file managers, preferred first:
+/// Querencia Dateien (Welle C, migration M3), then Querencia Files with the
+/// ID from QF-0t and the old one, which stays as a hidden bridge for a
+/// while (QD-059); the names when no ID matches. Dateien's English name
+/// „Files“ is GNOME's too, so only the German one counts.
+const QUERENCIA_DATEIEN: &str = "Querencia Dateien";
 const QUERENCIA_FILES: &str = "Querencia Files";
-const QUERENCIA_FILES_ID: &str = "io.github.lgse.Strata.desktop";
+const QUERENCIA_FILES_IDS: [&str; 3] = [
+    "org.querencia.Dateien.desktop",
+    "org.querencia.Files.desktop",
+    "io.github.lgse.Strata.desktop",
+];
+const QUERENCIA_FILES_NAMES: [&str; 2] = [QUERENCIA_DATEIEN, QUERENCIA_FILES];
+
+/// How well an application with desktop ID `id` and `name` is a Querencia
+/// file manager: 0 to 2 by ID in the order of [`QUERENCIA_FILES_IDS`], then
+/// 3 and 4 by name ([`QUERENCIA_FILES_NAMES`]); `None` for any other
+/// application.
+fn files_rank(id: Option<&str>, name: &str) -> Option<usize> {
+    id.and_then(|id| QUERENCIA_FILES_IDS.iter().position(|f| *f == id))
+        .or_else(|| {
+            QUERENCIA_FILES_NAMES
+                .iter()
+                .position(|n| *n == name)
+                .map(|i| QUERENCIA_FILES_IDS.len() + i)
+        })
+}
 const DIRECTORY: &str = "inode/directory";
 
 /// The application that opens directories, and whether GIO chose it.
@@ -70,8 +113,9 @@ struct DirectoryHandler {
 /// a default the user set in `mimeapps.list`, or else an application GIO
 /// associates with `inode/directory` (through `mimeinfo.cache`). Only if GIO
 /// has none, an installed application whose desktop entry itself declares
-/// `inode/directory` (`MimeType`) is taken, Querencia Files first: the entry
-/// may be installed without its `mimeinfo.cache` having been updated.
+/// `inode/directory` (`MimeType`) is taken, Querencia Dateien first, then
+/// Querencia Files: the entry may be installed without its
+/// `mimeinfo.cache` having been updated.
 fn directory_handler(
     gio_choice: Option<gio::AppInfo>,
     installed: Vec<gio::AppInfo>,
@@ -83,13 +127,12 @@ fn directory_handler(
         });
     }
     let declares = |app: &gio::AppInfo| app.supported_types().iter().any(|t| t == DIRECTORY);
-    let is_files = |app: &gio::AppInfo| {
-        app.id().is_some_and(|id| id == QUERENCIA_FILES_ID) || app.name() == QUERENCIA_FILES
-    };
     let candidates: Vec<gio::AppInfo> = installed.into_iter().filter(declares).collect();
     let app = candidates
         .iter()
-        .find(|app| is_files(app))
+        .filter_map(|app| files_rank(app.id().as_deref(), &app.name()).map(|rank| (rank, app)))
+        .min_by_key(|(rank, _)| *rank)
+        .map(|(_, app)| app)
         .or_else(|| candidates.first())
         .cloned()?;
     Some(DirectoryHandler {
@@ -118,7 +161,8 @@ pub fn button() -> MenuButton {
     let menu = gio::Menu::new();
     rebuild(&menu);
 
-    let button = app_menu::menu_button("Orte", None, &menu);
+    // TRANSLATORS: the second main menu of the top panel, as in GNOME 2
+    let button = app_menu::menu_button(&gettext("Places"), None, &menu);
 
     let open = gio::SimpleAction::new(OPEN, Some(glib::VariantTy::STRING));
     open.connect_activate(|_, target| {
@@ -215,7 +259,7 @@ fn locations(schemes: &[String]) -> Vec<(&'static str, &'static str)> {
 fn fill(menu: &gio::Menu, places: &[(&str, PathBuf)], locations: &[(&str, &str)], can_open: bool) {
     menu.remove_all();
     if !can_open {
-        menu.append(Some(NO_FILE_MANAGER), None);
+        menu.append(Some(&gettext("No file manager installed")), None);
         return;
     }
     let personal = gio::Menu::new();
@@ -233,7 +277,7 @@ fn fill(menu: &gio::Menu, places: &[(&str, PathBuf)], locations: &[(&str, &str)]
 }
 
 fn open_item(label: &str, uri: &str) -> gio::MenuItem {
-    let item = gio::MenuItem::new(Some(label), None);
+    let item = gio::MenuItem::new(Some(&shown(label)), None);
     item.set_action_and_target_value(
         Some(&format!("{ACTION_GROUP}.{OPEN}")),
         Some(&uri.to_variant()),
@@ -390,25 +434,25 @@ mod tests {
     #[test]
     fn menu_has_a_personal_and_a_location_section() {
         let home = scratch("menu");
-        std::fs::create_dir(home.join("Musik")).unwrap();
+        std::fs::create_dir(home.join("Music")).unwrap();
         let personal = places(&home, |dir| {
-            (dir == glib::UserDirectory::Music).then(|| home.join("Musik"))
+            (dir == glib::UserDirectory::Music).then(|| home.join("Music"))
         });
         let menu = gio::Menu::new();
         let schemes = ["file", "network", "trash"].map(String::from);
         fill(&menu, &personal, &locations(&schemes), true);
         let home_uri = gio::File::for_path(&home).uri();
-        let music_uri = gio::File::for_path(home.join("Musik")).uri();
+        let music_uri = gio::File::for_path(home.join("Music")).uri();
         assert_eq!(
             sections(&menu),
             [
                 vec![
-                    format!("Persönlicher Ordner -> places.open({home_uri})"),
-                    format!("Musik -> places.open({music_uri})"),
+                    format!("Home Folder -> places.open({home_uri})"),
+                    format!("Music -> places.open({music_uri})"),
                 ],
                 vec![
-                    "Netzwerk -> places.open(network:///)".to_string(),
-                    "Papierkorb -> places.open(trash:///)".to_string(),
+                    "Network -> places.open(network:///)".to_string(),
+                    "Trash -> places.open(trash:///)".to_string(),
                 ],
             ]
         );
@@ -515,6 +559,13 @@ mod tests {
             )),
             Some((QUERENCIA_FILES.to_string(), false))
         );
+        // Querencia Dateien before Querencia Files (M3)
+        let dateien = app(QUERENCIA_DATEIEN, Some("inode/directory"));
+        let files = app(QUERENCIA_FILES, Some("inode/directory"));
+        assert_eq!(
+            chosen(directory_handler(None, vec![files, other.clone(), dateien])),
+            Some((QUERENCIA_DATEIEN.to_string(), false))
+        );
         // without Querencia Files: another application declaring directories
         assert_eq!(
             chosen(directory_handler(None, vec![editor.clone(), other])),
@@ -525,6 +576,41 @@ mod tests {
             chosen(directory_handler(None, vec![editor, app("Ohne", None)])),
             None
         );
+    }
+
+    /// M3 and QD-059: Querencia Dateien first, then the new desktop ID of
+    /// Querencia Files, the old one (hidden bridge), then the names; other
+    /// applications not at all.
+    #[test]
+    fn querencia_files_by_new_id_then_old_id_then_name() {
+        assert_eq!(
+            files_rank(Some("org.querencia.Dateien.desktop"), "Files"),
+            Some(0)
+        );
+        assert_eq!(
+            files_rank(Some("org.querencia.Files.desktop"), "Querencia Files"),
+            Some(1)
+        );
+        assert_eq!(
+            files_rank(Some("io.github.lgse.Strata.desktop"), "Querencia Files"),
+            Some(2)
+        );
+        assert_eq!(
+            files_rank(Some("io.github.lgse.Strata.desktop"), "Strata"),
+            Some(2)
+        );
+        assert_eq!(files_rank(None, QUERENCIA_DATEIEN), Some(3));
+        assert_eq!(files_rank(None, QUERENCIA_FILES), Some(4));
+        // GNOME's Files (Nautilus) has Dateien's English name
+        assert_eq!(
+            files_rank(Some("org.gnome.Nautilus.desktop"), "Files"),
+            None
+        );
+        assert_eq!(
+            files_rank(Some("org.gnome.Nautilus.desktop"), "Dateien"),
+            None
+        );
+        assert_eq!(files_rank(None, "Anderer"), None);
     }
 
     #[test]
@@ -544,7 +630,10 @@ mod tests {
         fill(&menu, &places(&home, |_| None), &locations(&schemes), false);
         assert_eq!(menu.n_items(), 1);
         let model = menu.upcast_ref::<gio::MenuModel>();
-        assert_eq!(attr(model, 0, "label").as_deref(), Some(NO_FILE_MANAGER));
+        assert_eq!(
+            attr(model, 0, "label").as_deref(),
+            Some("No file manager installed")
+        );
         assert!(menu.item_attribute_value(0, "action", None).is_none());
         // filling again replaces the contents
         fill(&menu, &places(&home, |_| None), &[], true);

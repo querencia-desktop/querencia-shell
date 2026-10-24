@@ -1,6 +1,38 @@
 # Desktop 0.2.1: Beschriftung der Symbole auf hellen Hintergründen
 
-Stand 21.10.2026, Zweig `desktop-0.2.1`.
+Stand 21.10.2026, Zweig `desktop-0.2.1`; Nachtrag 22.10.2026 für Desktop 0.2.4.
+
+## Nachtrag Desktop 0.2.4: ohne Hinterlegung
+
+Der Besitzer hat die Hinterlegung am 22.10.2026 live gesehen (dunkle Platte
+hinter „Rechner“, „Persönlicher Ordner“, „Papierkorb“ auf dem orangen Bild
+„glut“) und will sie nicht. Desktop 0.2.4 (Zweig `desktop-0.2.4`) zeichnet
+die Beschriftung wieder direkt auf das Bild, hält sie aber anders lesbar als
+0.2.0:
+
+```css
+box.desktop-icon > label { color: #ffffff;
+  text-shadow: -1px -1px 0 #000000, 0 -1px 0 #000000, 1px -1px 0 #000000,
+    -1px 0 0 #000000, 1px 0 0 #000000, -1px 1px 0 #000000, 0 1px 0 #000000,
+    1px 1px 0 #000000, 0 0 2px #000000, 0 0 4px #000000, 1px 1px 2px #000000;
+  padding: 1px 3px; border-radius: 4px; }
+```
+
+- Acht unscharfe Schatten um 1 px in alle Richtungen ergeben eine
+  geschlossene schwarze Kontur, zwei weiche Kränze (2 und 4 px) und der
+  versetzte Schatten von GNOME 2 kommen dazu. GTK 4.22 nimmt mehrere Schatten
+  durch Komma getrennt an (geparst ohne Fehler, isoliert gemessen).
+- Drei weiche Schatten allein (`0 0 2px, 0 0 3px, 1px 1px 2px`) reichten
+  nicht: auf „kueste“ blieb der Rand der Glyphen bei 3,5:1.
+- Gemessen wird jetzt nicht mehr die Platte, sondern der Rand der Schrift
+  (Pixel 1–2 px um die weißen Glyphen) gegen die Schrift selbst
+  (`werkzeug/lesbarkeit.py` im Arbeitsordner `querencia-desktop-024`):
+  „kueste“ 9,9:1 und mehr je Beschriftung (Platte 0.2.3: 6,7:1), „tiefblau“
+  17,8:1. Bericht .
+- Auswahl und Ablageziel behalten die orange Hinterlegung; Padding und Radius
+  bleiben deshalb in der Grundregel.
+
+Der Rest dieser Seite beschreibt den Stand 0.2.1 bis 0.2.3.
 
 ## Anlass
 

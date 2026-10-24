@@ -90,7 +90,7 @@ mod tests {
             names,
             [
                 "Arbeitsfläche",
-                "Querencia Files",
+                "Querencia Dateien",
                 "Querencia Terminal",
                 "Texteditor",
                 "Bildbetrachter",
@@ -100,6 +100,50 @@ mod tests {
                 "Tastenkürzel (dieses Fenster)"
             ]
         );
+        // Querencia Dateien (Welle C): 38 keys in the order of its menus,
+        // as its menus print them (Umschalt before Strg); the keys that
+        // changed against Querencia Files keep their new meaning
+        let dateien = &programs[1];
+        assert_eq!(dateien.entries.len(), 38);
+        let keys: Vec<&str> = dateien.entries.iter().map(|(k, _)| k.as_str()).collect();
+        assert_eq!(
+            keys[..5],
+            [
+                "Strg+T",
+                "Strg+N",
+                "Umschalt+Strg+N",
+                "Strg+O",
+                "Umschalt+Strg+O"
+            ]
+        );
+        assert_eq!(keys.last(), Some(&"F1"));
+        for (key, what) in [
+            ("Strg+D", "Lesezeichen hinzufügen"),
+            ("F9", "Seitenleiste ein oder aus"),
+            ("Strg+3", "Kompaktansicht"),
+            ("Umschalt+Strg+I", "Auswahl umkehren"),
+            ("Umschalt+Entf", "Löschen (mit Nachfrage)"),
+            (
+                "Strg+W",
+                "Reiter schließen (der letzte schließt das Fenster)",
+            ),
+            ("Alt+1 … Alt+0", "Zu Reiter 1 … 10 wechseln"),
+        ] {
+            assert!(
+                dateien.entries.contains(&(key.to_owned(), what.to_owned())),
+                "{key}"
+            );
+        }
+        assert!(
+            dateien
+                .entries
+                .iter()
+                .any(|(k, w)| k == "Strg+F" && w.starts_with("Suchen"))
+        );
+        // Files' keys that Dateien does not have
+        for gone in ["Strg+K", "Strg+B", "Strg+,", "Strg+Z"] {
+            assert!(!keys.contains(&gone), "{gone}");
+        }
         // Terminal 0.3.0: the tab keys come first, as in its Help → Shortcuts
         let terminal = &programs[2];
         let keys: Vec<&str> = terminal.entries.iter().map(|(k, _)| k.as_str()).collect();

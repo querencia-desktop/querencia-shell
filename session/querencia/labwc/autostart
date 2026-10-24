@@ -4,6 +4,18 @@
 : "${QUERENCIA_STATE_DIR:?nur über querencia-session starten}"
 : "${QUERENCIA_PANEL_RECORD:?nur über querencia-session starten}"
 
+# Software-OpenGL (QD-169): Meldet der Renderer zink auf NVK (nouveau),
+# gibt querencia-session hier LIBGL_ALWAYS_SOFTWARE=1,
+# MESA_LOADER_DRIVER_OVERRIDE=llvmpipe und GALLIUM_DRIVER=llvmpipe mit; sie
+# gelten für alles, was dieses Skript startet, und für das, was Panel und
+# Arbeitsfläche starten. labwc selbst behält zink. Nur diese drei Namen;
+# leer: nichts (docs/sitzung-grafik.md).
+for zuweisung in ${QUERENCIA_GRAFIK_UMGEBUNG-}; do
+    case $zuweisung in
+    LIBGL_ALWAYS_SOFTWARE=* | MESA_LOADER_DRIVER_OVERRIDE=* | GALLIUM_DRIVER=*) export "$zuweisung" ;;
+    esac
+done
+
 # Settings portal guard (QD-062, G2-AI). GTK 4 asks
 # org.freedesktop.portal.Settings while it starts and waits up to 25 s per
 # call for an answer; a portal left over from an earlier session kept panel
@@ -82,9 +94,18 @@ if [ -n "${QUERENCIA_DESKTOP-}" ] && [ -x "$QUERENCIA_DESKTOP" ]; then
     fi
 fi
 
-gtk_exec "$QUERENCIA_PANEL" </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
+# Panel 0.2.3 and later: under its watchdog (--ueberwacht), which starts a
+# crashed panel again, at most 3 times in 10 minutes, with a log line
+# (docs/panel-023-absturz-und-ueberwachung.md). Only for a panel that names
+# the capability; an older one starts as before.
+if "$QUERENCIA_PANEL" --faehigkeiten 2>/dev/null </dev/null | grep -qw ueberwacht; then
+    gtk_exec "$QUERENCIA_PANEL" --ueberwacht </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
+else
+    gtk_exec "$QUERENCIA_PANEL" </dev/null >>"$QUERENCIA_STATE_DIR/panel.log" 2>&1 &
+fi
 
-# Record "PID STARTTIME" for the starter's cleanup (see starttime() there).
+# Record "PID STARTTIME" for the starter's cleanup (see starttime() there);
+# with the watchdog it is the watchdog's PID: its SIGTERM ends the panel too.
 pid=$!
 if stat=$(cat "/proc/$pid/stat" 2>/dev/null); then
     set -- ${stat##*) }
@@ -98,6 +119,18 @@ fi
 BENACHRICHTIGUNGEN=${QUERENCIA_BENACHRICHTIGUNGEN:-/home/user/opt/querencia/bin/querencia-benachrichtigungen}
 if [ -x "$BENACHRICHTIGUNGEN" ]; then
     gtk_exec "$BENACHRICHTIGUNGEN" </dev/null >>"$QUERENCIA_STATE_DIR/benachrichtigungen.log" 2>&1 &
+fi
+
+# X11-Zwischenablage nachreichen (QD-155, 23.10.2026): labwc gibt die
+# Zwischenablage an X11-Programme (Wine, XWayland-Firefox) nur heraus, solange
+# ein X11-Fenster den Fokus hat, setzt den X11-Besitzer aber schon beim
+# Kopieren. Wine liest genau dann (XFixes) und danach nie wieder, also bleibt
+# Strg+V dort leer. Der Helfer legt den Inhalt beim Fokuswechsel auf ein
+# X11-Fenster erneut ab. Optional; ohne Datei bleibt alles wie bisher.
+# Ersatz bis zum labwc-Patch (Besitzer beim Fokuswechsel neu setzen).
+HELFER=${QUERENCIA_X11_ZWISCHENABLAGE:-/home/user/opt/querencia/bin/x11-zwischenablage-helfer}
+if [ -x "$HELFER" ]; then
+    "$HELFER" </dev/null >>"$QUERENCIA_STATE_DIR/x11-zwischenablage-helfer.log" 2>&1 &
 fi
 
 # Querencia Sitzung (G2-K): idle lock. Ends with labwc (Wayland connection

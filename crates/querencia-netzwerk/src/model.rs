@@ -8,6 +8,7 @@
 //! state, addresses and routes from the kernel, plus what systemd-networkd
 //! and systemd-resolved say).
 
+use crate::i18n::{gettext, gettext_f};
 use std::fmt;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -33,13 +34,13 @@ impl Backend {
     }
 
     /// The line the menu and the tooltip show for a read-only backend.
-    pub fn read_only_note(&self) -> Option<&'static str> {
+    pub fn read_only_note(&self) -> Option<String> {
         match self {
             Backend::Fallback { networkd: true } => {
-                Some("Verwaltet von systemd-networkd, nur Anzeige")
+                Some(gettext("Managed by systemd-networkd, display only"))
             }
             Backend::Fallback { networkd: false } => {
-                Some("Kein NetworkManager gefunden, nur Anzeige")
+                Some(gettext("No NetworkManager found, display only"))
             }
             _ => None,
         }
@@ -155,13 +156,14 @@ impl Security {
         }
     }
 
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            Security::Open => "keine",
-            Security::Wep => "WEP",
-            Security::WpaPsk => "WPA/WPA2 Personal",
-            Security::Sae => "WPA3 Personal",
-            Security::Enterprise => "WPA/WPA2 Enterprise",
+            // TRANSLATORS: security of a wireless network
+            Security::Open => gettext("none"),
+            Security::Wep => "WEP".to_string(),
+            Security::WpaPsk => gettext("WPA/WPA2 Personal"),
+            Security::Sae => gettext("WPA3 Personal"),
+            Security::Enterprise => gettext("WPA/WPA2 Enterprise"),
         }
     }
 
@@ -292,25 +294,29 @@ impl Device {
     /// „WLAN (wlan0)“.
     pub fn title(&self) -> String {
         match self.kind {
-            Kind::Wired => format!("Kabelnetzwerk ({})", self.interface),
-            Kind::Wireless => format!("WLAN ({})", self.interface),
+            Kind::Wired => gettext_f(
+                "Wired Network ({interface})",
+                &[("interface", &self.interface)],
+            ),
+            Kind::Wireless => {
+                gettext_f("Wireless ({interface})", &[("interface", &self.interface)])
+            }
         }
     }
 
     /// A short state text: „verbunden“, „Kabel nicht angeschlossen“, …
-    pub fn state_text(&self) -> &'static str {
+    pub fn state_text(&self) -> String {
         match (self.state, self.kind) {
-            (DeviceState::Connected, _) => "verbunden",
-            (DeviceState::Connecting, _) => "verbindet …",
-            (DeviceState::Disconnecting, _) => "trennt …",
-            (DeviceState::Failed, _) => "Verbindung fehlgeschlagen",
-            (DeviceState::Unmanaged, _) => "nicht verwaltet",
+            (DeviceState::Connected, _) => gettext("connected"),
+            (DeviceState::Connecting, _) => gettext("connecting…"),
+            (DeviceState::Disconnecting, _) => gettext("disconnecting…"),
+            (DeviceState::Failed, _) => gettext("Connection failed"),
+            (DeviceState::Unmanaged, _) => gettext("not managed"),
             (DeviceState::Unavailable, Kind::Wired) if self.carrier != Some(true) => {
-                "Kabel nicht angeschlossen"
+                gettext("Cable unplugged")
             }
-            (DeviceState::Unavailable, Kind::Wireless) => "nicht verfügbar",
-            (DeviceState::Unavailable, Kind::Wired) => "nicht verfügbar",
-            (DeviceState::Disconnected, _) => "nicht verbunden",
+            (DeviceState::Unavailable, _) => gettext("not available"),
+            (DeviceState::Disconnected, _) => gettext("disconnected"),
         }
     }
 }
@@ -468,13 +474,13 @@ pub fn tooltip(state: &State) -> String {
     let mut lines = Vec::new();
     match &state.backend {
         Backend::Unavailable(reason) => {
-            lines.push("Kein Netzwerkdienst".to_string());
+            lines.push(gettext("No network service"));
             if !reason.is_empty() {
                 lines.push(reason.clone());
             }
             return lines.join("\n");
         }
-        Backend::Starting => return "Netzwerk: wird gelesen …".to_string(),
+        Backend::Starting => return gettext("Network: reading…"),
         _ => {}
     }
     let connected: Vec<&Device> = {
@@ -488,47 +494,68 @@ pub fn tooltip(state: &State) -> String {
         .find(|d| d.state == DeviceState::Connecting)
     {
         lines.push(match (&device.kind, &device.ssid) {
-            (Kind::Wireless, Some(ssid)) => {
-                format!("Verbindung mit WLAN „{ssid}“ wird hergestellt …")
-            }
-            _ => format!("{}: Verbindung wird hergestellt …", device.title()),
+            (Kind::Wireless, Some(ssid)) => gettext_f(
+                "Connecting to the wireless network “{ssid}”…",
+                &[("ssid", ssid)],
+            ),
+            _ => gettext_f("{device}: connecting…", &[("device", &device.title())]),
         });
     }
     for device in &connected {
         lines.push(match device.kind {
             Kind::Wired => match &device.connection {
-                Some(name) => format!("Kabelnetzwerk „{name}“ verbunden ({})", device.interface),
-                None => format!("Kabelnetzwerk {} verbunden", device.interface),
+                Some(name) => gettext_f(
+                    "Wired network “{name}” connected ({interface})",
+                    &[("name", name), ("interface", &device.interface)],
+                ),
+                None => gettext_f(
+                    "Wired network {interface} connected",
+                    &[("interface", &device.interface)],
+                ),
             },
             Kind::Wireless => {
-                let name = device
-                    .ssid
-                    .as_deref()
-                    .or(device.connection.as_deref())
-                    .map(|s| format!(" „{s}“"))
-                    .unwrap_or_default();
-                match device.signal {
-                    Some(signal) => format!("WLAN{name} verbunden, Signal {signal} %"),
-                    None => format!("WLAN{name} verbunden ({})", device.interface),
+                let name = device.ssid.as_deref().or(device.connection.as_deref());
+                let signal = device.signal.map(|s| s.to_string());
+                let interface = device.interface.as_str();
+                match (name, signal.as_deref()) {
+                    (Some(name), Some(signal)) => gettext_f(
+                        "Wireless network “{name}” connected, signal {signal} %",
+                        &[("name", name), ("signal", signal)],
+                    ),
+                    (None, Some(signal)) => gettext_f(
+                        "Wireless network connected, signal {signal} %",
+                        &[("signal", signal)],
+                    ),
+                    (Some(name), None) => gettext_f(
+                        "Wireless network “{name}” connected ({interface})",
+                        &[("name", name), ("interface", interface)],
+                    ),
+                    (None, None) => gettext_f(
+                        "Wireless network connected ({interface})",
+                        &[("interface", interface)],
+                    ),
                 }
             }
         });
         if let Some(address) = device.main_address() {
-            lines.push(format!("Adresse: {address}"));
+            lines.push(gettext_f(
+                "Address: {address}",
+                &[("address", &address.to_string())],
+            ));
         }
     }
     if connected.is_empty() && lines.is_empty() {
         lines.push(match icon(state) {
-            Icon::WiredDisconnected => "Kein Netzwerkkabel angeschlossen".to_string(),
-            Icon::WirelessOff if state.airplane() == Some(true) => "Flugmodus ist an".to_string(),
-            Icon::WirelessOff => "WLAN ist ausgeschaltet".to_string(),
-            _ if !state.networking_enabled => "Netzwerk ist ausgeschaltet".to_string(),
-            _ if state.devices.is_empty() => "Kein Netzwerkgerät".to_string(),
-            _ => "Keine Netzwerkverbindung".to_string(),
+            Icon::WiredDisconnected => gettext("No network cable plugged in"),
+            Icon::WirelessOff if state.airplane() == Some(true) => gettext("Airplane mode is on"),
+            Icon::WirelessOff => gettext("Wireless is disabled"),
+            _ if !state.networking_enabled => gettext("Networking is disabled"),
+            _ if state.devices.is_empty() => gettext("No network device"),
+            _ => gettext("No network connection"),
         });
     }
     if let Some(note) = state.backend.read_only_note() {
-        lines.push(note.to_string());
+        lines.push(note);
     }
     lines.join("\n")
 }
@@ -539,22 +566,30 @@ pub fn speed_text(mbit: u32) -> String {
     if mbit >= 2500 && mbit.is_multiple_of(100) {
         let tenths = mbit / 100;
         if tenths.is_multiple_of(10) {
-            format!("{} Gbit/s", tenths / 10)
+            gettext_f("{gbit} Gbit/s", &[("gbit", &(tenths / 10).to_string())])
         } else {
-            format!("{},{} Gbit/s", tenths / 10, tenths % 10)
+            // TRANSLATORS: a speed with one decimal; German writes a comma
+            gettext_f(
+                "{whole}.{tenth} Gbit/s",
+                &[
+                    ("whole", &(tenths / 10).to_string()),
+                    ("tenth", &(tenths % 10).to_string()),
+                ],
+            )
         }
     } else {
-        format!("{mbit} Mbit/s")
+        gettext_f("{mbit} Mbit/s", &[("mbit", &mbit.to_string())])
     }
 }
 
 /// A frequency in MHz as „2,4 GHz“ / „5 GHz“ / „6 GHz“ band.
-pub fn band_text(mhz: u32) -> &'static str {
+pub fn band_text(mhz: u32) -> String {
     match mhz {
-        2400..=2500 => "2,4 GHz",
-        4900..=5900 => "5 GHz",
-        5925..=7125 => "6 GHz",
-        _ => "",
+        // TRANSLATORS: a frequency band; German writes a decimal comma
+        2400..=2500 => gettext("2.4 GHz"),
+        4900..=5900 => "5 GHz".to_string(),
+        5925..=7125 => "6 GHz".to_string(),
+        _ => String::new(),
     }
 }
 
@@ -625,73 +660,74 @@ pub type InfoRow = (String, String);
 
 /// The connection information of `device` (dialog „Verbindungsinformationen“),
 /// grouped: general, IPv4, IPv6.
-pub fn info(device: &Device, backend: &Backend) -> Vec<(&'static str, Vec<InfoRow>)> {
+pub fn info(device: &Device, backend: &Backend) -> Vec<(String, Vec<InfoRow>)> {
     let mut general: Vec<InfoRow> = vec![
         (
-            "Schnittstelle".into(),
-            format!(
-                "{} ({})",
-                device.interface,
-                match device.kind {
-                    Kind::Wired => "Kabel",
-                    Kind::Wireless => "WLAN",
+            gettext("Interface"),
+            match device.kind {
+                Kind::Wired => {
+                    gettext_f("{interface} (wired)", &[("interface", &device.interface)])
                 }
-            ),
+                Kind::Wireless => gettext_f(
+                    "{interface} (wireless)",
+                    &[("interface", &device.interface)],
+                ),
+            },
         ),
-        ("Zustand".into(), device.state_text().to_string()),
+        (gettext("State"), device.state_text()),
     ];
     if let Some(name) = &device.connection {
-        general.push(("Verbindung".into(), name.clone()));
+        general.push((gettext("Connection"), name.clone()));
     }
     if !device.mac.is_empty() {
-        general.push(("Hardware-Adresse".into(), mac_text(&device.mac)));
+        general.push((gettext("Hardware Address"), mac_text(&device.mac)));
     }
     if let Some(driver) = &device.driver {
-        general.push(("Treiber".into(), driver.clone()));
+        general.push((gettext("Driver"), driver.clone()));
     }
     if let Some(speed) = device.speed_mbit.filter(|&s| s > 0) {
-        general.push(("Geschwindigkeit".into(), speed_text(speed)));
+        general.push((gettext("Speed"), speed_text(speed)));
     }
     if device.kind == Kind::Wireless {
         if let Some(ssid) = &device.ssid {
-            general.push(("Netz".into(), ssid.clone()));
+            general.push((gettext("Network"), ssid.clone()));
         }
         if let Some(ap) = device.access_points.iter().find(|ap| ap.active) {
-            general.push(("Sicherheit".into(), ap.security.label().to_string()));
+            general.push((gettext("Security"), ap.security.label()));
             let band = band_text(ap.frequency_mhz);
             if !band.is_empty() {
-                general.push(("Frequenzband".into(), band.to_string()));
+                general.push((gettext("Frequency Band"), band));
             }
         }
         if let Some(signal) = device.signal {
-            general.push(("Signal".into(), format!("{signal} %")));
+            general.push((gettext("Signal"), format!("{signal} %")));
         }
     }
     if let Some(state) = &device.networkd_state {
         general.push(("systemd-networkd".into(), state.clone()));
     }
     general.push((
-        "Verwaltet von".into(),
+        gettext("Managed by"),
         match backend {
             Backend::NetworkManager { .. } => "NetworkManager".to_string(),
-            Backend::Fallback { networkd: true } => "systemd-networkd (nur Anzeige)".to_string(),
-            _ => "unbekannt (nur Anzeige)".to_string(),
+            Backend::Fallback { networkd: true } => gettext("systemd-networkd (display only)"),
+            _ => gettext("unknown (display only)"),
         },
     ));
 
     let none = || "–".to_string();
     let mut ipv4: Vec<InfoRow> = Vec::new();
     if device.ipv4.is_empty() {
-        ipv4.push(("Adresse".into(), none()));
+        ipv4.push((gettext("Address"), none()));
     }
     for address in &device.ipv4 {
-        ipv4.push(("Adresse".into(), address.to_string()));
+        ipv4.push((gettext("Address"), address.to_string()));
         if let Some(mask) = address.netmask() {
-            ipv4.push(("Netzmaske".into(), mask.to_string()));
+            ipv4.push((gettext("Netmask"), mask.to_string()));
         }
     }
     ipv4.push((
-        "Standard-Gateway".into(),
+        gettext("Default Gateway"),
         device.gateway4.map(|g| g.to_string()).unwrap_or_else(none),
     ));
     let dns4: Vec<String> = device
@@ -711,14 +747,18 @@ pub fn info(device: &Device, backend: &Backend) -> Vec<(&'static str, Vec<InfoRo
 
     let mut ipv6: Vec<InfoRow> = Vec::new();
     if device.ipv6.is_empty() {
-        ipv6.push(("Adresse".into(), none()));
+        ipv6.push((gettext("Address"), none()));
     }
     for address in &device.ipv6 {
-        let scope = if address.is_global() { "" } else { " (lokal)" };
-        ipv6.push(("Adresse".into(), format!("{address}{scope}")));
+        let shown = if address.is_global() {
+            address.to_string()
+        } else {
+            gettext_f("{address} (local)", &[("address", &address.to_string())])
+        };
+        ipv6.push((gettext("Address"), shown));
     }
     ipv6.push((
-        "Standard-Gateway".into(),
+        gettext("Default Gateway"),
         device.gateway6.map(|g| g.to_string()).unwrap_or_else(none),
     ));
     let dns6: Vec<String> = device
@@ -730,7 +770,11 @@ pub fn info(device: &Device, backend: &Backend) -> Vec<(&'static str, Vec<InfoRo
     if !dns6.is_empty() {
         ipv6.push(("DNS".into(), dns6.join(", ")));
     }
-    vec![("Allgemein", general), ("IPv4", ipv4), ("IPv6", ipv6)]
+    vec![
+        (gettext("General"), general),
+        ("IPv4".to_string(), ipv4),
+        ("IPv6".to_string(), ipv6),
+    ]
 }
 
 #[cfg(test)]
@@ -905,13 +949,13 @@ pub(crate) mod tests {
     fn speed_mac_band_and_ssid_texts() {
         assert_eq!(speed_text(100), "100 Mbit/s");
         assert_eq!(speed_text(1000), "1000 Mbit/s");
-        assert_eq!(speed_text(2500), "2,5 Gbit/s");
+        assert_eq!(speed_text(2500), "2.5 Gbit/s");
         assert_eq!(speed_text(10000), "10 Gbit/s");
         assert_eq!(speed_text(2401), "2401 Mbit/s");
         assert_eq!(mac_text("00:00:5E:00:53:DF"), "00:00:5e:00:53:df");
         assert_eq!(mac_text("00-00-5e-00-53-df"), "00:00:5e:00:53:df");
         assert_eq!(mac_text("unbekannt"), "unbekannt");
-        assert_eq!(band_text(2437), "2,4 GHz");
+        assert_eq!(band_text(2437), "2.4 GHz");
         assert_eq!(band_text(5180), "5 GHz");
         assert_eq!(band_text(6115), "6 GHz");
         assert_eq!(band_text(0), "");
@@ -989,44 +1033,44 @@ pub(crate) mod tests {
         let s = with(nm(), vec![wired(Connected, true)]);
         assert_eq!(
             tooltip(&s),
-            "Kabelnetzwerk „Kabelgebundene Verbindung 1“ verbunden (eth0)\nAdresse: 192.0.2.23/24"
+            "Wired network “Kabelgebundene Verbindung 1” connected (eth0)\nAddress: 192.0.2.23/24"
         );
         let mut w = wifi(Connected, Some(72));
         w.ipv4 = vec![Address::v4(Ipv4Addr::new(192, 0, 2, 40), 24)];
         let s = with(nm(), vec![wired(Unavailable, false), w]);
         assert_eq!(
             tooltip(&s),
-            "WLAN „Heimnetz“ verbunden, Signal 72 %\nAdresse: 192.0.2.40/24"
+            "Wireless network “Heimnetz” connected, signal 72 %\nAddress: 192.0.2.40/24"
         );
         let mut d = wired(Connected, true);
         d.connection = None;
         let s = with(Backend::Fallback { networkd: true }, vec![d]);
         assert_eq!(
             tooltip(&s),
-            "Kabelnetzwerk eth0 verbunden\nAdresse: 192.0.2.23/24\nVerwaltet von systemd-networkd, nur Anzeige"
+            "Wired network eth0 connected\nAddress: 192.0.2.23/24\nManaged by systemd-networkd, display only"
         );
         let s = with(nm(), vec![wired(Unavailable, false)]);
-        assert_eq!(tooltip(&s), "Kein Netzwerkkabel angeschlossen");
+        assert_eq!(tooltip(&s), "No network cable plugged in");
         let mut s = with(nm(), vec![wifi(Unavailable, None)]);
         s.wireless_enabled = Some(false);
-        assert_eq!(tooltip(&s), "WLAN ist ausgeschaltet");
+        assert_eq!(tooltip(&s), "Wireless is disabled");
         s.wwan_enabled = Some(false);
-        assert_eq!(tooltip(&s), "Flugmodus ist an");
+        assert_eq!(tooltip(&s), "Airplane mode is on");
         let s = with(nm(), vec![wifi(Connecting, None)]);
         assert_eq!(
             tooltip(&s),
-            "Verbindung mit WLAN „Heimnetz“ wird hergestellt …"
+            "Connecting to the wireless network “Heimnetz”…"
         );
         let s = with(nm(), vec![wifi(Disconnected, None)]);
-        assert_eq!(tooltip(&s), "Keine Netzwerkverbindung");
+        assert_eq!(tooltip(&s), "No network connection");
         assert_eq!(
             tooltip(&State::unavailable("/sys/class/net fehlt")),
-            "Kein Netzwerkdienst\n/sys/class/net fehlt"
+            "No network service\n/sys/class/net fehlt"
         );
         let s = with(Backend::Fallback { networkd: false }, vec![]);
         assert_eq!(
             tooltip(&s),
-            "Kein Netzwerkgerät\nKein NetworkManager gefunden, nur Anzeige"
+            "No network device\nNo NetworkManager found, display only"
         );
     }
 
@@ -1046,28 +1090,28 @@ pub(crate) mod tests {
                 .map(|(_, v)| v.clone())
         };
         assert_eq!(
-            groups.iter().map(|g| g.0).collect::<Vec<_>>(),
-            ["Allgemein", "IPv4", "IPv6"]
+            groups.iter().map(|g| g.0.clone()).collect::<Vec<_>>(),
+            ["General", "IPv4", "IPv6"]
         );
-        assert_eq!(find(0, "Schnittstelle").as_deref(), Some("eth0 (Kabel)"));
+        assert_eq!(find(0, "Interface").as_deref(), Some("eth0 (wired)"));
         assert_eq!(
-            find(0, "Hardware-Adresse").as_deref(),
+            find(0, "Hardware Address").as_deref(),
             Some("00:00:5e:00:53:df")
         );
-        assert_eq!(find(0, "Geschwindigkeit").as_deref(), Some("1000 Mbit/s"));
+        assert_eq!(find(0, "Speed").as_deref(), Some("1000 Mbit/s"));
         assert_eq!(
-            find(0, "Verwaltet von").as_deref(),
-            Some("systemd-networkd (nur Anzeige)")
+            find(0, "Managed by").as_deref(),
+            Some("systemd-networkd (display only)")
         );
-        assert_eq!(find(1, "Adresse").as_deref(), Some("192.0.2.23/24"));
-        assert_eq!(find(1, "Netzmaske").as_deref(), Some("255.255.255.0"));
-        assert_eq!(find(1, "Standard-Gateway").as_deref(), Some("192.0.2.1"));
+        assert_eq!(find(1, "Address").as_deref(), Some("192.0.2.23/24"));
+        assert_eq!(find(1, "Netmask").as_deref(), Some("255.255.255.0"));
+        assert_eq!(find(1, "Default Gateway").as_deref(), Some("192.0.2.1"));
         assert_eq!(find(1, "DNS").as_deref(), Some("192.0.2.1"));
         assert_eq!(
-            find(2, "Adresse").as_deref(),
-            Some("fe80::200:5eff:fe00:53df/64 (lokal)")
+            find(2, "Address").as_deref(),
+            Some("fe80::200:5eff:fe00:53df/64 (local)")
         );
-        assert_eq!(find(2, "Standard-Gateway").as_deref(), Some("–"));
+        assert_eq!(find(2, "Default Gateway").as_deref(), Some("–"));
     }
 
     #[test]
@@ -1086,10 +1130,10 @@ pub(crate) mod tests {
     #[test]
     fn device_titles_and_states() {
         let d = wired(DeviceState::Unavailable, false);
-        assert_eq!(d.title(), "Kabelnetzwerk (eth0)");
-        assert_eq!(d.state_text(), "Kabel nicht angeschlossen");
+        assert_eq!(d.title(), "Wired Network (eth0)");
+        assert_eq!(d.state_text(), "Cable unplugged");
         let d = wifi(DeviceState::Connecting, None);
-        assert_eq!(d.title(), "WLAN (wlan0)");
-        assert_eq!(d.state_text(), "verbindet …");
+        assert_eq!(d.title(), "Wireless (wlan0)");
+        assert_eq!(d.state_text(), "connecting…");
     }
 }

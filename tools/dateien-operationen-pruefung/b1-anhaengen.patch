@@ -1,0 +1,17 @@
+Integrationsprobe (im Zweig nicht angewendet): die Zeile, mit der B1 den
+Eigenschaften-Dialog von B3 an win.eigenschaften hängt.
+git apply tools/dateien-operationen-pruefung/b1-anhaengen.patch
+
+diff --git a/crates/querencia-dateien/src/fenster.rs b/crates/querencia-dateien/src/fenster.rs
+index 6f3baa3..cdab05c 100644
+--- a/crates/querencia-dateien/src/fenster.rs
++++ b/crates/querencia-dateien/src/fenster.rs
+@@ -751,7 +751,7 @@ impl Fenster {
+             }
+         });
+         self.window.add_action(&mit);
+-        self.aktion("eigenschaften", crate::eigenschaften::zeigen);
++        self.aktion("eigenschaften", crate::eigenschaften_dialog::zeigen);
+         // Bearbeiten
+         self.aktion("alles-auswaehlen", |f| f.modell.alle_waehlen());
+         self.aktion("auswahl-umkehren", |f| f.modell.auswahl_umkehren());

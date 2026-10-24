@@ -111,7 +111,7 @@ pub fn sperren() {
 
 /// Starts `programm` with `args` as a child that GIO reaps; start and exit
 /// status go to the log.
-fn starten(programm: &Path, args: &[&str]) {
+pub(crate) fn starten(programm: &Path, args: &[&str]) {
     let command = std::iter::once(programm.display().to_string())
         .chain(args.iter().map(|a| (*a).to_owned()))
         .collect::<Vec<_>>()

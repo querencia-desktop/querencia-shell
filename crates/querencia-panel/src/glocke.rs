@@ -24,6 +24,7 @@ use std::rc::{Rc, Weak};
 use gtk4::prelude::*;
 use gtk4::{Box as GtkBox, Button, Image, Label, Orientation, gdk, gio, glib};
 
+use crate::i18n::{gettext, ngettext_f};
 use crate::logo;
 
 /// CSS class of the applet's button; its look is the one of all status
@@ -94,18 +95,23 @@ pub fn aussehen(zustand: &Zustand) -> Aussehen {
         return Aussehen {
             symbol: Symbol::Glocke,
             zahl: None,
-            tooltip: "Mitteilungszentrale nicht verfügbar".to_owned(),
+            tooltip: gettext("Notification center not available"),
             ausgegraut: true,
             gedaempft: false,
         };
     }
     let mut tooltip = match zustand.ungelesen {
-        0 => "Keine ungelesenen Mitteilungen".to_owned(),
-        1 => "1 ungelesene Mitteilung".to_owned(),
-        n => format!("{n} ungelesene Mitteilungen"),
+        0 => gettext("No unread notifications"),
+        n => ngettext_f(
+            "{n} unread notification",
+            "{n} unread notifications",
+            n,
+            &[],
+        ),
     };
     if zustand.nicht_stoeren {
-        tooltip.push_str("\n„Nicht stören“ ist an");
+        tooltip.push('\n');
+        tooltip.push_str(&gettext("“Do Not Disturb” is on"));
     }
     let zahl = match zustand.ungelesen {
         0 => None,
@@ -190,16 +196,16 @@ pub fn klick(zustand: &Zustand) -> Klick {
 pub fn menu() -> gio::Menu {
     let menu = gio::Menu::new();
     menu.append(
-        Some("_Nicht stören"),
+        Some(&gettext("_Do Not Disturb")),
         Some(&format!("{ACTION_GROUP}.{NICHT_STOEREN}")),
     );
     menu.append(
-        Some("Alle als _gelesen markieren"),
+        Some(&gettext("_Mark All as Read")),
         Some(&format!("{ACTION_GROUP}.{ALLE_GELESEN}")),
     );
     let object = gio::Menu::new();
     object.append(
-        Some("Aus dem Panel entfernen"),
+        Some(&gettext("Remove From Panel")),
         Some(crate::panel_menu::REMOVE_ACTION),
     );
     menu.append_section(None, &object);
@@ -402,7 +408,7 @@ impl Glocke {
             let pixels = self.size * image.scale_factor().max(1);
             match texture(look.symbol, pixels) {
                 Some(texture) => image.set_paintable(Some(&texture)),
-                None => image.set_icon_name(Some("preferences-desktop-notification")),
+                None => crate::symbole::set_named(&image, "preferences-desktop-notification"),
             }
             zahl.set_label(look.zahl.as_deref().unwrap_or(""));
             zahl.set_visible(look.zahl.is_some());
@@ -657,7 +663,7 @@ mod tests {
         assert!(look.ausgegraut && !look.gedaempft);
         assert_eq!(look.zahl, None);
         assert_eq!(look.symbol, Symbol::Glocke);
-        assert_eq!(look.tooltip, "Mitteilungszentrale nicht verfügbar");
+        assert_eq!(look.tooltip, "Notification center not available");
         // what was counted before does not show without the service
         let alt = Zustand {
             ungelesen: 4,
@@ -670,15 +676,15 @@ mod tests {
     fn the_count_shows_unread_notifications() {
         let null = aussehen(&da(0));
         assert_eq!((null.zahl, null.symbol), (None, Symbol::Glocke));
-        assert_eq!(null.tooltip, "Keine ungelesenen Mitteilungen");
+        assert_eq!(null.tooltip, "No unread notifications");
         assert!(!null.ausgegraut);
         let eins = aussehen(&da(1));
         assert_eq!(eins.zahl.as_deref(), Some("1"));
         assert_eq!(eins.symbol, Symbol::Neu);
-        assert_eq!(eins.tooltip, "1 ungelesene Mitteilung");
+        assert_eq!(eins.tooltip, "1 unread notification");
         let drei = aussehen(&da(3));
         assert_eq!(drei.zahl.as_deref(), Some("3"));
-        assert_eq!(drei.tooltip, "3 ungelesene Mitteilungen");
+        assert_eq!(drei.tooltip, "3 unread notifications");
         assert_eq!(aussehen(&da(99)).zahl.as_deref(), Some("99"));
         assert_eq!(aussehen(&da(100)).zahl.as_deref(), Some("99+"));
     }
@@ -695,7 +701,7 @@ mod tests {
         assert_eq!(look.zahl.as_deref(), Some("3"));
         assert_eq!(
             look.tooltip,
-            "3 ungelesene Mitteilungen\n„Nicht stören“ ist an"
+            "3 unread notifications\n“Do Not Disturb” is on"
         );
     }
 
@@ -771,12 +777,9 @@ mod tests {
     #[test]
     fn menu_has_do_not_disturb_mark_all_read_and_remove() {
         let menu = menu().upcast::<gio::MenuModel>();
-        assert_eq!(label(&menu, 0).as_deref(), Some("_Nicht stören"));
+        assert_eq!(label(&menu, 0).as_deref(), Some("_Do Not Disturb"));
         assert_eq!(action(&menu, 0).as_deref(), Some("glocke.nicht-stoeren"));
-        assert_eq!(
-            label(&menu, 1).as_deref(),
-            Some("Alle als _gelesen markieren")
-        );
+        assert_eq!(label(&menu, 1).as_deref(), Some("_Mark All as Read"));
         assert_eq!(action(&menu, 1).as_deref(), Some("glocke.alle-gelesen"));
         let section = menu.item_link(2, "section").expect("Abschnitt");
         assert_eq!(action(&section, 0).as_deref(), Some("panel.applet-remove"));

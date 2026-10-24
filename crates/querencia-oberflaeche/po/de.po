@@ -1,0 +1,40 @@
+# Querencia Desktop – querencia-oberflaeche: Übersetzung (de).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-oberflaeche\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-23 04:00+0200\n"
+"Last-Translator: Querencia Desktop\n"
+"Language-Team: Deutsch\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/classic_menu.rs:156
+msgctxt "keyboard key"
+msgid "Ctrl"
+msgstr "Strg"
+
+#: src/classic_menu.rs:158
+msgctxt "keyboard key"
+msgid "Shift"
+msgstr "Umschalt"
+
+#: src/classic_menu.rs:168
+msgctxt "keyboard key"
+msgid "Del"
+msgstr "Entf"
+
+#: src/classic_menu.rs:170
+msgctxt "keyboard key"
+msgid "Enter"
+msgstr "Eingabe"
+
+#: src/classic_menu.rs:171
+msgctxt "keyboard key"
+msgid "Print"
+msgstr "Druck"

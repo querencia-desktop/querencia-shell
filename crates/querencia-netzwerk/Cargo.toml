@@ -16,6 +16,9 @@ name = "querencia-netzwerk"
 path = "src/main.rs"
 
 [dependencies]
+# Translations through GNU gettext (own text domain querencia-netzwerk, po/),
+# as querencia-panel: gettext-system uses the gettext of glibc.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
 # Same crates and versions as querencia-panel and querencia-lautstaerke:
 # D-Bus (NetworkManager, systemd-networkd, systemd-resolved) through GIO,
 # which gtk4 brings along; libc (already in Cargo.lock) for getifaddrs and

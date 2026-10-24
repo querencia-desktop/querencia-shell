@@ -1,0 +1,566 @@
+# Querencia Desktop: Übersetzung (de).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-desktop\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-22 21:00+0200\n"
+"Last-Translator: Querencia Desktop\n"
+"Language-Team: Deutsch\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/desktop_view.rs:322
+msgid "Desktop – Icons"
+msgstr "Arbeitsfläche – Symbole"
+
+#: src/desktop_view.rs:1360 src/desktop_view.rs:1411
+msgid "Open"
+msgstr "Öffnen"
+
+#: src/desktop_view.rs:1364
+msgid "Mount"
+msgstr "Einhängen"
+
+#: src/desktop_view.rs:1392
+msgid "Open Trash"
+msgstr "Papierkorb öffnen"
+
+#: src/desktop_view.rs:1399
+msgid "Empty Trash…"
+msgstr "Papierkorb leeren…"
+
+#: src/desktop_view.rs:1423 src/desktop_view/transfer.rs:1370
+msgid "Open With"
+msgstr "Öffnen mit"
+
+#: src/desktop_view.rs:1428
+msgid "Cut"
+msgstr "Ausschneiden"
+
+#: src/desktop_view.rs:1429
+msgid "Copy"
+msgstr "Kopieren"
+
+#: src/desktop_view.rs:1431
+msgid "Paste Into Folder"
+msgstr "Einfügen in den Ordner"
+
+#: src/desktop_view.rs:1452
+msgid "Rename…"
+msgstr "Umbenennen …"
+
+#: src/desktop_view.rs:1458
+msgid "Move to Trash"
+msgstr "In den Papierkorb verschieben"
+
+#: src/desktop_view.rs:1462
+msgid "Properties"
+msgstr "Eigenschaften"
+
+#: src/desktop_view.rs:1477
+msgid "Create Folder"
+msgstr "Ordner anlegen"
+
+#: src/desktop_view.rs:1480
+msgid "Empty File"
+msgstr "Leere Datei"
+
+#: src/desktop_view.rs:1498
+msgid "Create Document"
+msgstr "Dokument anlegen"
+
+#: src/desktop_view.rs:1505
+msgid "Clean Up by Name"
+msgstr "Nach Namen aufräumen"
+
+#: src/desktop_view.rs:1511
+msgid "Align Icons to Grid"
+msgstr "Symbole am Raster ausrichten"
+
+#: src/desktop_view.rs:1515
+msgid "Keep Aligned"
+msgstr "Am Raster ausrichten"
+
+#: src/desktop_view.rs:1527
+msgid "Paste"
+msgstr "Einfügen"
+
+#: src/desktop_view.rs:1538
+msgid "Change Desktop Background…"
+msgstr "Hintergrund der Arbeitsfläche ändern …"
+
+#: src/desktop_view.rs:1690
+msgid "New Folder"
+msgstr "Neuer Ordner"
+
+#: src/desktop_view.rs:1772
+msgid "Empty all items from the trash?"
+msgstr "Möchten Sie alle Dateien im Papierkorb endgültig löschen?"
+
+#: src/desktop_view.rs:1773
+msgid "If you empty the trash, all items in it will be permanently lost."
+msgstr ""
+"Wenn Sie den Papierkorb leeren, werden alle darin befindlichen Objekte unwiderruflich gelöscht."
+
+#: src/desktop_view.rs:1776 src/desktop_view.rs:3037 src/desktop_view/fortschritt.rs:338 src/desktop_view/transfer.rs:459
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: src/desktop_view.rs:1776
+msgid "Empty Trash"
+msgstr "Papierkorb leeren"
+
+#: src/desktop_view.rs:2113
+#, no-c-format
+msgid "“{name}” cannot be renamed."
+msgstr "„{name}“ kann nicht umbenannt werden."
+
+#: src/desktop_view.rs:2227 src/desktop_view/transfer.rs:699
+#, no-c-format
+msgid "“{name}” could not be renamed to “{new}”."
+msgstr "„{name}“ konnte nicht in „{new}“ umbenannt werden."
+
+#: src/desktop_view.rs:2242
+#, no-c-format
+msgid ""
+"“{name}” no longer exists. Perhaps it was deleted or moved in the meantime."
+msgstr ""
+"„{name}“ gibt es nicht mehr. Vielleicht wurde es inzwischen gelöscht oder verschoben."
+
+#: src/desktop_view.rs:2248
+#, no-c-format
+msgid ""
+"The name “{new}” is already used in this folder. Please use a different name."
+msgstr ""
+"Der Name „{new}“ wird in diesem Ordner bereits verwendet. Bitte verwenden Sie einen anderen Namen."
+
+#: src/desktop_view.rs:2403
+msgid "The launcher file is not valid text."
+msgstr "Die Starter-Datei ist kein gültiger Text."
+
+#: src/desktop_view.rs:2407
+#, no-c-format
+msgid "The launcher file is not valid: {why}"
+msgstr "Die Starter-Datei ist ungültig: {why}"
+
+#: src/desktop_view.rs:2417
+msgid "The launcher file has no group [Desktop Entry]."
+msgstr "Die Starter-Datei hat keine Gruppe [Desktop Entry]."
+
+#: src/desktop_view.rs:2430
+msgid "The launcher file was changed in the meantime. Please try again."
+msgstr ""
+"Die Starter-Datei wurde inzwischen verändert. Bitte versuchen Sie es erneut."
+
+#: src/desktop_view.rs:2454
+#, no-c-format
+msgid "You do not have the permissions to rename “{name}”."
+msgstr "Sie haben keine Berechtigung, „{name}“ umzubenennen."
+
+#: src/desktop_view.rs:2458
+#, no-c-format
+msgid "“{name}” no longer exists."
+msgstr "„{name}“ gibt es nicht mehr."
+
+#: src/desktop_view.rs:2471
+msgid "Volumes keep their own names."
+msgstr "Datenträger behalten ihren eigenen Namen."
+
+#: src/desktop_view.rs:2478 src/desktop_view.rs:2994 src/desktop_view/transfer.rs:1295
+msgid "Close"
+msgstr "Schließen"
+
+#: src/desktop_view.rs:2495
+msgid "Computer"
+msgstr "Rechner"
+
+#: src/desktop_view.rs:2498
+msgid "Home Folder"
+msgstr "Persönlicher Ordner"
+
+#: src/desktop_view.rs:2501
+msgid "Trash"
+msgstr "Papierkorb"
+
+#: src/desktop_view.rs:2986 src/i18n.rs:147
+#, no-c-format
+msgid "“{name}” cannot be opened."
+msgstr "„{name}“ kann nicht geöffnet werden."
+
+#: src/desktop_view.rs:2990
+#, no-c-format
+msgid "There is no application installed for “{type}” files ({mime})."
+msgstr "Für Dateien vom Typ „{type}“ ({mime}) ist kein Programm installiert."
+
+#: src/desktop_view.rs:2994
+msgid "Open With Other Application…"
+msgstr "Mit Programm öffnen …"
+
+#: src/desktop_view.rs:3030
+msgid "Untrusted application launcher"
+msgstr "Nicht vertrauenswürdiger Anwendungsstarter"
+
+#: src/desktop_view.rs:3031
+#, no-c-format
+msgid ""
+"The application launcher “{name}” has not been marked as trusted. If you do not know the source of this file, launching it may be unsafe."
+msgstr ""
+"Der Anwendungsstarter „{name}“ wurde nicht als vertrauenswürdig markiert. Wenn Sie die Herkunft dieser Datei nicht kennen, kann ihr Start unsicher sein."
+
+#: src/desktop_view.rs:3038
+msgid "Mark as Trusted"
+msgstr "Als vertrauenswürdig markieren"
+
+#: src/desktop_view.rs:3039
+msgid "Launch Anyway"
+msgstr "Trotzdem starten"
+
+#: src/desktop_view.rs:3074
+msgid "New Document"
+msgstr "Neues Dokument"
+
+#: src/desktop_view.rs:3083
+msgid "Template"
+msgstr "Vorlage"
+
+#: src/desktop_view.rs:3156
+msgid "Images"
+msgstr "Bilder"
+
+#: src/desktop_view.rs:3161
+msgid "Change Desktop Background"
+msgstr "Hintergrund der Arbeitsfläche ändern"
+
+#: src/desktop_view/fortschritt.rs:45
+#, no-c-format
+msgid "Copying “{name}” to “{target}”"
+msgstr "Kopieren von „{name}“ nach „{target}“"
+
+#: src/desktop_view/fortschritt.rs:49
+#, no-c-format
+msgid "Copying {n} file to “{target}”"
+msgid_plural "Copying {n} files to “{target}”"
+msgstr[0] "Kopieren von {n} Datei nach „{target}“"
+msgstr[1] "Kopieren von {n} Dateien nach „{target}“"
+
+#: src/desktop_view/fortschritt.rs:55
+#, no-c-format
+msgid "Moving “{name}” to “{target}”"
+msgstr "Verschieben von „{name}“ nach „{target}“"
+
+#: src/desktop_view/fortschritt.rs:59
+#, no-c-format
+msgid "Moving {n} file to “{target}”"
+msgid_plural "Moving {n} files to “{target}”"
+msgstr[0] "Verschieben von {n} Datei nach „{target}“"
+msgstr[1] "Verschieben von {n} Dateien nach „{target}“"
+
+#: src/desktop_view/fortschritt.rs:65
+#, no-c-format
+msgid "Moving “{name}” to the trash"
+msgstr "„{name}“ wird in den Papierkorb verschoben"
+
+#: src/desktop_view/fortschritt.rs:66
+#, no-c-format
+msgid "Moving {n} file to the trash"
+msgid_plural "Moving {n} files to the trash"
+msgstr[0] "{n} Datei wird in den Papierkorb verschoben"
+msgstr[1] "{n} Dateien werden in den Papierkorb verschoben"
+
+#: src/desktop_view/fortschritt.rs:72
+#, no-c-format
+msgid "Deleting “{name}”"
+msgstr "„{name}“ wird gelöscht"
+
+#: src/desktop_view/fortschritt.rs:73
+#, no-c-format
+msgid "Deleting {n} file"
+msgid_plural "Deleting {n} files"
+msgstr[0] "{n} Datei wird gelöscht"
+msgstr[1] "{n} Dateien werden gelöscht"
+
+#: src/desktop_view/fortschritt.rs:74
+msgid "Emptying the trash"
+msgstr "Papierkorb wird geleert"
+
+#: src/desktop_view/fortschritt.rs:75
+#, no-c-format
+msgid "Working on “{name}”"
+msgstr "„{name}“ wird bearbeitet"
+
+#: src/desktop_view/fortschritt.rs:83
+#, no-c-format
+msgid "{n} second left"
+msgid_plural "{n} seconds left"
+msgstr[0] "noch {n} Sekunde"
+msgstr[1] "noch {n} Sekunden"
+
+#: src/desktop_view/fortschritt.rs:91
+#, no-c-format
+msgid "{n} minute left"
+msgid_plural "{n} minutes left"
+msgstr[0] "noch {n} Minute"
+msgstr[1] "noch {n} Minuten"
+
+#: src/desktop_view/fortschritt.rs:94
+#, no-c-format
+msgid "{n} hour left"
+msgid_plural "{n} hours left"
+msgstr[0] "noch {n} Stunde"
+msgstr[1] "noch {n} Stunden"
+
+#: src/desktop_view/fortschritt.rs:103
+#, no-c-format
+msgid "{done} of {total}"
+msgstr "{done} von {total}"
+
+#: src/desktop_view/fortschritt.rs:113
+#, no-c-format
+msgid "{amount} — {left} ({rate}/s)"
+msgstr "{amount} – {left} ({rate}/s)"
+
+#: src/desktop_view/fortschritt.rs:125
+#, no-c-format
+msgid "{done} of {n} file"
+msgid_plural "{done} of {n} files"
+msgstr[0] "{done} von {n} Datei"
+msgstr[1] "{done} von {n} Dateien"
+
+#: src/desktop_view/fortschritt.rs:295
+msgid "File Operations"
+msgstr "Dateioperationen"
+
+#: src/desktop_view/fortschritt.rs:382
+msgid "Preparing…"
+msgstr "Vorbereitung …"
+
+#: src/desktop_view/frage.rs:31 src/desktop_view/frage.rs:43 src/desktop_view/frage.rs:55
+msgid "File conflict"
+msgstr "Dateikonflikt"
+
+#: src/desktop_view/frage.rs:32
+#, no-c-format
+msgid "Replace folder “{name}”?"
+msgstr "Ordner „{name}“ ersetzen?"
+
+#: src/desktop_view/frage.rs:35 src/desktop_view/frage.rs:59
+#, no-c-format
+msgid "Another folder with the same name already exists in “{folder}”."
+msgstr "In „{folder}“ gibt es bereits einen Ordner mit diesem Namen."
+
+#: src/desktop_view/frage.rs:39
+msgid "Replacing it will remove all files in the folder."
+msgstr "Wenn Sie ihn ersetzen, werden alle Dateien in diesem Ordner entfernt."
+
+#: src/desktop_view/frage.rs:44
+#, no-c-format
+msgid "Replace file “{name}”?"
+msgstr "Datei „{name}“ ersetzen?"
+
+#: src/desktop_view/frage.rs:47
+#, no-c-format
+msgid "Another file with the same name already exists in “{folder}”."
+msgstr "In „{folder}“ gibt es bereits eine Datei mit diesem Namen."
+
+#: src/desktop_view/frage.rs:51
+msgid "Replacing it will overwrite its content."
+msgstr "Wenn Sie sie ersetzen, wird ihr Inhalt überschrieben."
+
+#: src/desktop_view/frage.rs:56
+#, no-c-format
+msgid "Merge folder “{name}”?"
+msgstr "Ordner „{name}“ zusammenführen?"
+
+#: src/desktop_view/frage.rs:63
+msgid ""
+"Merging will ask for confirmation before replacing any files in the folder that conflict with the files being copied."
+msgstr ""
+"Beim Zusammenführen wird nachgefragt, bevor Dateien im Ordner ersetzt werden, die mit den kopierten Dateien in Konflikt stehen."
+
+#: src/desktop_view/frage.rs:70
+msgid "No trash"
+msgstr "Kein Papierkorb"
+
+#: src/desktop_view/frage.rs:71
+#, no-c-format
+msgid ""
+"Cannot move “{name}” to the trash. Do you want to delete it immediately?"
+msgstr ""
+"„{name}“ kann nicht in den Papierkorb verschoben werden. Wollen Sie es sofort löschen?"
+
+#: src/desktop_view/frage.rs:75
+msgid "This place has no trash. Deleted items cannot be restored."
+msgstr ""
+"Dieser Ort hat keinen Papierkorb. Gelöschte Objekte lassen sich nicht wiederherstellen."
+
+#: src/desktop_view/frage.rs:78
+msgid "Error"
+msgstr "Fehler"
+
+#: src/desktop_view/frage.rs:79
+#, no-c-format
+msgid "“{name}” could not be handled."
+msgstr "„{name}“ konnte nicht bearbeitet werden."
+
+#: src/desktop_view/frage.rs:89
+#, no-c-format
+msgid "Size: {size}"
+msgstr "Größe: {size}"
+
+#. TRANSLATORS: date and time of the last change (strftime format of GLib's GDateTime)
+#: src/desktop_view/frage.rs:99 src/desktop_view/transfer.rs:1247
+msgid "%Y-%m-%d %H:%M"
+msgstr "%d.%m.%Y %H:%M"
+
+#: src/desktop_view/frage.rs:101
+#, no-c-format
+msgid "Last modified: {when}"
+msgstr "Zuletzt geändert: {when}"
+
+#: src/desktop_view/frage.rs:201
+msgid "Original file"
+msgstr "Ursprüngliche Datei"
+
+#: src/desktop_view/frage.rs:202
+msgid "Replace with"
+msgstr "Ersetzen durch"
+
+#: src/desktop_view/frage.rs:221
+msgid "Select a new _name for the destination"
+msgstr "Einen neuen _Namen für das Ziel wählen"
+
+#: src/desktop_view/frage.rs:227
+msgid "Apply this action to all _files"
+msgstr "Diese Aktion auf alle _Dateien anwenden"
+
+#: src/desktop_view/frage.rs:235 src/desktop_view/kennwort.rs:101
+msgid "_Cancel"
+msgstr "_Abbrechen"
+
+#: src/desktop_view/frage.rs:240 src/desktop_view/frage.rs:251 src/desktop_view/frage.rs:266 src/desktop_view/frage.rs:273
+msgid "_Skip"
+msgstr "_Überspringen"
+
+#: src/desktop_view/frage.rs:242 src/desktop_view/frage.rs:253
+msgid "Re_name"
+msgstr "_Umbenennen"
+
+#: src/desktop_view/frage.rs:246 src/desktop_view/frage.rs:257
+msgid "_Replace"
+msgstr "_Ersetzen"
+
+#: src/desktop_view/frage.rs:261
+msgid "_Merge"
+msgstr "_Zusammenführen"
+
+#: src/desktop_view/frage.rs:268
+msgid "_Delete"
+msgstr "_Löschen"
+
+#: src/desktop_view/frage.rs:275
+msgid "_Retry"
+msgstr "_Wiederholen"
+
+#: src/desktop_view/kennwort.rs:75
+msgid "Password"
+msgstr "Kennwort"
+
+#: src/desktop_view/kennwort.rs:102
+msgid "C_onnect"
+msgstr "_Verbinden"
+
+#: src/desktop_view/transfer.rs:443
+#, no-c-format
+msgid "Are you sure you want to permanently delete “{name}”?"
+msgstr "Möchten Sie „{name}“ wirklich endgültig löschen?"
+
+#: src/desktop_view/transfer.rs:447
+#, no-c-format
+msgid "Are you sure you want to permanently delete the {n} selected item?"
+msgid_plural "Are you sure you want to permanently delete the {n} selected items?"
+msgstr[0] "Möchten Sie das {n} ausgewählte Objekt wirklich endgültig löschen?"
+msgstr[1] "Möchten Sie die {n} ausgewählten Objekte wirklich endgültig löschen?"
+
+#: src/desktop_view/transfer.rs:456
+msgid "If you delete an item, it will be permanently lost."
+msgstr "Wenn Sie ein Objekt löschen, ist es unwiderruflich verloren."
+
+#: src/desktop_view/transfer.rs:459
+msgid "Delete"
+msgstr "Löschen"
+
+#: src/desktop_view/transfer.rs:1158
+msgid "Other Application…"
+msgstr "Andere Anwendung …"
+
+#: src/desktop_view/transfer.rs:1187 src/desktop_view/transfer.rs:1388
+#, no-c-format
+msgid "“{name}” could not be opened."
+msgstr "„{name}“ konnte nicht geöffnet werden."
+
+#: src/desktop_view/transfer.rs:1209
+#, no-c-format
+msgid "The properties of “{name}” cannot be read."
+msgstr "Die Eigenschaften von „{name}“ sind nicht lesbar."
+
+#: src/desktop_view/transfer.rs:1221
+#, no-c-format
+msgid "Link to {target}"
+msgstr "Verknüpfung auf {target}"
+
+#: src/desktop_view/transfer.rs:1238
+msgid "counting …"
+msgstr "wird gezählt …"
+
+#: src/desktop_view/transfer.rs:1256
+#, no-c-format
+msgid "“{name}” Properties"
+msgstr "Eigenschaften von „{name}“"
+
+#: src/desktop_view/transfer.rs:1273
+msgid "Name:"
+msgstr "Name:"
+
+#: src/desktop_view/transfer.rs:1274
+msgid "Type:"
+msgstr "Typ:"
+
+#: src/desktop_view/transfer.rs:1275
+msgid "Size:"
+msgstr "Größe:"
+
+#: src/desktop_view/transfer.rs:1276
+msgid "Location:"
+msgstr "Ort:"
+
+#: src/desktop_view/transfer.rs:1277
+msgid "Modified:"
+msgstr "Geändert:"
+
+#: src/desktop_view/transfer.rs:1326
+#, no-c-format
+msgid "{n} item, totalling {size}"
+msgid_plural "{n} items, totalling {size}"
+msgstr[0] "{n} Objekt, insgesamt {size}"
+msgstr[1] "{n} Objekte, insgesamt {size}"
+
+#: src/desktop_view/transfer.rs:1371
+#, no-c-format
+msgid "Select an application to open “{name}”"
+msgstr "Wählen Sie ein Programm, um „{name}“ zu öffnen"
+
+#: src/i18n.rs:143
+#, no-c-format
+msgid "… and {n} more"
+msgid_plural "… and {n} more"
+msgstr[0] "… und {n} weitere"
+msgstr[1] "… und {n} weitere"
+
+#: src/main.rs:412
+msgid "Desktop"
+msgstr "Arbeitsfläche"

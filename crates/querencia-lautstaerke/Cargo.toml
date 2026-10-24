@@ -16,6 +16,9 @@ name = "querencia-lautstaerke"
 path = "src/main.rs"
 
 [dependencies]
+# Translations through GNU gettext (own text domain querencia-lautstaerke, po/),
+# as querencia-panel: gettext-system uses the gettext of glibc.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
 # Same crates and versions as querencia-panel; libc was already in
 # Cargo.lock (through glib). libpulse is opened at run time with dlopen,
 # so neither a -dev package nor a running audio service is needed to build
