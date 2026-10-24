@@ -12,8 +12,9 @@ or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License in
 the file LICENSE for more details.
 
 Dateien mit eigenem Lizenzvermerk behalten diesen (README.md, Abschnitt
-„Lizenz“): tools/*/virtual-keyboard-unstable-v1.xml (gekürzte Kopie des
-wlroots-Protokolls) steht unter MIT (Vermerk im Dateikopf).
+„Lizenz“): tools/*/virtual-keyboard-unstable-v1.xml und
+crates/querencia-dateien/werkzeug/*/virtual-keyboard-unstable-v1.xml (gekürzte
+Kopie des wlroots-Protokolls) stehen unter MIT (Vermerk im Dateikopf).
 
 Das Querencia-Logo ist ein Kennzeichen des Projekts und von der Lizenz
 ausgenommen; es gilt MARKE.md. The Querencia logo is a mark of the project
