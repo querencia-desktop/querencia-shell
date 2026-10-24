@@ -20,7 +20,13 @@
 #    für Namen mit Umlauten NULL (Querencia Archiv stürzte so ab), deshalb
 #    LANG=C.UTF-8 (in glibc eingebaut, kein locales-Paket nötig).
 #  - Das Image ist minimal (kein ps, kein update-desktop-database): Werkzeuge,
-#    die Tests aufrufen, gehören in ENTWICKLUNGSPAKETE.
+#    die Tests aufrufen, gehören in ENTWICKLUNGSPAKETE, ebenso Bibliotheken, die
+#    ein Programm erst zur Laufzeit per dlopen lädt (Querencia Sitzung:
+#    libpolkit-agent-1-0).
+#  - Der Container darf keine Benutzer-Namensräume anlegen (`unshare -U`:
+#    „Operation not permitted“). Tests, die welche brauchen, schaltet das Repo
+#    über eine eigene Variable im Block `env` ab (Querencia Shell:
+#    QUERENCIA_DATEIARBEIT_OHNE_NAMENSRAUM=1).
 name: CI
 
 on:
@@ -54,6 +60,10 @@ env:
   # Schritt „Lizenzen der Abhängigkeiten“ (fehlt im Container sonst):
   ENTWICKLUNGSPAKETE: >-
     libgtk-4-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev libgraphene-1.0-dev libwayland-dev libgtk4-layer-shell-dev libxkbcommon-dev
+  # Keine Benutzer-Namensräume im Container: tests/namensraum.rs von
+  # querencia-dateiarbeit meldet dann „NICHT GEMESSEN“ statt zu scheitern
+  # (docs/dateiarbeit.md §7). Gemessen wird der Test bei der Entwicklung.
+  QUERENCIA_DATEIARBEIT_OHNE_NAMENSRAUM: "1"
 
 jobs:
   pruefen:
