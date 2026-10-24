@@ -157,3 +157,14 @@ in `.vorgabe/stand` bleibt in dieser Form (absoluter Ordner, danach
 - Ein Paket-Starter (G2-F) schreibt dort `/etc/querencia/labwc` oder setzt
   `QUERENCIA_REPO`. Ändert sich das Format, müssen Starter und Einstellungen
   gemeinsam geändert werden.
+
+## 8. Software-OpenGL im Autostart (QD-169, 23.10.2026)
+
+Die Autostart-Vorgabe exportiert seit `session/grafik-1` die Variablen aus
+`QUERENCIA_GRAFIK_UMGEBUNG` (nur `LIBGL_ALWAYS_SOFTWARE`,
+`MESA_LOADER_DRIVER_OVERRIDE`, `GALLIUM_DRIVER`), die der Starter bei zink
+auf NVK setzt. Eine eigene Benutzerdatei `autostart` ohne diesen Abschnitt
+bleibt beim Abgleich erhalten; der Starter schreibt dann einen Hinweis ins
+Protokoll, und Software-OpenGL gilt nur über die Aktivierungsumgebung.
+Einzelheiten: [sitzung-grafik.md](sitzung-grafik.md).
+

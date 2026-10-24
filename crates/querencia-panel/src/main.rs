@@ -6,34 +6,39 @@ mod applet_move;
 mod applets;
 mod apps;
 mod arbeitsflaeche_zeigen;
-mod classic_menu;
 mod clock;
 mod ergaenzung;
-mod farbschema;
 mod fensterliste;
 mod glocke;
+mod i18n;
 mod icon_reload;
-mod icon_theme;
 mod launcher;
 mod layout;
 mod layout_editor;
 mod layout_store;
+mod links;
 mod logo;
+#[cfg(test)]
+mod menu_gui_test;
 mod network_applet;
 mod network_dialogs;
 mod neuladen;
 mod panel;
 mod panel_menu;
 mod places_menu;
-mod portal;
 mod session;
 mod sitzung_start;
 mod symbol_farbe;
 mod system_menu;
+mod ueberwachung;
 mod volume_applet;
 mod window_icons;
 mod window_list;
 mod workspace_switcher;
+
+// The building blocks shared with querencia-desktop (until 0.3.0 modules of
+// the panel); imported here, so `crate::symbole` and the others keep working.
+use querencia_oberflaeche::{classic_menu, farbschema, icon_theme, portal, symbole};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -43,7 +48,9 @@ use gtk4::{Application, gio, glib};
 
 use crate::layout_editor::Editor;
 
-pub(crate) const APP_ID: &str = "org.example.Querencia.Panel";
+/// Application ID, D-Bus name and app ID of the panel's windows (QD-059;
+/// `org.example.Querencia.Panel` until 0.2.3, see [`neuladen::ALTER_BUSNAME`]).
+pub(crate) const APP_ID: &str = "org.querencia.Panel";
 
 // GTK's default button min-height plus padding is 34 px and would push a
 // panel of layout::DEFAULT_HEIGHT past its height; panel buttons fill the
@@ -237,11 +244,25 @@ const PANEL_CSS_DUNKEL: &str = "
 }
 ";
 
+/// What this panel can do beyond 0.2.2, for the session's starter
+/// (`querencia-panel --faehigkeiten`): `ueberwacht` = the watchdog
+/// `--ueberwacht` (`ueberwachung.rs`).
+const CAPABILITIES: &str = "ueberwacht";
+
 fn main() -> glib::ExitCode {
     // G2-AL: the integration's panel.ini step, without GTK or a display
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("--panel-ini") {
         return glib::ExitCode::from(ergaenzung::kommandozeile(&args[1..]));
+    }
+    // for the session's starter: whether this panel knows --ueberwacht
+    if args.iter().any(|a| a == "--faehigkeiten") {
+        println!("{CAPABILITIES}");
+        return glib::ExitCode::SUCCESS;
+    }
+    // the watchdog: no GTK, no portal, no display in this process
+    if args.iter().any(|a| a == ueberwachung::OPTION) {
+        return ueberwachung::laufen(&args);
     }
     // before GTK and any thread (QD-062): no long wait for a stale portal
     let portal_mode = portal::prepare("querencia-panel");
@@ -250,6 +271,8 @@ fn main() -> glib::ExitCode {
         return glib::ExitCode::FAILURE;
     }
     portal::follow_gsettings("querencia-panel", portal_mode);
+    // after gtk4::init, which set the locale from the environment
+    i18n::init();
     if !gtk4_layer_shell::is_supported() {
         eprintln!(
             "querencia-panel: Der Compositor bietet kein wlr-layer-shell an. \
@@ -288,6 +311,10 @@ fn build_panels(app: &Application) {
     }
 
     install_panel_style();
+    // QD-129: the logo as icon of the info dialog and the other windows
+    if let Some(display) = gtk4::gdk::Display::default() {
+        logo::set_window_icon(&display);
+    }
     farbschema::startfehler_beheben();
     // Teil 6: icons the user gets later appear without a restart.
     icon_reload::start();

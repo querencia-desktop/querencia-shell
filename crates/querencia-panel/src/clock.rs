@@ -17,7 +17,8 @@ use std::time::Duration;
 
 use gtk4::{Calendar, GestureClick, Label, Popover, gdk, glib, prelude::*};
 
-const FORMAT: &str = "%d.%m.%Y %H:%M";
+use crate::i18n::gettext;
+
 /// CSS class of the calendar popover (style in `main.rs`).
 pub const CALENDAR_CLASS: &str = "querencia-calendar";
 
@@ -55,8 +56,20 @@ fn refresh(label: &Label) {
     });
 }
 
+/// The clock's format (strftime as `glib::DateTime::format`), translated:
+/// German keeps "%d.%m.%Y %H:%M", English follows the GNOME 2 clock.
+fn clock_format() -> String {
+    // TRANSLATORS: format of the panel clock (glib::DateTime::format, i.e.
+    // strftime); day and month names come from the time locale
+    gettext("%a %b %e, %l:%M %p")
+}
+
 fn format(time: &glib::DateTime) -> String {
-    time.format(FORMAT).map(Into::into).unwrap_or_default()
+    format_with(time, &clock_format())
+}
+
+fn format_with(time: &glib::DateTime, format: &str) -> String {
+    time.format(format).map(Into::into).unwrap_or_default()
 }
 
 /// Time left until the next full minute. Never zero, so a timer that
@@ -275,7 +288,7 @@ mod tests {
     #[test]
     fn formats_day_month_year_and_minutes() {
         let time = glib::DateTime::new(&glib::TimeZone::utc(), 2026, 10, 3, 9, 5, 42.7).unwrap();
-        assert_eq!(format(&time), "03.10.2026 09:05");
+        assert_eq!(format_with(&time, "%d.%m.%Y %H:%M"), "03.10.2026 09:05");
     }
 
     fn en_us_with(language: &str) -> Option<String> {

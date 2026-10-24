@@ -71,10 +71,12 @@
          anzeigen“ links im unteren Panel: minimiert alle Fenster der
          aktuellen Arbeitsfläche, der nächste Druck stellt genau diese
          wieder her. Das Panel macht beides (D-Bus an seinem Busnamen);
-         läuft kein Panel, tut das Kürzel nichts. -->
+         läuft kein Panel, tut das Kürzel nichts. Busname ab Panel 0.2.4
+         org.querencia.Panel (Pfad /org/querencia/Panel); der alte Name
+         org.example.Querencia.Panel bleibt dort Zweitname (QD-059). -->
     <keybind key="W-d">
       <action name="Execute"
-              command="gdbus call --session --dest org.example.Querencia.Panel --object-path /org/example/Querencia/Panel --method org.querencia.Panel.ArbeitsflaecheUmschalten" />
+              command="gdbus call --session --dest org.querencia.Panel --object-path /org/querencia/Panel --method org.querencia.Panel.ArbeitsflaecheUmschalten" />
     </keybind>
     <!-- Querencia Sitzung (Querencia-Werkstatt G2-K, 2026-10-18): Ctrl+Alt+L locks the
          screen at once (ext-session-lock, as GNOME 2), Ctrl+Alt+Delete

@@ -1,12 +1,16 @@
 [package]
 name = "querencia-panel"
-version = "0.2.1"
+version = "0.3.2"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
 
 [dependencies]
+# Translations through GNU gettext (po/, .mo under share/locale), as
+# Querencia Desktop and the other programs: gettext-system uses the gettext
+# of glibc instead of building libintl.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
 gio-unix = "0.22"
 glib-unix = "0.22"
 # v4_6: MenuButton::set_child for the classic "Anwendungen" button with logo
@@ -22,7 +26,12 @@ querencia-lautstaerke = { path = "../querencia-lautstaerke" }
 # G2-M: network state for the network applet (own crate of the workspace;
 # NetworkManager through GIO's D-Bus, no new external crate).
 querencia-netzwerk = { path = "../querencia-netzwerk" }
+# Classic menus, icons without preloading, icon theme, colour scheme and
+# settings portal, shared with querencia-desktop (own crate of the workspace,
+# no new external crate).
+querencia-oberflaeche = { path = "../querencia-oberflaeche" }
 
-[lints.rust]
-# classic_menu.rs is shared with querencia-desktop, which sets this cfg.
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(querencia_desktop)"] }
+[dev-dependencies]
+# The isolated GUI test of the classic menus (menu_gui_test.rs); only for
+# the tests, the release build has no test code of the library.
+querencia-oberflaeche = { path = "../querencia-oberflaeche", features = ["gui-test"] }

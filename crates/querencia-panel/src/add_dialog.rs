@@ -20,16 +20,18 @@ use std::rc::Rc;
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Application, Box as GtkBox, Button, Image, KeyvalTrigger, Label, ListBox, ListBoxRow,
+    Align, Application, Box as GtkBox, Button, KeyvalTrigger, Label, ListBox, ListBoxRow,
     NamedAction, Orientation, PolicyType, ScrolledWindow, SearchEntry, SelectionMode, Shortcut,
     ShortcutController, Stack, Window, gdk, gio, glib,
 };
 
 use crate::app_chooser;
 use crate::applets::{self, AppletType};
+use crate::i18n::{gettext, gettext_f};
 use crate::layout::Region;
 use crate::logo;
 
+/// Name of the dialog in log lines (German like all log lines).
 const TITLE: &str = "Zum Panel hinzufügen";
 /// Shown when the theme has none of the applet's icons.
 const FALLBACK_ICON: &str = "application-x-addon";
@@ -38,16 +40,16 @@ const ICON_SIZE: i32 = 32;
 pub const REGIONS: [Region; 3] = [Region::Start, Region::Center, Region::End];
 
 /// Name of a region in the dialog.
-pub fn region_name(region: Region) -> &'static str {
+pub fn region_name(region: Region) -> String {
     match region {
-        Region::Start => "Links",
-        Region::Center => "Mitte",
-        Region::End => "Rechts",
+        // TRANSLATORS: region of the panel where a new item goes
+        Region::Start => gettext("Left"),
+        // TRANSLATORS: region of the panel where a new item goes
+        Region::Center => gettext("Center"),
+        // TRANSLATORS: region of the panel where a new item goes
+        Region::End => gettext("Right"),
     }
 }
-
-/// Tooltip of a type that cannot be added once more.
-const UNAVAILABLE: &str = "Dieses Objekt gibt es nur einmal, und es ist bereits in einem Panel";
 
 /// Adds an instance of an applet type, for a launcher with the desktop ID
 /// of its application; `Err` carries the reason shown.
@@ -83,7 +85,7 @@ pub fn present(app: &Application, slot: &glib::WeakRef<Window>, panel_id: &str, 
 /// All applet types, sorted by name for the user's locale.
 pub fn choices() -> Vec<&'static AppletType> {
     let mut choices: Vec<_> = applets::APPLETS.iter().collect();
-    choices.sort_by_cached_key(|applet| glib::CollationKey::from(applet.name));
+    choices.sort_by_cached_key(|applet| glib::CollationKey::from((applet.name)().as_str()));
     choices
 }
 
@@ -92,8 +94,8 @@ pub fn choices() -> Vec<&'static AppletType> {
 pub fn matches(applet: &AppletType, query: &str) -> bool {
     let query = query.trim().to_lowercase();
     query.is_empty()
-        || applet.name.to_lowercase().contains(&query)
-        || applet.description.to_lowercase().contains(&query)
+        || (applet.name)().to_lowercase().contains(&query)
+        || (applet.description)().to_lowercase().contains(&query)
 }
 
 /// The type "Hinzufügen" adds: the selected one, if it may be added.
@@ -120,14 +122,16 @@ fn icon_names(applet: &AppletType) -> Vec<String> {
 fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
     let window = Window::builder()
         .application(app)
-        .title(TITLE)
+        .title(gettext("Add to Panel"))
         .default_width(480)
         .default_height(440)
         .build();
 
     let search = SearchEntry::new();
     let prompt = Label::builder()
-        .label("_Objekt suchen, das dem Panel hinzugefügt werden soll:")
+        // TRANSLATORS: mnemonics of this dialog: this label, _Close, _Add,
+        // For_ward and _Region must differ
+        .label(gettext("_Find an item to add to the panel:"))
         .use_underline(true)
         .mnemonic_widget(&search)
         .xalign(0.0)
@@ -164,28 +168,29 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
         .css_classes(["error"])
         .build();
 
-    let close = stock_button("_Schließen", "window-close");
+    let close = stock_button(&gettext("_Close"), "window-close");
     close.connect_clicked(glib::clone!(
         #[weak]
         window,
         move |_| window.close()
     ));
-    let add = stock_button("_Hinzufügen", "list-add");
+    let add = stock_button(&gettext("_Add"), "list-add");
     add.set_sensitive(false);
-    add.set_tooltip_text(Some("Das ausgewählte Objekt zum Panel hinzufügen"));
+    add.set_tooltip_text(Some(&gettext("Add the selected item to the panel")));
     // Instead of "Hinzufügen" while a type that needs an application is
     // selected, as in GNOME 2.
-    let forward = stock_button("_Vor", "go-next");
+    let forward = stock_button(&gettext("For_ward"), "go-next");
     forward.set_visible(false);
-    forward.set_tooltip_text(Some("Eine Anwendung für den Starter auswählen"));
+    forward.set_tooltip_text(Some(&gettext("Choose an application for the launcher")));
     // Teil 5: where in the panel the new applet goes, preset from the
     // right-clicked third, as a choice left of the buttons.
-    let names: Vec<&str> = REGIONS.iter().map(|r| region_name(*r)).collect();
+    let names: Vec<String> = REGIONS.iter().map(|r| region_name(*r)).collect();
+    let names: Vec<&str> = names.iter().map(String::as_str).collect();
     let place = gtk4::DropDown::from_strings(&names);
     place.set_valign(Align::Center);
-    place.set_tooltip_text(Some("Bereich des Panels, in den das Objekt kommt"));
+    place.set_tooltip_text(Some(&gettext("Region of the panel the item goes to")));
     let place_label = Label::builder()
-        .label("_Bereich:")
+        .label(gettext("_Region:"))
         .use_underline(true)
         .mnemonic_widget(&place)
         .build();
@@ -276,7 +281,9 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
                 row.set_sensitive(available);
                 row.set_selectable(available);
                 row.set_activatable(available);
-                row.set_tooltip_text((!available).then_some(UNAVAILABLE));
+                let unavailable =
+                    gettext("There is only one of this item, and it is already in a panel");
+                row.set_tooltip_text((!available).then_some(unavailable.as_str()));
                 index += 1;
             }
             if list.selected_row().is_some_and(|row| !row.is_selectable()) {
@@ -319,8 +326,9 @@ fn build(app: &Application, panel_id: &str, hooks: &Rc<Hooks>) -> Window {
                     eprintln!(
                         "querencia-panel: Dialog „{TITLE}“ (Panel {panel_id}): {applet} nicht hinzugefügt: {err}"
                     );
-                    status.set_label(&format!(
-                        "Das Objekt konnte nicht hinzugefügt werden: {err}"
+                    status.set_label(&gettext_f(
+                        "The item could not be added: {err}",
+                        &[("err", &err)],
                     ));
                     status.set_visible(true);
                 }
@@ -465,10 +473,10 @@ fn selected_target(list: &ListBox, hooks: &Hooks) -> Option<String> {
 /// A button with a small icon before its label, like the GTK 2 stock
 /// buttons of GNOME 2 dialogs.
 pub(crate) fn stock_button(mnemonic: &str, icon: &str) -> Button {
-    let image = Image::from_gicon(&gio::ThemedIcon::from_names(&[
-        icon,
-        &format!("{icon}-symbolic"),
-    ]));
+    let image = crate::symbole::image(
+        &gio::ThemedIcon::from_names(&[icon, &format!("{icon}-symbolic")]),
+        16,
+    );
     let label = Label::with_mnemonic(mnemonic);
     let inner = GtkBox::new(Orientation::Horizontal, 4);
     inner.set_halign(Align::Center);
@@ -498,18 +506,19 @@ fn row(applet: &AppletType) -> ListBoxRow {
     } else {
         let names = icon_names(applet);
         let names: Vec<&str> = names.iter().map(String::as_str).collect();
-        let image = Image::from_gicon(&gio::ThemedIcon::from_names(&names));
-        image.set_pixel_size(ICON_SIZE);
-        image
+        crate::symbole::image(&gio::ThemedIcon::from_names(&names), ICON_SIZE)
     };
 
     let name = Label::builder()
-        .label(format!("<b>{}</b>", glib::markup_escape_text(applet.name)))
+        .label(format!(
+            "<b>{}</b>",
+            glib::markup_escape_text(&(applet.name)())
+        ))
         .use_markup(true)
         .xalign(0.0)
         .build();
     let description = Label::builder()
-        .label(applet.description)
+        .label((applet.description)())
         .xalign(0.0)
         .wrap(true)
         .css_classes(["dim-label"])
@@ -542,21 +551,21 @@ mod tests {
 
     #[test]
     fn choices_are_all_types_sorted_by_name() {
-        let names: Vec<_> = choices().iter().map(|a| a.name).collect();
+        let names: Vec<_> = choices().iter().map(|a| (a.name)()).collect();
         assert_eq!(
             names,
             [
-                "Anwendungen",
-                "Anwendungsstarter …",
-                "Arbeitsfläche anzeigen",
-                "Arbeitsflächenumschalter",
-                "Fensterliste",
-                "Lautstärke",
-                "Mitteilungen",
-                "Netzwerk",
-                "Orte",
+                "Application Launcher…",
+                "Applications",
+                "Clock",
+                "Network",
+                "Notifications",
+                "Places",
+                "Show Desktop",
                 "System",
-                "Uhr"
+                "Volume",
+                "Window List",
+                "Workspace Switcher"
             ]
         );
         assert_eq!(choices().len(), applets::APPLETS.len());
@@ -578,15 +587,16 @@ mod tests {
                 .map(|a| a.id)
                 .collect()
         };
-        assert_eq!(found("UHR"), ["clock"]);
-        assert_eq!(found(" orte "), ["places"]);
-        // G2-AL: „Alle Fenster minimieren …“
-        assert_eq!(found("fenster"), ["show-desktop", "window-list"]);
+        // without a catalog in the test: the English names
+        assert_eq!(found("CLOCK"), ["clock"]);
+        assert_eq!(found(" places "), ["places"]);
+        // G2-AL: “Minimize and restore all windows”
+        assert_eq!(found("windows"), ["show-desktop", "window-list"]);
         // only in the description
-        assert_eq!(found("datum"), ["clock"]);
-        assert_eq!(found("zentrale"), ["benachrichtigungen"]);
-        // non-ASCII, in name and description of the same type
-        assert_eq!(found("FLÄCHE"), ["show-desktop", "workspace-switcher"]);
+        assert_eq!(found("date"), ["clock"]);
+        assert_eq!(found("center"), ["benachrichtigungen"]);
+        // in name and description of the same type
+        assert_eq!(found("WORKSPACE"), ["workspace-switcher"]);
         assert!(found("wetter").is_empty());
     }
 

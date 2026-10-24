@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name[de]=Querencia Dateien
+Name=Files
+GenericName[de]=Dateimanager
+GenericName=File Manager
+Comment[de]=Ordner durchsuchen und Dateien verwalten
+Comment=Browse folders and manage files
+Keywords[de]=Ordner;Dateimanager;Dateien;Explorer;
+Keywords=folder;file manager;files;explorer;
+Exec=querencia-dateien %U
+Icon=org.querencia.Dateien
+Terminal=false
+Categories=GTK;Utility;FileTools;FileManager;
+StartupNotify=true
+StartupWMClass=org.querencia.Dateien

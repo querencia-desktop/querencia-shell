@@ -1,17 +1,23 @@
 [package]
 name = "querencia-desktop"
-version = "0.2.2"
+version = "0.3.0"
 description = "Querencia Desktop: Arbeitsfläche (Hintergrund, Symbole, Kontextmenü) als Layer-Shell-Ebenen"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
-# The same crates and versions as querencia-panel: no new package in
-# Cargo.lock, offline builds keep working.
+# Translations through GNU gettext (po/, .mo under share/locale), as the
+# other Querencia programs: gettext-system uses the gettext of glibc instead
+# of building libintl. Otherwise the same crates and versions as
+# querencia-panel.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
 gio-unix = "0.22"
 gtk4 = { version = "0.11", features = ["v4_10"] }
 gtk4-layer-shell = "0.8.1"
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(querencia_desktop)"] }
+# Classic menus, icon theme, colour scheme and settings portal of the panel,
+# as a library of the workspace (until 0.2.6 included through #[path]).
+querencia-oberflaeche = { path = "../querencia-oberflaeche" }
+# Desktop 0.3.0: file operations as jobs (progress, cancel, questions),
+# volumes with mounting, trash, folder monitors, opening (QD-140).
+querencia-dateiarbeit = { path = "../querencia-dateiarbeit" }

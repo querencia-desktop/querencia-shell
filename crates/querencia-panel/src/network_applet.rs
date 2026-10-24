@@ -19,8 +19,9 @@
 //!
 //! „Netzwerkeinstellungen …“ starts the desktop action `netzwerk` of
 //! Querencia Einstellungen (`org.querencia.Einstellungen.desktop`, Exec
-//! `querencia-einstellungen --netzwerk`); until G2-O brings that page the
-//! entry is greyed out with „kommt mit G2-O“.
+//! `querencia-einstellungen --netzwerk`); while Einstellungen has no such
+//! page the entry is greyed out as „Netzwerkeinstellungen (noch nicht
+//! verfügbar)“.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -36,6 +37,7 @@ use querencia_netzwerk::icons::{self, Small};
 use querencia_netzwerk::model::{self, AccessPoint, DeviceState, Icon, Kind, State};
 use querencia_netzwerk::service::{self, Service};
 
+use crate::i18n::{gettext, gettext_f};
 use crate::{logo, network_dialogs};
 
 /// CSS class of the applet's button. Its look is the one of all status
@@ -53,7 +55,7 @@ const AIRPLANE: &str = "airplane";
 const INFO: &str = "info";
 const SETTINGS: &str = "settings";
 /// Desktop ID of Querencia Einstellungen and the action of its network
-/// page (G2-O).
+/// page (not there yet in Einstellungen 0.1.4).
 pub const SETTINGS_APP: &str = "org.querencia.Einstellungen.desktop";
 pub const SETTINGS_ACTION: &str = "netzwerk";
 /// WLANs shown before „Weitere Netze …“.
@@ -69,11 +71,11 @@ pub fn settings_available() -> bool {
         .is_some_and(|app| app.list_actions().iter().any(|a| a == SETTINGS_ACTION))
 }
 
-fn settings_label(available: bool) -> &'static str {
+fn settings_label(available: bool) -> String {
     if available {
-        "_Netzwerkeinstellungen …"
+        gettext("_Network Settings…")
     } else {
-        "Netzwerkeinstellungen … (kommt mit G2-O)"
+        gettext("Network Settings (not available yet)")
     }
 }
 
@@ -81,26 +83,26 @@ fn settings_label(available: bool) -> &'static str {
 pub fn menu() -> gio::Menu {
     let menu = gio::Menu::new();
     menu.append(
-        Some("_WLAN aktiviert"),
+        Some(&gettext("_Wireless Enabled")),
         Some(&format!("{ACTION_GROUP}.{WIRELESS}")),
     );
     menu.append(
-        Some("_Flugmodus"),
+        Some(&gettext("_Airplane Mode")),
         Some(&format!("{ACTION_GROUP}.{AIRPLANE}")),
     );
     let more = gio::Menu::new();
     more.append(
-        Some("_Verbindungsinformationen …"),
+        Some(&gettext("Connection _Information…")),
         Some(&format!("{ACTION_GROUP}.{INFO}")),
     );
     more.append(
-        Some(settings_label(settings_available())),
+        Some(&settings_label(settings_available())),
         Some(&format!("{ACTION_GROUP}.{SETTINGS}")),
     );
     menu.append_section(None, &more);
     let object = gio::Menu::new();
     object.append(
-        Some("Aus dem Panel entfernen"),
+        Some(&gettext("Remove From Panel")),
         Some(crate::panel_menu::REMOVE_ACTION),
     );
     menu.append_section(None, &object);
@@ -195,10 +197,10 @@ pub fn rows(state: &State, settings: bool, all_networks: bool) -> Vec<Row> {
     let control = state.backend.can_control();
     match &state.backend {
         model::Backend::Starting => {
-            rows.push(Row::Note("Netzwerk wird gelesen …".into()));
+            rows.push(Row::Note(gettext("Reading network…")));
         }
         model::Backend::Unavailable(reason) => {
-            rows.push(Row::Note("Kein Netzwerkdienst".into()));
+            rows.push(Row::Note(gettext("No network service")));
             if !reason.is_empty() {
                 rows.push(Row::Note(reason.clone()));
             }
@@ -209,7 +211,7 @@ pub fn rows(state: &State, settings: bool, all_networks: bool) -> Vec<Row> {
         rows.push(Row::Note(note.to_string()));
     }
     if !state.networking_enabled {
-        rows.push(Row::Note("Netzwerk ist ausgeschaltet".into()));
+        rows.push(Row::Note(gettext("Networking is disabled")));
     }
     let wired: Vec<_> = state
         .devices
@@ -226,9 +228,12 @@ pub fn rows(state: &State, settings: bool, all_networks: bool) -> Vec<Row> {
             rows.push(Row::Separator);
         }
         rows.push(Row::Header(if wired.len() > 1 {
-            format!("Kabelnetzwerk ({})", device.interface)
+            gettext_f(
+                "Wired Network ({interface})",
+                &[("interface", &device.interface)],
+            )
         } else {
-            "Kabelnetzwerk".to_string()
+            gettext("Wired Network")
         }));
         if device.connected() {
             rows.push(Row::Item {
@@ -244,17 +249,17 @@ pub fn rows(state: &State, settings: bool, all_networks: bool) -> Vec<Row> {
             });
             if control {
                 rows.push(Row::item(
-                    "Trennen",
+                    &gettext("Disconnect"),
                     Some(Action::Disconnect(device.id.clone())),
                 ));
             }
         } else if device.carrier == Some(false) || device.state == DeviceState::Unavailable {
             rows.push(Row::Note(device.state_text().to_string()));
         } else if device.state == DeviceState::Connecting {
-            rows.push(Row::Note("Verbindung wird hergestellt …".into()));
+            rows.push(Row::Note(gettext("Connecting…")));
         } else if control {
             rows.push(Row::item(
-                "Verbinden",
+                &gettext("Connect"),
                 Some(Action::ConnectDevice(device.id.clone())),
             ));
         } else {
@@ -266,20 +271,25 @@ pub fn rows(state: &State, settings: bool, all_networks: bool) -> Vec<Row> {
             rows.push(Row::Separator);
         }
         rows.push(Row::Header(if wireless.len() > 1 {
-            format!("WLAN-Netze ({})", device.interface)
+            gettext_f(
+                "Wireless Networks ({interface})",
+                &[("interface", &device.interface)],
+            )
         } else {
-            "WLAN-Netze".to_string()
+            gettext("Wireless Networks")
         }));
         if state.airplane() == Some(true) {
-            rows.push(Row::Note("Flugmodus ist an".into()));
+            rows.push(Row::Note(gettext("Airplane mode is on")));
             continue;
         }
         if state.wireless_enabled == Some(false) {
-            rows.push(Row::Note("WLAN ist ausgeschaltet".into()));
+            rows.push(Row::Note(gettext("Wireless is disabled")));
             continue;
         }
         if !state.wireless_hardware_enabled {
-            rows.push(Row::Note("WLAN ist durch einen Schalter gesperrt".into()));
+            rows.push(Row::Note(gettext(
+                "Wireless is disabled by a hardware switch",
+            )));
             continue;
         }
         let list = model::networks(device);
@@ -321,7 +331,7 @@ pub fn rows(state: &State, settings: bool, all_networks: bool) -> Vec<Row> {
                 action: None,
             });
         } else if list.is_empty() {
-            rows.push(Row::Note("Keine Netze gefunden".into()));
+            rows.push(Row::Note(gettext("No networks found")));
         }
         let shown = if all_networks {
             list.len()
@@ -334,10 +344,13 @@ pub fn rows(state: &State, settings: bool, all_networks: bool) -> Vec<Row> {
                 label: ap.ssid.clone(),
                 detail: if ap.active {
                     device.main_address().map(|a| a.to_string()).or_else(|| {
-                        (device.state == DeviceState::Connecting).then(|| "verbindet …".to_string())
+                        (device.state == DeviceState::Connecting).then(|| gettext("connecting…"))
                     })
                 } else if !usable {
-                    Some(format!("{} – nicht unterstützt", ap.security.label()))
+                    Some(gettext_f(
+                        "{security} – not supported",
+                        &[("security", &ap.security.label())],
+                    ))
                 } else {
                     None
                 },
@@ -353,16 +366,19 @@ pub fn rows(state: &State, settings: bool, all_networks: bool) -> Vec<Row> {
             });
         }
         if shown < list.len() {
-            rows.push(Row::item("Weitere Netze …", Some(Action::MoreNetworks)));
+            rows.push(Row::item(
+                &gettext("More Networks…"),
+                Some(Action::MoreNetworks),
+            ));
         }
         if device.connected() || device.state == DeviceState::Connecting {
             rows.push(Row::item(
-                "Trennen",
+                &gettext("Disconnect"),
                 Some(Action::Disconnect(device.id.clone())),
             ));
         }
         rows.push(Row::item(
-            "Mit verborgenem Netz verbinden …",
+            &gettext("Connect to Hidden Network…"),
             Some(Action::Hidden(device.id.clone())),
         ));
     }
@@ -372,27 +388,27 @@ pub fn rows(state: &State, settings: bool, all_networks: bool) -> Vec<Row> {
             model::Backend::Starting | model::Backend::Unavailable(_)
         )
     {
-        rows.push(Row::Note("Kein Netzwerkgerät".into()));
+        rows.push(Row::Note(gettext("No network device")));
     }
     rows.push(Row::Separator);
     let hardware = state.wireless_hardware_enabled;
     if state.has_wireless() || control {
         let on = state.wireless_enabled.unwrap_or(false) && hardware;
         rows.push(Row::check(
-            "WLAN aktiviert",
+            &gettext("Wireless Enabled"),
             on,
             (control && hardware && state.has_wireless()).then_some(Action::SetWireless(!on)),
         ));
     }
     let airplane = state.airplane() == Some(true);
     rows.push(Row::check(
-        "Flugmodus",
+        &gettext("Airplane Mode"),
         airplane,
         control.then_some(Action::SetAirplane(!airplane)),
     ));
     rows.push(Row::Separator);
     rows.push(Row::item(
-        "Verbindungsinformationen …",
+        &gettext("Connection Information…"),
         (!state.devices.is_empty()).then_some(Action::Info),
     ));
     rows.push(Row::item(
@@ -439,7 +455,7 @@ pub fn widget(panel_height: i32) -> Button {
                     "querencia-panel: Netzwerk: Appletmenü → WLAN {}",
                     if on { "an" } else { "aus" }
                 );
-                service.set_wireless(on, network_dialogs::report("WLAN"));
+                service.set_wireless(on, network_dialogs::report(&gettext("Wireless")));
             }
         }
     ));
@@ -453,7 +469,7 @@ pub fn widget(panel_height: i32) -> Button {
                     "querencia-panel: Netzwerk: Appletmenü → Flugmodus {}",
                     if on { "an" } else { "aus" }
                 );
-                service.set_airplane(on, network_dialogs::report("Flugmodus"));
+                service.set_airplane(on, network_dialogs::report(&gettext("Airplane Mode")));
             }
         }
     ));
@@ -527,7 +543,7 @@ pub fn widget(panel_height: i32) -> Button {
         ),
     );
     // Querencia Einstellungen with its network page may be installed or
-    // removed while the panel runs (G2-O): follow the installed
+    // removed while the panel runs: follow the installed
     // applications, as the menus do.
     let monitor = gio::AppInfoMonitor::get();
     let installed = Cell::new(Some(monitor.connect_changed(glib::clone!(
@@ -587,7 +603,7 @@ fn show(button: &Button, image: &Image, size: i32, state: &State) {
     let pixels = size * image.scale_factor().max(1);
     match symbol(icon, pixels) {
         Some(texture) => image.set_paintable(Some(&texture)),
-        None => image.set_icon_name(Some("network-wired")),
+        None => crate::symbole::set_named(image, "network-wired"),
     }
     let tooltip = model::tooltip(state);
     if button.tooltip_text().as_deref() != Some(tooltip.as_str()) {
@@ -659,7 +675,7 @@ fn open_settings() {
     };
     if !app.list_actions().iter().any(|a| a == SETTINGS_ACTION) {
         querencia_netzwerk::say!(
-            "querencia-panel: Netzwerk: {SETTINGS_APP} hat keine Aktion {SETTINGS_ACTION} (kommt mit G2-O)"
+            "querencia-panel: Netzwerk: {SETTINGS_APP} hat keine Aktion {SETTINGS_ACTION} (noch nicht verfügbar)"
         );
         return;
     }
@@ -913,7 +929,7 @@ impl Popup {
                 padlock.set_paintable(Some(&texture));
             }
             padlock.set_valign(Align::Center);
-            padlock.set_tooltip_text(Some("Gesichert"));
+            padlock.set_tooltip_text(Some(&gettext("Secured")));
             row.append(&padlock);
         }
         let button = Button::builder().child(&row).has_frame(false).build();
@@ -961,7 +977,10 @@ impl Popup {
         let service = &self.service;
         match action {
             Action::ConnectAp { device, ap } => {
-                let report = network_dialogs::report(&format!("WLAN „{}“", ap.ssid));
+                let report = network_dialogs::report(&gettext_f(
+                    "Wireless network “{ssid}”",
+                    &[("ssid", &ap.ssid)],
+                ));
                 if ap.known.is_none() && ap.security.secured() {
                     let service = service.clone();
                     let device = device.clone();
@@ -984,15 +1003,17 @@ impl Popup {
                 }
             }
             Action::ConnectDevice(device) => {
-                service.connect_device(device, network_dialogs::report("Kabelnetzwerk"));
+                service.connect_device(device, network_dialogs::report(&gettext("Wired Network")));
             }
             Action::Disconnect(device) => {
-                service.disconnect(device, network_dialogs::report("Trennen"));
+                service.disconnect(device, network_dialogs::report(&gettext("Disconnect")));
             }
             Action::Hidden(device) => network_dialogs::hidden(&self.hidden_slot, service, device),
-            Action::SetWireless(on) => service.set_wireless(*on, network_dialogs::report("WLAN")),
+            Action::SetWireless(on) => {
+                service.set_wireless(*on, network_dialogs::report(&gettext("Wireless")))
+            }
             Action::SetAirplane(on) => {
-                service.set_airplane(*on, network_dialogs::report("Flugmodus"));
+                service.set_airplane(*on, network_dialogs::report(&gettext("Airplane Mode")));
             }
             Action::Info => {
                 if let Some(slot) = self.info_slot.borrow().as_ref() {
@@ -1024,15 +1045,12 @@ mod tests {
     #[test]
     fn right_click_menu_switches_shows_info_settings_and_removes() {
         let menu = menu().upcast::<gio::MenuModel>();
-        assert_eq!(label(&menu, 0).as_deref(), Some("_WLAN aktiviert"));
+        assert_eq!(label(&menu, 0).as_deref(), Some("_Wireless Enabled"));
         assert_eq!(action(&menu, 0).as_deref(), Some("network.wireless"));
-        assert_eq!(label(&menu, 1).as_deref(), Some("_Flugmodus"));
+        assert_eq!(label(&menu, 1).as_deref(), Some("_Airplane Mode"));
         assert_eq!(action(&menu, 1).as_deref(), Some("network.airplane"));
         let more = menu.item_link(2, "section").expect("Abschnitt");
-        assert_eq!(
-            label(&more, 0).as_deref(),
-            Some("_Verbindungsinformationen …")
-        );
+        assert_eq!(label(&more, 0).as_deref(), Some("Connection _Information…"));
         assert_eq!(action(&more, 0).as_deref(), Some("network.info"));
         assert_eq!(action(&more, 1).as_deref(), Some("network.settings"));
         let object = menu.item_link(3, "section").expect("Abschnitt");
@@ -1040,11 +1058,11 @@ mod tests {
     }
 
     #[test]
-    fn settings_entry_says_when_it_comes() {
-        assert_eq!(settings_label(true), "_Netzwerkeinstellungen …");
+    fn settings_entry_says_it_is_not_there_yet() {
+        assert_eq!(settings_label(true), "_Network Settings…");
         assert_eq!(
             settings_label(false),
-            "Netzwerkeinstellungen … (kommt mit G2-O)"
+            "Network Settings (not available yet)"
         );
     }
 
@@ -1110,15 +1128,15 @@ mod tests {
         assert_eq!(
             labels(&rows),
             [
-                "(Verwaltet von systemd-networkd, nur Anzeige)",
+                "(Managed by systemd-networkd, display only)",
                 "—",
-                "[Kabelnetzwerk]",
+                "[Wired Network]",
                 "eth0 –",
                 "—",
-                "Flugmodus –",
+                "Airplane Mode –",
                 "—",
-                "Verbindungsinformationen …",
-                "Netzwerkeinstellungen … (kommt mit G2-O) –"
+                &gettext("Connection Information…"),
+                "Network Settings (not available yet) –"
             ]
         );
         match &rows[3] {
@@ -1157,20 +1175,20 @@ mod tests {
         assert_eq!(
             labels(&rows),
             [
-                "[Kabelnetzwerk]",
-                "(Kabel nicht angeschlossen)",
+                "[Wired Network]",
+                "(Cable unplugged)",
                 "—",
-                "[WLAN-Netze]",
+                "[Wireless Networks]",
                 "Heimnetz",
                 "Firma –",
                 "Cafe offen",
-                "Mit verborgenem Netz verbinden …",
+                &gettext("Connect to Hidden Network…"),
                 "—",
-                "WLAN aktiviert",
-                "Flugmodus",
+                &gettext("Wireless Enabled"),
+                "Airplane Mode",
                 "—",
-                "Verbindungsinformationen …",
-                "Netzwerkeinstellungen …"
+                &gettext("Connection Information…"),
+                "Network Settings…"
             ]
         );
         let lock = |i: usize| matches!(&rows[i], Row::Item { lock: true, .. });
@@ -1178,7 +1196,7 @@ mod tests {
         match &rows[5] {
             Row::Item { detail, .. } => assert_eq!(
                 detail.as_deref(),
-                Some("WPA/WPA2 Enterprise – nicht unterstützt")
+                Some("WPA/WPA2 Enterprise – not supported")
             ),
             other => panic!("{other:?}"),
         }
@@ -1205,11 +1223,11 @@ mod tests {
         assert_eq!(
             labels(&rows)[..5],
             [
-                "[WLAN-Netze]",
+                "[Wireless Networks]",
                 "Heimnetz –",
                 "Nachbar",
-                "Trennen",
-                "Mit verborgenem Netz verbinden …"
+                "Disconnect",
+                "Connect to Hidden Network…"
             ]
         );
         match &rows[1] {
@@ -1237,10 +1255,10 @@ mod tests {
         assert_eq!(
             text[..4],
             [
-                "[WLAN-Netze]",
+                "[Wireless Networks]",
                 "{2} Versteckt* ‹192.0.2.23/24› –",
                 "{0} Nachbar 🔒",
-                "Trennen"
+                "Disconnect"
             ]
         );
     }
@@ -1258,10 +1276,10 @@ mod tests {
                 .count()
         };
         assert_eq!(names(&few), MAX_NETWORKS);
-        assert!(few.iter().any(|r| r.label() == "Weitere Netze …"));
+        assert!(few.iter().any(|r| r.label() == "More Networks…"));
         let all = rows(&nm(vec![wlan]), true, true);
         assert_eq!(names(&all), 12);
-        assert!(!all.iter().any(|r| r.label() == "Weitere Netze …"));
+        assert!(!all.iter().any(|r| r.label() == "More Networks…"));
     }
 
     #[test]
@@ -1269,11 +1287,11 @@ mod tests {
         let mut state = nm(vec![device(Kind::Wireless, DeviceState::Unavailable)]);
         state.wireless_enabled = Some(false);
         let r = labels(&rows(&state, false, false));
-        assert!(r.contains(&"(WLAN ist ausgeschaltet)".to_string()), "{r:?}");
-        assert!(r.contains(&"WLAN aktiviert".to_string()));
+        assert!(r.contains(&"(Wireless is disabled)".to_string()), "{r:?}");
+        assert!(r.contains(&"Wireless Enabled".to_string()));
         state.wwan_enabled = Some(false);
         let rows_air = rows(&state, false, false);
-        assert!(labels(&rows_air).contains(&"(Flugmodus ist an)".to_string()));
+        assert!(labels(&rows_air).contains(&"(Airplane mode is on)".to_string()));
         assert!(rows_air.iter().any(|r| matches!(
             r,
             Row::Item {
@@ -1283,8 +1301,8 @@ mod tests {
             }
         )));
         let none = labels(&rows(&State::unavailable("kaputt"), false, false));
-        assert_eq!(none[..2], ["(Kein Netzwerkdienst)", "(kaputt)"]);
-        assert!(none.contains(&"Verbindungsinformationen … –".to_string()));
+        assert_eq!(none[..2], ["(No network service)", "(kaputt)"]);
+        assert!(none.contains(&"Connection Information… –".to_string()));
     }
 
     #[test]
@@ -1292,7 +1310,7 @@ mod tests {
         let state = nm(vec![device(Kind::Wired, DeviceState::Disconnected)]);
         let rows = rows(&state, true, false);
         assert!(rows.contains(&Row::item(
-            "Verbinden",
+            "Connect",
             Some(Action::ConnectDevice("/d/eth0".into()))
         )));
     }
@@ -1303,10 +1321,10 @@ mod tests {
         wlan.access_points = vec![ap("Heimnetz", 82, Security::WpaPsk)];
         let rows = rows(&nm(vec![wlan]), false, false);
         let text: Vec<String> = rows.iter().map(row_text).collect();
-        assert_eq!(text[0], "[WLAN-Netze]");
+        assert_eq!(text[0], "[Wireless Networks]");
         assert_eq!(text[1], "{3} Heimnetz 🔒");
-        assert!(text.contains(&"☑ WLAN aktiviert".to_string()));
-        assert!(text.contains(&"Netzwerkeinstellungen … (kommt mit G2-O) –".to_string()));
+        assert!(text.contains(&"☑ Wireless Enabled".to_string()));
+        assert!(text.contains(&"Network Settings (not available yet) –".to_string()));
     }
 
     #[test]

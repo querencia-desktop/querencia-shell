@@ -13,12 +13,13 @@ use std::rc::Rc;
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box as GtkBox, Image, Label, ListBox, ListBoxRow, Orientation, PolicyType,
-    ScrolledWindow, SearchEntry, SelectionMode, gio, glib,
+    Align, Box as GtkBox, Label, ListBox, ListBoxRow, Orientation, PolicyType, ScrolledWindow,
+    SearchEntry, SelectionMode, gio, glib,
 };
 
 use crate::add_dialog::stock_button;
 use crate::apps::{AppEntry, Catalog, SystemSection};
+use crate::i18n::{gettext, gettext_f};
 
 /// Icon of an application without a usable `Icon=` (as in the menus).
 const GENERIC_ICON: &str = "application-x-executable";
@@ -28,7 +29,7 @@ const GROUP_ICON_SIZE: i32 = 16;
 /// One heading of the list with its applications.
 #[derive(Debug)]
 pub struct Section {
-    pub label: &'static str,
+    pub label: String,
     pub icon: &'static str,
     pub entries: Vec<AppEntry>,
 }
@@ -96,7 +97,11 @@ pub fn page(hooks: Hooks) -> (GtkBox, SearchEntry) {
     let hooks = Rc::new(hooks);
     let search = SearchEntry::new();
     let prompt = Label::builder()
-        .label("_Anwendung auswählen, deren Starter dem Panel hinzugefügt werden soll:")
+        // TRANSLATORS: mnemonics of this page: this label, _Back, _Close and
+        // _Add must differ
+        .label(gettext(
+            "_Select an application whose launcher is added to the panel:",
+        ))
         .use_underline(true)
         .mnemonic_widget(&search)
         .xalign(0.0)
@@ -123,13 +128,13 @@ pub fn page(hooks: Hooks) -> (GtkBox, SearchEntry) {
         .visible(false)
         .css_classes(["error"])
         .build();
-    let back = stock_button("_Zurück", "go-previous");
-    let close = stock_button("_Schließen", "window-close");
-    let add = stock_button("_Hinzufügen", "list-add");
+    let back = stock_button(&gettext("_Back"), "go-previous");
+    let close = stock_button(&gettext("_Close"), "window-close");
+    let add = stock_button(&gettext("_Add"), "list-add");
     add.set_sensitive(false);
-    add.set_tooltip_text(Some(
-        "Einen Starter für die ausgewählte Anwendung hinzufügen",
-    ));
+    add.set_tooltip_text(Some(&gettext(
+        "Add a launcher for the selected application",
+    )));
     let buttons = GtkBox::new(Orientation::Horizontal, 6);
     let spacer = GtkBox::new(Orientation::Horizontal, 0);
     spacer.set_hexpand(true);
@@ -165,8 +170,9 @@ pub fn page(hooks: Hooks) -> (GtkBox, SearchEntry) {
                 Ok(()) => status.set_visible(false),
                 Err(err) => {
                     eprintln!("querencia-panel: Starter für {app} nicht hinzugefügt: {err}");
-                    status.set_label(&format!(
-                        "Der Starter konnte nicht hinzugefügt werden: {err}"
+                    status.set_label(&gettext_f(
+                        "The launcher could not be added: {err}",
+                        &[("err", &err)],
                     ));
                     status.set_visible(true);
                 }
@@ -325,12 +331,11 @@ fn select(list: &ListBox, app: &str) {
 
 /// A group heading: small icon and bold label; cannot be chosen.
 fn heading_row(section: &Section) -> ListBoxRow {
-    let image = Image::from_icon_name(section.icon);
-    image.set_pixel_size(GROUP_ICON_SIZE);
+    let image = crate::symbole::image_named(section.icon, GROUP_ICON_SIZE);
     let label = Label::builder()
         .label(format!(
             "<b>{}</b>",
-            glib::markup_escape_text(section.label)
+            glib::markup_escape_text(&section.label)
         ))
         .use_markup(true)
         .xalign(0.0)
@@ -359,8 +364,7 @@ fn app_row(entry: &AppEntry) -> ListBoxRow {
         .as_deref()
         .and_then(|icon| gio::Icon::for_string(icon).ok())
         .unwrap_or_else(|| gio::ThemedIcon::new(GENERIC_ICON).upcast());
-    let image = Image::from_gicon(&icon);
-    image.set_pixel_size(APP_ICON_SIZE);
+    let image = crate::symbole::image(&icon, APP_ICON_SIZE);
     let label = Label::builder().label(&entry.name).xalign(0.0).build();
     let line = GtkBox::builder()
         .orientation(Orientation::Horizontal)
@@ -396,7 +400,12 @@ mod tests {
     fn layout(sections: &[Section]) -> Vec<(&str, Vec<&str>)> {
         sections
             .iter()
-            .map(|s| (s.label, s.entries.iter().map(|e| e.id.as_str()).collect()))
+            .map(|s| {
+                (
+                    s.label.as_str(),
+                    s.entries.iter().map(|e| e.id.as_str()).collect(),
+                )
+            })
             .collect()
     }
 
@@ -407,18 +416,18 @@ mod tests {
             entry("beispiel.desktop", "Beispiel", &["Office"]),
             entry("foot.desktop", "Terminal", &["System", "TerminalEmulator"]),
             entry("files.desktop", "Dateien", &["Utility", "FileManager"]),
-            entry("wlan.desktop", "Netzwerk", &["Settings", "Network"]),
+            entry("wlan.desktop", "Network", &["Settings", "Network"]),
             entry("drucker.desktop", "Drucker", &["Settings", "System"]),
         ]));
         assert_eq!(
             layout(&sections),
             [
-                ("Zubehör", vec!["files.desktop"]),
+                ("Accessories", vec!["files.desktop"]),
                 ("Internet", vec!["firefox.desktop"]),
-                ("Büro", vec!["beispiel.desktop"]),
-                ("Systemwerkzeuge", vec!["foot.desktop"]),
-                ("Einstellungen", vec!["wlan.desktop"]),
-                ("Systemverwaltung", vec!["drucker.desktop"]),
+                ("Office", vec!["beispiel.desktop"]),
+                ("System Tools", vec!["foot.desktop"]),
+                ("Preferences", vec!["wlan.desktop"]),
+                ("Administration", vec!["drucker.desktop"]),
             ]
         );
         assert_eq!(sections[1].icon, MenuGroup::Internet.icon());
@@ -430,10 +439,10 @@ mod tests {
     fn a_group_of_settings_only_is_no_application_heading() {
         let sections = sections(&catalog(vec![entry(
             "wlan.desktop",
-            "Netzwerk",
+            "Network",
             &["Settings", "Network"],
         )]));
-        assert_eq!(layout(&sections), [("Einstellungen", vec!["wlan.desktop"])]);
+        assert_eq!(layout(&sections), [("Preferences", vec!["wlan.desktop"])]);
     }
 
     #[test]

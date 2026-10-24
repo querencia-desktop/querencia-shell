@@ -1,0 +1,43 @@
+/* Querencia Dateien: only named theme colours (follow light and dark
+   without own @media blocks, 13 §5 / QD-081), no fixed light values. */
+
+/* classic menus (querencia-oberflaeche::classic_menu) */
+popover.querencia-menu { padding: 0; }
+popover.querencia-menu > contents { padding: 2px 0; border: 1px solid @borders; border-radius: 0; box-shadow: none; background-color: @theme_bg_color; color: @theme_fg_color; }
+popover.querencia-menu .qmenu { min-width: 150px; }
+popover.querencia-menu .qmenu-item { min-height: 20px; padding: 1px 10px 1px 4px; border: 1px solid transparent; outline: none; }
+popover.querencia-menu .qmenu-item .qmenu-arrow { color: alpha(@theme_fg_color, 0.7); }
+popover.querencia-menu .qmenu-item .qmenu-accel { color: alpha(@theme_fg_color, 0.7); }
+popover.querencia-menu .qmenu-item.qmenu-active { background-color: @theme_selected_bg_color; color: @theme_selected_fg_color; }
+popover.querencia-menu .qmenu-item.qmenu-active .qmenu-arrow,
+popover.querencia-menu .qmenu-item.qmenu-active .qmenu-accel { color: @theme_selected_fg_color; }
+popover.querencia-menu .qmenu-item:disabled { color: @insensitive_fg_color; }
+popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-color: @borders; }
+
+/* menu bar */
+window.querencia-dateien box.querencia-menuleiste { background-color: @theme_bg_color; padding: 0 2px; }
+window.querencia-dateien menubutton.querencia-menuknopf > button { min-height: 0; padding: 2px 8px; border: 1px solid transparent; border-radius: 0; box-shadow: none; background: none; color: @theme_fg_color; }
+window.querencia-dateien menubutton.querencia-menuknopf arrow { min-width: 0; min-height: 0; margin: 0; padding: 0; -gtk-icon-source: none; }
+window.querencia-dateien menubutton.querencia-menuknopf > button:checked { background-color: @theme_selected_bg_color; color: @theme_selected_fg_color; }
+
+/* toolbar, location bar, status bar */
+window.querencia-dateien box.querencia-werkzeugleiste { padding: 2px 4px; border-top: 1px solid alpha(@borders, 0.5); border-bottom: 1px solid alpha(@borders, 0.5); }
+window.querencia-dateien box.querencia-werkzeugleiste > button { padding: 3px 5px; min-height: 0; }
+window.querencia-dateien stack.querencia-adressleiste { padding: 3px 4px; border-bottom: 1px solid alpha(@borders, 0.5); }
+window.querencia-dateien stack.querencia-adressleiste togglebutton { padding: 2px 6px; min-height: 0; }
+window.querencia-dateien box.querencia-statusleiste { border-top: 1px solid alpha(@borders, 0.5); background-color: @theme_bg_color; }
+window.querencia-dateien box.querencia-papierkorb-leiste { padding: 4px 8px; background-color: @theme_bg_color; border-bottom: 1px solid @borders; }
+
+/* side pane */
+window.querencia-dateien box.querencia-seitenleiste { background-color: @theme_base_color; border-right: 1px solid alpha(@borders, 0.5); }
+window.querencia-dateien box.querencia-seitenleiste list { background-color: @theme_base_color; }
+window.querencia-dateien box.querencia-seitenleiste row { padding: 0 6px; min-height: 0; }
+window.querencia-dateien box.querencia-seitenleiste row:selected { background-color: @theme_selected_bg_color; color: @theme_selected_fg_color; }
+window.querencia-dateien box.querencia-seitenleiste row button { padding: 0 2px; min-height: 0; min-width: 0; }
+
+/* cut objects waiting for "Einfügen" (as the desktop's .cut) */
+window.querencia-dateien image.ausgeschnitten { opacity: 0.45; }
+
+/* fallback view */
+window.querencia-dateien listview.querencia-ersatzansicht { background-color: @theme_base_color; }
+window.querencia-dateien listview.querencia-ersatzansicht > row:selected { background-color: @theme_selected_bg_color; color: @theme_selected_fg_color; }

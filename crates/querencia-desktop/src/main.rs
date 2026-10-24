@@ -18,27 +18,21 @@
 //!
 //! Only one instance per session (GApplication ID); a second start exits.
 
-// The panel's classic GNOME 2 menus (HMP-03/05), shared source: the desktop
-// menu looks and behaves exactly like the panel menus.
-#[allow(dead_code)]
-#[path = "../../querencia-panel/src/classic_menu.rs"]
-mod classic_menu;
 mod config;
 mod desktop_view;
-#[path = "../../querencia-panel/src/farbschema.rs"]
-mod farbschema;
-// The icon theme rule of the panel (G2-AD), shared source.
-#[path = "../../querencia-panel/src/icon_theme.rs"]
-mod icon_theme;
+mod i18n;
 mod icons;
 mod layout;
-// The settings portal check of the panel (QD-062), shared source.
-#[path = "../../querencia-panel/src/portal.rs"]
-mod portal;
-mod rename;
 mod store;
 mod volumes;
 mod wallpaper;
+
+// The panel's building blocks, as a library of the workspace (until 0.2.6
+// the panel's source files through #[path]): the classic GNOME 2 menus
+// (HMP-03/05), so the desktop menu looks and behaves exactly like the panel
+// menus; the icon theme rule (G2-AD); the dark rules (QD-081); the settings
+// portal check (QD-062).
+use querencia_oberflaeche::{classic_menu, farbschema, icon_theme, portal};
 
 use std::cell::RefCell;
 use std::path::PathBuf;
@@ -84,6 +78,8 @@ const CAPABILITIES: &str =
     "type-color mode-centered mode-tiled volumes-types icons-visible icon-size";
 
 fn main() -> glib::ExitCode {
+    // translations (`i18n.rs`); the locale itself is set by GTK's start
+    i18n::init();
     // answered before GTK or GApplication start: no display needed, no
     // running instance is activated
     if std::env::args().skip(1).any(|a| a == "--faehigkeiten") {
@@ -105,14 +101,34 @@ fn main() -> glib::ExitCode {
             "Laufwerke: Wechsel={} Optisch={} Netz={} Eingebaut={}",
             settings.removable, settings.optical, settings.network, settings.internal
         );
-        for mount in gio::VolumeMonitor::get().mounts() {
-            let facts = volumes::facts(&mount);
+        let monitor = gio::VolumeMonitor::get();
+        for mount in monitor.mounts() {
+            let facts = querencia_dateiarbeit::laufwerke::facts(&mount);
             println!(
                 "{}\t{}\t{}\t{}",
                 facts.name,
                 facts.root_uri,
-                volumes::classify(&facts).map_or("nie", volumes::VolumeType::name),
+                querencia_dateiarbeit::laufwerke::classify(&facts)
+                    .map_or("nie", volumes::VolumeType::name),
                 if volumes::shown(&facts, &settings) {
+                    "Symbol"
+                } else {
+                    "kein Symbol"
+                }
+            );
+        }
+        // 0.3.0 (E3): media that are not mounted, with an icon to mount them
+        for volume in monitor.volumes() {
+            if volume.get_mount().is_some() {
+                continue;
+            }
+            let facts = querencia_dateiarbeit::laufwerke::volume_facts(&volume);
+            let typ = querencia_dateiarbeit::laufwerke::classify_unmounted(&facts);
+            println!(
+                "{}\t(nicht eingehängt)\t{}\t{}",
+                facts.name,
+                typ.map_or("nie", volumes::VolumeType::name),
+                if typ.is_some_and(|t| volumes::offered_unmounted(t, &settings)) {
                     "Symbol"
                 } else {
                     "kein Symbol"
@@ -141,6 +157,9 @@ fn main() -> glib::ExitCode {
         }
         // keep running without visible windows while monitors change
         std::mem::forget(app.hold());
+        // 0.3.0: menu icons without GTK's preloading in the thread pool,
+        // as in the panel (QD-106); up to 0.2.7 the desktop kept GTK's way.
+        classic_menu::set_icon_loading(classic_menu::IconLoading::WithoutPreload);
         icon_theme::follow("querencia-desktop");
         install_style();
         farbschema::startfehler_beheben();
@@ -331,17 +350,25 @@ popover.querencia-menu .qmenu-item:disabled { color: @insensitive_fg_color; }
 popover.querencia-menu separator { margin: 3px 1px; min-height: 1px; background-color: #dcd8d3; }
 ";
 
-/// Desktop 0.2.1: icon labels sit on a rounded dark plate (55 % black), so
-/// white text keeps 4.5:1 on any picture, the light ones of Hintergründe
-/// 0.2 included; a selected label has the orange plate instead.
+/// Desktop 0.2.4: icon labels are white text straight on the picture,
+/// without the plate of 0.2.1–0.2.3, kept readable by stacked shadows: a
+/// closed 1 px outline (eight unblurred shadows, one per direction), two
+/// blurred halos and the offset drop shadow of GNOME 2. Three blurred
+/// shadows alone left 3.5:1 at the glyph edge on the bright "kueste"
+/// picture; with the outline the edge is dark on any picture. A selected
+/// label and a drop target get the orange plate; padding and radius stay in
+/// the base rule so that plate keeps its shape.
 const DESKTOP_CSS: &str = "\
 window.querencia-desktop-icons, window.querencia-desktop-icons.background { background: none; background-color: transparent; }
 window.querencia-desktop-icons menubutton.desktop-menu-anchor > button { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; background: none; box-shadow: none; }
 window.querencia-desktop-icons box.desktop-icon { padding: 1px; }
-window.querencia-desktop-icons box.desktop-icon > label { color: #ffffff; text-shadow: 1px 1px 2px #000000; background-color: alpha(#000000, 0.55); padding: 1px 3px; border-radius: 4px; }
+window.querencia-desktop-icons box.desktop-icon > label { color: #ffffff; text-shadow: -1px -1px 0 #000000, 0 -1px 0 #000000, 1px -1px 0 #000000, -1px 0 0 #000000, 1px 0 0 #000000, -1px 1px 0 #000000, 0 1px 0 #000000, 1px 1px 0 #000000, 0 0 2px #000000, 0 0 4px #000000, 1px 1px 2px #000000; padding: 1px 3px; border-radius: 4px; }
 window.querencia-desktop-icons box.desktop-icon.selected > label { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); text-shadow: none; }
 window.querencia-desktop-icons box.desktop-icon.selected > image { opacity: 0.7; }
 window.querencia-desktop-icons box.desktop-icon.dragging { opacity: 0.6; }
+window.querencia-desktop-icons box.desktop-icon.cut > image { opacity: 0.45; }
+window.querencia-desktop-icons box.desktop-icon.drop-target > label { background-color: #f07746; background-image: linear-gradient(to bottom, #f8875d, #ea703d); text-shadow: none; }
+window.querencia-desktop-icons box.desktop-icon.drop-target > image { opacity: 0.7; }
 window.querencia-desktop-icons box.rubberband { background-color: alpha(#f07746, 0.18); border: 1px solid #ea703d; }
 window.querencia-desktop-icons entry.desktop-rename { min-height: 0; padding: 1px 3px; border: 1px solid #000000; border-radius: 0; box-shadow: none; outline: none; background-color: #ffffff; background-image: none; color: #000000; }
 window.querencia-desktop-icons entry.desktop-rename > text > selection { background-color: #f07746; color: #ffffff; }
@@ -350,7 +377,7 @@ window.querencia-desktop-icons entry.desktop-rename > text > selection { backgro
 /// QD-081 (CSS-Welle dunkel): the dark menu rules of the panel, line for
 /// line (a test compares them), and a dark rename field (Thema 0.2 view
 /// colours). They apply only while `farbschema::dunkel` holds; the icon
-/// labels keep their dark plate (Desktop 0.2.1), the same light and dark.
+/// labels keep their white text and dark halo, the same light and dark.
 const DUNKEL_CSS: &str = "\
 @media (prefers-color-scheme: dark) {
   popover.querencia-menu > contents { border-color: #2b2a27; background-color: #353430; color: #dfdbd2; }
@@ -382,7 +409,7 @@ fn background_window(
 ) -> ApplicationWindow {
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("Arbeitsfläche")
+        .title(i18n::gettext("Desktop"))
         .child(wallpaper)
         .build();
     window.add_css_class("querencia-desktop");
@@ -460,41 +487,59 @@ mod tests {
         }
     }
 
-    /// Desktop 0.2.1: white label text on the dark plate stays at 4.5:1 or
-    /// more even over pure white (the brightest any picture can be), and
-    /// the plate looks the same light and dark (no label rule in the dark
-    /// block); a selected label trades the plate for the orange one.
+    /// Desktop 0.2.4: the label has no plate (no background in its rule),
+    /// only white text with stacked black shadows: a closed 1 px outline
+    /// (all eight directions, unblurred), at least one blurred halo and the
+    /// offset shadow of GNOME 2; it looks the same light and dark (no label
+    /// rule in the dark block). A selected label and a drop target keep the
+    /// orange plate of 0.2.1 and drop the shadow.
     #[test]
-    fn the_label_plate_keeps_white_text_readable_on_any_picture() {
+    fn the_label_has_no_plate_but_a_dark_halo() {
         let rule = DESKTOP_CSS
             .lines()
             .find(|l| l.contains("box.desktop-icon > label"))
             .expect("label rule");
-        let alpha: f64 = rule
-            .split("background-color: alpha(#000000, ")
-            .nth(1)
-            .and_then(|rest| rest.split(')').next())
-            .and_then(|a| a.parse().ok())
-            .expect("plate alpha");
-        let luminance = |channel: f64| {
-            let c = channel / 255.0;
-            let linear = if c <= 0.04045 {
-                c / 12.92
-            } else {
-                ((c + 0.055) / 1.055).powf(2.4)
-            };
-            0.2126 * linear + 0.7152 * linear + 0.0722 * linear
-        };
-        // white picture under the plate, rounded up as an 8-bit pixel
-        let under = (255.0 * (1.0 - alpha)).ceil();
-        let contrast = 1.05 / (luminance(under) + 0.05);
-        assert!(contrast >= 4.5, "{contrast:.2}:1 bei Deckkraft {alpha}");
+        assert!(!rule.contains("background"), "{rule}");
         assert!(rule.contains("color: #ffffff;") && rule.contains("border-radius"));
-        let selected = DESKTOP_CSS
-            .lines()
-            .find(|l| l.contains("box.desktop-icon.selected > label"))
-            .expect("selected rule");
-        assert!(selected.contains("background-color: #f07746;"));
+        let shadows: Vec<&str> = rule
+            .split("text-shadow: ")
+            .nth(1)
+            .and_then(|rest| rest.split(';').next())
+            .expect("text-shadow")
+            .split(", ")
+            .collect();
+        for shadow in &shadows {
+            let parts: Vec<&str> = shadow.split(' ').collect();
+            assert_eq!(parts.len(), 4, "{shadow}");
+            assert_eq!(parts[3], "#000000", "{shadow}");
+        }
+        for dx in ["-1px", "0", "1px"] {
+            for dy in ["-1px", "0", "1px"] {
+                if dx == "0" && dy == "0" {
+                    continue;
+                }
+                let outline = format!("{dx} {dy} 0 #000000");
+                assert!(shadows.contains(&outline.as_str()), "outline: {outline}");
+            }
+        }
+        assert!(
+            shadows
+                .iter()
+                .any(|s| s.starts_with("0 0 ") && !s.starts_with("0 0 0 ")),
+            "halo: {shadows:?}"
+        );
+        assert!(
+            shadows.iter().any(|s| s.starts_with("1px 1px 2px")),
+            "offset: {shadows:?}"
+        );
+        for class in ["selected", "drop-target"] {
+            let plate = DESKTOP_CSS
+                .lines()
+                .find(|l| l.contains(&format!("box.desktop-icon.{class} > label")))
+                .expect("plate rule");
+            assert!(plate.contains("background-color: #f07746;"), "{plate}");
+            assert!(plate.contains("text-shadow: none;"), "{plate}");
+        }
         assert!(!DUNKEL_CSS.contains("box.desktop-icon"));
     }
 

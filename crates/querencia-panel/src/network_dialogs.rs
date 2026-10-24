@@ -22,12 +22,14 @@ use gtk4::{
 use querencia_netzwerk::model::{self, Security, State};
 use querencia_netzwerk::service::{Answer, Close, Done, Prompt, Service};
 
+use crate::i18n::{gettext, gettext_f};
 use crate::{add_dialog, session};
 
+/// Window names in log lines (German like all log lines); shown titles
+/// come from the catalog.
 pub const INFO_TITLE: &str = "Verbindungsinformationen";
 pub const PASSWORD_TITLE: &str = "WLAN-Passwort";
 pub const HIDDEN_TITLE: &str = "Mit verborgenem Netz verbinden";
-pub const ERROR_TITLE: &str = "Netzwerk";
 /// Least width of the notebook in the information window.
 const INFO_WIDTH: i32 = 500;
 
@@ -65,14 +67,17 @@ pub fn report(what: &str) -> Done {
     let what = what.to_string();
     Box::new(move |result| {
         if let Err(reason) = result {
-            message(&format!("{what}: Das hat nicht geklappt."), &reason);
+            message(
+                &gettext_f("{what}: That did not work.", &[("what", &what)]),
+                &reason,
+            );
         }
     })
 }
 
 /// A small message window with „Schließen“ focused.
 pub fn message(headline: &str, text: &str) {
-    let window = window(ERROR_TITLE);
+    let window = window(&gettext("Network"));
     let body = content();
     let head = Label::new(None);
     head.set_markup(&format!("<b>{}</b>", glib::markup_escape_text(headline)));
@@ -83,7 +88,7 @@ pub fn message(headline: &str, text: &str) {
     detail.set_max_width_chars(50);
     detail.set_xalign(0.0);
     body.append(&detail);
-    let close = add_dialog::stock_button("_Schließen", "window-close");
+    let close = add_dialog::stock_button(&gettext("_Close"), "window-close");
     close.connect_clicked(glib::clone!(
         #[weak]
         window,
@@ -148,20 +153,23 @@ fn fill_info(notebook: &Notebook, state: &State) {
     }
     let devices = info_order(state);
     if devices.is_empty() {
-        let none = Label::new(Some("Kein Netzwerkgerät"));
+        let none = Label::new(Some(&gettext("No network device")));
         none.set_margin_top(20);
         none.set_margin_bottom(20);
         notebook.append_page(&none, Some(&Label::new(Some("–"))));
     }
     for device in devices {
-        let title = format!(
-            "{} ({})",
-            match device.kind {
-                model::Kind::Wired => "Kabel",
-                model::Kind::Wireless => "WLAN",
-            },
-            device.interface
-        );
+        let title = match device.kind {
+            // TRANSLATORS: tab of a device in “Connection Information”
+            model::Kind::Wired => {
+                gettext_f("Wired ({interface})", &[("interface", &device.interface)])
+            }
+            // TRANSLATORS: tab of a device in “Connection Information”
+            model::Kind::Wireless => gettext_f(
+                "Wireless ({interface})",
+                &[("interface", &device.interface)],
+            ),
+        };
         notebook.append_page(
             &device_page(device, &state.backend),
             Some(&Label::new(Some(&title))),
@@ -179,7 +187,7 @@ pub fn info(slot: &glib::WeakRef<Window>, service: &Rc<Service>) {
         window.present();
         return;
     }
-    let window = window(INFO_TITLE);
+    let window = window(&gettext("Connection Information"));
     let body = content();
     let notebook = Notebook::new();
     notebook.set_focusable(false);
@@ -187,7 +195,7 @@ pub fn info(slot: &glib::WeakRef<Window>, service: &Rc<Service>) {
     // the values change.
     notebook.set_size_request(INFO_WIDTH, -1);
     body.append(&notebook);
-    let close = add_dialog::stock_button("_Schließen", "window-close");
+    let close = add_dialog::stock_button(&gettext("_Close"), "window-close");
     close.connect_clicked(glib::clone!(
         #[weak]
         window,
@@ -222,12 +230,15 @@ pub fn info(slot: &glib::WeakRef<Window>, service: &Rc<Service>) {
 /// The question text for `prompt`.
 pub fn password_text(prompt: &Prompt) -> String {
     if prompt.retry {
-        format!(
-            "Das Passwort für das WLAN „{}“ wurde nicht angenommen. Bitte noch einmal eingeben.",
-            prompt.ssid
+        gettext_f(
+            "The password for the wireless network “{ssid}” was not accepted. Please enter it again.",
+            &[("ssid", &prompt.ssid)],
         )
     } else {
-        format!("Für das WLAN „{}“ ist ein Passwort nötig.", prompt.ssid)
+        gettext_f(
+            "The wireless network “{ssid}” needs a password.",
+            &[("ssid", &prompt.ssid)],
+        )
     }
 }
 
@@ -239,7 +250,7 @@ fn password_entry() -> (Entry, CheckButton) {
         .width_chars(30)
         .input_purpose(gtk4::InputPurpose::Password)
         .build();
-    let show = CheckButton::with_mnemonic("Passwort _anzeigen");
+    let show = CheckButton::with_mnemonic(&gettext("Sho_w password"));
     show.connect_toggled(glib::clone!(
         #[weak]
         entry,
@@ -252,12 +263,12 @@ fn password_entry() -> (Entry, CheckButton) {
 /// cancels or closes the window, exactly once. The returned closer shuts
 /// the window without answering again.
 pub fn password(prompt: Prompt, answer: Answer) -> Close {
-    let window = window(PASSWORD_TITLE);
+    let window = window(&gettext("Wireless Password"));
     let body = content();
     let head = Label::new(None);
     head.set_markup(&format!(
         "<b>{}</b>",
-        glib::markup_escape_text("Anmeldung im WLAN")
+        glib::markup_escape_text(&gettext("Wireless Network Authentication"))
     ));
     head.set_xalign(0.0);
     body.append(&head);
@@ -266,19 +277,22 @@ pub fn password(prompt: Prompt, answer: Answer) -> Close {
     text.set_max_width_chars(46);
     text.set_xalign(0.0);
     body.append(&text);
-    let security = Label::new(Some(&format!("Sicherheit: {}", prompt.security.label())));
+    let security = Label::new(Some(&gettext_f(
+        "Security: {security}",
+        &[("security", &prompt.security.label())],
+    )));
     security.set_xalign(0.0);
     security.add_css_class("dim-label");
     body.append(&security);
     let (entry, show) = password_entry();
-    let label = Label::with_mnemonic("_Passwort:");
+    let label = Label::with_mnemonic(&gettext("_Password:"));
     label.set_mnemonic_widget(Some(&entry));
     label.set_xalign(0.0);
     body.append(&label);
     body.append(&entry);
     body.append(&show);
-    let cancel = add_dialog::stock_button("_Abbrechen", "process-stop");
-    let connect = add_dialog::stock_button("_Verbinden", "network-wireless");
+    let cancel = add_dialog::stock_button(&gettext("_Cancel"), "process-stop");
+    let connect = add_dialog::stock_button(&gettext("C_onnect"), "network-wireless");
     connect.set_sensitive(false);
     entry.connect_changed(glib::clone!(
         #[weak]
@@ -370,11 +384,11 @@ pub fn hidden(slot: &glib::WeakRef<Window>, service: &Rc<Service>, device: &str)
         window.present();
         return;
     }
-    let window = window(HIDDEN_TITLE);
+    let window = window(&gettext("Connect to Hidden Network"));
     let body = content();
-    let text = Label::new(Some(
-        "Name und Sicherheit des WLANs eingeben, das seinen Namen nicht sendet.",
-    ));
+    let text = Label::new(Some(&gettext(
+        "Enter the name and security of the wireless network that does not send its name.",
+    )));
     text.set_wrap(true);
     text.set_max_width_chars(46);
     text.set_xalign(0.0);
@@ -384,14 +398,17 @@ pub fn hidden(slot: &glib::WeakRef<Window>, service: &Rc<Service>, device: &str)
         .width_chars(28)
         .activates_default(true)
         .build();
-    let names: Vec<&str> = HIDDEN_SECURITY.iter().map(|s| s.label()).collect();
+    let names: Vec<String> = HIDDEN_SECURITY.iter().map(|s| s.label()).collect();
+    let names: Vec<&str> = names.iter().map(String::as_str).collect();
     let security = DropDown::from_strings(&names);
     security.set_selected(1);
     let (key, show) = password_entry();
-    let rows: [(&str, &gtk4::Widget); 3] = [
-        ("_Netzname (SSID):", ssid.upcast_ref()),
-        ("_Sicherheit:", security.upcast_ref()),
-        ("_Passwort:", key.upcast_ref()),
+    let rows: [(String, &gtk4::Widget); 3] = [
+        // TRANSLATORS: mnemonics of this dialog: _Network name, _Security,
+        // _Password, Sho_w password, _Cancel and C_onnect must differ
+        (gettext("_Network name (SSID):"), ssid.upcast_ref()),
+        (gettext("_Security:"), security.upcast_ref()),
+        (gettext("_Password:"), key.upcast_ref()),
     ];
     for (line, (text, widget)) in rows.iter().enumerate() {
         let label = Label::with_mnemonic(text);
@@ -402,8 +419,8 @@ pub fn hidden(slot: &glib::WeakRef<Window>, service: &Rc<Service>, device: &str)
     }
     grid.attach(&show, 1, 3, 1, 1);
     body.append(&grid);
-    let cancel = add_dialog::stock_button("_Abbrechen", "process-stop");
-    let connect = add_dialog::stock_button("_Verbinden", "network-wireless");
+    let cancel = add_dialog::stock_button(&gettext("_Cancel"), "process-stop");
+    let connect = add_dialog::stock_button(&gettext("C_onnect"), "network-wireless");
     connect.set_sensitive(false);
     body.append(&buttons(&[&cancel, &connect]));
     window.set_child(Some(&body));
@@ -468,7 +485,7 @@ pub fn hidden(slot: &glib::WeakRef<Window>, service: &Rc<Service>, device: &str)
                 &name,
                 kind,
                 password,
-                report(&format!("WLAN „{name}“")),
+                report(&gettext_f("Wireless network “{ssid}”", &[("ssid", &name)])),
             );
             window.close();
         }
@@ -498,10 +515,10 @@ mod tests {
         };
         assert_eq!(
             password_text(&prompt),
-            "Für das WLAN „Heimnetz“ ist ein Passwort nötig."
+            "The wireless network “Heimnetz” needs a password."
         );
         prompt.retry = true;
-        assert!(password_text(&prompt).contains("nicht angenommen"));
+        assert!(password_text(&prompt).contains("not accepted"));
     }
 
     #[test]

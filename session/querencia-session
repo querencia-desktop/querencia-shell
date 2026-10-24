@@ -11,6 +11,25 @@
 #                              configuration up to date (see below), e.g.
 #                              after a change of the defaults; inside the
 #                              session labwc --reconfigure then reloads it
+#   querencia-session --grafik-pruefen
+#                              only check the OpenGL renderer and print what
+#                              the next start would decide (see below)
+#
+# Software OpenGL (QD-169, docs/sitzung-grafik.md). With the free nouveau
+# driver Mesa runs OpenGL as zink on top of Vulkan (NVK); WebKit (Querencia
+# Nachrichten) and Firefox crash or freeze there. Before labwc starts, the
+# starter asks for the renderer (querencia-sitzung --grafik-pruefen, a GLES
+# context without a window; eglinfo if that is missing), in the background
+# while it cleans up, with a time limit. If it reports zink on NVK or
+# nouveau, programs of the session get LIBGL_ALWAYS_SOFTWARE=1,
+# MESA_LOADER_DRIVER_OVERRIDE=llvmpipe and GALLIUM_DRIVER=llvmpipe: through
+# the autostart file (QUERENCIA_GRAFIK_UMGEBUNG) and in the D-Bus and
+# systemd activation environment (QD-064). labwc itself keeps zink: it
+# composites with it, and the override would also reach its GBM buffers.
+# Vulkan variables stay as they are. Without a nouveau render node nothing
+# is checked or changed (radeonsi, iris, the NVIDIA driver, llvmpipe).
+# ~/.config/querencia/grafik.ini, [Grafik] Software-OpenGL = automatisch
+# (default) | an | aus, overrides the check.
 #
 # labwc configuration (QD-046 ②, G2-AG): labwc reads rc.xml, autostart,
 # environment and menu.xml from the user copy ~/.config/querencia/labwc,
@@ -78,6 +97,13 @@ LEERLAUF_MINUTEN=10
 POLKIT_AGENT=$COMPONENTS/querencia-polkit-agent
 [ -x "$POLKIT_AGENT" ] || POLKIT_AGENT=
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/querencia
+# Software OpenGL (see the head of this file): setting, render nodes, the
+# probe's time limit and what the session gets.
+GRAFIK_INI=${XDG_CONFIG_HOME:-$HOME/.config}/querencia/grafik.ini
+DRM_SYSFS=/sys/class/drm
+GRAFIK_ZEITGRENZE_MS=2000
+SOFTWARE_GL="LIBGL_ALWAYS_SOFTWARE=1 MESA_LOADER_DRIVER_OVERRIDE=llvmpipe GALLIUM_DRIVER=llvmpipe"
+GRAFIK_UMGEBUNG=
 
 die() {
     echo "$(date +%T.%3N) querencia-session: $*" >&2
@@ -259,7 +285,7 @@ portals_reset() {
 # previous values are kept in $STATE_DIR/aktivierungsumgebung.vorher and
 # put back after labwc has ended, so the next session inherits nothing
 # stale. Only variables the session sets are touched.
-ACTIVATION_VARS="LANG LANGUAGE LC_ALL LC_MESSAGES LC_TIME LC_NUMERIC LC_MONETARY LC_PAPER LC_MEASUREMENT XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP DESKTOP_SESSION XCURSOR_THEME XCURSOR_SIZE GTK_THEME"
+ACTIVATION_VARS="LANG LANGUAGE LC_ALL LC_MESSAGES LC_TIME LC_NUMERIC LC_MONETARY LC_PAPER LC_MEASUREMENT XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP DESKTOP_SESSION XCURSOR_THEME XCURSOR_SIZE GTK_THEME LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER"
 activation_saved=$STATE_DIR/aktivierungsumgebung.vorher
 
 # Last value of variable $1 in labwc's environment files in $CONFIG_DIR;
@@ -277,6 +303,18 @@ session_value() {
     [ -n "$found" ] && printf '%s\n' "$value"
 }
 
+# Value the session gives variable $1 for activation: software OpenGL
+# (grafik_entscheiden) first, else labwc's environment files.
+activation_value() {
+    for zuweisung in $GRAFIK_UMGEBUNG; do
+        if [ "${zuweisung%%=*}" = "$1" ]; then
+            printf '%s\n' "${zuweisung#*=}"
+            return 0
+        fi
+    done
+    session_value "$1"
+}
+
 activation_export() {
     # Keep the values from before the first session of this boot; a
     # record from an earlier boot or without boot ID is replaced.
@@ -289,7 +327,7 @@ activation_export() {
     fi
     set --
     for var in $ACTIVATION_VARS; do
-        if value=$(session_value "$var"); then
+        if value=$(activation_value "$var"); then
             set -- "$@" "$var=$value"
         fi
     done
@@ -305,7 +343,7 @@ activation_restore() {
     set --
     unset_vars=
     for var in $ACTIVATION_VARS; do
-        session_value "$var" >/dev/null || continue
+        activation_value "$var" >/dev/null || continue
         line=$(grep -E "^$var=" "$activation_saved" | tail -n 1)
         if [ -n "$line" ]; then
             set -- "$@" "$line"
@@ -435,6 +473,134 @@ konfig_abgleichen() {
     return 0
 }
 
+# ---------------------------------------------------------------- OpenGL
+# Software-OpenGL from grafik.ini: automatisch, an or aus. Sets
+# grafik_einstellung and, for a value it does not know, grafik_hinweis.
+grafik_einstellung_lesen() {
+    grafik_einstellung=automatisch grafik_hinweis=
+    [ -r "$GRAFIK_INI" ] || return 0
+    wert=$(sed -n '/^[[:space:]]*\[Grafik\][[:space:]]*$/,/^[[:space:]]*\[/ s/^[[:space:]]*Software-OpenGL[[:space:]]*=[[:space:]]*//p' \
+        "$GRAFIK_INI" 2>/dev/null | tail -n 1 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    case $wert in
+    '') ;;
+    automatisch | an | aus) grafik_einstellung=$wert ;;
+    *) grafik_hinweis="unbekannter Wert „$wert“ in $GRAFIK_INI, gilt automatisch" ;;
+    esac
+}
+
+# Kernel drivers of the render nodes, e.g. "nouveau" or "amdgpu i915".
+render_treiber() {
+    liste=
+    for knoten in "$DRM_SYSFS"/renderD*; do
+        [ -e "$knoten/device/driver" ] || continue
+        treiber=$(basename "$(readlink -f "$knoten/device/driver")")
+        case " $liste " in *" $treiber "*) ;; *) liste="${liste:+$liste }$treiber" ;; esac
+    done
+    echo "$liste"
+}
+
+# Milliseconds since boot, in steps of 10 ms (date has no monotonic clock;
+# dash reads "07" as octal, so the leading zero goes).
+ms_jetzt() {
+    read -r uptime _ </proc/uptime
+    hundertstel=${uptime#*.}
+    echo $((${uptime%.*} * 1000 + ${hundertstel#0} * 10))
+}
+
+# Starts the renderer probe in the background; it writes
+# $grafik_ausgabe (renderer=… lines) and finally $grafik_ausgabe.fertig.
+# The starter never waits for the process itself, only for the file, so a
+# probe that hangs in the driver cannot hold the session up.
+grafik_pruefung_starten() {
+    grafik_ausgabe=$STATE_DIR/grafik-pruefung.$$
+    rm -f "$grafik_ausgabe" "$grafik_ausgabe.fertig"
+    grafik_start=$(ms_jetzt)
+    (
+        quelle=
+        if [ -n "$SITZUNG" ] &&
+            env -u WAYLAND_DISPLAY -u DISPLAY "$SITZUNG" --grafik-pruefen \
+                </dev/null >"$grafik_ausgabe" 2>"$grafik_ausgabe.fehler"; then
+            quelle="querencia-sitzung --grafik-pruefen"
+        elif command -v eglinfo >/dev/null 2>&1 &&
+            env -u WAYLAND_DISPLAY -u DISPLAY eglinfo -B -p surfaceless -a gles \
+                </dev/null 2>>"$grafik_ausgabe.fehler" |
+            sed -n 's/^OpenGL ES profile renderer: /renderer=/p' >"$grafik_ausgabe" &&
+            grep -q '^renderer=.' "$grafik_ausgabe"; then
+            quelle="eglinfo -B -p surfaceless"
+        fi
+        echo "quelle=$quelle" >>"$grafik_ausgabe"
+        echo "ende=$(ms_jetzt)" >>"$grafik_ausgabe"
+        : >"$grafik_ausgabe.fertig"
+    ) </dev/null >/dev/null 2>&1 &
+}
+
+# Decides on software OpenGL and writes one line to the start log (or to
+# stdout). Sets GRAFIK_UMGEBUNG: empty or $SOFTWARE_GL.
+grafik_entscheiden() {
+    GRAFIK_UMGEBUNG=
+    renderer= pruefung=
+    if [ "$grafik_einstellung" = automatisch ] && [ -n "${grafik_ausgabe-}" ]; then
+        warte_start=$(ms_jetzt)
+        while [ ! -f "$grafik_ausgabe.fertig" ] &&
+            [ $(($(ms_jetzt) - grafik_start)) -lt "$GRAFIK_ZEITGRENZE_MS" ]; do
+            sleep 0.02
+        done
+        gewartet=$(($(ms_jetzt) - warte_start))
+        if [ -f "$grafik_ausgabe.fertig" ]; then
+            renderer=$(sed -n 's/^renderer=//p' "$grafik_ausgabe" | head -n 1)
+            quelle=$(sed -n 's/^quelle=//p' "$grafik_ausgabe" | head -n 1)
+            ende=$(sed -n 's/^ende=//p' "$grafik_ausgabe" | head -n 1)
+            if [ -n "$renderer" ]; then
+                pruefung="$((ende - grafik_start)) ms über $quelle, gewartet $gewartet ms"
+            else
+                pruefung="ohne Ergebnis nach $((ende - grafik_start)) ms: $(head -c 200 "$grafik_ausgabe.fehler" 2>/dev/null | tr '\n' ' ')"
+            fi
+        else
+            pruefung="ohne Ergebnis in $GRAFIK_ZEITGRENZE_MS ms (Zeitgrenze), gewartet $gewartet ms"
+        fi
+        rm -f "$grafik_ausgabe" "$grafik_ausgabe.fehler" "$grafik_ausgabe.fertig"
+    fi
+    case $grafik_einstellung in
+    an)
+        GRAFIK_UMGEBUNG=$SOFTWARE_GL
+        grund="Software-OpenGL=an in $GRAFIK_INI"
+        ;;
+    aus) grund="Software-OpenGL=aus in $GRAFIK_INI" ;;
+    *)
+        if [ -z "${grafik_ausgabe-}" ]; then
+            grund="Kerneltreiber ${grafik_treiber:-keiner}, kein nouveau: nicht geprüft"
+        elif [ -z "$renderer" ]; then
+            grund="Renderer unbekannt (Prüfung $pruefung)"
+        else
+            case $renderer in
+            zink*NVK* | zink*[Nn]ouveau* | zink*NOUVEAU*)
+                GRAFIK_UMGEBUNG=$SOFTWARE_GL
+                grund="zink auf NVK/nouveau"
+                ;;
+            *) grund="kein zink auf NVK/nouveau" ;;
+            esac
+            grund="$grund; Renderer „$renderer“ (Kerneltreiber $grafik_treiber, Prüfung $pruefung)"
+        fi
+        ;;
+    esac
+    if [ -n "$GRAFIK_UMGEBUNG" ]; then
+        entscheidung="Software-OpenGL für die Sitzung: $GRAFIK_UMGEBUNG"
+    else
+        entscheidung="OpenGL unverändert"
+    fi
+    echo "$(date +%T.%3N) querencia-session: Grafik: $entscheidung ($grund)${grafik_hinweis:+; $grafik_hinweis}"
+}
+
+# Setting, render nodes and, with automatisch and a nouveau node, the probe.
+grafik_vorbereiten() {
+    grafik_einstellung_lesen
+    grafik_treiber=$(render_treiber)
+    grafik_ausgabe=
+    if [ "$grafik_einstellung" = automatisch ]; then
+        case " $grafik_treiber " in *" nouveau "*) grafik_pruefung_starten ;; esac
+    fi
+}
+
 # labwc --exit needs LABWC_PID, which only exists inside the session; the
 # PID file works from any shell of this user. Only the Querencia state is
 # read, so a Classic2 session is never ended by mistake.
@@ -453,7 +619,15 @@ if [ "${1-}" = --labwc-konfig-abgleichen ]; then
     echo "$(date +%T.%3N) querencia-session: Benutzerkopie $BENUTZER_DIR abgeglichen"
     exit 0
 fi
-[ $# -eq 0 ] || die "unbekannte Option: $1 (erlaubt: --exit, --labwc-konfig-abgleichen)"
+# Only the check and the decision, nothing is started or changed.
+if [ "${1-}" = --grafik-pruefen ]; then
+    STATE_DIR=$(mktemp -d) || die "kein temporärer Ordner"
+    grafik_vorbereiten
+    grafik_entscheiden
+    rm -rf "$STATE_DIR"
+    exit 0
+fi
+[ $# -eq 0 ] || die "unbekannte Option: $1 (erlaubt: --exit, --labwc-konfig-abgleichen, --grafik-pruefen)"
 
 [ "$(readlink -f "$0")" = "$QUERENCIA_REPO/session/querencia-session" ] ||
     die "nur aus der Querencia-Laufzeitkopie starten: $QUERENCIA_REPO/session/querencia-session"
@@ -481,6 +655,11 @@ done
 seat=$(loginctl show-session "$XDG_SESSION_ID" -p Seat --value 2>/dev/null)
 [ -n "$seat" ] ||
     die "logind-Sitzung $XDG_SESSION_ID hat keinen Sitz; nur nach Anmeldung an der Konsole starten"
+
+# The renderer probe runs while the starter cleans up (see the head of
+# this file); grafik_entscheiden collects it before the activation
+# environment is set.
+grafik_vorbereiten
 
 # One graphical session per user: the systemd user manager, the D-Bus
 # activation environment and the D-Bus session bus are shared per user.
@@ -544,8 +723,13 @@ else
 fi
 echo "$(date +%T.%3N) querencia-session: labwc-Konfiguration $CONFIG_DIR (Protokoll $konfig_log)"
 echo "labwc -C $CONFIG_DIR" >>"$konfig_log"
-# The session's locale and desktop for D-Bus activation, then fresh portals
-# (see the head of this file): a portal started from now on gets both.
+# Software OpenGL or not, then the session's locale and desktop (and
+# software OpenGL) for D-Bus activation, then fresh portals (see the head
+# of this file): a portal started from now on gets all of it.
+grafik_entscheiden
+if [ -n "$GRAFIK_UMGEBUNG" ] && ! grep -q QUERENCIA_GRAFIK_UMGEBUNG "$CONFIG_DIR/autostart" 2>/dev/null; then
+    echo "$(date +%T.%3N) querencia-session: Grafik: $CONFIG_DIR/autostart übernimmt QUERENCIA_GRAFIK_UMGEBUNG nicht (eigene Datei?): Software-OpenGL nur über die Aktivierungsumgebung"
+fi
 activation_export
 portals_reset "vor dem Start"
 # No labwc or panel of this user runs (checked above), so older records
@@ -560,7 +744,8 @@ export QUERENCIA_PANEL="$PANEL" QUERENCIA_STATE_DIR="$STATE_DIR" \
     QUERENCIA_PANEL_RECORD="$panel_file" \
     QUERENCIA_DESKTOP="$DESKTOP" QUERENCIA_DESKTOP_RECORD="$desktop_file" \
     QUERENCIA_SITZUNG="$SITZUNG" QUERENCIA_LEERLAUF_MINUTEN="$LEERLAUF_MINUTEN" \
-    QUERENCIA_POLKIT_AGENT="$POLKIT_AGENT"
+    QUERENCIA_POLKIT_AGENT="$POLKIT_AGENT" \
+    QUERENCIA_GRAFIK_UMGEBUNG="$GRAFIK_UMGEBUNG"
 echo "$(date +%T.%3N) querencia-session: Panel $PANEL, Arbeitsfläche ${DESKTOP:-(keine)}, Leerlaufsperre ${SITZUNG:-(keine)}, polkit-Agent ${POLKIT_AGENT:-(keiner)}"
 
 cd "$HOME" || die "kann nicht nach $HOME wechseln"

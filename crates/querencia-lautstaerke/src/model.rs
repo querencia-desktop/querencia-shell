@@ -9,6 +9,8 @@
 //! of a device is that of its loudest channel, as in the GNOME 2 volume
 //! control.
 
+use crate::i18n::{gettext, gettext_f};
+
 /// `PA_VOLUME_NORM`: 100 %, no amplification.
 pub const VOLUME_NORM: u32 = 0x10000;
 /// `PA_CHANNELS_MAX`.
@@ -254,10 +256,9 @@ impl Level {
     }
 }
 
-/// Tooltip without an audio service.
+/// "Kein Audiodienst" in the mixer (`main.rs`), which is not translated yet;
+/// the panel's tooltip comes from the catalog ([`look`]).
 pub const NO_SERVICE: &str = "Kein Audiodienst";
-/// Tooltip with a service but without an output device.
-pub const NO_OUTPUT: &str = "Kein Ausgabegerät";
 
 /// What the panel applet shows.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -282,20 +283,22 @@ pub fn look(state: &State) -> Look {
         muted: false,
     };
     match &state.connection {
-        Connection::Unavailable(_) => unavailable(NO_SERVICE),
-        Connection::Connecting => unavailable("Verbindung zum Audiodienst …"),
+        Connection::Unavailable(_) => unavailable(&gettext("No audio service")),
+        Connection::Connecting => unavailable(&gettext("Connecting to the audio service…")),
         Connection::Ready => match state.output() {
-            None => unavailable(NO_OUTPUT),
+            None => unavailable(&gettext("No output device")),
             Some(device) => {
                 let percent = device.percent();
+                let value = percent.to_string();
                 let volume = if device.muted {
-                    format!("Lautstärke: stumm ({percent} %)")
+                    gettext_f("Volume: muted ({percent} %)", &[("percent", &value)])
                 } else {
-                    format!("Lautstärke: {percent} %")
+                    gettext_f("Volume: {percent} %", &[("percent", &value)])
                 };
+                let line = gettext_f("Device: {device}", &[("device", device.label())]);
                 Look {
                     level: Level::of(percent, device.muted),
-                    tooltip: format!("{volume}\nGerät: {}", device.label()),
+                    tooltip: format!("{volume}\n{line}"),
                     available: true,
                     percent,
                     muted: device.muted,
@@ -391,12 +394,12 @@ mod tests {
     fn without_a_service_the_applet_is_greyed_and_says_so() {
         let look = look(&State::unavailable("Verbindung abgelehnt"));
         assert!(!look.available);
-        assert_eq!(look.tooltip, "Kein Audiodienst");
+        assert_eq!(look.tooltip, "No audio service");
         assert_eq!(look.level, Level::Muted);
         assert!(!super::look(&State::default()).available);
         let no_output = super::look(&ready(Vec::new(), None));
         assert!(!no_output.available);
-        assert_eq!(no_output.tooltip, "Kein Ausgabegerät");
+        assert_eq!(no_output.tooltip, "No output device");
     }
 
     #[test]
@@ -412,13 +415,13 @@ mod tests {
         assert!(look.available);
         assert_eq!(look.percent, 45);
         assert_eq!(look.level, Level::Medium);
-        assert_eq!(look.tooltip, "Lautstärke: 45 %\nGerät: Gerät b");
+        assert_eq!(look.tooltip, "Volume: 45 %\nDevice: Gerät b");
         let mut muted = state.clone();
         muted.sinks[1].muted = true;
         let look = super::look(&muted);
         assert_eq!(look.level, Level::Muted);
         assert!(look.muted);
-        assert_eq!(look.tooltip, "Lautstärke: stumm (45 %)\nGerät: Gerät b");
+        assert_eq!(look.tooltip, "Volume: muted (45 %)\nDevice: Gerät b");
     }
 
     #[test]

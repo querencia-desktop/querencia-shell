@@ -20,6 +20,7 @@ use gtk4::prelude::*;
 use gtk4::{Button, Image, gio, glib};
 
 use crate::app_menu;
+use crate::i18n::gettext_f;
 
 /// CSS class of every launcher button (style in `main.rs`); also marks the
 /// widget for the panel's context menu (`panel_menu.rs`).
@@ -66,7 +67,7 @@ pub fn look(app: &str, data: Option<&AppData>) -> Look {
         },
         None => Look {
             icon: None,
-            tooltip: format!("Anwendung nicht gefunden: {app}"),
+            tooltip: gettext_f("Application not found: {app}", &[("app", app)]),
             available: false,
         },
     }
@@ -134,7 +135,7 @@ fn refresh(button: &Button, image: &Image, app: &str) {
         .as_deref()
         .and_then(|icon| gio::Icon::for_string(icon).ok())
         .unwrap_or_else(|| gio::ThemedIcon::new(GENERIC_ICON).upcast());
-    image.set_from_gicon(&icon);
+    crate::symbole::set(image, &icon);
     button.set_tooltip_text(Some(&look.tooltip));
     if look.available {
         button.remove_css_class(MISSING_CLASS);

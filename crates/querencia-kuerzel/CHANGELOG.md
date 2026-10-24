@@ -1,5 +1,47 @@
 # Änderungen – querencia-kuerzel
 
+## 0.2.2 – 2026-10-24
+
+Integrationsstand 0.2.2-2 (Tags `kuerzel/0.2.2-2`, `kuerzel/0.2.2-2-int`):
+derselbe Code, gemergt auf runtime main `5510fc4` (Welle C3; Kürzel von
+Dateien dort unverändert gegenüber `dateien/reiter-1`). Binary byte-gleich mit
+0.2.2; aktiviert wird über `integration/kuerzel-022-2/`.
+
+Querencia Dateien statt Querencia Files (Welle C, Folgezug „Runtime nach
+der Ablösung“, 08 QD-168):
+
+- Seite „Programme“: Der Block „Querencia Files“ heißt jetzt „Querencia
+  Dateien“ und nennt dessen 38 Kürzel in der Reihenfolge seiner Menüs
+  (Datei, Bearbeiten, Ansicht, Gehe zu, Lesezeichen, Reiter, Hilfe) und so,
+  wie die Menüs sie schreiben (Umschalt vor Strg). Quelle:
+  `crates/querencia-dateien/src/menue.rs` (`KUERZEL`, `KUERZEL_IM_BEREICH`),
+  Suche Strg+F aus Welle C2, Reiter (Strg+T, Strg+W, Strg+Bild↑/↓,
+  Umschalt+Strg+Bild↑/↓, Alt+1 … Alt+0, Umschalt+Strg+O), Kompaktansicht
+  Strg+3 und Auswahl umkehren Umschalt+Strg+I aus Welle C3.
+- Gegenüber Files geändert: Strg+1/2/3 = Symbole/Liste/Kompakt, Strg+D =
+  Lesezeichen hinzufügen (Files: Duplizieren), Seitenleiste F9 (Files:
+  Strg+B), Suchen Strg+F (Files: Strg+K), Umschalt+Entf = Löschen mit
+  Nachfrage. Ohne Gegenstück in Dateien und deshalb nicht mehr aufgeführt:
+  Strg+Z/Umschalt+Strg+Z, Strg+, (Einstellungen).
+- Die Übersicht passt erst zu Querencia Dateien mit Welle C3 (Reiter);
+  mit Dateien 0.1.0 fehlen die Reiter- und Kompaktkürzel noch.
+- Test `built_in_file_is_clean`: Blockname, Zahl und Reihenfolge der
+  Dateien-Kürzel, geänderte und entfallene Kürzel.
+
+## 0.2.1 – 2026-10-22
+
+Dunkelmodus (QD-109):
+
+- Die Übersicht folgt der dunklen Darstellung: Nach dem Start meldet das
+  Programm das Farbschema einmal neu (GTK 4.22 zeigte ein bei „dunkel“
+  frisch gestartetes Fenster sonst hell, QD-081).
+- Tastenkästchen, Quellzeile und Warnung nehmen ihre Farben aus dem Thema
+  (`@borders`, `@theme_fg_color`, Mischungen aus `@theme_base_color`,
+  `@theme_bg_color`, `@error_color`), ohne eigenen `@media`-Block. Hell
+  bleiben Rand und Schrift gleich, das Kästchen ist #fafaf9 statt #fbfaf9,
+  die Quellzeile #6d6d6c statt #6e6e6e; die Warnung ist ein dunkleres Rot
+  (#672a2a statt #a0331a), das auch dunkel lesbar bleibt.
+
 ## 0.2.0 – 2026-10-21
 
 Nachtrag der seit 0.1.0 live gegangenen Kürzel (Auftrag kuerzel-reiter):

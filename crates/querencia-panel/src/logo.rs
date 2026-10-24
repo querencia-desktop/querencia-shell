@@ -34,6 +34,27 @@ const BITMAPS: [(i32, &[u8]); 8] = [
     (256, include_bytes!("../data/logo/querencia-logo-256.png")),
 ];
 
+/// Window icon of the panel's own windows (QD-129): the SVG master of the
+/// logo in the built-in resource (`data/panel.gresource`), under a name no
+/// theme has. labwc finds no starter for the panel's app ID and so shows
+/// the icon the window sends.
+pub const WINDOW_ICON: &str = "org.querencia.Panel-fenster";
+const RESOURCE: &[u8] = include_bytes!("../data/panel.gresource");
+const RESOURCE_ICONS: &str = "/org/querencia/Panel/icons";
+
+/// Registers the resource and makes [`WINDOW_ICON`] the icon of every
+/// window of this process; before the first window.
+pub fn set_window_icon(display: &gdk::Display) {
+    match gio::Resource::from_data(&glib::Bytes::from_static(RESOURCE)) {
+        Ok(resource) => {
+            gio::resources_register(&resource);
+            gtk4::IconTheme::for_display(display).add_resource_path(RESOURCE_ICONS);
+            gtk4::Window::set_default_icon_name(WINDOW_ICON);
+        }
+        Err(err) => eprintln!("querencia-panel: Fenstersymbol nicht lesbar: {err}"),
+    }
+}
+
 /// Logo size on a panel `panel_height` pixels high: 22 on the standard 32,
 /// the same ratio (11/16, rounded down) on any other height, so 16 on a 24
 /// px panel; at least 1.
@@ -102,6 +123,33 @@ fn show(image: &Image, size: i32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The resource holds the logo's SVG master byte for byte under the
+    /// window icon's name, and nothing else (no PNG next to the SVG).
+    #[test]
+    fn resource_holds_the_logo_svg_as_window_icon() {
+        let resource = gio::Resource::from_data(&glib::Bytes::from_static(RESOURCE)).unwrap();
+        let apps = format!("{RESOURCE_ICONS}/scalable/apps");
+        let names = resource
+            .enumerate_children(&apps, gio::ResourceLookupFlags::NONE)
+            .unwrap();
+        assert_eq!(names, vec![format!("{WINDOW_ICON}.svg")]);
+        let svg = resource
+            .lookup_data(
+                &format!("{apps}/{WINDOW_ICON}.svg"),
+                gio::ResourceLookupFlags::NONE,
+            )
+            .unwrap();
+        assert_eq!(&svg[..], include_bytes!("../data/logo/querencia-logo.svg"));
+        assert!(
+            !String::from_utf8_lossy(&svg).contains("<text"),
+            "kein Text im Symbol"
+        );
+        let icons = resource
+            .enumerate_children(RESOURCE_ICONS, gio::ResourceLookupFlags::NONE)
+            .unwrap();
+        assert_eq!(icons, vec!["scalable/".to_string()]);
+    }
 
     /// Width, height and colour type from a PNG header.
     fn png_header(bytes: &[u8]) -> (u32, u32, u8) {

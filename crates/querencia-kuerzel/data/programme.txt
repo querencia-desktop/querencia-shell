@@ -8,7 +8,10 @@
 # Quellen (G2-R, 18.10.2026), jeweils die im Programm fest eingebauten
 # Kürzel des Live-Stands:
 #   Arbeitsfläche   querencia-runtime crates/querencia-desktop (QE-02)
-#   Files           querencia-files-dev src/ui/keys/bindings (QF-0l)
+#   Dateien         querencia-runtime crates/querencia-dateien src/menue.rs (KUERZEL, KUERZEL_IM_BEREICH)
+#                   mit src/suche/mod.rs (Strg+F, Welle C2) und src/ansichtskern.rs
+#                   (Kontextmenü); Reiter, Kompaktansicht und Auswahl umkehren aus
+#                   Welle C3 (Nachtrag runtime-abloesung, 24.10.2026)
 #   Terminal        querencia-terminal-dev Tag terminal/0.3.0 src/tabs.rs
 #                   (shortcut, shortcut_overview) und src/clipboard.rs
 #                   (Nachtrag kuerzel-reiter, 21.10.2026; live seit
@@ -27,30 +30,45 @@ Esc = Auswahl aufheben
 Strg+Klick = Symbol zur Auswahl hinzufügen oder entfernen
 Umschalt+Klick = Symbole bis hierher auswählen
 
-[Querencia Files]
-Strg+N = Neues Fenster
+[Querencia Dateien]
 Strg+T = Neuer Reiter
-Strg+W = Reiter schließen
-Strg+Umschalt+N = Neuer Ordner
+Strg+N = Neues Fenster
+Umschalt+Strg+N = Ordner anlegen
+Strg+O = Öffnen
+Umschalt+Strg+O = In neuem Reiter öffnen
+Mittlere Maustaste = Ordner in neuem Reiter öffnen
+Alt+Eingabe / Strg+I = Eigenschaften
+Umschalt+Strg+W = Alle Fenster schließen
+Strg+W = Reiter schließen (der letzte schließt das Fenster)
 Strg+X = Ausschneiden
 Strg+C = Kopieren
 Strg+V = Einfügen
-Strg+D = Duplizieren
 Strg+A = Alles auswählen
-Strg+Z = Rückgängig
-Strg+Umschalt+Z = Wiederholen
+Umschalt+Strg+I = Auswahl umkehren
 F2 = Umbenennen
-Alt+Eingabe = Eigenschaften
-Umschalt+Entf = Endgültig löschen
-Strg+K = Suchen
-Strg+L = Ort eingeben
-Strg+R = Neu laden
-Strg+B = Seitenleiste ein oder aus
-Strg+, = Einstellungen
+Umschalt+F2 = Umbenennen, ganzen Namen markieren
+Entf = In den Papierkorb verschieben
+Umschalt+Entf = Löschen (mit Nachfrage)
+Menü / Umschalt+F10 = Kontextmenü
+Esc = Laden anhalten
+Strg+R / F5 = Aktualisieren
+F9 = Seitenleiste ein oder aus
+Strg+H = Verborgene Dateien anzeigen
+Strg++ / Strg+- / Strg+0 = Vergrößern / Verkleinern / Normale Größe
+Strg+1 = Symbolansicht
+Strg+2 = Listenansicht
+Strg+3 = Kompaktansicht
+Alt+↑ = Übergeordneter Ordner
 Alt+← = Zurück
 Alt+→ = Vor
-Alt+↑ = Übergeordneter Ordner
 Alt+Pos1 = Persönlicher Ordner
+Strg+L = Ort eingeben
+Strg+F = Suchen (Esc hält die Suche an oder schließt die Leiste)
+Strg+D = Lesezeichen hinzufügen
+Strg+Bild↑ / Strg+Bild↓ = Vorheriger / nächster Reiter
+Umschalt+Strg+Bild↑ / Umschalt+Strg+Bild↓ = Reiter nach links / rechts verschieben
+Alt+1 … Alt+0 = Zu Reiter 1 … 10 wechseln
+F1 = Online-Hilfe
 
 [Querencia Terminal]
 Strg+Umschalt+T = Neuer Reiter
