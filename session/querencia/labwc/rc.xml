@@ -58,7 +58,7 @@
          Programme, die nur ein bildschirmgroßes Fenster zeichnen (Horizon
          Client): im Vollbild blendet labwc die Panels aus. Super+F und
          Alt+F11 statt F11, weil labwc-Kürzel jedem Programm vorgehen: F11
-         gehörte sonst nicht mehr Firefox, Files oder einer entfernten
+         gehörte sonst nicht mehr Firefox oder einer entfernten
          Sitzung (Horizon, VNC), die es selbst nutzen. Metacity hatte für
          Vollbild kein Standardkürzel; beide sind in labwc und GTK frei. -->
     <keybind key="W-f">

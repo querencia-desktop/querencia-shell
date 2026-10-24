@@ -194,3 +194,33 @@ Wirkung ab der nächsten Anmeldung. Probe auf Kopien:
 Protokolls und der Abgleich beim nächsten Start, Gegenprobe ohne
 Nachziehen, Rückrollen an zehn Fehlerstellen und vier beim Rückfall,
 Verweigerungen, Live-Stand unberührt).
+
+## Nachtrag 24.10.2026: session/grafik-3 (Files-Reste)
+
+Nach dem Ausmustern von Querencia Files (Beta Schritt 7, 24.10. 03:11)
+entfernt `session/grafik-3` die Files-Reste aus der Laufzeitkonfiguration
+(Schritt 8 des Aktivierungsplans): die Starter
+`session/querencia/applications/org.querencia.Files.desktop` und
+`io.github.lgse.Strata.desktop` (HMP-04, Entwicklungsbuild
+querencia-files-dev) sowie „Files“ in den Kommentaren von
+`labwc/rc.xml` (QD-065) und `x11-zwischenablage-helfer` (QD-155).
+Starter und Autostart-Vorgabe bleiben auf grafik-2.
+
+Die zwei Starter brauchte nichts mehr: Sie liegen nicht in
+`XDG_DATA_DIRS` der Sitzung, kein Starter, Autostart, `mimeapps.list` oder
+Paket nimmt sie (Querencia Dateien bringt seinen eigenen Starter mit);
+nur der Panel-Test `querencia_desktop_entries_land_in_accessories` las
+das Verzeichnis und prüft jetzt Terminal und Bildschirmfoto und dass
+keiner dieser Starter Ordner öffnet. `rc.xml` ist Vorgabe der
+Benutzerkopie: Bei der nächsten Anmeldung übernimmt der Starter die
+geänderte Vorgabe selbst, solange die Benutzerkopie unverändert ist
+(sonst `rc.xml.vorgabe-neu`). Den Zwischenablage-Helfer führt die
+Sitzung aus `~/opt/querencia/bin` aus; diese Kopie ändert grafik-3 nicht
+(nur ein Kommentar).
+
+Integration: `integration/session-grafik-3/session-grafik-3-integrieren.sh`
+(`pruefen | aktivieren | zurueck`, `QSG3_FREIGABE=ja`, Sperre gemeinsam
+mit session-grafik). `aktivieren` ersetzt `rc.xml` und den Helfer der
+Laufzeitkopie per rename und verschiebt die zwei Starter in die
+Sicherung; `zurueck` stellt den Stand von grafik-2 (main `2280514`) wieder
+her. Probe `probe.sh` auf Kopien.

@@ -1,6 +1,6 @@
 [package]
 name = "querencia-dateien"
-version = "0.2.0"
+version = "0.2.1"
 description = "Querencia Dateien: klassischer Dateimanager für Querencia Desktop nach dem Vorbild von Nautilus 2.30"
 edition.workspace = true
 rust-version.workspace = true

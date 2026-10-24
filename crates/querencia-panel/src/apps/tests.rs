@@ -95,9 +95,10 @@ fn gnome2_groups_for_education_and_accessibility() {
         MenuGroup::Programming
     );
 }
-/// HMP-04: the desktop entries of the three Querencia applications
-/// (`session/querencia/applications`), plus the hidden bridge of the old
-/// Files ID (QD-059). Read as key files, so the test does
+/// HMP-04: the desktop entries of the Querencia applications in
+/// `session/querencia/applications` (Terminal, Screenshot; the Files
+/// entries and the bridge went with session/grafik-3, Querencia Dateien
+/// brings its own). Read as key files, so the test does
 /// not depend on the binaries being installed; GIO and the real binaries
 /// are checked in the isolated GUI test.
 #[test]
@@ -112,19 +113,11 @@ fn querencia_desktop_entries_land_in_accessories() {
     assert_eq!(
         ids,
         [
-            "io.github.lgse.Strata.desktop",
             "org.example.Querencia.Terminal.desktop",
-            "org.querencia.Files.desktop",
             "org.querencia.Screenshot.desktop",
         ]
     );
     let expected = [
-        (
-            "org.querencia.Files.desktop",
-            "Querencia Files",
-            "org.querencia.Files",
-            "/target/debug/strata",
-        ),
         (
             "org.example.Querencia.Terminal.desktop",
             "Querencia Terminal",
@@ -172,47 +165,14 @@ fn querencia_desktop_entries_land_in_accessories() {
         assert_eq!(exec.split(' ').next(), Some(try_exec.as_str()), "{id}");
         assert!(!exec.contains("grim"), "{id}: kein grim als Menüanwendung");
     }
-    // only the file manager opens directories
-    let files = glib::KeyFile::new();
-    files
-        .load_from_file(
-            dir.join("org.querencia.Files.desktop"),
-            glib::KeyFileFlags::NONE,
-        )
-        .unwrap();
-    assert_eq!(
-        files.string("Desktop Entry", "MimeType").unwrap(),
-        "inode/directory;"
-    );
-    // the old ID stays as a hidden bridge: not in any menu, no MIME types,
-    // starts the same binary with the new window ID
-    let bridge = glib::KeyFile::new();
-    bridge
-        .load_from_file(
-            dir.join("io.github.lgse.Strata.desktop"),
-            glib::KeyFileFlags::NONE,
-        )
-        .unwrap();
-    assert!(bridge.boolean("Desktop Entry", "NoDisplay").unwrap());
-    assert!(bridge.string("Desktop Entry", "MimeType").is_err());
-    assert_eq!(
-        bridge.string("Desktop Entry", "Exec").unwrap(),
-        files.string("Desktop Entry", "Exec").unwrap()
-    );
-    assert_eq!(
-        bridge
-            .string("Desktop Entry", "StartupWMClass")
-            .unwrap()
-            .as_str(),
-        "org.querencia.Files"
-    );
-    assert!(
-        files
-            .string("Desktop Entry", "Exec")
-            .unwrap()
-            .ends_with(" %U"),
-        "URIs (trash:///, computer:///) are passed on"
-    );
+    // none of them opens directories: that is Querencia Dateien's own entry
+    for (id, ..) in expected {
+        let file = glib::KeyFile::new();
+        file.load_from_file(dir.join(id), glib::KeyFileFlags::NONE)
+            .unwrap();
+        let types = file.string("Desktop Entry", "MimeType").unwrap_or_default();
+        assert!(!types.contains("inode/directory"), "{id}: {types}");
+    }
 }
 
 #[test]

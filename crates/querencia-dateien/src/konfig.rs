@@ -3,9 +3,10 @@
 //! is written at once and reaches every open window (GNOME 2: no "Apply").
 //!
 //! The first start without `dateien.ini` takes six values once from
-//! Querencia Files (`~/.config/querencia-files/settings.toml`, migration
-//! M6 in B §4.2) and notes `AusFiles=1`; the Files file is only read, never
-//! changed or removed. The first start writes `dateien.ini` in any case, so
+//! Querencia Files (`~/.config/querencia-files/settings.toml`, else
+//! `~/.config/strata/settings.toml` as Files up to Alpha 2.1 wrote it;
+//! migration M6 in B §4.2) and notes `AusFiles=1`; the Files file is only
+//! read, never changed or removed. The first start writes `dateien.ini` in any case, so
 //! a Files file that appears later is not taken over.
 
 use std::cell::RefCell;
@@ -408,11 +409,16 @@ pub fn pfad() -> PathBuf {
         .join("dateien.ini")
 }
 
-/// `~/.config/querencia-files/settings.toml`.
-pub fn files_pfad() -> PathBuf {
-    glib::user_config_dir()
-        .join("querencia-files")
-        .join("settings.toml")
+/// The settings of Querencia Files in the order M6 reads them: the folder
+/// of Files QF-0t (`~/.config/querencia-files/settings.toml`) first, then
+/// the Strata folder that Files up to Alpha 2.1 (packaged 0.1.0~alpha7)
+/// wrote (`~/.config/strata/settings.toml`; QF-0t left a link there).
+pub fn files_pfade() -> [PathBuf; 2] {
+    let config = glib::user_config_dir();
+    [
+        config.join("querencia-files").join("settings.toml"),
+        config.join("strata").join("settings.toml"),
+    ]
 }
 
 type Handler = Rc<dyn Fn(&Werte)>;
@@ -428,14 +434,18 @@ impl Konfig {
     /// Reads `dateien.ini`; without it migrates once from Files (and writes
     /// the result), else starts with the defaults (written on first change).
     pub fn laden() -> Rc<Self> {
-        Self::laden_von(&pfad(), &files_pfad())
+        Self::laden_von(&pfad(), &files_pfade())
     }
 
-    pub fn laden_von(pfad: &Path, files: &Path) -> Rc<Self> {
+    /// `files`: the Files settings in order; the first readable one is taken.
+    pub fn laden_von(pfad: &Path, files: &[PathBuf]) -> Rc<Self> {
         let werte = match std::fs::read_to_string(pfad) {
             Ok(text) => Werte::aus_ini(&text),
-            Err(_) => match std::fs::read_to_string(files) {
-                Ok(text) => {
+            Err(_) => match files
+                .iter()
+                .find_map(|f| std::fs::read_to_string(f).ok().map(|text| (f, text)))
+            {
+                Some((files, text)) => {
                     let w = Werte::aus_files(&text);
                     let _ = schreiben(pfad, &w);
                     eprintln!(
@@ -444,7 +454,7 @@ impl Konfig {
                     );
                     w
                 }
-                Err(_) => {
+                None => {
                     // nothing to take over: the first start is over all the
                     // same (a later settings.toml is not migrated)
                     let w = Werte::default();
@@ -591,7 +601,7 @@ mod tests {
         let inhalt = "show_hidden = true\nbrowser_mode = \"icons\"\n";
         std::fs::write(&files, inhalt).unwrap();
         let ini = dir.join("querencia/dateien.ini");
-        let k = Konfig::laden_von(&ini, &files);
+        let k = Konfig::laden_von(&ini, std::slice::from_ref(&files));
         assert!(k.werte().verborgene && k.werte().aus_files);
         assert!(
             std::fs::read_to_string(&ini)
@@ -611,7 +621,7 @@ mod tests {
         );
         // second start reads the ini, no second migration
         std::fs::write(&files, "show_hidden = false\n").unwrap();
-        let k = Konfig::laden_von(&ini, &files);
+        let k = Konfig::laden_von(&ini, std::slice::from_ref(&files));
         assert!(k.werte().verborgene && k.werte().einfacher_klick);
         assert_eq!(
             std::fs::read_to_string(&files).unwrap(),
@@ -626,14 +636,45 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         let files = dir.join("querencia-files/settings.toml");
         let ini = dir.join("querencia/dateien.ini");
-        let k = Konfig::laden_von(&ini, &files);
+        let k = Konfig::laden_von(&ini, std::slice::from_ref(&files));
         assert_eq!(k.werte(), Werte::default());
         assert!(std::fs::read_to_string(&ini).is_ok_and(|t| !t.contains("AusFiles")));
         // Files settings that appear after the first start stay Files'
         std::fs::create_dir_all(files.parent().unwrap()).unwrap();
         std::fs::write(&files, "show_hidden = true\n").unwrap();
-        let k = Konfig::laden_von(&ini, &files);
+        let k = Konfig::laden_von(&ini, std::slice::from_ref(&files));
         assert!(!k.werte().verborgene && !k.werte().aus_files);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn migration_m6_reads_querencia_files_first_then_strata() {
+        let dir = std::env::temp_dir().join(format!("qdat-konfig-pfade-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let pfade = [
+            dir.join("querencia-files/settings.toml"),
+            dir.join("strata/settings.toml"),
+        ];
+        let ini = dir.join("querencia/dateien.ini");
+        // Files up to Alpha 2.1: only ~/.config/strata/settings.toml
+        std::fs::create_dir_all(dir.join("strata")).unwrap();
+        let strata = "show_hidden = true\nbrowser_mode = \"list\"\n";
+        std::fs::write(&pfade[1], strata).unwrap();
+        let k = Konfig::laden_von(&ini, &pfade);
+        assert!(k.werte().aus_files && k.werte().verborgene);
+        assert_eq!(k.werte().ansicht, Ansichtsart::Liste);
+        assert_eq!(std::fs::read_to_string(&pfade[1]).unwrap(), strata);
+        // both there: querencia-files wins
+        std::fs::remove_file(&ini).unwrap();
+        std::fs::create_dir_all(dir.join("querencia-files")).unwrap();
+        std::fs::write(&pfade[0], "browser_mode = \"icons\"\n").unwrap();
+        let k = Konfig::laden_von(&ini, &pfade);
+        assert!(k.werte().aus_files && !k.werte().verborgene);
+        assert_eq!(k.werte().ansicht, Ansichtsart::Symbole);
+        // the real paths keep this order
+        let echt = files_pfade();
+        assert!(echt[0].ends_with("querencia-files/settings.toml"));
+        assert!(echt[1].ends_with("strata/settings.toml"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
