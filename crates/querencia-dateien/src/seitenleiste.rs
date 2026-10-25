@@ -242,7 +242,7 @@ impl Seitenleiste {
         anker.set_halign(gtk4::Align::Start);
         anker.set_valign(gtk4::Align::Start);
         let menue = gio::Menu::new();
-        classic_menu::attach(&anker, menue.upcast_ref());
+        classic_menu::attach_popup(&anker, menue.upcast_ref());
         let ueber = gtk4::Overlay::new();
         ueber.set_child(Some(&scroller));
         ueber.add_overlay(&anker);

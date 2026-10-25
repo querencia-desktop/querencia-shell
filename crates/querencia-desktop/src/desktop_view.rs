@@ -344,7 +344,7 @@ impl Icons {
         anchor.set_focus_on_click(false);
         fixed.put(&anchor, 0.0, 0.0);
         let menu = gio::Menu::new();
-        classic_menu::attach(&anchor, menu.upcast_ref());
+        classic_menu::attach_popup(&anchor, menu.upcast_ref());
 
         let (store, migrated_order) = load_store();
         let settings = config::parse_icons(

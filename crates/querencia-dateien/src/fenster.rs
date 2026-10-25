@@ -575,7 +575,11 @@ impl Fenster {
         if ort.is_native() {
             return;
         }
-        // GVfs places name themselves ("Papierkorb", the share's name)
+        // GVfs places name themselves (a share's name); the trash and the
+        // roots of Rechner and Netzwerk keep ours (QD-173 P-4)
+        if crate::orte::eigener_name(ort) {
+            return;
+        }
         let w = self.window.downgrade();
         let weak = Rc::downgrade(r);
         let ort = ort.clone();
@@ -591,7 +595,7 @@ impl Fenster {
                 && r.ort().is_some_and(|o| o.equal(&ort))
             {
                 let name = info.display_name();
-                if !name.is_empty() && ort.uri_scheme().as_deref() != Some("trash") {
+                if !name.is_empty() {
                     r.titel_setzen(&name);
                     if let Some(w) = w.upgrade()
                         && let Some(f) =

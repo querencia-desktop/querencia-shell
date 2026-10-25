@@ -36,6 +36,22 @@ pub fn anzeigename(ort: &gio::File) -> String {
         .unwrap_or_else(|| ort.parse_name().to_string())
 }
 
+/// Whether `ort` keeps its own name from [`anzeigename`] instead of the
+/// display name GVfs gives it: the trash, and the roots of "Rechner" and
+/// "Netzwerk". GVfs names those in the locale of its daemons, which need
+/// not be the session's (QD-173 P-4: "Network" in a German session).
+/// Places below them (a workgroup, a share) take the GVfs name.
+pub fn eigener_name(ort: &gio::File) -> bool {
+    match ort.uri_scheme().as_deref() {
+        Some("trash") => true,
+        Some("computer" | "network") => {
+            let uri = ort.uri();
+            uri.trim_end_matches('/').ends_with(':')
+        }
+        _ => false,
+    }
+}
+
 /// The icon of a place.
 pub fn symbol(ort: &gio::File) -> &'static str {
     match ort.uri_scheme().as_deref() {
@@ -67,5 +83,17 @@ mod tests {
         assert_eq!(anzeigename(&gio::File::for_path("/usr/share")), "share");
         assert_eq!(symbol(&gio::File::for_path("/")), "drive-harddisk");
         assert_eq!(symbol(&gio::File::for_path("/usr")), "folder");
+    }
+
+    #[test]
+    fn roots_of_network_and_computer_keep_their_own_name() {
+        for uri in ["network:///", "computer:///", "trash:///", "trash:///a"] {
+            assert!(eigener_name(&gio::File::for_uri(uri)), "{uri}");
+        }
+        for uri in ["network:///smb-root", "computer:///root.link", "sftp://h/"] {
+            assert!(!eigener_name(&gio::File::for_uri(uri)), "{uri}");
+        }
+        assert!(!eigener_name(&gio::File::for_path("/")));
+        assert_eq!(anzeigename(&gio::File::for_uri("network:///")), "Network");
     }
 }

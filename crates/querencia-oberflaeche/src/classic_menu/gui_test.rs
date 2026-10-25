@@ -19,9 +19,12 @@
 //! - submenus open to the right, their first row level with the row;
 //! - keyboard: Down, Right into a submenu, Left out of it, Left/Right
 //!   between the main menus; pointer onto another main menu switches;
+//! - a context menu in the same window never switches to a main menu
+//!   (QD-176);
 //! - activating an entry closes every menu and runs its action;
-//! - Querencia Files, Querencia Terminal and "Bildschirmfoto aufnehmen" are
-//!   in Zubehör exactly once and start from the menu;
+//! - Querencia Dateien (Querencia Files until the Beta), Querencia Terminal
+//!   and "Bildschirmfoto aufnehmen" are in Zubehör exactly once and start
+//!   from the menu;
 //! - Orte offers its places now that a file manager is installed;
 //! - HMP-05: no submenu grabs, the keyboard focus stays in the top level, a
 //!   pending open of a row the pointer has left never fires, and after a
@@ -251,7 +254,7 @@ pub fn isolated_gui_menus(program: &Panel) {
     let entries = labels(&zub);
     println!("Zubehör: {entries:?}");
     for name in [
-        "Querencia Files",
+        "Querencia Dateien",
         "Querencia Terminal",
         "Bildschirmfoto aufnehmen",
     ] {
@@ -463,6 +466,41 @@ pub fn isolated_gui_menus(program: &Panel) {
         "ohne offenes Menü öffnet Überfahren nichts"
     );
 
+    // QD-176: a context menu ([`attach_popup`]) in the same window is no
+    // part of the menu bar: the main menus do not list it, and neither the
+    // pointer onto a main menu button nor Left/Right switch away from it
+    let context = gio::Menu::new();
+    context.append(Some("Kontexteintrag"), None);
+    let anchor = MenuButton::new();
+    attach_popup(&anchor, context.upcast_ref());
+    no_grab(&anchor);
+    panel.append(&anchor);
+    pump(300);
+    assert!(
+        main_menus_beside(&apps).iter().all(|(b, _)| b != &anchor),
+        "Kontextmenü-Anker ist kein Hauptmenü"
+    );
+    anchor.popup();
+    pump(500);
+    assert!(is_open(&anchor), "Kontextmenü offen");
+    super::switch_on_hover(&places);
+    pump(300);
+    assert!(
+        is_open(&anchor) && !is_open(&places),
+        "Überfahren eines Hauptmenüs: Kontextmenü bleibt offen"
+    );
+    super::switch_main_menu(&anchor, true);
+    super::switch_main_menu(&anchor, false);
+    pump(300);
+    assert!(
+        is_open(&anchor) && !is_open(&apps) && !is_open(&places) && !is_open(&system),
+        "Rechts/Links im Kontextmenü: kein Wechsel in die Leiste"
+    );
+    anchor.popdown();
+    panel.remove(&anchor);
+    pump(300);
+    println!("Kontextmenü neben den Hauptmenüs: kein Wechsel per Zeiger oder Taste: ok");
+
     // ---- colours of an insensitive row and activation, own menu ----
     let ran = Rc::new(Cell::new(0));
     let probe = gio::Menu::new();
@@ -527,7 +565,7 @@ pub fn isolated_gui_menus(program: &Panel) {
     for name in [
         "Querencia Terminal",
         "Bildschirmfoto aufnehmen",
-        "Querencia Files",
+        "Querencia Dateien",
     ] {
         apps.popup();
         pump(400);
