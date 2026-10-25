@@ -127,3 +127,22 @@ ls "$D" | grep -q '^per-f2' \
   && fall K11 "F2 benennt um" 1 "$(ls "$D" | grep '^per-f2')" \
   || fall K11 "F2 benennt um" 0 "$(ls "$D" | tr '\n' ' ' | cut -c1-120)"
 foto k11-ende
+
+# K12 Kontextmenü eines Suchergebnisses (Strg+F „bericht“), Zeiger unter
+# das Menü in den x-Bereich von „Ansicht“.
+taste ctrl+f
+markiere
+q "type bericht" "key Return"
+warte_log "Suche [0-9]* fertig" 15
+q "wait 300" "move 260 199" "rclick" "wait 500"
+foto k12a-suche-kontextmenue
+markiere
+q "glide 250 530 250" "wait 400"
+foto k12b-suche-zeiger-darunter
+# Down nach der Bewegung: nur ein offenes Menü protokolliert die Taste
+q "key Down" "wait 200"
+n=$(seit "Hauptmenü per Zeiger"); offen=$(seit "Taste Down -> Menü")
+[ "$n" = 0 ] && [ "$offen" -ge 1 ] \
+  && fall K12 "Kontextmenü Suchergebnis, Zeiger bei x von „Ansicht“: kein Wechsel, Menü bleibt offen" 1 "Wechsel 0, $(seit_zeilen 'Taste Down')" \
+  || fall K12 "Kontextmenü Suchergebnis" 0 "Wechsel $n: $(seit_zeilen 'Hauptmenü per'); Taste: $(seit_zeilen 'Taste Down')"
+q "key Escape" "wait 300"
