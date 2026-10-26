@@ -1,5 +1,23 @@
 # Änderungen – querencia-oberflaeche
 
+## 0.1.1 – 2026-10-25 (QD-176)
+
+- `classic_menu::attach_popup` für Kontextmenüs auf einem Anker: Der Anker
+  gehört nicht zur Menüleiste seines Fensters. Bisher registrierte `attach`
+  jeden Knopf als Hauptmenü; in Querencia Dateien sprang ein offenes
+  Kontextmenü deshalb in die Menüleiste, sobald der Zeiger irgendwo im
+  Fenster unter einem Menü der Leiste stand (Fehlerbild: Zeiger Richtung
+  „Umbenennen …“, „Ansicht“ klappt auf), und Links/Rechts wechselten aus
+  dem Kontextmenü in die Leiste.
+- Wechsel zwischen Hauptmenüs per Zeiger nur über der Knopffläche (x und y,
+  `button_at` statt `span_at`). Im Panel füllen die Knöpfe die Leiste;
+  dort ändert sich nichts.
+- GUI-Test (`gui-test`): Kontextmenü neben den Hauptmenüs wechselt weder
+  per Zeiger noch per Taste; im Zubehör wird Querencia Dateien statt Files
+  erwartet.
+- Panel und Desktop sind mit 0.1.0 gebaut; ihr Verhalten ändert sich erst
+  mit ihrer nächsten Version.
+
 ## 0.1.0 – 2026-10-23
 
 Erste Fassung: die GTK-Bausteine, die Panel (bis 0.3.0) und Desktop (bis

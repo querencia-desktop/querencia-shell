@@ -1,6 +1,6 @@
 [package]
 name = "querencia-oberflaeche"
-version = "0.1.0"
+version = "0.1.1"
 description = "Querencia Oberfläche: gemeinsame GTK-Bausteine von Panel, Desktop und Dateimanager (klassische Menüs, Symbole ohne Vorladen, Symbolthema, Farbschema, Settings-Portal)"
 edition.workspace = true
 rust-version.workspace = true

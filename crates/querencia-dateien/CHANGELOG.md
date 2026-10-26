@@ -1,5 +1,19 @@
 # Änderungen – Querencia Dateien (`querencia-dateien`)
 
+## 0.2.2 – 25.10.2026 (Pflegestand, QD-176, QD-173 P-4)
+
+- Behoben: Ein offenes Kontextmenü (Ansicht, Seitenleiste, Suchergebnisse)
+  schloss sich, und oben klappte ein Menü der Menüleiste auf, sobald der
+  Zeiger im Fenster unter diesem Menü stand – etwa auf dem Weg zu
+  „Umbenennen …“ unter „Ansicht“. Auch Links/Rechts im Kontextmenü sprangen
+  in die Leiste. Die Kontextmenüs hängen jetzt mit
+  `classic_menu::attach_popup` (querencia-oberflaeche 0.1.1) an ihrem
+  Anker; die Menüleiste wechselt per Zeiger nur über ihren Knöpfen.
+- Behoben: Das Fenster mit dem Netzwerk hieß „Network“, wenn GVfs nicht
+  deutsch spricht. Papierkorb, Rechner und Netzwerk behalten den eigenen
+  Namen; Orte darunter (Arbeitsgruppe, Freigabe) nehmen weiter den Namen
+  von GVfs.
+
 ## 0.2.1 – 24.10.2026 (Pflegestand, Weg-B-Befund P-1)
 
 - Behoben: Beim ersten Start übernahm Dateien die Einstellungen von Querencia

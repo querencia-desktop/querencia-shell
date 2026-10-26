@@ -307,7 +307,7 @@ pub fn anker_anlegen(overlay: &gtk4::Overlay) {
         });
     });
     let menue = gio::Menu::new();
-    classic_menu::attach(&anker, menue.upcast_ref());
+    classic_menu::attach_popup(&anker, menue.upcast_ref());
     ANKER.with(|a| {
         let mut a = a.borrow_mut();
         a.retain(|(k, _)| k.upgrade().is_some());

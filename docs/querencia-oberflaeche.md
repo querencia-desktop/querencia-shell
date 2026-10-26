@@ -110,15 +110,19 @@ farbschema::startfehler_beheben();
 
 - **Menüleiste:** je Menü ein `gtk4::MenuButton` mit Beschriftung in einer
   waagerechten Box des Fensters, `classic_menu::attach(&knopf, &modell)`.
-  Alle angehängten Knöpfe desselben Fensters bilden eine Menüleiste in
-  Widget-Reihenfolge: Überfahren wechselt, solange eins offen ist; Links
-  und Rechts wechseln, mit Umlauf. Einträge mit `action`/`target` lösen die
+  Alle mit `attach` angehängten Knöpfe desselben Fensters bilden eine
+  Menüleiste in Widget-Reihenfolge: Überfahren eines Knopfs wechselt,
+  solange eins offen ist (der Zeiger zählt nur über der Knopffläche, x und
+  y, seit 0.1.1); Links und Rechts wechseln, mit Umlauf. Einträge mit `action`/`target` lösen die
   Aktion am Knopf aus, also auch `win.`- und `app.`-Aktionen. Ein Attribut
   `accel` (GTK-Schreibweise) zeigt das Kürzel rechts an; binden muss das
   Programm die Taste selbst.
 - **Kontextmenü:** ein leerer, nicht anklickbarer Anker-`MenuButton` mit
-  `attach`; beim Klick wird sein Menü auf die Klickstelle gesetzt und
-  geöffnet (so macht es der Desktop, `desktop_view.rs`, `popup_menu`).
+  `attach_popup` (seit 0.1.1); beim Klick wird sein Menü auf die
+  Klickstelle gesetzt und geöffnet (so macht es der Desktop,
+  `desktop_view.rs`, `popup_menu`). Nie `attach`: dann gehört der Anker zur
+  Menüleiste des Fensters, und das offene Kontextmenü wechselt per Zeiger
+  oder Links/Rechts in ein Menü der Leiste (QD-176, Dateien 0.2.1).
 - **Symbole:** `symbole::image(&icon, größe)`, `symbole::image_named`,
   `symbole::set(&image, &icon)`, `symbole::set_named`. Pflicht für jedes
   Bild mit Themensymbol in Listen und Rastern. `Image::from_gicon`,

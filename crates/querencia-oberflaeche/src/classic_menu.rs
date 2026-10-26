@@ -24,7 +24,9 @@
 //! - the main menus of a panel act as one menu bar (HMP-04): while one is
 //!   open, moving the pointer onto another main menu button opens that one
 //!   instead, and Right on an entry without submenu or Left in the top
-//!   level switch to the next or previous main menu, wrapping around;
+//!   level switch to the next or previous main menu, wrapping around; the
+//!   pointer counts only over a button, not below the bar (QD-176), and
+//!   context menus ([`attach_popup`]) are no part of the menu bar;
 //! - only the top level grabs (HMP-05), as GTK 2's menu shell: a grabbing
 //!   submenu got every pointer event over the menus above it from GTK
 //!   (`gtk_grab_add`), so the menu above stuck on its old row. Keys go
@@ -239,7 +241,7 @@ pub fn neighbour(count: usize, index: usize, forward: bool) -> Option<usize> {
 }
 
 /// A rectangle in surface coordinates.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Rect {
     pub x: f64,
     pub y: f64,
@@ -319,10 +321,23 @@ const MISSING_ICON: &str = "application-x-executable";
 const MENU_TOP_INSET: i32 = 3;
 
 /// Gives `button` a classic menu for `model` instead of GTK's
-/// `PopoverMenu`. The rows are built afresh each time the menu opens, so
+/// `PopoverMenu`, as a main menu of its window's menu bar (or panel): while
+/// it is open, the pointer over another main menu button or Left/Right
+/// switch over. The rows are built afresh each time the menu opens, so
 /// they always show the model as it is then; the model is only changed
 /// while the menu is closed (`app_menu::follow_changes`).
 pub fn attach(button: &MenuButton, model: &gio::MenuModel) {
+    attach_menu(button, model, true);
+}
+
+/// Gives `button` a classic menu for `model` that is not part of a menu
+/// bar: a context menu on a hidden anchor. It never switches to a main
+/// menu of its window, neither by pointer nor by Left/Right (QD-176).
+pub fn attach_popup(button: &MenuButton, model: &gio::MenuModel) {
+    attach_menu(button, model, false);
+}
+
+fn attach_menu(button: &MenuButton, model: &gio::MenuModel, main_menu: bool) {
     let popover = menu_popover();
     popover.set_halign(Align::Start);
     button.set_popover(Some(&popover));
@@ -367,6 +382,9 @@ pub fn attach(button: &MenuButton, model: &gio::MenuModel) {
     ));
     popover.add_controller(keys);
 
+    if !main_menu {
+        return;
+    }
     // Menu bar behaviour: moving onto another main menu button of the same
     // panel while this menu is open switches over, as in GNOME 2. The open
     // top level grabs, so GTK hands the pointer motion over the panel to
@@ -456,20 +474,26 @@ fn descendants(widget: &Widget) -> Vec<Widget> {
     all
 }
 
-/// Position of `button` along its panel: (left edge, width) in the panel
-/// window's surface coordinates.
-fn panel_span(button: &MenuButton) -> Option<(f64, f64)> {
+/// The area of `button` in its window's surface coordinates.
+fn surface_rect(button: &MenuButton) -> Option<Rect> {
     let native = button.native()?;
     let bounds = button.compute_bounds(&native)?;
-    let (dx, _) = native.surface_transform();
-    Some((f64::from(bounds.x()) + dx, f64::from(bounds.width())))
+    let (dx, dy) = native.surface_transform();
+    Some(Rect {
+        x: f64::from(bounds.x()) + dx,
+        y: f64::from(bounds.y()) + dy,
+        width: f64::from(bounds.width()),
+        height: f64::from(bounds.height()),
+    })
 }
 
-/// The index of the span (left edge, width) that holds `x`.
-pub fn span_at(spans: &[(f64, f64)], x: f64) -> Option<usize> {
-    spans
+/// The index of the button area that holds the pointer at (`x`, `y`). Both
+/// coordinates count: in a window with a menu bar the pointer below the bar
+/// is over the content, not over a menu (QD-176).
+pub fn button_at(buttons: &[Rect], x: f64, y: f64) -> Option<usize> {
+    buttons
         .iter()
-        .position(|&(left, width)| x >= left && x < left + width)
+        .position(|b| x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height)
 }
 
 /// Pointer motion handed to the open top level of `open`: if it happened
@@ -479,15 +503,15 @@ fn hover_panel(open: &MenuButton, event: &gdk::Event) {
     if event.surface().is_none() || event.surface() != panel_surface || !is_open(open) {
         return;
     }
-    let Some((x, _)) = event.position() else {
+    let Some((x, y)) = event.position() else {
         return;
     };
     let menus = main_menus_beside(open);
-    let spans: Vec<(f64, f64)> = menus
+    let areas: Vec<Rect> = menus
         .iter()
-        .map(|(button, _)| panel_span(button).unwrap_or((0.0, 0.0)))
+        .map(|(button, _)| surface_rect(button).unwrap_or_default())
         .collect();
-    if let Some(index) = span_at(&spans, x) {
+    if let Some(index) = button_at(&areas, x, y) {
         let target = &menus[index].0;
         if target != open {
             debug(&format!(
@@ -1533,17 +1557,54 @@ mod tests {
         assert_eq!(neighbour(3, 3, true), None, "unknown position");
     }
 
+    fn area(x: f64, y: f64, width: f64, height: f64) -> Rect {
+        Rect {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
     #[test]
     fn main_menu_under_the_pointer_on_the_panel() {
-        // Anwendungen 10..146, Orte 156..211, System 221..286 (gaps between)
-        let spans = [(10.0, 136.0), (156.0, 55.0), (221.0, 65.0)];
-        assert_eq!(span_at(&spans, 10.0), Some(0));
-        assert_eq!(span_at(&spans, 145.9), Some(0));
-        assert_eq!(span_at(&spans, 146.0), None, "gap");
-        assert_eq!(span_at(&spans, 183.0), Some(1));
-        assert_eq!(span_at(&spans, 253.0), Some(2));
-        assert_eq!(span_at(&spans, 900.0), None, "clock, window list");
-        assert_eq!(span_at(&[], 50.0), None);
+        // Anwendungen 10..146, Orte 156..211, System 221..286 (gaps between),
+        // each over the whole height of a 30 px panel
+        let buttons = [
+            area(10.0, 0.0, 136.0, 30.0),
+            area(156.0, 0.0, 55.0, 30.0),
+            area(221.0, 0.0, 65.0, 30.0),
+        ];
+        assert_eq!(button_at(&buttons, 10.0, 15.0), Some(0));
+        assert_eq!(button_at(&buttons, 145.9, 15.0), Some(0));
+        assert_eq!(button_at(&buttons, 146.0, 15.0), None, "gap");
+        assert_eq!(button_at(&buttons, 183.0, 15.0), Some(1));
+        assert_eq!(button_at(&buttons, 253.0, 15.0), Some(2));
+        assert_eq!(button_at(&buttons, 900.0, 15.0), None, "clock, window list");
+        // the screen edge and the bottom row of the panel still count
+        assert_eq!(button_at(&buttons, 183.0, 0.0), Some(1), "top edge");
+        assert_eq!(button_at(&buttons, 183.0, 29.9), Some(1), "bottom row");
+        assert_eq!(button_at(&[], 50.0, 15.0), None);
+    }
+
+    #[test]
+    fn pointer_below_a_menu_bar_is_over_no_main_menu() {
+        // QD-176, the window of Querencia Dateien at 1024 x 768: title bar
+        // above, menu bar at y 28..52 (Datei, Bearbeiten, Ansicht, Gehe zu),
+        // a context menu open at 215,270 below. The pointer under the menu
+        // at x 250 (the column of Ansicht) must not open Ansicht.
+        let bar = [
+            area(3.0, 28.0, 81.0, 24.0),
+            area(84.0, 28.0, 124.0, 24.0),
+            area(208.0, 28.0, 80.0, 24.0),
+            area(288.0, 28.0, 112.0, 24.0),
+        ];
+        assert_eq!(button_at(&bar, 250.0, 500.0), None, "below the bar");
+        assert_eq!(button_at(&bar, 250.0, 271.0), None, "at the click");
+        assert_eq!(button_at(&bar, 250.0, 27.9), None, "title bar");
+        assert_eq!(button_at(&bar, 250.0, 52.0), None, "tool bar");
+        assert_eq!(button_at(&bar, 250.0, 40.0), Some(2), "on Ansicht");
+        assert_eq!(button_at(&bar, 40.0, 28.0), Some(0), "on Datei");
     }
 
     #[test]

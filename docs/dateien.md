@@ -736,3 +736,36 @@ Zusammenbau „dateien-020“ auf main `801a016` (C1 `dateien/netzwerk-1`, C2
   ohne Übernahme; 0.2.1 holt sie nicht nach.
 - **Integration** `integration/dateien-021/` (Update 0.2.0 → 0.2.1,
   Rückfall 0.2.0, Muster `integration/dateien-020/`).
+
+### 10.2 0.2.2 Pflegestand (QD-176, QD-173 P-4)
+
+- **Kontextmenü springt in die Menüleiste (QD-176):** `classic_menu::attach`
+  führte jeden Knopf als Hauptmenü, auch die unsichtbaren Anker der
+  Kontextmenüs (`kontextmenue.rs`, `seitenleiste.rs`,
+  `suche/ergebnisse.rs`). Solange ein Menü offen ist, bekommt es jede
+  Zeigerbewegung über dem Fenster (Grab); `hover_panel` verglich nur x mit
+  den Knöpfen aller Hauptmenüs. Im Panel richtig (schmale Leiste), im
+  Dateien-Fenster öffnete der Zeiger unter dem Kontextmenü bei x von
+  „Ansicht“ dieses Menü. Abhilfe in querencia-oberflaeche 0.1.1: Anker
+  über `attach_popup` (keine Leiste, kein Links/Rechts-Wechsel),
+  `button_at` prüft x und y.
+- **Titel „Network“ (QD-173 P-4):** `fenster.rs` ersetzte den Titel nach
+  dem eigenen Namen durch den Anzeigenamen von GVfs. GVfs nennt
+  `network:///` in der Sprache seines Dienstes; fehlt dort Deutsch, stand
+  „Network“ im Titel. `orte::eigener_name` lässt Papierkorb und die Wurzeln
+  von Rechner und Netzwerk beim eigenen Namen. Nachgestellt mit
+  `szenarien/netzwerk-titel.sh` (`LAUF_STUFE=G LAUF_SPRACHE=en`, Programm
+  mit `LANGUAGE=de`: gvfsd nennt `network:///` „Network“): 0.2.1 Titel
+  „Network“, 0.2.2 „Netzwerk“ (`wlrctl toplevel find title:…`).
+- **Prüfung:** Szenario `werkzeug/pruefung/szenarien/kontextmenue-leiste.sh`
+  (1024×768, K01–K11: Kontextmenüs der Ansicht, des Hintergrunds und der
+  Seitenleiste mit Zeiger unter dem Menü und Links/Rechts, Menüleiste per
+  Zeiger und Tastatur, Umbenennen per Kontextmenü und F2; K12 Kontextmenü
+  eines Suchergebnisses); mit 0.2.1 scheitern K03–K06, K08, K09 und K12,
+  mit 0.2.2 alle PASS. Unit-Tests `button_at`,
+  `orte::eigener_name`.
+- **Panel und Desktop** sind nicht neu gebaut; ihr Verhalten ändert sich
+  erst mit ihrer nächsten Version (Desktop nutzt `attach_popup` schon im
+  Quelltext).
+- **Integration** `integration/dateien-022/` (Update 0.2.1 → 0.2.2,
+  Rückfall 0.2.1).
