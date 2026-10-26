@@ -133,7 +133,67 @@ einen Menüknopf; ohne Fokus-Widget meldete GTK 4.22 beim Öffnen
 
 ## 4. Prüfung
 
-(wird nach den Läufen ergänzt)
+Alles isoliert (eigenes HOME, `XDG_RUNTIME_DIR`, Sitzungsbus über
+`dbus-run-session`, headless labwc, Portal-Ersatz; nie der Live-Bus).
+Prüfrahmen: `integration/panel-040/werkzeug/` (Infobereich) und
+`integration/panel-040/regression-werkzeug/` (Kopie der Panel-Regression aus
+0.3.1). Belege: `integration/panel-040/nachweis/`.
+
+- **Unit-Tests:** `cargo test --workspace --locked` grün, Panel 309 + 1
+  ignoriert (Menü-GUI-Test, eigener Lauf); neu u. a. Watcher-Register,
+  Item-Adressen, Eigenschaften, Pixmaps, Tooltip-Markup, dbusmenu-Layout →
+  Menü, Häkchen/Radio in `classic_menu`, Platz im Layout,
+  `infobereich-ergaenzen/-zuruecknehmen`. Clippy `-D warnings` und
+  `fmt --check` ohne Befund.
+- **Szenario `infobereich`** (`sni-attrappe.py`, Python/Gio): Watcher und
+  Alias, Host angemeldet, `ProtocolVersion`, ungültige/besitzerlose
+  Anmeldung abgelehnt, leerer Infobereich unsichtbar, Item erscheint
+  (Erkennungsfarbe im Bild), Tooltip, Linksklick → `Activate` mit Token,
+  mittlere Taste, Mausrad ±120, Menü per Zeiger und Tastatur (`AboutToShow`,
+  `GetLayout`, `AboutToShowGroup`, `opened`/`clicked`/`closed`), Häkchen,
+  Radio im Untermenü, grauer Eintrag übersprungen, versteckter fehlt, Item
+  verschwindet, NeedsAttention/Passive/Active, Symbolwechsel, zweites Item
+  (per Objektpfad angemeldet, ohne Menü → `ContextMenu`), Appletmenü am Rand,
+  ItemIsMenu, fehlendes `Activate` → Menü, `IconThemePath`, unbekannter
+  `IconName` → Pixmap, Watcher-Neustart (Panel neu, Items melden sich neu
+  an), kein CRITICAL: de/en × 1024/1920 × hell/dunkel je **63/63**.
+- **Szenario `fremd`** (`fremd-watcher.py`): fremder Watcher zuerst, Panel
+  nur Host, kein Alias ohne KDE-Namen, Items des fremden Watchers sichtbar,
+  Übernahme nach dessen Ende: **19/19**.
+- **Szenario `echt`** mit libayatana-appindicator3 + libdbusmenu-gtk3
+  (`appindicator-probe.py`, echte Bibliothek über ctypes, in bwrap mit
+  eigenem PID-/Netz-Namensraum, eigenem `/tmp` und `/dev/shm`): Item,
+  Themensymbol `mail-unread`, Menü, Eintrag, Häkchen, Untermenü kommen beim
+  Programm an, Linksklick (das Programm hat kein `Activate` → Menü): hell und
+  dunkel je **13/13**.
+- **Webex** im selben Rahmen: startet, zeigt im frischen Profil zuerst die
+  Lizenzzustimmung und eine Schlüsselbund-Abfrage, meldet vor Zustimmung und
+  Anmeldung kein Item an. Zustimmen und Anmelden gehören pottrauschen; die
+  Webex-Abnahme steht in der Übergabe.
+- **Szenario `alt`**: laufendes Panel 0.3.2-2 (Live-Ablage, isoliert
+  gestartet) bekommt `infobereich-ergaenzen`: liest neu, überspringt den
+  unbekannten Typ, baut nichts um, läuft weiter; `-zuruecknehmen` gibt die
+  Datei byte-gleich zurück: **11/11**.
+- **Panel-Regression:** Menü-GUI-Test (`menu_gui_test`) und Symbol-GUI-Test
+  der Bibliothek bestanden; Fotolauf de/en × 1024/1920 × hell/dunkel mit
+  0.4.0 (panel.ini wie nach `aktivieren`) und 0.3.2-2 je 14/1 – der eine
+  FAIL („Files-Symbol“) ist bei beiden gleich, weil seit der Ausmusterung
+  von Files (24.10.) kein Files-Starter mehr da ist (Umgebung, kein
+  Panelfehler). Pixelvergleich: in allen acht Paaren gleich bis auf die
+  Versionszeile im Info-Dialog („Panel 0.3.2“ → „Panel 0.4.0“) und in zwei
+  Paaren die Reihenfolge der zwei Testfenster in der Fensterliste (wie bei
+  0.3.1 dokumentiert); oberes Panel und Menübereich gleich. Live-Tausch
+  0.3.2-2 ⇄ 0.4.0 mit `tausch-panel-3.py` (Prüfkopie, Überwachung,
+  Absturz, Rückfall): **31/31**.
+- **Integrationsprobe** `probe.sh` (umgelenkte Pfade): **85/85**.
+
+Nach dem Merge von main `6d95ff9` (it/es/fr) mit dem Release-Bau
+`dfc6bef1…` (zweimal gebaut, byte-gleich) wiederholt: `infobereich` de 1024
+hell und en 1920 dunkel je 63/63, `fremd` 19/19, `alt` 11/11, `echt`
+(AppIndicator) 13/13, Fotos de 1024 hell und en 1920 dunkel je 14/1 (wie
+oben), Pixelvergleich gleich bis auf Versionszeile und Testfenster, Tausch
+31/31, Menü-GUI-Test bestanden, Probe 85/85 (`nachweis/kette-r3.txt`,
+`kette-reg3.txt`, `bildvergleich-r3.txt`).
 
 ## 5. Grenzen
 
