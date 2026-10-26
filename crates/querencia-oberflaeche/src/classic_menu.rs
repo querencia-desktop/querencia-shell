@@ -9,7 +9,8 @@
 //! - each row: 16 px icon, label, ▸ for a submenu; sections become
 //!   separator lines; an item's `accel` attribute (GTK notation, e.g.
 //!   `<Control><Alt>l`) is shown on the right as GTK 2 did, in German
-//!   ([`accel_label`]), only shown: the compositor binds the key;
+//!   ([`accel_label`]), only shown: the compositor binds the key; a check
+//!   or radio item ([`TOGGLE_ATTRIBUTE`]) shows its mark in the icon column;
 //! - submenus open beside their row, in their own popover (`position`
 //!   right, `valign` start, no arrow: as GTK's own nested menus), after
 //!   [`SUBMENU_DELAY_MS`] on hover or at once on click or keyboard;
