@@ -706,7 +706,7 @@ dependencies = [
 
 [[package]]
 name = "querencia-dateiarbeit"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "gettext-rs",
  "gio",
@@ -717,7 +717,7 @@ dependencies = [
 
 [[package]]
 name = "querencia-dateien"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "gettext-rs",
  "gio-unix",
@@ -728,7 +728,7 @@ dependencies = [
 
 [[package]]
 name = "querencia-desktop"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "gettext-rs",
  "gio-unix",
@@ -747,7 +747,7 @@ dependencies = [
 
 [[package]]
 name = "querencia-lautstaerke"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "gettext-rs",
  "gtk4",
@@ -756,7 +756,7 @@ dependencies = [
 
 [[package]]
 name = "querencia-netzwerk"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "gettext-rs",
  "glib-unix",
@@ -766,7 +766,7 @@ dependencies = [
 
 [[package]]
 name = "querencia-oberflaeche"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "gettext-rs",
  "gtk4",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "querencia-panel"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "gettext-rs",
  "gio-unix",

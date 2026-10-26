@@ -1,5 +1,11 @@
 # Änderungen – Querencia Dateien (`querencia-dateien`)
 
+## 0.2.3 – 2026-10-26
+
+Italienisch, Spanisch, Französisch:
+
+- Kataloge `po/it.po`, `po/es.po`, `po/fr.po` (je 401 Texte) samt Desktop-Datei; Menüs, Dialoge, Einstellungen, Netzwerk-Anmeldung. Zugriffstasten je Menü und Dialog eindeutig, Wortwahl nach Nautilus 2.30 der jeweiligen Sprache; Wortwahl nach der gemeinsamen Querencia-Begriffstabelle.
+
 ## 0.2.2 – 25.10.2026 (Pflegestand, QD-176, QD-173 P-4)
 
 - Behoben: Ein offenes Kontextmenü (Ansicht, Seitenleiste, Suchergebnisse)

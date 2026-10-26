@@ -1,0 +1,660 @@
+# Querencia Desktop – querencia-panel: spanische Übersetzung.
+# Copyright (C) 2026 Querencia Desktop contributors
+# Diese Datei steht unter derselben Lizenz wie Querencia Desktop – querencia-panel (GPL-3.0-or-later).
+# Begriffe nach der gemeinsamen Querencia-Begriffstabelle (GNOME-Wortwahl).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-panel\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-26 23:41+0100\n"
+"Last-Translator: Querencia Desktop contributors\n"
+"Language-Team: Español (Querencia)\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/about.rs:70
+#, no-c-format
+msgid "Panel {version}"
+msgstr "Panel {version}"
+
+#: src/about.rs:71
+msgid "A classic desktop in the style of GNOME 2 for Wayland and labwc"
+msgstr "Un escritorio clásico al estilo de GNOME 2 para Wayland y labwc"
+
+#: src/about.rs:73
+#, no-c-format
+msgid "License: {license}"
+msgstr "Licencia: {license}"
+
+#: src/about.rs:135 src/system_menu.rs:166
+msgid "About Querencia"
+msgstr "Acerca de Querencia"
+
+#: src/about.rs:176 src/add_dialog.rs:171 src/app_chooser.rs:132 src/network_dialogs.rs:91 src/network_dialogs.rs:198
+msgid "_Close"
+msgstr "_Cerrar"
+
+#. TRANSLATORS: region of the panel where a new item goes
+#: src/add_dialog.rs:46
+msgid "Left"
+msgstr "Izquierda"
+
+#. TRANSLATORS: region of the panel where a new item goes
+#: src/add_dialog.rs:48
+msgid "Center"
+msgstr "Centro"
+
+#. TRANSLATORS: region of the panel where a new item goes
+#: src/add_dialog.rs:50
+msgid "Right"
+msgstr "Derecha"
+
+#: src/add_dialog.rs:125
+msgid "Add to Panel"
+msgstr "Añadir al panel"
+
+#. TRANSLATORS: mnemonics of this dialog: this label, _Close, _Add, For_ward and _Region must differ
+#: src/add_dialog.rs:134
+msgid "_Find an item to add to the panel:"
+msgstr "_Buscar un elemento para añadir al panel:"
+
+#: src/add_dialog.rs:177 src/app_chooser.rs:133
+msgid "_Add"
+msgstr "_Añadir"
+
+#: src/add_dialog.rs:179
+msgid "Add the selected item to the panel"
+msgstr "Añadir el elemento seleccionado al panel"
+
+#: src/add_dialog.rs:182
+msgid "For_ward"
+msgstr "A_delante"
+
+#: src/add_dialog.rs:184
+msgid "Choose an application for the launcher"
+msgstr "Elegir una aplicación para el lanzador"
+
+#: src/add_dialog.rs:191
+msgid "Region of the panel the item goes to"
+msgstr "Zona del panel a la que va el elemento"
+
+#: src/add_dialog.rs:193
+msgid "_Region:"
+msgstr "_Zona:"
+
+#: src/add_dialog.rs:285
+msgid "There is only one of this item, and it is already in a panel"
+msgstr "Este elemento solo existe una vez y ya está en un panel"
+
+#: src/add_dialog.rs:329
+#, no-c-format
+msgid "The item could not be added: {err}"
+msgstr "No se pudo añadir el elemento: {err}"
+
+#. TRANSLATORS: mnemonics of this page: this label, _Back, _Close and _Add must differ
+#: src/app_chooser.rs:102
+msgid "_Select an application whose launcher is added to the panel:"
+msgstr "_Seleccione una aplicación cuyo lanzador se añadirá al panel:"
+
+#: src/app_chooser.rs:131
+msgid "_Back"
+msgstr "A_trás"
+
+#: src/app_chooser.rs:135
+msgid "Add a launcher for the selected application"
+msgstr "Añadir un lanzador para la aplicación seleccionada"
+
+#: src/app_chooser.rs:173
+#, no-c-format
+msgid "The launcher could not be added: {err}"
+msgstr "No se pudo añadir el lanzador: {err}"
+
+#: src/app_menu.rs:34 src/applets.rs:80
+msgid "Applications"
+msgstr "Aplicaciones"
+
+#: src/app_menu.rs:227
+msgid "No Applications"
+msgstr "Ninguna aplicación"
+
+#: src/applets.rs:81
+msgid "Menu of the installed applications"
+msgstr "Menú de las aplicaciones instaladas"
+
+#. TRANSLATORS: the second main menu of the top panel, as in GNOME 2
+#: src/applets.rs:95 src/places_menu.rs:152
+msgid "Places"
+msgstr "Lugares"
+
+#: src/applets.rs:96
+msgid "Home folder and user folders"
+msgstr "Carpeta personal y carpetas del usuario"
+
+#. TRANSLATORS: the third main menu of the top panel, as in GNOME 2
+#: src/applets.rs:109 src/system_menu.rs:42
+msgid "System"
+msgstr "Sistema"
+
+#: src/applets.rs:110
+msgid "Preferences and administration"
+msgstr "Preferencias y administración"
+
+#: src/applets.rs:123
+msgid "Window List"
+msgstr "Lista de ventanas"
+
+#: src/applets.rs:124
+msgid "Buttons for all open windows"
+msgstr "Botones para todas las ventanas abiertas"
+
+#: src/applets.rs:137
+msgid "Workspace Switcher"
+msgstr "Selector de áreas de trabajo"
+
+#: src/applets.rs:138
+msgid "Switch between workspaces"
+msgstr "Cambiar entre áreas de trabajo"
+
+#: src/applets.rs:151
+msgid "Clock"
+msgstr "Reloj"
+
+#: src/applets.rs:152
+msgid "Date and time"
+msgstr "Fecha y hora"
+
+#: src/applets.rs:165
+msgid "Application Launcher…"
+msgstr "Lanzador de aplicaciones…"
+
+#: src/applets.rs:166
+msgid "Copy a launcher from the applications menu"
+msgstr "Copiar un lanzador del menú de aplicaciones"
+
+#: src/applets.rs:186
+msgid "Volume"
+msgstr "Volumen"
+
+#: src/applets.rs:187
+msgid "Change the volume and mute"
+msgstr "Cambiar el volumen y silenciar"
+
+#: src/applets.rs:207 src/network_dialogs.rs:80 src/places_menu.rs:53
+msgid "Network"
+msgstr "Red"
+
+#: src/applets.rs:208
+msgid "Show and choose network connections"
+msgstr "Mostrar y elegir conexiones de red"
+
+#: src/applets.rs:224 src/arbeitsflaeche_zeigen.rs:170
+msgid "Show Desktop"
+msgstr "Mostrar el escritorio"
+
+#: src/applets.rs:225
+msgid "Minimize and restore all windows"
+msgstr "Minimizar y restaurar todas las ventanas"
+
+#: src/applets.rs:240
+msgid "Notifications"
+msgstr "Notificaciones"
+
+#: src/applets.rs:241
+msgid "Unread notifications, opens the notification center"
+msgstr "Notificaciones sin leer; abre el centro de notificaciones"
+
+#: src/apps.rs:62
+msgid "Accessories"
+msgstr "Accesorios"
+
+#: src/apps.rs:63
+msgid "Education"
+msgstr "Educación"
+
+#: src/apps.rs:64
+msgid "Games"
+msgstr "Juegos"
+
+#: src/apps.rs:65
+msgid "Graphics"
+msgstr "Gráficos"
+
+#: src/apps.rs:66
+msgid "Internet"
+msgstr "Internet"
+
+#: src/apps.rs:67
+msgid "Office"
+msgstr "Oficina"
+
+#: src/apps.rs:68
+msgid "Programming"
+msgstr "Programación"
+
+#: src/apps.rs:69
+msgid "Sound & Video"
+msgstr "Sonido y vídeo"
+
+#: src/apps.rs:70
+msgid "System Tools"
+msgstr "Herramientas del sistema"
+
+#: src/apps.rs:71
+msgid "Universal Access"
+msgstr "Acceso universal"
+
+#: src/apps.rs:72
+msgid "Other"
+msgstr "Otras"
+
+#: src/apps.rs:88
+msgid "Preferences"
+msgstr "Preferencias"
+
+#: src/apps.rs:89
+msgid "Administration"
+msgstr "Administración"
+
+#: src/arbeitsflaeche_zeigen.rs:168
+msgid "Restore Windows"
+msgstr "Restaurar ventanas"
+
+#. TRANSLATORS: format of the panel clock (glib::DateTime::format, i.e. strftime); day and month names come from the time locale
+#: src/clock.rs:64
+msgid "%a %b %e, %l:%M %p"
+msgstr "%d/%m/%Y %H:%M"
+
+#: src/glocke.rs:98
+msgid "Notification center not available"
+msgstr "Centro de notificaciones no disponible"
+
+#: src/glocke.rs:104
+msgid "No unread notifications"
+msgstr "No hay notificaciones sin leer"
+
+#: src/glocke.rs:105 src/i18n.rs:184
+#, no-c-format
+msgid "{n} unread notification"
+msgid_plural "{n} unread notifications"
+msgstr[0] "{n} notificación sin leer"
+msgstr[1] "{n} notificaciones sin leer"
+
+#: src/glocke.rs:114
+msgid "“Do Not Disturb” is on"
+msgstr "«No molestar» está activado"
+
+#: src/glocke.rs:199
+msgid "_Do Not Disturb"
+msgstr "_No molestar"
+
+#: src/glocke.rs:203
+msgid "_Mark All as Read"
+msgstr "Marcar todas como _leídas"
+
+#: src/glocke.rs:208 src/network_applet.rs:105 src/panel_menu.rs:151 src/panel_menu.rs:161 src/volume_applet.rs:69
+msgid "Remove From Panel"
+msgstr "Quitar del panel"
+
+#: src/i18n.rs:193 src/workspace_switcher.rs:256
+#, no-c-format
+msgid "Workspace {number}"
+msgstr "Área de trabajo {number}"
+
+#: src/launcher.rs:70
+#, no-c-format
+msgid "Application not found: {app}"
+msgstr "No se encontró la aplicación: {app}"
+
+#: src/network_applet.rs:76
+msgid "_Network Settings…"
+msgstr "Configuración de _red…"
+
+#: src/network_applet.rs:78
+msgid "Network Settings (not available yet)"
+msgstr "Configuración de red (todavía no disponible)"
+
+#: src/network_applet.rs:86
+msgid "_Wireless Enabled"
+msgstr "Red _inalámbrica activada"
+
+#: src/network_applet.rs:90
+msgid "_Airplane Mode"
+msgstr "Modo _avión"
+
+#: src/network_applet.rs:95
+msgid "Connection _Information…"
+msgstr "In_formación de la conexión…"
+
+#: src/network_applet.rs:200
+msgid "Reading network…"
+msgstr "Leyendo la red…"
+
+#: src/network_applet.rs:203
+msgid "No network service"
+msgstr "Sin servicio de red"
+
+#: src/network_applet.rs:214
+msgid "Networking is disabled"
+msgstr "La red está desactivada"
+
+#: src/network_applet.rs:231
+#, no-c-format
+msgid "Wired Network ({interface})"
+msgstr "Red cableada ({interface})"
+
+#: src/network_applet.rs:236 src/network_applet.rs:1006
+msgid "Wired Network"
+msgstr "Red cableada"
+
+#: src/network_applet.rs:252 src/network_applet.rs:376 src/network_applet.rs:1009
+msgid "Disconnect"
+msgstr "Desconectar"
+
+#: src/network_applet.rs:259
+msgid "Connecting…"
+msgstr "Conectando…"
+
+#: src/network_applet.rs:262
+msgid "Connect"
+msgstr "Conectar"
+
+#: src/network_applet.rs:274
+#, no-c-format
+msgid "Wireless Networks ({interface})"
+msgstr "Redes inalámbricas ({interface})"
+
+#: src/network_applet.rs:279
+msgid "Wireless Networks"
+msgstr "Redes inalámbricas"
+
+#: src/network_applet.rs:282
+msgid "Airplane mode is on"
+msgstr "El modo avión está activado"
+
+#: src/network_applet.rs:286
+msgid "Wireless is disabled"
+msgstr "La red inalámbrica está desactivada"
+
+#: src/network_applet.rs:290
+msgid "Wireless is disabled by a hardware switch"
+msgstr "La red inalámbrica está desactivada por un interruptor físico"
+
+#: src/network_applet.rs:334
+msgid "No networks found"
+msgstr "No se encontraron redes"
+
+#: src/network_applet.rs:347
+msgid "connecting…"
+msgstr "conectando…"
+
+#: src/network_applet.rs:350
+#, no-c-format
+msgid "{security} – not supported"
+msgstr "{security}: no compatible"
+
+#: src/network_applet.rs:370
+msgid "More Networks…"
+msgstr "Más redes…"
+
+#: src/network_applet.rs:381 src/network_applet.rs:1185
+msgid "Connect to Hidden Network…"
+msgstr "Conectar a una red oculta…"
+
+#: src/network_applet.rs:391 src/network_dialogs.rs:156
+msgid "No network device"
+msgstr "Ningún dispositivo de red"
+
+#: src/network_applet.rs:398 src/network_applet.rs:1187
+msgid "Wireless Enabled"
+msgstr "Red inalámbrica activada"
+
+#: src/network_applet.rs:405 src/network_applet.rs:472 src/network_applet.rs:1016
+msgid "Airplane Mode"
+msgstr "Modo avión"
+
+#: src/network_applet.rs:411 src/network_applet.rs:1138 src/network_applet.rs:1190
+msgid "Connection Information…"
+msgstr "Información de la conexión…"
+
+#: src/network_applet.rs:458 src/network_applet.rs:1013
+msgid "Wireless"
+msgstr "Inalámbrica"
+
+#: src/network_applet.rs:932
+msgid "Secured"
+msgstr "Protegida"
+
+#: src/network_applet.rs:980 src/network_dialogs.rs:488
+#, no-c-format
+msgid "Wireless network “{ssid}”"
+msgstr "Red inalámbrica «{ssid}»"
+
+#: src/network_dialogs.rs:71
+#, no-c-format
+msgid "{what}: That did not work."
+msgstr "{what}: no ha funcionado."
+
+#: src/network_dialogs.rs:165
+#, no-c-format
+msgid "Wired ({interface})"
+msgstr "Cable ({interface})"
+
+#. TRANSLATORS: tab of a device in “Connection Information”
+#: src/network_dialogs.rs:168
+#, no-c-format
+msgid "Wireless ({interface})"
+msgstr "Inalámbrica ({interface})"
+
+#: src/network_dialogs.rs:190
+msgid "Connection Information"
+msgstr "Información de la conexión"
+
+#: src/network_dialogs.rs:233
+#, no-c-format
+msgid ""
+"The password for the wireless network “{ssid}” was not accepted. Please enter it again."
+msgstr ""
+"No se aceptó la contraseña de la red inalámbrica «{ssid}». Escríbala de nuevo."
+
+#: src/network_dialogs.rs:238
+#, no-c-format
+msgid "The wireless network “{ssid}” needs a password."
+msgstr "La red inalámbrica «{ssid}» necesita una contraseña."
+
+#: src/network_dialogs.rs:253
+msgid "Sho_w password"
+msgstr "_Mostrar contraseña"
+
+#: src/network_dialogs.rs:266
+msgid "Wireless Password"
+msgstr "Contraseña de la red inalámbrica"
+
+#: src/network_dialogs.rs:271
+msgid "Wireless Network Authentication"
+msgstr "Autenticación de la red inalámbrica"
+
+#: src/network_dialogs.rs:280
+#, no-c-format
+msgid "Security: {security}"
+msgstr "Seguridad: {security}"
+
+#: src/network_dialogs.rs:288 src/network_dialogs.rs:411
+msgid "_Password:"
+msgstr "Contr_aseña:"
+
+#: src/network_dialogs.rs:294 src/network_dialogs.rs:422 src/session.rs:148
+msgid "_Cancel"
+msgstr "_Cancelar"
+
+#: src/network_dialogs.rs:295 src/network_dialogs.rs:423
+msgid "C_onnect"
+msgstr "C_onectar"
+
+#: src/network_dialogs.rs:387
+msgid "Connect to Hidden Network"
+msgstr "Conectar a una red oculta"
+
+#: src/network_dialogs.rs:389
+msgid ""
+"Enter the name and security of the wireless network that does not send its name."
+msgstr ""
+"Escriba el nombre y la seguridad de la red inalámbrica que no emite su nombre."
+
+#. TRANSLATORS: mnemonics of this dialog: _Network name, _Security, _Password, Sho_w password, _Cancel and C_onnect must differ
+#: src/network_dialogs.rs:409
+msgid "_Network name (SSID):"
+msgstr "_Nombre de la red (SSID):"
+
+#: src/network_dialogs.rs:410
+msgid "_Security:"
+msgstr "_Seguridad:"
+
+#: src/panel_menu.rs:81
+msgid "Move _Left"
+msgstr "Mover a la _izquierda"
+
+#: src/panel_menu.rs:82
+msgid "Move _Right"
+msgstr "Mover a la _derecha"
+
+#: src/panel_menu.rs:83
+msgid "To the Left _Edge"
+msgstr "Al _borde izquierdo"
+
+#: src/panel_menu.rs:84
+msgid "To the Right E_dge"
+msgstr "Al b_orde derecho"
+
+#: src/panel_menu.rs:97
+msgid "_Move"
+msgstr "_Mover"
+
+#: src/panel_menu.rs:135
+msgid "Add to Panel…"
+msgstr "Añadir al panel…"
+
+#: src/panel_menu.rs:147
+msgid "Launch"
+msgstr "Ejecutar"
+
+#: src/panel_menu.rs:193
+msgid "The panel no longer exists"
+msgstr "El panel ya no existe"
+
+#: src/panel_menu.rs:506
+#, no-c-format
+msgid "{applet} needs no application ({app})"
+msgstr "{applet} no necesita ninguna aplicación ({app})"
+
+#: src/panel_menu.rs:524
+#, no-c-format
+msgid "saved, but not shown: unknown applet type {applet}"
+msgstr "guardado, pero no se muestra: tipo de applet {applet} desconocido"
+
+#: src/panel_menu.rs:592
+msgid "saved, but not shown in this panel"
+msgstr "guardado, pero no se muestra en este panel"
+
+#: src/places_menu.rs:45
+msgid "Home Folder"
+msgstr "Carpeta personal"
+
+#: src/places_menu.rs:46
+msgid "Desktop"
+msgstr "Escritorio"
+
+#: src/places_menu.rs:47
+msgid "Documents"
+msgstr "Documentos"
+
+#: src/places_menu.rs:48
+msgid "Music"
+msgstr "Música"
+
+#: src/places_menu.rs:49
+msgid "Pictures"
+msgstr "Imágenes"
+
+#: src/places_menu.rs:50
+msgid "Videos"
+msgstr "Vídeos"
+
+#: src/places_menu.rs:51
+msgid "Downloads"
+msgstr "Descargas"
+
+#: src/places_menu.rs:52
+msgid "Computer"
+msgstr "Equipo"
+
+#: src/places_menu.rs:54
+msgid "Trash"
+msgstr "Papelera"
+
+#: src/places_menu.rs:249
+msgid "No file manager installed"
+msgstr "No hay ningún gestor de archivos instalado"
+
+#: src/session.rs:110
+msgid "Log Out"
+msgstr "Cerrar la sesión"
+
+#: src/session.rs:127
+msgid "Are you sure you want to log out?"
+msgstr "¿Seguro que quiere cerrar la sesión?"
+
+#: src/session.rs:133
+msgid ""
+"All applications of this session will be closed. Anything not saved there will be lost."
+msgstr ""
+"Se cerrarán todas las aplicaciones de esta sesión. Lo que no se haya guardado se perderá."
+
+#: src/session.rs:154
+msgid "_Log Out"
+msgstr "Cerrar la _sesión"
+
+#: src/system_menu.rs:170
+msgid "Online Help"
+msgstr "Ayuda en línea"
+
+#: src/system_menu.rs:171
+msgid "Report a Problem"
+msgstr "Informar de un problema"
+
+#: src/system_menu.rs:182
+msgid "Lock Screen"
+msgstr "Bloquear la pantalla"
+
+#: src/system_menu.rs:187
+msgid "Log Out…"
+msgstr "Cerrar la sesión…"
+
+#: src/system_menu.rs:191
+msgid "Shut Down…"
+msgstr "Apagar…"
+
+#: src/volume_applet.rs:60
+msgid "_Mute"
+msgstr "_Silenciar"
+
+#: src/volume_applet.rs:64
+msgid "_Open Volume Control…"
+msgstr "_Abrir el control de volumen…"
+
+#: src/volume_applet.rs:279
+msgid "Mute"
+msgstr "Silenciar"
+
+#: src/window_list.rs:215
+msgid "Untitled window"
+msgstr "Ventana sin título"
+
+#: src/window_list.rs:223
+#, no-c-format
+msgid "{title} (minimized)"
+msgstr "{title} (minimizada)"

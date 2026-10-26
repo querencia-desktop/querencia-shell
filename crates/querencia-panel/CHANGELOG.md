@@ -1,5 +1,11 @@
 # Änderungen – querencia-panel
 
+## 0.3.3 – 2026-10-26
+
+Italienisch, Spanisch, Französisch:
+
+- Kataloge `po/it.po`, `po/es.po`, `po/fr.po` (je 151 Texte): Menüs Anwendungen/Orte/System, Applets, „Zum Panel hinzufügen“, Netzwerk-, Lautstärke- und Mitteilungsmenüs; Uhr numerisch wie im Deutschen; Wortwahl nach der gemeinsamen Querencia-Begriffstabelle.
+
 ## 0.3.2 – 2026-10-24
 
 Integrationsstand 0.3.2-2 (Tags `panel/0.3.2-2`, `panel/0.3.2-2-int`):

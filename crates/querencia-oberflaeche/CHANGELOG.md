@@ -1,5 +1,11 @@
 # Änderungen – querencia-oberflaeche
 
+## 0.1.2 – 2026-10-26
+
+Italienisch, Spanisch, Französisch:
+
+- Kataloge `po/it.po`, `po/es.po`, `po/fr.po` (je 5 Tastennamen: Maiusc/Mayús/Maj usw.); Wortwahl nach der gemeinsamen Querencia-Begriffstabelle.
+
 ## 0.1.1 – 2026-10-25 (QD-176)
 
 - `classic_menu::attach_popup` für Kontextmenüs auf einem Anker: Der Anker

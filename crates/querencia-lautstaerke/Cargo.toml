@@ -1,6 +1,6 @@
 [package]
 name = "querencia-lautstaerke"
-version = "0.1.0"
+version = "0.1.1"
 description = "Querencia Lautstärke: Tonsystem (PulseAudio-Protokoll, auch pipewire-pulse) für das Panel-Applet und der Lautstärkeregler"
 edition.workspace = true
 rust-version.workspace = true

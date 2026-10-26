@@ -1,0 +1,43 @@
+# Querencia Desktop – querencia-oberflaeche: französische Übersetzung.
+# Copyright (C) 2026 Querencia Desktop contributors
+# Diese Datei steht unter derselben Lizenz wie Querencia Desktop – querencia-oberflaeche (GPL-3.0-or-later).
+# Begriffe nach der gemeinsamen Querencia-Begriffstabelle (GNOME-Wortwahl).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-oberflaeche\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-26 23:41+0100\n"
+"Last-Translator: Querencia Desktop contributors\n"
+"Language-Team: Français (Querencia)\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: src/classic_menu.rs:156
+msgctxt "keyboard key"
+msgid "Ctrl"
+msgstr "Ctrl"
+
+#: src/classic_menu.rs:158
+msgctxt "keyboard key"
+msgid "Shift"
+msgstr "Maj"
+
+#: src/classic_menu.rs:168
+msgctxt "keyboard key"
+msgid "Del"
+msgstr "Suppr"
+
+#: src/classic_menu.rs:170
+msgctxt "keyboard key"
+msgid "Enter"
+msgstr "Entrée"
+
+#: src/classic_menu.rs:171
+msgctxt "keyboard key"
+msgid "Print"
+msgstr "Impr"
