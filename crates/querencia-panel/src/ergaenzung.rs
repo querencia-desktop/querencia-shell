@@ -16,12 +16,18 @@
 //! other group and key kept, not rewritten from the layout.
 //! `querencia-panel --panel-ini ergaenzen|zuruecknehmen|pruefen <datei>`
 //! runs it before GTK starts; the integration script keeps a copy first.
+//!
+//! Panel 0.4.0: `infobereich-ergaenzen` puts the notification area
+//! (`notification-area-1`) right before the bell, else before the clock,
+//! else at the end of the top panel; `infobereich-zuruecknehmen` takes only
+//! the notification area out again (the bell and „Arbeitsfläche anzeigen“
+//! stay).
 
 use std::path::Path;
 
 use gtk4::glib;
 
-use crate::applets::{NOTIFICATIONS, SHOW_DESKTOP};
+use crate::applets::{NOTIFICATION_AREA, NOTIFICATIONS, SHOW_DESKTOP};
 
 /// The result of a change: the new file and one line per decision.
 #[derive(Debug, PartialEq, Eq)]
@@ -209,19 +215,65 @@ pub fn ergaenzen(text: &str) -> Result<Ergebnis, String> {
     })
 }
 
+/// Panel 0.4.0: adds the notification area where it is missing (see the
+/// module text).
+pub fn infobereich_ergaenzen(text: &str) -> Result<Ergebnis, String> {
+    let file = read(text)?;
+    let mut meldungen = Vec::new();
+    let mut geaendert = false;
+    if shown(&file, NOTIFICATION_AREA)? {
+        meldungen.push(format!("{NOTIFICATION_AREA}: schon im Panel, unverändert"));
+    } else {
+        let placed = match insert_before(&file, NOTIFICATION_AREA, NOTIFICATIONS)? {
+            Some((id, line)) => Some(format!("{id} vor der Glocke: {line}")),
+            None => match insert_before(&file, NOTIFICATION_AREA, "clock")? {
+                Some((id, line)) => Some(format!("{id} vor der Uhr: {line}")),
+                None => append_top_end(&file, NOTIFICATION_AREA)?
+                    .map(|(id, line)| format!("{id} am Ende des oberen Panels: {line}")),
+            },
+        };
+        match placed {
+            Some(line) => {
+                geaendert = true;
+                meldungen.push(line);
+            }
+            None => meldungen.push(format!(
+                "{NOTIFICATION_AREA}: weder Glocke noch Uhr noch oberes Panel, nicht ergänzt"
+            )),
+        }
+    }
+    Ok(Ergebnis {
+        text: if geaendert {
+            text_of(&file)
+        } else {
+            text.to_owned()
+        },
+        geaendert,
+        meldungen,
+    })
+}
+
+/// Panel 0.4.0: takes the notification area out again.
+pub fn infobereich_zuruecknehmen(text: &str) -> Result<Ergebnis, String> {
+    nehmen(text, &[NOTIFICATION_AREA])
+}
+
 /// Takes every instance of both types out of the panels and drops their
 /// applet groups (an older panel does not know them).
 pub fn zuruecknehmen(text: &str) -> Result<Ergebnis, String> {
+    nehmen(text, &[SHOW_DESKTOP, NOTIFICATIONS])
+}
+
+/// Takes every instance of `kinds` out of the panels and drops their
+/// applet groups.
+fn nehmen(text: &str, kinds: &[&str]) -> Result<Ergebnis, String> {
     let file = read(text)?;
     let mut meldungen = Vec::new();
     let mut weg = Vec::new();
     for (group, key, ids) in regions(&file)? {
-        let (raus, bleiben): (Vec<String>, Vec<String>) = ids.into_iter().partition(|id| {
-            matches!(
-                applet_type(&file, id).as_deref(),
-                Some(SHOW_DESKTOP | NOTIFICATIONS)
-            )
-        });
+        let (raus, bleiben): (Vec<String>, Vec<String>) = ids
+            .into_iter()
+            .partition(|id| applet_type(&file, id).is_some_and(|t| kinds.contains(&t.as_str())));
         if raus.is_empty() {
             continue;
         }
@@ -237,10 +289,7 @@ pub fn zuruecknehmen(text: &str) -> Result<Ergebnis, String> {
         let Some(id) = group.strip_prefix("Applet ") else {
             continue;
         };
-        if matches!(
-            applet_type(&file, id).as_deref(),
-            Some(SHOW_DESKTOP | NOTIFICATIONS)
-        ) {
+        if applet_type(&file, id).is_some_and(|t| kinds.contains(&t.as_str())) {
             file.remove_group(&group)
                 .map_err(|e| format!("[{group}]: {e}"))?;
             if !weg.contains(&id.to_owned()) {
@@ -251,9 +300,14 @@ pub fn zuruecknehmen(text: &str) -> Result<Ergebnis, String> {
     }
     let geaendert = !weg.is_empty();
     if !geaendert {
-        meldungen.push(format!(
-            "weder {SHOW_DESKTOP} noch {NOTIFICATIONS}, unverändert"
-        ));
+        meldungen.push(match kinds {
+            [one] => format!("kein {one}, unverändert"),
+            _ => format!(
+                "weder {} noch {}, unverändert",
+                kinds[0],
+                kinds[kinds.len() - 1]
+            ),
+        });
     }
     Ok(Ergebnis {
         text: if geaendert {
@@ -271,13 +325,18 @@ pub fn zuruecknehmen(text: &str) -> Result<Ergebnis, String> {
 /// then print what the panel would show. Exit 0 done, 1 error, 2 wrong use.
 pub fn kommandozeile(args: &[String]) -> u8 {
     let (Some(befehl), Some(datei), None) = (args.first(), args.get(1), args.get(2)) else {
-        eprintln!("Aufruf: querencia-panel --panel-ini ergaenzen|zuruecknehmen|pruefen <datei>");
+        eprintln!(
+            "Aufruf: querencia-panel --panel-ini ergaenzen|zuruecknehmen|\
+             infobereich-ergaenzen|infobereich-zuruecknehmen|pruefen <datei>"
+        );
         return 2;
     };
     let path = Path::new(datei);
     let aendern: fn(&str) -> Result<Ergebnis, String> = match befehl.as_str() {
         "ergaenzen" => ergaenzen,
         "zuruecknehmen" => zuruecknehmen,
+        "infobereich-ergaenzen" => infobereich_ergaenzen,
+        "infobereich-zuruecknehmen" => infobereich_zuruecknehmen,
         "pruefen" => |text| {
             Ok(Ergebnis {
                 text: text.to_owned(),
@@ -539,6 +598,64 @@ mod tests {
         assert!(ergaenzen("kein ini").is_err());
         assert!(ergaenzen("[Layout]\nVersion=1\n").is_err());
         assert!(zuruecknehmen("[x\n").is_err());
+    }
+
+    /// Panel 0.4.0: the live layout since G2-AL gets the notification area
+    /// right before the bell; taking it out gives the file back as it was.
+    #[test]
+    fn notification_area_goes_before_the_bell_and_back_out() {
+        let g2al = ergaenzen(LIVE).unwrap().text;
+        let neu = infobereich_ergaenzen(&g2al).unwrap();
+        assert!(neu.geaendert);
+        assert_eq!(
+            get(&neu.text, "Panel top", "End"),
+            "volume-1;network-1;notification-area-1;benachrichtigungen-1;clock-1"
+        );
+        assert_eq!(
+            get(&neu.text, "Applet notification-area-1", "Type"),
+            "notification-area"
+        );
+        assert_eq!(neu.meldungen.len(), 1, "{:?}", neu.meldungen);
+        assert!(neu.meldungen[0].contains("vor der Glocke"));
+        let loaded = load(&neu.text);
+        assert!(loaded.problems.is_empty(), "{:?}", loaded.problems);
+        // a second run changes nothing
+        let again = infobereich_ergaenzen(&neu.text).unwrap();
+        assert!(!again.geaendert);
+        assert_eq!(again.text, neu.text);
+        // taking out: only the notification area, the bell stays
+        let back = infobereich_zuruecknehmen(&neu.text).unwrap();
+        assert!(back.geaendert);
+        assert_eq!(
+            get(&back.text, "Panel top", "End"),
+            "volume-1;network-1;benachrichtigungen-1;clock-1"
+        );
+        assert_eq!(back.text, g2al);
+        let none = infobereich_zuruecknehmen(&back.text).unwrap();
+        assert!(!none.geaendert);
+        assert_eq!(none.meldungen, ["kein notification-area, unverändert"]);
+        // the G2-AL fallback leaves the notification area alone
+        let g2al_back = zuruecknehmen(&neu.text).unwrap();
+        assert_eq!(
+            get(&g2al_back.text, "Panel top", "End"),
+            "volume-1;network-1;notification-area-1;clock-1"
+        );
+    }
+
+    #[test]
+    fn without_a_bell_the_notification_area_goes_before_the_clock_or_to_the_end() {
+        let neu = infobereich_ergaenzen(LIVE).unwrap();
+        assert_eq!(
+            get(&neu.text, "Panel top", "End"),
+            "volume-1;network-1;notification-area-1;clock-1"
+        );
+        assert!(neu.meldungen[0].contains("vor der Uhr"));
+        let ohne_uhr = LIVE.replace("End=volume-1;network-1;clock-1", "End=volume-1");
+        let neu = infobereich_ergaenzen(&ohne_uhr).unwrap();
+        assert_eq!(
+            get(&neu.text, "Panel top", "End"),
+            "volume-1;notification-area-1"
+        );
     }
 
     #[test]
