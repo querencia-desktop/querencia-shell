@@ -20,8 +20,9 @@
 //! Wayland program may raise its window.
 //!
 //! Without any shown item the applet is hidden, as an empty GNOME 2
-//! notification area took no room. A right click on its edge (between the
-//! icons) opens the applet menu (remove, move; `panel_menu.rs`).
+//! notification area took no room. A right click on its edge (the 2 px
+//! padding left and right of the icons, or between two of them) opens the
+//! applet menu (remove, move; `panel_menu.rs`).
 
 pub mod dbusmenu;
 pub mod eintrag;
@@ -449,6 +450,10 @@ impl Knopf {
                 zaehlen(&root)
             );
             knopf.ziel.replace(Some(geladen.clone()));
+            // as a click on a menu button would: the anchor takes the focus
+            // inside the panel window (GTK reports a critical when a popover
+            // opens while the window has no focus widget at all)
+            knopf.anker.grab_focus();
             knopf.anker.popup();
             geladen.ereignis(0, "opened");
         });

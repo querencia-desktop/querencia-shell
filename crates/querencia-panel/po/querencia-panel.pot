@@ -127,7 +127,7 @@ msgid "Menu of the installed applications"
 msgstr ""
 
 #. TRANSLATORS: the second main menu of the top panel, as in GNOME 2
-#: src/applets.rs:95 src/places_menu.rs:152
+#: src/applets.rs:95 src/places_menu.rs:165
 msgid "Places"
 msgstr ""
 
@@ -184,7 +184,7 @@ msgstr ""
 msgid "Change the volume and mute"
 msgstr ""
 
-#: src/applets.rs:207 src/network_dialogs.rs:80 src/places_menu.rs:53
+#: src/applets.rs:207 src/network_dialogs.rs:80 src/places_menu.rs:54
 msgid "Network"
 msgstr ""
 
@@ -206,6 +206,14 @@ msgstr ""
 
 #: src/applets.rs:241
 msgid "Unread notifications, opens the notification center"
+msgstr ""
+
+#: src/applets.rs:258
+msgid "Notification Area"
+msgstr ""
+
+#: src/applets.rs:259
+msgid "Status icons of running programs"
 msgstr ""
 
 #: src/apps.rs:62
@@ -296,7 +304,7 @@ msgstr ""
 msgid "_Mark All as Read"
 msgstr ""
 
-#: src/glocke.rs:208 src/network_applet.rs:105 src/panel_menu.rs:151 src/panel_menu.rs:161 src/volume_applet.rs:69
+#: src/glocke.rs:208 src/infobereich/mod.rs:70 src/network_applet.rs:105 src/panel_menu.rs:151 src/panel_menu.rs:161 src/volume_applet.rs:69
 msgid "Remove From Panel"
 msgstr ""
 
@@ -558,43 +566,43 @@ msgstr ""
 msgid "saved, but not shown in this panel"
 msgstr ""
 
-#: src/places_menu.rs:45
+#: src/places_menu.rs:46
 msgid "Home Folder"
 msgstr ""
 
-#: src/places_menu.rs:46
+#: src/places_menu.rs:47
 msgid "Desktop"
 msgstr ""
 
-#: src/places_menu.rs:47
+#: src/places_menu.rs:48
 msgid "Documents"
 msgstr ""
 
-#: src/places_menu.rs:48
+#: src/places_menu.rs:49
 msgid "Music"
 msgstr ""
 
-#: src/places_menu.rs:49
+#: src/places_menu.rs:50
 msgid "Pictures"
 msgstr ""
 
-#: src/places_menu.rs:50
+#: src/places_menu.rs:51
 msgid "Videos"
 msgstr ""
 
-#: src/places_menu.rs:51
+#: src/places_menu.rs:52
 msgid "Downloads"
 msgstr ""
 
-#: src/places_menu.rs:52
+#: src/places_menu.rs:53
 msgid "Computer"
 msgstr ""
 
-#: src/places_menu.rs:54
+#: src/places_menu.rs:55
 msgid "Trash"
 msgstr ""
 
-#: src/places_menu.rs:249
+#: src/places_menu.rs:262
 msgid "No file manager installed"
 msgstr ""
 

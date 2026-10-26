@@ -90,7 +90,8 @@ pub(crate) const APP_ID: &str = "org.querencia.Panel";
 // Notification area (Panel 0.4.0): the programs' icons are status buttons
 // (panel::STATUS_CLASS); one that needs attention is filled in a light
 // orange with the orange border of the menu highlight (dark: a dark
-// orange). The anchor of an icon's menu draws nothing.
+// orange). The anchor of an icon's menu draws nothing. The row has 2 px
+// padding on both sides: there a right click opens the applet's menu.
 //
 // Network applet (G2-M): the icon as the volume applet (neutral highlight,
 // dimmed without any network data). Its left-click menu has the classic
@@ -163,6 +164,7 @@ const PANEL_CSS: &str = "
 .querencia-panel button.querencia-status.gedaempft > box { opacity: 0.7; }
 .querencia-panel button.querencia-status label.querencia-zahl { padding: 0 1px; font-weight: bold; color: #3c3c3c; }
 .querencia-panel button.querencia-sni.aufmerksam { background-color: #fbdccd; border-color: #f07746; }
+.querencia-panel box.querencia-infobereich { padding: 0 2px; }
 .querencia-panel menubutton.querencia-sni-anker > button { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; background: none; box-shadow: none; outline: none; }
 .querencia-panel button.querencia-show-desktop { min-width: 0; min-height: 0; padding: 0 2px; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
 .querencia-panel button.querencia-show-desktop:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
