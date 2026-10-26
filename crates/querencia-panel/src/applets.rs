@@ -12,8 +12,8 @@ use gtk4::{Widget, gio};
 use crate::i18n::gettext;
 use crate::layout::{Instance, LAUNCHER};
 use crate::{
-    app_menu, arbeitsflaeche_zeigen, clock, glocke, launcher, logo, network_applet, places_menu,
-    system_menu, volume_applet, window_list, workspace_switcher,
+    app_menu, arbeitsflaeche_zeigen, clock, glocke, infobereich, launcher, logo, network_applet,
+    places_menu, system_menu, volume_applet, window_list, workspace_switcher,
 };
 
 /// One applet type.
@@ -250,6 +250,23 @@ pub const APPLETS: &[AppletType] = &[
         status: true,
         factory: |_, height| glocke::widget(height).upcast(),
     },
+    // Panel 0.4.0 (QD-164): the notification area, status icons of other
+    // programs (StatusNotifierItem). Single: one watcher and host per
+    // session. In the standard layout left of the bell.
+    AppletType {
+        id: NOTIFICATION_AREA,
+        name: || gettext("Notification Area"),
+        description: || gettext("Status icons of running programs"),
+        icon: "preferences-desktop",
+        classic_icon: Some("gnome-panel-notification-area"),
+        multiple: false,
+        once: false,
+        removable: true,
+        chooses_application: false,
+        menu: Some(infobereich::menu),
+        status: true,
+        factory: |_, height| infobereich::widget(height).upcast(),
+    },
 ];
 
 /// Type ID of the volume applet (G2-J).
@@ -260,6 +277,8 @@ pub const NETWORK: &str = "network";
 pub const SHOW_DESKTOP: &str = "show-desktop";
 /// Type ID of the notification bell (G2-AL).
 pub const NOTIFICATIONS: &str = "benachrichtigungen";
+/// Type ID of the notification area (Panel 0.4.0).
+pub const NOTIFICATION_AREA: &str = "notification-area";
 
 /// The applet type with `id`, if there is one.
 pub fn find(id: &str) -> Option<&'static AppletType> {
@@ -287,7 +306,8 @@ mod tests {
                 "volume",
                 "network",
                 "show-desktop",
-                "benachrichtigungen"
+                "benachrichtigungen",
+                "notification-area"
             ]
         );
         assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len());
@@ -317,7 +337,8 @@ mod tests {
             classic,
             [
                 ("workspace-switcher", "workspace-switcher"),
-                ("clock", "clock")
+                ("clock", "clock"),
+                ("notification-area", "gnome-panel-notification-area")
             ]
         );
     }
@@ -350,19 +371,26 @@ mod tests {
                 VOLUME,
                 NETWORK,
                 SHOW_DESKTOP,
-                NOTIFICATIONS
+                NOTIFICATIONS,
+                NOTIFICATION_AREA
             ]
         );
     }
 
     #[test]
-    fn only_volume_network_and_the_bell_have_a_menu_of_their_own_and_are_single() {
+    fn status_applets_have_a_menu_of_their_own_and_are_single() {
         let with_menu: Vec<_> = APPLETS
             .iter()
             .filter(|a| a.menu.is_some())
             .map(|a| a.id)
             .collect();
-        assert_eq!(with_menu, [VOLUME, NETWORK, NOTIFICATIONS]);
+        assert_eq!(
+            with_menu,
+            [VOLUME, NETWORK, NOTIFICATIONS, NOTIFICATION_AREA]
+        );
+        let area = find(NOTIFICATION_AREA).unwrap();
+        assert!(!area.multiple && area.removable && !area.once && area.status);
+        assert_eq!((area.name)(), "Notification Area");
         let bell = find(NOTIFICATIONS).unwrap();
         assert!(!bell.multiple && bell.removable && !bell.once && bell.status);
         let menu = (bell.menu.unwrap())();
@@ -397,9 +425,9 @@ mod tests {
     }
 
     #[test]
-    fn only_volume_network_and_the_bell_are_status_icons() {
+    fn volume_network_bell_and_notification_area_are_status_icons() {
         let status: Vec<_> = APPLETS.iter().filter(|a| a.status).map(|a| a.id).collect();
-        assert_eq!(status, [VOLUME, NETWORK, NOTIFICATIONS]);
+        assert_eq!(status, [VOLUME, NETWORK, NOTIFICATIONS, NOTIFICATION_AREA]);
     }
 
     #[test]
@@ -420,5 +448,6 @@ mod tests {
         assert!(!find(NETWORK).unwrap().multiple);
         assert!(!find(SHOW_DESKTOP).unwrap().multiple);
         assert!(!find(NOTIFICATIONS).unwrap().multiple);
+        assert!(!find(NOTIFICATION_AREA).unwrap().multiple);
     }
 }

@@ -183,3 +183,14 @@
 #      Kommentare und Meldungen mit „“, – und →, Muster session-grafik) und
 #      P002 nur, weil die Basis ohne .git geprüft wurde; security 0
 #     .
+# panel-040 (27.10.2026, Panel 0.4.0 Infobereich, Oberfläche 0.1.3): neu nur
+#      S003/S004/S005 in crates/querencia-panel/src/infobereich/ und
+#      ergaenzung.rs (englische Kommentare mit Backticks, Anführungszeichen und
+#      Auslassung wie im übrigen Panel-Code) sowie S004/S005/H001/H003 in
+#      integration/panel-040 (deutsch kommentierte Prüfwerkzeuge, Kopie der
+#      Panel-Regression aus integration/panel-031, Protokolle unter nachweis/,
+#      virtual-keyboard-unstable-v1.xml); sie fallen unter die Ausnahmen oben
+#      (Vergleich mit main 6d95ff9,  §5).
+# panel-040-2 (27.10.2026): integration/panel-040-2 (Fassung 2 des Skripts,
+#      Probe, Belege) bringt nur S004/S005/H001 wie integration/panel-040;
+#      Ausnahmen oben.

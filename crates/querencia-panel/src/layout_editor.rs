@@ -318,7 +318,10 @@ mod tests {
                 .is_none()
         );
         assert!(!scratch.ini().exists(), "nichts geschrieben");
-        // G2-AL: first past the bell, then into the center
+        // G2-AL and 0.4.0: first past the bell and the notification area,
+        // then into the center
+        let moved = editor.move_applet("clock-1", Move::Left).unwrap().unwrap();
+        assert_eq!(moved.to, (Region::End, 1));
         let moved = editor.move_applet("clock-1", Move::Left).unwrap().unwrap();
         assert_eq!(moved.to, (Region::End, 0));
         let moved = editor.move_applet("clock-1", Move::Left).unwrap().unwrap();
@@ -335,7 +338,10 @@ mod tests {
             |region| -> Vec<&str> { top.region(region).iter().map(|i| i.id.as_str()).collect() };
         assert_eq!(ids(Region::Start), ["applications-1", "system-1"]);
         assert_eq!(ids(Region::Center), ["clock-1"]);
-        assert_eq!(ids(Region::End), ["benachrichtigungen-1", "places-1"]);
+        assert_eq!(
+            ids(Region::End),
+            ["notification-area-1", "benachrichtigungen-1", "places-1"]
+        );
         let bottom: Vec<&str> = layout.panels[1]
             .region(Region::End)
             .iter()

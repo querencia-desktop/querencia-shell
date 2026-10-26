@@ -128,7 +128,7 @@ msgid "Menu of the installed applications"
 msgstr "Menu delle applicazioni installate"
 
 #. TRANSLATORS: the second main menu of the top panel, as in GNOME 2
-#: src/applets.rs:95 src/places_menu.rs:152
+#: src/applets.rs:95 src/places_menu.rs:165
 msgid "Places"
 msgstr "Risorse"
 
@@ -185,7 +185,7 @@ msgstr "Volume"
 msgid "Change the volume and mute"
 msgstr "Regola il volume e disattiva l’audio"
 
-#: src/applets.rs:207 src/network_dialogs.rs:80 src/places_menu.rs:53
+#: src/applets.rs:207 src/network_dialogs.rs:80 src/places_menu.rs:54
 msgid "Network"
 msgstr "Rete"
 
@@ -208,6 +208,14 @@ msgstr "Notifiche"
 #: src/applets.rs:241
 msgid "Unread notifications, opens the notification center"
 msgstr "Notifiche non lette, apre il centro notifiche"
+
+#: src/applets.rs:258
+msgid "Notification Area"
+msgstr "Area di notifica"
+
+#: src/applets.rs:259
+msgid "Status icons of running programs"
+msgstr "Icone di stato dei programmi in esecuzione"
 
 #: src/apps.rs:62
 msgid "Accessories"
@@ -297,7 +305,7 @@ msgstr "_Non disturbare"
 msgid "_Mark All as Read"
 msgstr "Segna tutte come _lette"
 
-#: src/glocke.rs:208 src/network_applet.rs:105 src/panel_menu.rs:151 src/panel_menu.rs:161 src/volume_applet.rs:69
+#: src/glocke.rs:208 src/infobereich/mod.rs:71 src/network_applet.rs:105 src/panel_menu.rs:151 src/panel_menu.rs:161 src/volume_applet.rs:69
 msgid "Remove From Panel"
 msgstr "Rimuovi dal pannello"
 
@@ -561,43 +569,43 @@ msgstr "salvato, ma non mostrato: tipo di applet {applet} sconosciuto"
 msgid "saved, but not shown in this panel"
 msgstr "salvato, ma non mostrato in questo pannello"
 
-#: src/places_menu.rs:45
+#: src/places_menu.rs:46
 msgid "Home Folder"
 msgstr "Cartella home"
 
-#: src/places_menu.rs:46
+#: src/places_menu.rs:47
 msgid "Desktop"
 msgstr "Scrivania"
 
-#: src/places_menu.rs:47
+#: src/places_menu.rs:48
 msgid "Documents"
 msgstr "Documenti"
 
-#: src/places_menu.rs:48
+#: src/places_menu.rs:49
 msgid "Music"
 msgstr "Musica"
 
-#: src/places_menu.rs:49
+#: src/places_menu.rs:50
 msgid "Pictures"
 msgstr "Immagini"
 
-#: src/places_menu.rs:50
+#: src/places_menu.rs:51
 msgid "Videos"
 msgstr "Video"
 
-#: src/places_menu.rs:51
+#: src/places_menu.rs:52
 msgid "Downloads"
 msgstr "Scaricati"
 
-#: src/places_menu.rs:52
+#: src/places_menu.rs:53
 msgid "Computer"
 msgstr "Computer"
 
-#: src/places_menu.rs:54
+#: src/places_menu.rs:55
 msgid "Trash"
 msgstr "Cestino"
 
-#: src/places_menu.rs:249
+#: src/places_menu.rs:262
 msgid "No file manager installed"
 msgstr "Nessun gestore di file installato"
 

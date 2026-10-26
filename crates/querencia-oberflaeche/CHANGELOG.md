@@ -1,5 +1,21 @@
 # Änderungen – querencia-oberflaeche
 
+## 0.1.3 – 2026-10-27 (Panel 0.4.0, QD-164)
+
+- `classic_menu`: Häkchen- und Radio-Einträge. Ein Eintrag mit dem
+  Attribut `x-querencia-toggle` (`"check"` oder `"radio"`) und
+  `x-querencia-toggled` (Boolean) zeigt in der Symbolspalte ✓ bzw. •, wenn
+  er an ist, sonst die leere Spalte (wie GTK 2); Barrierefreiheit:
+  Rolle `MenuItemCheckbox`/`MenuItemRadio` mit Zustand `checked`. Neu
+  `Row::Entry { toggle }`, `Toggle`, `TOGGLE_ATTRIBUTE`,
+  `TOGGLED_ATTRIBUTE`, CSS-Klasse `qmenu-toggle`. `PopoverMenu` nimmt den
+  Zustand aus der Aktion; die klassischen Menüs können Aktionen eines
+  Widgets nicht nach ihrem Zustand fragen, deshalb setzt ihn das Modell.
+- Ohne die Attribute bleibt jedes Menü wie bisher (Test
+  `check_and_radio_items_come_from_their_attributes`). Panel, Desktop und
+  Dateien bleiben wie mit 0.1.2; nur Panel 0.4.0 nutzt die Häkchen (Menüs
+  der Programme im Infobereich). Enthält 0.1.2 (Kataloge it/es/fr).
+
 ## 0.1.2 – 2026-10-26
 
 Italienisch, Spanisch, Französisch:

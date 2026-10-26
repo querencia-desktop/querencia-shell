@@ -12,6 +12,7 @@ mod fensterliste;
 mod glocke;
 mod i18n;
 mod icon_reload;
+mod infobereich;
 mod launcher;
 mod layout;
 mod layout_editor;
@@ -86,6 +87,12 @@ pub(crate) const APP_ID: &str = "org.querencia.Panel";
 // the orange of the menu highlight with white text instead of the theme's
 // blue, today in bold and, while another day is selected, framed in orange.
 //
+// Notification area (Panel 0.4.0): the programs' icons are status buttons
+// (panel::STATUS_CLASS); one that needs attention is filled in a light
+// orange with the orange border of the menu highlight (dark: a dark
+// orange). The anchor of an icon's menu draws nothing. The row has 2 px
+// padding on both sides: there a right click opens the applet's menu.
+//
 // Network applet (G2-M): the icon as the volume applet (neutral highlight,
 // dimmed without any network data). Its left-click menu has the classic
 // menu look (`querencia-menu`): rows highlighted on hover and keyboard
@@ -156,6 +163,9 @@ const PANEL_CSS: &str = "
 .querencia-panel button.querencia-status.unavailable > box { opacity: 0.45; }
 .querencia-panel button.querencia-status.gedaempft > box { opacity: 0.7; }
 .querencia-panel button.querencia-status label.querencia-zahl { padding: 0 1px; font-weight: bold; color: #3c3c3c; }
+.querencia-panel button.querencia-sni.aufmerksam { background-color: #fbdccd; border-color: #f07746; }
+.querencia-panel box.querencia-infobereich { padding: 0 2px; }
+.querencia-panel menubutton.querencia-sni-anker > button { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; background: none; box-shadow: none; outline: none; }
 .querencia-panel button.querencia-show-desktop { min-width: 0; min-height: 0; padding: 0 2px; margin: 0; border-radius: 0; border: 1px solid transparent; background-image: none; box-shadow: none; outline: none; }
 .querencia-panel button.querencia-show-desktop:hover { background-color: #ebe7e3; border-color: #c4bdb7; }
 .querencia-panel button.querencia-show-desktop:active,
@@ -225,6 +235,7 @@ const PANEL_CSS_DUNKEL: &str = "
   .querencia-panel button.querencia-status:hover { background-color: #302f2b; border-color: #23221f; }
   .querencia-panel button.querencia-status:active { background-color: #2b2a27; border-color: #1c1b19; }
   .querencia-panel button.querencia-status label.querencia-zahl { color: #dfdbd2; }
+  .querencia-panel button.querencia-sni.aufmerksam { background-color: #5a3a2c; }
   .querencia-panel button.querencia-show-desktop:hover { background-color: #302f2b; border-color: #23221f; }
   .querencia-panel button.querencia-show-desktop:active,
   .querencia-panel button.querencia-show-desktop:checked { background-color: #2b2a27; border-color: #1c1b19; box-shadow: inset 0 1px 2px alpha(#000000, 0.35); }
