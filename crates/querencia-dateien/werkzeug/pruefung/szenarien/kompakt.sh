@@ -146,19 +146,23 @@ for ((i = 0; i < zeilen; i++)); do
   n=$(printf '%02d' "$i")
   : > "$G/a-$n"; : > "$G/b-$n-ein recht langer Name in der zweiten Spalte.txt"; : > "$G/c-$n"
 done
-spalten_abstand() { # → Abstand Spalte 1→2 und 2→3 in px (Fokuslage)
-  local xa xb xc
-  q "key Home" "wait 200" "key Down" "wait 150" "key Up" "wait 200"; read -r xa _ _ _ < <(fokus_lage)
-  q "key Right" "wait 200"; read -r xb _ _ _ < <(fokus_lage)
-  q "key Right" "wait 200"; read -r xc _ _ _ < <(fokus_lage)
-  echo "$((xb - xa)) $((xc - xb))"
+# → Abstand Spalte 1→2 und 2→3 in px und die Breiten der drei Zellen
+# (Fokuslage). Seit 0.2.4 passen die drei Spalten bei gleicher Breite nicht
+# mehr in ein 800 px breites Fenster; die Ansicht blättert dann zur dritten,
+# und ihr Abstand enthält das Blättern. Geprüft werden deshalb die Breiten.
+spalten_abstand() {
+  local xa xb xc ba bb bc
+  q "key Home" "wait 200" "key Down" "wait 150" "key Up" "wait 200"; read -r xa _ ba _ < <(fokus_lage)
+  q "key Right" "wait 200"; read -r xb _ bb _ < <(fokus_lage)
+  q "key Right" "wait 200"; read -r xc _ bc _ < <(fokus_lage)
+  echo "$((xb - xa)) $((xc - xb)) $ba $bb $bc"
 }
 taste ctrl+l
 q "type $G" "key Return"
 warte_log "Gemischt: lesen" 5
 warte_log "Ordner gelesen" 5
 q "wait 400"
-read -r g1 g2 < <(spalten_abstand)
+read -r g1 g2 gba gbb gbc < <(spalten_abstand)
 q "move 700 600" "wait 200"
 foto 10a-gemischt-gleich-breit
 marke
@@ -171,12 +175,13 @@ grep -q "KompaktGleichBreit=false" "$INI" && neu_seit "Kompaktansicht: Spalten j
   && fall K10 "Dialog: „Alle Spalten haben dieselbe Breite“ aus – sofort, in dateien.ini" 1 "KompaktGleichBreit=false; Spalten je nach Inhalt" \
   || fall K10 "Gleiche Breite aus" 0 "$(grep Kompakt "$INI")"
 q "key Escape" "wait 400"
-read -r i1 i2 < <(spalten_abstand)
+read -r i1 i2 iba ibb ibc < <(spalten_abstand)
 q "move 700 600" "wait 300"
 foto 11-gemischt-nach-inhalt
-[ "$g1" = "$g2" ] && [ "$i2" -gt "$((i1 + 40))" ] \
-  && fall K10c "Spaltenbreiten: gleich breit $g1/$g2 px; nach Inhalt $i1/$i2 px (lange Namen ganz)" 1 "Fokuslage Spalte 1, 2, 3" \
-  || fall K10c "Spaltenbreiten" 0 "gleich $g1/$g2, Inhalt $i1/$i2"
+[ "$gba" = "$gbc" ] && [ "$gbb" -ge "$gba" ] && [ "$gbb" -le "$((gba + 8))" ] \
+  && [ "$ibb" -gt "$((iba + 40))" ] && [ "$ibb" -gt "$((ibc + 40))" ] \
+  && fall K10c "Zellen: gleich breit $gba/$gbb/$gbc px; nach Inhalt $iba/$ibb/$ibc px (lange Namen ganz)" 1 "Abstände gleich $g1/$g2, Inhalt $i1/$i2" \
+  || fall K10c "Zellbreiten" 0 "gleich $gba/$gbb/$gbc ($g1/$g2), Inhalt $iba/$ibb/$ibc ($i1/$i2)"
 menue bearbeiten
 q "key Up" "key Return" "wait 700"
 q "move 268 54" "click" "wait 300" "move 50 300" "click" "wait 400" "key Escape" "wait 300"

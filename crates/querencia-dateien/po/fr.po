@@ -784,7 +784,7 @@ msgstr "R_éessayer"
 msgid "Open with “{app}”"
 msgstr "Ouvrir avec « {app} »"
 
-#: src/kontextmenue.rs:129 src/menue.rs:255 src/seitenleiste.rs:559 src/suche/ergebnisse.rs:321
+#: src/kontextmenue.rs:129 src/menue.rs:255 src/seitenleiste.rs:559 src/suche/ergebnisse.rs:330
 msgid "_Open"
 msgstr "Ou_vrir"
 
@@ -1704,73 +1704,73 @@ msgstr "É_jecter"
 msgid "_Unmount"
 msgstr "_Démonter"
 
-#: src/statusleiste.rs:71
+#: src/statusleiste.rs:93
 #, no-c-format
 msgid "The folder could not be read: {error}"
 msgstr "Impossible de lire le dossier : {error}"
 
-#: src/statusleiste.rs:117
+#: src/statusleiste.rs:143
 msgid "Loading…"
 msgstr "Chargement…"
 
 #. TRANSLATORS: context menu of a search result
-#: src/suche/ergebnisse.rs:330
+#: src/suche/ergebnisse.rs:339
 msgid "Show in _Folder"
 msgstr "Afficher dans le _dossier"
 
-#: src/suche/mod.rs:69
+#: src/suche/mod.rs:73
 msgid "Search documents and folders by name"
 msgstr "Rechercher des documents et des dossiers par nom"
 
-#: src/suche/mod.rs:123
+#: src/suche/mod.rs:127
 msgid "_Search for:"
 msgstr "_Rechercher :"
 
-#: src/suche/mod.rs:146
+#: src/suche/mod.rs:152
 msgid "_Advanced Search…"
 msgstr "Recherche a_vancée…"
 
-#: src/suche/mod.rs:147
+#: src/suche/mod.rs:153
 msgid "Search with more criteria in Querencia File Search"
 msgstr "Rechercher avec plus de critères dans Querencia Recherche de fichiers"
 
-#: src/suche/mod.rs:161
+#: src/suche/mod.rs:167
 msgid "Close the search"
 msgstr "Fermer la recherche"
 
-#: src/suche/mod.rs:289
+#: src/suche/mod.rs:305
 msgid "Search results"
 msgstr "Résultats de la recherche"
 
-#: src/suche/mod.rs:322
+#: src/suche/mod.rs:350
 msgid "Searching…"
 msgstr "Recherche en cours…"
 
-#: src/suche/mod.rs:348
+#: src/suche/mod.rs:378
 #, no-c-format
 msgid "Searching… {n} match so far"
 msgid_plural "Searching… {n} matches so far"
 msgstr[0] "Recherche en cours… {n} résultat pour l’instant"
 msgstr[1] "Recherche en cours… {n} résultats pour l’instant"
 
-#: src/suche/mod.rs:368
+#: src/suche/mod.rs:399
 #, no-c-format
 msgid "{n} match"
 msgid_plural "{n} matches"
 msgstr[0] "{n} résultat"
 msgstr[1] "{n} résultats"
 
-#: src/suche/mod.rs:370
+#: src/suche/mod.rs:401
 #, no-c-format
 msgid "{matches} (search stopped)"
 msgstr "{matches} (recherche arrêtée)"
 
-#: src/suche/mod.rs:372
+#: src/suche/mod.rs:403
 #, no-c-format
 msgid "{matches} (limit reached)"
 msgstr "{matches} (limite atteinte)"
 
-#: src/suche/mod.rs:405
+#: src/suche/mod.rs:437
 #, no-c-format
 msgid "Querencia File Search could not be started: {error}"
 msgstr "Impossible de lancer Querencia Recherche de fichiers : {error}"

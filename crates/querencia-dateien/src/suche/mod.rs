@@ -47,6 +47,10 @@ pub struct Suche {
     /// The views' stack the results stand in for (the tab's, Welle C3).
     verdeckt: RefCell<Option<glib::WeakRef<gtk4::Stack>>>,
     beginn: Cell<Option<Instant>>,
+    /// The status bar's text of the search without a selection of hits
+    /// („Suche …“, „3 Treffer“).
+    stand: RefCell<String>,
+    selbst: Weak<Suche>,
 }
 
 thread_local! {
@@ -141,6 +145,8 @@ impl Suche {
             zeigt: Cell::new(false),
             verdeckt: RefCell::default(),
             beginn: Cell::new(None),
+            stand: RefCell::default(),
+            selbst: weak.clone(),
         });
         if dateisuche().is_some() {
             let erweitert = gtk4::Button::with_mnemonic(&gettext("_Advanced Search…"));
@@ -163,6 +169,16 @@ impl Suche {
         suche.leiste.append(&zu);
         suche.leiste.set_visible(false);
         suche.ergebnisse.widget().set_visible(false);
+        // a selection of hits shows in the status bar as in a folder
+        let weak = Rc::downgrade(&suche);
+        suche.ergebnisse.bei_auswahl(move || {
+            if let Some(s) = weak.upgrade()
+                && s.zeigt.get()
+                && let Some(f) = s.fenster()
+            {
+                f.statusleiste().aktualisieren();
+            }
+        });
 
         // every change of the text stops a running search (the hits of the
         // old text would not match the field any more)
@@ -287,12 +303,24 @@ impl Suche {
         self.ergebnisse.widget().set_visible(an);
         if an {
             f.window().set_title(Some(&gettext("Search results")));
+            let weak = self.selbst.clone();
+            f.statusleiste()
+                .ersatz_setzen(Some(Box::new(move || status(&weak))));
             // the window's file actions act on the folder's selection
             f.modell().auswahl().unselect_all();
-        } else if let Some(ort) = f.ort() {
-            f.window().set_title(Some(&crate::orte::anzeigename(&ort)));
-            f.melden("");
+        } else {
+            if let Some(ort) = f.ort() {
+                f.window().set_title(Some(&crate::orte::anzeigename(&ort)));
+            }
+            // the folder's line again (QD-173 P-3: it stayed empty)
+            f.statusleiste().ersatz_setzen(None);
         }
+    }
+
+    /// The status bar's text of the search (no selection of hits).
+    fn stand_setzen(&self, f: &Fenster, text: String) {
+        self.stand.replace(text);
+        f.statusleiste().aktualisieren();
     }
 
     /// Searches the shown folder for `text`.
@@ -319,7 +347,7 @@ impl Suche {
         self.drehen.set_visible(true);
         self.drehen.set_spinning(true);
         self.beginn.set(Some(Instant::now()));
-        f.melden(&gettext("Searching…"));
+        self.stand_setzen(&f, gettext("Searching…"));
         protokoll(&format!(
             "Suche {nummer}: „{}“ ab {} (verborgene {verborgene})",
             text,
@@ -345,12 +373,15 @@ impl Suche {
                 let neu: Vec<Eintrag> = funde.iter().map(sucher::Fund::eintrag).collect();
                 self.ergebnisse.anhaengen(&neu);
                 let n = self.ergebnisse.anzahl();
-                f.melden(&ngettext_f(
-                    "Searching… {n} match so far",
-                    "Searching… {n} matches so far",
-                    n,
-                    &[],
-                ));
+                self.stand_setzen(
+                    &f,
+                    ngettext_f(
+                        "Searching… {n} match so far",
+                        "Searching… {n} matches so far",
+                        n,
+                        &[],
+                    ),
+                );
             }
             Meldung::Ende {
                 eintraege,
@@ -366,13 +397,14 @@ impl Suche {
                 self.drehen.set_visible(false);
                 let n = self.ergebnisse.anzahl();
                 let treffer = ngettext_f("{n} match", "{n} matches", n, &[]);
-                f.melden(&if abgebrochen {
+                let text = if abgebrochen {
                     gettext_f("{matches} (search stopped)", &[("matches", &treffer)])
                 } else if begrenzt {
                     gettext_f("{matches} (limit reached)", &[("matches", &treffer)])
                 } else {
                     treffer
-                });
+                };
+                self.stand_setzen(&f, text);
                 let gesamt = self.beginn.take().map_or(0, |b| b.elapsed().as_millis());
                 protokoll(&format!(
                     "Suche {} fertig: {n} Treffer, {eintraege} Einträge in {ordner} Ordnern \
@@ -408,6 +440,20 @@ impl Suche {
             ));
         }
     }
+}
+
+/// The status bar while hits are shown: the selection of hits as in a
+/// folder („„a.txt“ ausgewählt (12,3 kB)“), else the search's own text.
+fn status(suche: &Weak<Suche>) -> String {
+    let Some(s) = suche.upgrade() else {
+        return String::new();
+    };
+    let gewaehlt = s.ergebnisse.gewaehlte();
+    if gewaehlt.is_empty() {
+        return s.stand.borrow().clone();
+    }
+    let g: Vec<crate::regeln::Gewaehlt> = gewaehlt.iter().map(|e| e.gewaehlt()).collect();
+    crate::regeln::status_mit_auswahl(&g)
 }
 
 /// A report of a search thread (main thread).

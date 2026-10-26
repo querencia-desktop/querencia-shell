@@ -198,6 +198,15 @@ impl Ergebnisse {
         self.liste.grab_focus();
     }
 
+    /// `f` after every change of the selection of hits (also when hits
+    /// go or come).
+    pub fn bei_auswahl(&self, f: impl Fn() + 'static) {
+        let f = Rc::new(f);
+        let g = f.clone();
+        self.auswahl.connect_selection_changed(move |_, _, _| g());
+        self.auswahl.connect_items_changed(move |_, _, _, _| f());
+    }
+
     /// The selected hits in shown order.
     pub fn gewaehlte(&self) -> Vec<Eintrag> {
         let menge = self.auswahl.selection();
