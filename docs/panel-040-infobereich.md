@@ -128,8 +128,10 @@ einen Menüknopf; ohne Fokus-Widget meldete GTK 4.22 beim Öffnen
   vorhanden: unverändert). `infobereich-zuruecknehmen` nimmt nur ihn heraus
   (Glocke und „Arbeitsfläche anzeigen“ bleiben). Das Panel ändert die
   Benutzerdatei nie von selbst.
-- Integration: siehe `integration/panel-040/` (Skript
-  `panel-040-integrieren.sh`). `aktivieren` sichert `panel.ini` unter
+- Integration: gültig ist `integration/panel-040-2/` (Skript
+  `panel-040-2-integrieren.sh`, `PANEL_040_2_FREIGABE=ja`); die erste
+  Fassung `integration/panel-040/` bleibt unverändert und wird nicht
+  aktiviert (dort liegen Prüfrahmen und Belege). `aktivieren` sichert `panel.ini` unter
   `~/.local/state/querencia/sicherung-panel-040-…/` und bricht ab
   (Rückrollen), wenn sich mehr als der Eintrag ändert: genau eine alte Zeile
   (`End=`) darf anders sein, und `infobereich-zuruecknehmen` auf einer Kopie
@@ -190,7 +192,7 @@ Prüfrahmen: `integration/panel-040/werkzeug/` (Infobereich) und
   0.3.1 dokumentiert); oberes Panel und Menübereich gleich. Live-Tausch
   0.3.2-2 ⇄ 0.4.0 mit `tausch-panel-3.py` (Prüfkopie, Überwachung,
   Absturz, Rückfall): **31/31**.
-- **Integrationsprobe** `probe.sh` (umgelenkte Pfade): **85/85**.
+- **Integrationsprobe** `probe.sh` (umgelenkte Pfade): **85/85** (Fassung 1), **89/89** (Fassung 2 mit Einfüge-Prüfung).
 
 Nach dem Merge von main `6d95ff9` (it/es/fr) mit dem Release-Bau
 `dfc6bef1…` (zweimal gebaut, byte-gleich) wiederholt: `infobereich` de 1024

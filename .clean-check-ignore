@@ -191,3 +191,6 @@
 #      Panel-Regression aus integration/panel-031, Protokolle unter nachweis/,
 #      virtual-keyboard-unstable-v1.xml); sie fallen unter die Ausnahmen oben
 #      (Vergleich mit main 6d95ff9,  §5).
+# panel-040-2 (27.10.2026): integration/panel-040-2 (Fassung 2 des Skripts,
+#      Probe, Belege) bringt nur S004/S005/H001 wie integration/panel-040;
+#      Ausnahmen oben.
