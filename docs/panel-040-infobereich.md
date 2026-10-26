@@ -1,6 +1,6 @@
 # Panel 0.4.0 – Infobereich (StatusNotifierItem)
 
-Stand 26.10.2026. Zweig `infobereich` ab `main` `6935c48`. Punkt QD-164
+Stand 27.10.2026. Zweig `infobereich` ab `main` `6935c48`, main `6d95ff9` (it/es/fr, Panel 0.3.3) eingemergt. Punkt QD-164
 (08): Das Panel hatte keinen Infobereich; Programme wie Webex, Nextcloud,
 Discord oder ZapZap zeigten kein Symbol. Entscheidung pottrauschen 23.10. und
 26.10.: Infobereich-Applet bauen.
@@ -101,7 +101,7 @@ Beim Öffnen: `AboutToShow(0)`, `GetLayout(0, -1, [])`, für alle Untermenüs
 gelesen. Fehler von `AboutToShow*` stoppen das Menü nicht. Daraus wird ein
 `gio::Menu`: Trennlinien → Abschnitte, Untermenüs, `toggle-type`
 `checkmark`/`radio` mit `toggle-state` → Häkchen/Punkt (neu in
-`querencia-oberflaeche` 0.1.2, Attribute `x-querencia-toggle`/`-toggled`),
+`querencia-oberflaeche` 0.1.3, Attribute `x-querencia-toggle`/`-toggled`),
 `enabled=false` → grau (keine Aktion), `visible=false` → fehlt, `icon-name`
 bzw. `icon-data` (PNG) → Symbol, `shortcut` → Kürzelspalte,
 Zugriffstasten (`_`) entfernt. Gezeigt wird es mit
