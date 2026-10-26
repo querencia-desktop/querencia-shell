@@ -1,10 +1,11 @@
 //! The StatusNotifierWatcher: the list of items and hosts on the session
 //! bus that every program with a status icon looks for. The panel offers
-//! it only while nobody else does: the names `org.kde.StatusNotifierWatcher`
-//! and `org.freedesktop.StatusNotifierWatcher` (a few programs ask for the
-//! latter) are requested with queueing, so a watcher that is already there
-//! keeps them, and the panel takes over when it ends. Programs then
-//! register again on their own (they follow the owner of the name).
+//! it only while nobody else does: the name `org.kde.StatusNotifierWatcher`
+//! is requested with queueing, so a watcher that is already there keeps
+//! it, and the panel takes over when it ends. Programs then register again
+//! on their own (they follow the owner of the name). Once the panel has
+//! the KDE name it also asks for `org.freedesktop.StatusNotifierWatcher`
+//! (a few programs use that one), the same object under both names.
 //!
 //! - `RegisterStatusNotifierItem(s)`: a bus name, or an object path of the
 //!   calling connection (libappindicator); the ID is `<bus name><path>`
@@ -184,21 +185,44 @@ impl Watcher {
                 ),
             }
         }
-        for name in [BUS_NAME, BUS_NAME_FREEDESKTOP] {
-            let id = gio::bus_own_name_on_connection(
-                connection,
-                name,
-                gio::BusNameOwnerFlags::NONE,
-                |_, name| eprintln!("querencia-panel: Infobereich: Watcher {name} übernommen"),
-                |_, name| {
-                    eprintln!(
-                        "querencia-panel: Infobereich: {name} hat ein anderes Programm, \
-                         das Panel wartet (nur Host)"
-                    )
-                },
-            );
-            watcher.owners.borrow_mut().push(id);
-        }
+        // The freedesktop alias only together with the KDE name: the host
+        // follows the KDE watcher, so an item at a freedesktop alias of
+        // another program than that watcher would never be shown.
+        let weak = Rc::downgrade(&watcher);
+        let id = gio::bus_own_name_on_connection(
+            connection,
+            BUS_NAME,
+            gio::BusNameOwnerFlags::NONE,
+            move |connection, name| {
+                eprintln!("querencia-panel: Infobereich: Watcher {name} übernommen");
+                let Some(watcher) = weak.upgrade() else {
+                    return;
+                };
+                if watcher.owners.borrow().len() > 1 {
+                    return;
+                }
+                let alias = gio::bus_own_name_on_connection(
+                    &connection,
+                    BUS_NAME_FREEDESKTOP,
+                    gio::BusNameOwnerFlags::NONE,
+                    |_, name| eprintln!("querencia-panel: Infobereich: Watcher {name} übernommen"),
+                    |_, name| {
+                        eprintln!(
+                            "querencia-panel: Infobereich: {name} hat ein anderes Programm \
+                             (nur der KDE-Name ist vom Panel)"
+                        )
+                    },
+                );
+                watcher.owners.borrow_mut().push(alias);
+            },
+            |_, name| {
+                eprintln!(
+                    "querencia-panel: Infobereich: {name} hat ein anderes Programm, \
+                     das Panel wartet (nur Host)"
+                )
+            },
+        );
+        watcher.owners.borrow_mut().push(id);
         watcher
     }
 
