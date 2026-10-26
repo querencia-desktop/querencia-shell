@@ -1,0 +1,566 @@
+# Querencia Desktop: italienische Übersetzung.
+# Copyright (C) 2026 Querencia Desktop contributors
+# Diese Datei steht unter derselben Lizenz wie Querencia Desktop (GPL-3.0-or-later).
+# Begriffe nach der gemeinsamen Querencia-Begriffstabelle (GNOME-Wortwahl).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-desktop\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-26 23:41+0100\n"
+"Last-Translator: Querencia Desktop contributors\n"
+"Language-Team: Italiano (Querencia)\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/desktop_view.rs:322
+msgid "Desktop – Icons"
+msgstr "Scrivania – Icone"
+
+#: src/desktop_view.rs:1360 src/desktop_view.rs:1411
+msgid "Open"
+msgstr "Apri"
+
+#: src/desktop_view.rs:1364
+msgid "Mount"
+msgstr "Monta"
+
+#: src/desktop_view.rs:1392
+msgid "Open Trash"
+msgstr "Apri cestino"
+
+#: src/desktop_view.rs:1399
+msgid "Empty Trash…"
+msgstr "Svuota cestino…"
+
+#: src/desktop_view.rs:1423 src/desktop_view/transfer.rs:1370
+msgid "Open With"
+msgstr "Apri con"
+
+#: src/desktop_view.rs:1428
+msgid "Cut"
+msgstr "Taglia"
+
+#: src/desktop_view.rs:1429
+msgid "Copy"
+msgstr "Copia"
+
+#: src/desktop_view.rs:1431
+msgid "Paste Into Folder"
+msgstr "Incolla nella cartella"
+
+#: src/desktop_view.rs:1452
+msgid "Rename…"
+msgstr "Rinomina…"
+
+#: src/desktop_view.rs:1458
+msgid "Move to Trash"
+msgstr "Sposta nel cestino"
+
+#: src/desktop_view.rs:1462
+msgid "Properties"
+msgstr "Proprietà"
+
+#: src/desktop_view.rs:1477
+msgid "Create Folder"
+msgstr "Crea cartella"
+
+#: src/desktop_view.rs:1480
+msgid "Empty File"
+msgstr "File vuoto"
+
+#: src/desktop_view.rs:1498
+msgid "Create Document"
+msgstr "Crea documento"
+
+#: src/desktop_view.rs:1505
+msgid "Clean Up by Name"
+msgstr "Ordina per nome"
+
+#: src/desktop_view.rs:1511
+msgid "Align Icons to Grid"
+msgstr "Allinea icone alla griglia"
+
+#: src/desktop_view.rs:1515
+msgid "Keep Aligned"
+msgstr "Mantieni allineate"
+
+#: src/desktop_view.rs:1527
+msgid "Paste"
+msgstr "Incolla"
+
+#: src/desktop_view.rs:1538
+msgid "Change Desktop Background…"
+msgstr "Cambia sfondo della scrivania…"
+
+#: src/desktop_view.rs:1690
+msgid "New Folder"
+msgstr "Nuova cartella"
+
+#: src/desktop_view.rs:1772
+msgid "Empty all items from the trash?"
+msgstr "Eliminare definitivamente tutti gli elementi dal cestino?"
+
+#: src/desktop_view.rs:1773
+msgid "If you empty the trash, all items in it will be permanently lost."
+msgstr ""
+"Svuotando il cestino, tutti gli elementi in esso contenuti andranno persi definitivamente."
+
+#: src/desktop_view.rs:1776 src/desktop_view.rs:3037 src/desktop_view/fortschritt.rs:338 src/desktop_view/transfer.rs:459
+msgid "Cancel"
+msgstr "Annulla"
+
+#: src/desktop_view.rs:1776
+msgid "Empty Trash"
+msgstr "Svuota cestino"
+
+#: src/desktop_view.rs:2113
+#, no-c-format
+msgid "“{name}” cannot be renamed."
+msgstr "Impossibile rinominare «{name}»."
+
+#: src/desktop_view.rs:2227 src/desktop_view/transfer.rs:699
+#, no-c-format
+msgid "“{name}” could not be renamed to “{new}”."
+msgstr "Impossibile rinominare «{name}» in «{new}»."
+
+#: src/desktop_view.rs:2242
+#, no-c-format
+msgid ""
+"“{name}” no longer exists. Perhaps it was deleted or moved in the meantime."
+msgstr ""
+"«{name}» non esiste più. Forse è stato eliminato o spostato nel frattempo."
+
+#: src/desktop_view.rs:2248
+#, no-c-format
+msgid ""
+"The name “{new}” is already used in this folder. Please use a different name."
+msgstr "Il nome «{new}» è già usato in questa cartella. Usare un nome diverso."
+
+#: src/desktop_view.rs:2403
+msgid "The launcher file is not valid text."
+msgstr "Il file del lanciatore non contiene testo valido."
+
+#: src/desktop_view.rs:2407
+#, no-c-format
+msgid "The launcher file is not valid: {why}"
+msgstr "Il file del lanciatore non è valido: {why}"
+
+#: src/desktop_view.rs:2417
+msgid "The launcher file has no group [Desktop Entry]."
+msgstr "Il file del lanciatore non ha il gruppo [Desktop Entry]."
+
+#: src/desktop_view.rs:2430
+msgid "The launcher file was changed in the meantime. Please try again."
+msgstr "Il file del lanciatore è stato modificato nel frattempo. Riprovare."
+
+#: src/desktop_view.rs:2454
+#, no-c-format
+msgid "You do not have the permissions to rename “{name}”."
+msgstr "Non si dispone dei permessi per rinominare «{name}»."
+
+#: src/desktop_view.rs:2458
+#, no-c-format
+msgid "“{name}” no longer exists."
+msgstr "«{name}» non esiste più."
+
+#: src/desktop_view.rs:2471
+msgid "Volumes keep their own names."
+msgstr "I volumi mantengono i propri nomi."
+
+#: src/desktop_view.rs:2478 src/desktop_view.rs:2994 src/desktop_view/transfer.rs:1295
+msgid "Close"
+msgstr "Chiudi"
+
+#: src/desktop_view.rs:2495
+msgid "Computer"
+msgstr "Computer"
+
+#: src/desktop_view.rs:2498
+msgid "Home Folder"
+msgstr "Cartella home"
+
+#: src/desktop_view.rs:2501
+msgid "Trash"
+msgstr "Cestino"
+
+#: src/desktop_view.rs:2986 src/i18n.rs:147
+#, no-c-format
+msgid "“{name}” cannot be opened."
+msgstr "Impossibile aprire «{name}»."
+
+#: src/desktop_view.rs:2990
+#, no-c-format
+msgid "There is no application installed for “{type}” files ({mime})."
+msgstr "Non è installata alcuna applicazione per i file «{type}» ({mime})."
+
+#: src/desktop_view.rs:2994
+msgid "Open With Other Application…"
+msgstr "Apri con altra applicazione…"
+
+#: src/desktop_view.rs:3030
+msgid "Untrusted application launcher"
+msgstr "Lanciatore di applicazioni non fidato"
+
+#: src/desktop_view.rs:3031
+#, no-c-format
+msgid ""
+"The application launcher “{name}” has not been marked as trusted. If you do not know the source of this file, launching it may be unsafe."
+msgstr ""
+"Il lanciatore di applicazioni «{name}» non è stato contrassegnato come fidato. Se non si conosce la provenienza di questo file, avviarlo potrebbe non essere sicuro."
+
+#: src/desktop_view.rs:3038
+msgid "Mark as Trusted"
+msgstr "Segna come fidato"
+
+#: src/desktop_view.rs:3039
+msgid "Launch Anyway"
+msgstr "Avvia comunque"
+
+#: src/desktop_view.rs:3074
+msgid "New Document"
+msgstr "Nuovo documento"
+
+#: src/desktop_view.rs:3083
+msgid "Template"
+msgstr "Modello"
+
+#: src/desktop_view.rs:3156
+msgid "Images"
+msgstr "Immagini"
+
+#: src/desktop_view.rs:3161
+msgid "Change Desktop Background"
+msgstr "Cambia sfondo della scrivania"
+
+#: src/desktop_view/fortschritt.rs:45
+#, no-c-format
+msgid "Copying “{name}” to “{target}”"
+msgstr "Copia di «{name}» in «{target}»"
+
+#: src/desktop_view/fortschritt.rs:49
+#, no-c-format
+msgid "Copying {n} file to “{target}”"
+msgid_plural "Copying {n} files to “{target}”"
+msgstr[0] "Copia di {n} file in «{target}»"
+msgstr[1] "Copia di {n} file in «{target}»"
+
+#: src/desktop_view/fortschritt.rs:55
+#, no-c-format
+msgid "Moving “{name}” to “{target}”"
+msgstr "Spostamento di «{name}» in «{target}»"
+
+#: src/desktop_view/fortschritt.rs:59
+#, no-c-format
+msgid "Moving {n} file to “{target}”"
+msgid_plural "Moving {n} files to “{target}”"
+msgstr[0] "Spostamento di {n} file in «{target}»"
+msgstr[1] "Spostamento di {n} file in «{target}»"
+
+#: src/desktop_view/fortschritt.rs:65
+#, no-c-format
+msgid "Moving “{name}” to the trash"
+msgstr "Spostamento di «{name}» nel cestino"
+
+#: src/desktop_view/fortschritt.rs:66
+#, no-c-format
+msgid "Moving {n} file to the trash"
+msgid_plural "Moving {n} files to the trash"
+msgstr[0] "Spostamento di {n} file nel cestino"
+msgstr[1] "Spostamento di {n} file nel cestino"
+
+#: src/desktop_view/fortschritt.rs:72
+#, no-c-format
+msgid "Deleting “{name}”"
+msgstr "Eliminazione di «{name}»"
+
+#: src/desktop_view/fortschritt.rs:73
+#, no-c-format
+msgid "Deleting {n} file"
+msgid_plural "Deleting {n} files"
+msgstr[0] "Eliminazione di {n} file"
+msgstr[1] "Eliminazione di {n} file"
+
+#: src/desktop_view/fortschritt.rs:74
+msgid "Emptying the trash"
+msgstr "Svuotamento del cestino"
+
+#: src/desktop_view/fortschritt.rs:75
+#, no-c-format
+msgid "Working on “{name}”"
+msgstr "Elaborazione di «{name}»"
+
+#: src/desktop_view/fortschritt.rs:83
+#, no-c-format
+msgid "{n} second left"
+msgid_plural "{n} seconds left"
+msgstr[0] "{n} secondo rimanente"
+msgstr[1] "{n} secondi rimanenti"
+
+#: src/desktop_view/fortschritt.rs:91
+#, no-c-format
+msgid "{n} minute left"
+msgid_plural "{n} minutes left"
+msgstr[0] "{n} minuto rimanente"
+msgstr[1] "{n} minuti rimanenti"
+
+#: src/desktop_view/fortschritt.rs:94
+#, no-c-format
+msgid "{n} hour left"
+msgid_plural "{n} hours left"
+msgstr[0] "{n} ora rimanente"
+msgstr[1] "{n} ore rimanenti"
+
+#: src/desktop_view/fortschritt.rs:103
+#, no-c-format
+msgid "{done} of {total}"
+msgstr "{done} di {total}"
+
+#: src/desktop_view/fortschritt.rs:113
+#, no-c-format
+msgid "{amount} — {left} ({rate}/s)"
+msgstr "{amount} – {left} ({rate}/s)"
+
+#: src/desktop_view/fortschritt.rs:125
+#, no-c-format
+msgid "{done} of {n} file"
+msgid_plural "{done} of {n} files"
+msgstr[0] "{done} di {n} file"
+msgstr[1] "{done} di {n} file"
+
+#: src/desktop_view/fortschritt.rs:295
+msgid "File Operations"
+msgstr "Operazioni sui file"
+
+#: src/desktop_view/fortschritt.rs:382
+msgid "Preparing…"
+msgstr "Preparazione…"
+
+#: src/desktop_view/frage.rs:31 src/desktop_view/frage.rs:43 src/desktop_view/frage.rs:55
+msgid "File conflict"
+msgstr "Conflitto tra file"
+
+#: src/desktop_view/frage.rs:32
+#, no-c-format
+msgid "Replace folder “{name}”?"
+msgstr "Sostituire la cartella «{name}»?"
+
+#: src/desktop_view/frage.rs:35 src/desktop_view/frage.rs:59
+#, no-c-format
+msgid "Another folder with the same name already exists in “{folder}”."
+msgstr "In «{folder}» esiste già un’altra cartella con lo stesso nome."
+
+#: src/desktop_view/frage.rs:39
+msgid "Replacing it will remove all files in the folder."
+msgstr "Sostituendola verranno rimossi tutti i file nella cartella."
+
+#: src/desktop_view/frage.rs:44
+#, no-c-format
+msgid "Replace file “{name}”?"
+msgstr "Sostituire il file «{name}»?"
+
+#: src/desktop_view/frage.rs:47
+#, no-c-format
+msgid "Another file with the same name already exists in “{folder}”."
+msgstr "In «{folder}» esiste già un altro file con lo stesso nome."
+
+#: src/desktop_view/frage.rs:51
+msgid "Replacing it will overwrite its content."
+msgstr "Sostituendolo verrà sovrascritto il suo contenuto."
+
+#: src/desktop_view/frage.rs:56
+#, no-c-format
+msgid "Merge folder “{name}”?"
+msgstr "Unire la cartella «{name}»?"
+
+#: src/desktop_view/frage.rs:63
+msgid ""
+"Merging will ask for confirmation before replacing any files in the folder that conflict with the files being copied."
+msgstr ""
+"Unendo, verrà chiesta conferma prima di sostituire i file nella cartella in conflitto con quelli copiati."
+
+#: src/desktop_view/frage.rs:70
+msgid "No trash"
+msgstr "Nessun cestino"
+
+#: src/desktop_view/frage.rs:71
+#, no-c-format
+msgid ""
+"Cannot move “{name}” to the trash. Do you want to delete it immediately?"
+msgstr "Impossibile spostare «{name}» nel cestino. Eliminarlo subito?"
+
+#: src/desktop_view/frage.rs:75
+msgid "This place has no trash. Deleted items cannot be restored."
+msgstr ""
+"Questa posizione non ha un cestino. Gli elementi eliminati non possono essere ripristinati."
+
+#: src/desktop_view/frage.rs:78
+msgid "Error"
+msgstr "Errore"
+
+#: src/desktop_view/frage.rs:79
+#, no-c-format
+msgid "“{name}” could not be handled."
+msgstr "Impossibile elaborare «{name}»."
+
+#: src/desktop_view/frage.rs:89
+#, no-c-format
+msgid "Size: {size}"
+msgstr "Dimensione: {size}"
+
+#. TRANSLATORS: date and time of the last change (strftime format of GLib's GDateTime)
+#: src/desktop_view/frage.rs:99 src/desktop_view/transfer.rs:1247
+msgid "%Y-%m-%d %H:%M"
+msgstr "%d/%m/%Y %H:%M"
+
+#: src/desktop_view/frage.rs:101
+#, no-c-format
+msgid "Last modified: {when}"
+msgstr "Ultima modifica: {when}"
+
+#: src/desktop_view/frage.rs:201
+msgid "Original file"
+msgstr "File originale"
+
+#: src/desktop_view/frage.rs:202
+msgid "Replace with"
+msgstr "Sostituisci con"
+
+#: src/desktop_view/frage.rs:221
+msgid "Select a new _name for the destination"
+msgstr "Scegliere un nuovo _nome per la destinazione"
+
+#: src/desktop_view/frage.rs:227
+msgid "Apply this action to all _files"
+msgstr "Applica questa azione a tutti i _file"
+
+#: src/desktop_view/frage.rs:235 src/desktop_view/kennwort.rs:101
+msgid "_Cancel"
+msgstr "_Annulla"
+
+#: src/desktop_view/frage.rs:240 src/desktop_view/frage.rs:251 src/desktop_view/frage.rs:266 src/desktop_view/frage.rs:273
+msgid "_Skip"
+msgstr "_Salta"
+
+#: src/desktop_view/frage.rs:242 src/desktop_view/frage.rs:253
+msgid "Re_name"
+msgstr "_Rinomina"
+
+#: src/desktop_view/frage.rs:246 src/desktop_view/frage.rs:257
+msgid "_Replace"
+msgstr "S_ostituisci"
+
+#: src/desktop_view/frage.rs:261
+msgid "_Merge"
+msgstr "_Unisci"
+
+#: src/desktop_view/frage.rs:268
+msgid "_Delete"
+msgstr "_Elimina"
+
+#: src/desktop_view/frage.rs:275
+msgid "_Retry"
+msgstr "Ri_prova"
+
+#: src/desktop_view/kennwort.rs:75
+msgid "Password"
+msgstr "Password"
+
+#: src/desktop_view/kennwort.rs:102
+msgid "C_onnect"
+msgstr "C_onnetti"
+
+#: src/desktop_view/transfer.rs:443
+#, no-c-format
+msgid "Are you sure you want to permanently delete “{name}”?"
+msgstr "Eliminare definitivamente «{name}»?"
+
+#: src/desktop_view/transfer.rs:447
+#, no-c-format
+msgid "Are you sure you want to permanently delete the {n} selected item?"
+msgid_plural "Are you sure you want to permanently delete the {n} selected items?"
+msgstr[0] "Eliminare definitivamente l’elemento selezionato ({n})?"
+msgstr[1] "Eliminare definitivamente i {n} elementi selezionati?"
+
+#: src/desktop_view/transfer.rs:456
+msgid "If you delete an item, it will be permanently lost."
+msgstr "Se si elimina un elemento, andrà perso definitivamente."
+
+#: src/desktop_view/transfer.rs:459
+msgid "Delete"
+msgstr "Elimina"
+
+#: src/desktop_view/transfer.rs:1158
+msgid "Other Application…"
+msgstr "Altra applicazione…"
+
+#: src/desktop_view/transfer.rs:1187 src/desktop_view/transfer.rs:1388
+#, no-c-format
+msgid "“{name}” could not be opened."
+msgstr "Impossibile aprire «{name}»."
+
+#: src/desktop_view/transfer.rs:1209
+#, no-c-format
+msgid "The properties of “{name}” cannot be read."
+msgstr "Impossibile leggere le proprietà di «{name}»."
+
+#: src/desktop_view/transfer.rs:1221
+#, no-c-format
+msgid "Link to {target}"
+msgstr "Collegamento a {target}"
+
+#: src/desktop_view/transfer.rs:1238
+msgid "counting …"
+msgstr "conteggio…"
+
+#: src/desktop_view/transfer.rs:1256
+#, no-c-format
+msgid "“{name}” Properties"
+msgstr "Proprietà di «{name}»"
+
+#: src/desktop_view/transfer.rs:1273
+msgid "Name:"
+msgstr "Nome:"
+
+#: src/desktop_view/transfer.rs:1274
+msgid "Type:"
+msgstr "Tipo:"
+
+#: src/desktop_view/transfer.rs:1275
+msgid "Size:"
+msgstr "Dimensione:"
+
+#: src/desktop_view/transfer.rs:1276
+msgid "Location:"
+msgstr "Posizione:"
+
+#: src/desktop_view/transfer.rs:1277
+msgid "Modified:"
+msgstr "Modificato:"
+
+#: src/desktop_view/transfer.rs:1326
+#, no-c-format
+msgid "{n} item, totalling {size}"
+msgid_plural "{n} items, totalling {size}"
+msgstr[0] "{n} elemento, per un totale di {size}"
+msgstr[1] "{n} elementi, per un totale di {size}"
+
+#: src/desktop_view/transfer.rs:1371
+#, no-c-format
+msgid "Select an application to open “{name}”"
+msgstr "Selezionare un’applicazione per aprire «{name}»"
+
+#: src/i18n.rs:143
+#, no-c-format
+msgid "… and {n} more"
+msgid_plural "… and {n} more"
+msgstr[0] "… e {n} altro"
+msgstr[1] "… e altri {n}"
+
+#: src/main.rs:412
+msgid "Desktop"
+msgstr "Scrivania"

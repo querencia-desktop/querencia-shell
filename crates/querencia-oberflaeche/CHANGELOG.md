@@ -1,6 +1,6 @@
 # Änderungen – querencia-oberflaeche
 
-## 0.1.2 – 2026-10-26 (Panel 0.4.0, QD-164)
+## 0.1.3 – 2026-10-27 (Panel 0.4.0, QD-164)
 
 - `classic_menu`: Häkchen- und Radio-Einträge. Ein Eintrag mit dem
   Attribut `x-querencia-toggle` (`"check"` oder `"radio"`) und
@@ -13,8 +13,14 @@
   Widgets nicht nach ihrem Zustand fragen, deshalb setzt ihn das Modell.
 - Ohne die Attribute bleibt jedes Menü wie bisher (Test
   `check_and_radio_items_come_from_their_attributes`). Panel, Desktop und
-  Dateien sind mit 0.1.1 gebaut; nur Panel 0.4.0 nutzt die Häkchen (Menüs
-  der Programme im Infobereich).
+  Dateien bleiben wie mit 0.1.2; nur Panel 0.4.0 nutzt die Häkchen (Menüs
+  der Programme im Infobereich). Enthält 0.1.2 (Kataloge it/es/fr).
+
+## 0.1.2 – 2026-10-26
+
+Italienisch, Spanisch, Französisch:
+
+- Kataloge `po/it.po`, `po/es.po`, `po/fr.po` (je 5 Tastennamen: Maiusc/Mayús/Maj usw.); Wortwahl nach der gemeinsamen Querencia-Begriffstabelle.
 
 ## 0.1.1 – 2026-10-25 (QD-176)
 

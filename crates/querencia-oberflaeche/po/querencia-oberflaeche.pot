@@ -17,27 +17,27 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/classic_menu.rs:192
+#: src/classic_menu.rs:193
 msgctxt "keyboard key"
 msgid "Ctrl"
 msgstr ""
 
-#: src/classic_menu.rs:194
+#: src/classic_menu.rs:195
 msgctxt "keyboard key"
 msgid "Shift"
 msgstr ""
 
-#: src/classic_menu.rs:204
+#: src/classic_menu.rs:205
 msgctxt "keyboard key"
 msgid "Del"
 msgstr ""
 
-#: src/classic_menu.rs:206
+#: src/classic_menu.rs:207
 msgctxt "keyboard key"
 msgid "Enter"
 msgstr ""
 
-#: src/classic_menu.rs:207
+#: src/classic_menu.rs:208
 msgctxt "keyboard key"
 msgid "Print"
 msgstr ""

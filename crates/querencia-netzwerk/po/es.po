@@ -1,0 +1,275 @@
+# Querencia Desktop – querencia-netzwerk: spanische Übersetzung.
+# Copyright (C) 2026 Querencia Desktop contributors
+# Diese Datei steht unter derselben Lizenz wie Querencia Desktop – querencia-netzwerk (GPL-3.0-or-later).
+# Begriffe nach der gemeinsamen Querencia-Begriffstabelle (GNOME-Wortwahl).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-netzwerk\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-26 23:41+0100\n"
+"Last-Translator: Querencia Desktop contributors\n"
+"Language-Team: Español (Querencia)\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/kernel.rs:294
+#, no-c-format
+msgid "{path} not readable: {error}"
+msgstr "{path} no se puede leer: {error}"
+
+#: src/model.rs:40
+msgid "Managed by systemd-networkd, display only"
+msgstr "Gestionado por systemd-networkd, solo lectura"
+
+#: src/model.rs:43
+msgid "No NetworkManager found, display only"
+msgstr "No se encontró NetworkManager, solo lectura"
+
+#. TRANSLATORS: security of a wireless network
+#: src/model.rs:162
+msgid "none"
+msgstr "ninguna"
+
+#: src/model.rs:164
+msgid "WPA/WPA2 Personal"
+msgstr "WPA/WPA2 Personal"
+
+#: src/model.rs:165
+msgid "WPA3 Personal"
+msgstr "WPA3 Personal"
+
+#: src/model.rs:166
+msgid "WPA/WPA2 Enterprise"
+msgstr "WPA/WPA2 Empresarial"
+
+#: src/model.rs:297
+#, no-c-format
+msgid "Wired Network ({interface})"
+msgstr "Red cableada ({interface})"
+
+#: src/model.rs:302
+#, no-c-format
+msgid "Wireless ({interface})"
+msgstr "Red inalámbrica ({interface})"
+
+#: src/model.rs:310
+msgid "connected"
+msgstr "conectado"
+
+#: src/model.rs:311
+msgid "connecting…"
+msgstr "conectando…"
+
+#: src/model.rs:312
+msgid "disconnecting…"
+msgstr "desconectando…"
+
+#: src/model.rs:313
+msgid "Connection failed"
+msgstr "Falló la conexión"
+
+#: src/model.rs:314
+msgid "not managed"
+msgstr "no gestionado"
+
+#: src/model.rs:316
+msgid "Cable unplugged"
+msgstr "Cable desconectado"
+
+#: src/model.rs:318
+msgid "not available"
+msgstr "no disponible"
+
+#: src/model.rs:319
+msgid "disconnected"
+msgstr "desconectado"
+
+#: src/model.rs:477
+msgid "No network service"
+msgstr "Sin servicio de red"
+
+#: src/model.rs:483
+msgid "Network: reading…"
+msgstr "Red: leyendo…"
+
+#: src/model.rs:497
+#, no-c-format
+msgid "Connecting to the wireless network “{ssid}”…"
+msgstr "Conectando con la red inalámbrica «{ssid}»…"
+
+#: src/model.rs:501
+#, no-c-format
+msgid "{device}: connecting…"
+msgstr "{device}: conectando…"
+
+#: src/model.rs:507
+#, no-c-format
+msgid "Wired network “{name}” connected ({interface})"
+msgstr "Red cableada «{name}» conectada ({interface})"
+
+#: src/model.rs:511
+#, no-c-format
+msgid "Wired network {interface} connected"
+msgstr "Red cableada {interface} conectada"
+
+#: src/model.rs:521
+#, no-c-format
+msgid "Wireless network “{name}” connected, signal {signal} %"
+msgstr "Red inalámbrica «{name}» conectada, señal {signal} %"
+
+#: src/model.rs:525
+#, no-c-format
+msgid "Wireless network connected, signal {signal} %"
+msgstr "Red inalámbrica conectada, señal {signal} %"
+
+#: src/model.rs:529
+#, no-c-format
+msgid "Wireless network “{name}” connected ({interface})"
+msgstr "Red inalámbrica «{name}» conectada ({interface})"
+
+#: src/model.rs:533
+#, no-c-format
+msgid "Wireless network connected ({interface})"
+msgstr "Red inalámbrica conectada ({interface})"
+
+#: src/model.rs:541
+#, no-c-format
+msgid "Address: {address}"
+msgstr "Dirección: {address}"
+
+#: src/model.rs:549
+msgid "No network cable plugged in"
+msgstr "No hay ningún cable de red conectado"
+
+#: src/model.rs:550
+msgid "Airplane mode is on"
+msgstr "El modo avión está activado"
+
+#: src/model.rs:551
+msgid "Wireless is disabled"
+msgstr "La red inalámbrica está desactivada"
+
+#: src/model.rs:552
+msgid "Networking is disabled"
+msgstr "La red está desactivada"
+
+#: src/model.rs:553
+msgid "No network device"
+msgstr "Ningún dispositivo de red"
+
+#: src/model.rs:554
+msgid "No network connection"
+msgstr "Sin conexión de red"
+
+#: src/model.rs:569
+#, no-c-format
+msgid "{gbit} Gbit/s"
+msgstr "{gbit} Gbit/s"
+
+#. TRANSLATORS: a speed with one decimal; German writes a comma
+#: src/model.rs:572
+#, no-c-format
+msgid "{whole}.{tenth} Gbit/s"
+msgstr "{whole},{tenth} Gbit/s"
+
+#: src/model.rs:581
+#, no-c-format
+msgid "{mbit} Mbit/s"
+msgstr "{mbit} Mbit/s"
+
+#. TRANSLATORS: a frequency band; German writes a decimal comma
+#: src/model.rs:589
+msgid "2.4 GHz"
+msgstr "2,4 GHz"
+
+#: src/model.rs:666
+msgid "Interface"
+msgstr "Interfaz"
+
+#: src/model.rs:669
+#, no-c-format
+msgid "{interface} (wired)"
+msgstr "{interface} (cableada)"
+
+#: src/model.rs:671
+#, no-c-format
+msgid "{interface} (wireless)"
+msgstr "{interface} (inalámbrica)"
+
+#: src/model.rs:677
+msgid "State"
+msgstr "Estado"
+
+#: src/model.rs:680
+msgid "Connection"
+msgstr "Conexión"
+
+#: src/model.rs:683
+msgid "Hardware Address"
+msgstr "Dirección de hardware"
+
+#: src/model.rs:686
+msgid "Driver"
+msgstr "Controlador"
+
+#: src/model.rs:689
+msgid "Speed"
+msgstr "Velocidad"
+
+#: src/model.rs:693
+msgid "Network"
+msgstr "Red"
+
+#: src/model.rs:696
+msgid "Security"
+msgstr "Seguridad"
+
+#: src/model.rs:699
+msgid "Frequency Band"
+msgstr "Banda de frecuencia"
+
+#: src/model.rs:703
+msgid "Signal"
+msgstr "Señal"
+
+#: src/model.rs:710
+msgid "Managed by"
+msgstr "Gestionado por"
+
+#: src/model.rs:713
+msgid "systemd-networkd (display only)"
+msgstr "systemd-networkd (solo lectura)"
+
+#: src/model.rs:714
+msgid "unknown (display only)"
+msgstr "desconocido (solo lectura)"
+
+#: src/model.rs:721 src/model.rs:724 src/model.rs:750 src/model.rs:758
+msgid "Address"
+msgstr "Dirección"
+
+#: src/model.rs:726
+msgid "Netmask"
+msgstr "Máscara de red"
+
+#: src/model.rs:730 src/model.rs:761
+msgid "Default Gateway"
+msgstr "Puerta de enlace predeterminada"
+
+#: src/model.rs:756
+#, no-c-format
+msgid "{address} (local)"
+msgstr "{address} (local)"
+
+#: src/model.rs:774
+msgid "General"
+msgstr "General"
+
+#: src/service.rs:257
+msgid "Nothing can be changed without NetworkManager"
+msgstr "Sin NetworkManager no se puede cambiar nada"

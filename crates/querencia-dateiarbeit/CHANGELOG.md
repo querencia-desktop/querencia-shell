@@ -1,5 +1,11 @@
 # Änderungen – querencia-dateiarbeit
 
+## 0.1.2 – 2026-10-26
+
+Italienisch, Spanisch, Französisch:
+
+- Kataloge `po/it.po`, `po/es.po`, `po/fr.po` (je 71 Texte): Fehlermeldungen der Dateioperationen und Laufwerke; Wortwahl nach der gemeinsamen Querencia-Begriffstabelle.
+
 ## 0.1.1 – 2026-10-23
 
 Prüfstand und Freigabe (Status-Session):

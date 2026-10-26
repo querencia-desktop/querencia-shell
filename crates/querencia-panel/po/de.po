@@ -301,7 +301,7 @@ msgstr "_Nicht stören"
 msgid "_Mark All as Read"
 msgstr "Alle als _gelesen markieren"
 
-#: src/glocke.rs:208 src/infobereich/mod.rs:70 src/network_applet.rs:105 src/panel_menu.rs:151 src/panel_menu.rs:161 src/volume_applet.rs:69
+#: src/glocke.rs:208 src/infobereich/mod.rs:71 src/network_applet.rs:105 src/panel_menu.rs:151 src/panel_menu.rs:161 src/volume_applet.rs:69
 msgid "Remove From Panel"
 msgstr "Aus dem Panel entfernen"
 
