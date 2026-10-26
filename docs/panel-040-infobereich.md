@@ -129,7 +129,12 @@ einen Menüknopf; ohne Fokus-Widget meldete GTK 4.22 beim Öffnen
   (Glocke und „Arbeitsfläche anzeigen“ bleiben). Das Panel ändert die
   Benutzerdatei nie von selbst.
 - Integration: siehe `integration/panel-040/` (Skript
-  `panel-040-integrieren.sh`).
+  `panel-040-integrieren.sh`). `aktivieren` sichert `panel.ini` unter
+  `~/.local/state/querencia/sicherung-panel-040-…/` und bricht ab
+  (Rückrollen), wenn sich mehr als der Eintrag ändert: genau eine alte Zeile
+  (`End=`) darf anders sein, und `infobereich-zuruecknehmen` auf einer Kopie
+  muss die alte Datei Byte für Byte ergeben (Ergänzung der Startsession
+  27.10.).
 
 ## 4. Prüfung
 
@@ -209,4 +214,7 @@ oben), Pixelvergleich gleich bis auf Versionszeile und Testfenster, Tausch
 - Ein Menü, das sich ändert, während es offen ist, zeigt die Änderung erst
   beim nächsten Öffnen.
 - Passive Items sind immer verborgen; ein Aufklappknopf für versteckte
-  Symbole fehlt.
+  Symbole fehlt. Wer ein passives Symbol doch sehen will, stellt es im
+  Programm selbst um (viele haben „Symbol immer anzeigen“ o. ä.); welches
+  Item gerade passiv ist, zeigt das Panel-Protokoll (Zeile „Infobereich: …
+  Passive …“).
