@@ -1,0 +1,1419 @@
+# Querencia Desktop – querencia-kuerzel: spanische Übersetzung.
+# Copyright (C) 2026 Querencia Desktop contributors
+# Diese Datei steht unter derselben Lizenz wie Querencia Desktop – querencia-kuerzel (GPL-3.0-or-later).
+# Begriffe nach der gemeinsamen Querencia-Begriffstabelle (GNOME-Wortwahl).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-kuerzel\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-27 14:45+0100\n"
+"Last-Translator: Querencia Desktop contributors\n"
+"Language-Team: Español (Querencia)\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/labwc.rs:112
+msgctxt "key"
+msgid "Ctrl"
+msgstr "Ctrl"
+
+#: src/labwc.rs:114
+msgctxt "key"
+msgid "Shift"
+msgstr "Mayús"
+
+#: src/labwc.rs:234
+msgctxt "key"
+msgid "Enter"
+msgstr "Intro"
+
+#: src/labwc.rs:235
+msgctxt "key"
+msgid "Enter (keypad)"
+msgstr "Intro (teclado numérico)"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: src/labwc.rs:236 data/programme.txt:57 data/programme.txt:139 data/programme.txt:146
+msgctxt "key"
+msgid "Delete"
+msgstr "Supr"
+
+#: src/labwc.rs:237
+msgctxt "key"
+msgid "Insert"
+msgstr "Insert"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: src/labwc.rs:238 data/programme.txt:124
+msgctxt "key"
+msgid "Print"
+msgstr "ImprPant"
+
+#: src/labwc.rs:239
+msgctxt "key"
+msgid "Space"
+msgstr "Espacio"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: src/labwc.rs:240 data/programme.txt:36 data/programme.txt:60 data/programme.txt:132 data/programme.txt:140 data/programme.txt:149
+msgctxt "key"
+msgid "Esc"
+msgstr "Esc"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: src/labwc.rs:241 data/programme.txt:138
+msgctxt "key"
+msgid "Backspace"
+msgstr "Retroceso"
+
+#: src/labwc.rs:242
+msgctxt "key"
+msgid "Home"
+msgstr "Inicio"
+
+#: src/labwc.rs:243
+msgctxt "key"
+msgid "End"
+msgstr "Fin"
+
+#: src/labwc.rs:244
+msgctxt "key"
+msgid "Page Up"
+msgstr "RePág"
+
+#: src/labwc.rs:245
+msgctxt "key"
+msgid "Page Down"
+msgstr "AvPág"
+
+#: src/labwc.rs:246
+msgctxt "key"
+msgid "Menu"
+msgstr "Menú"
+
+#: src/labwc.rs:247
+msgctxt "key"
+msgid "Volume Up key"
+msgstr "Tecla subir volumen"
+
+#: src/labwc.rs:248
+msgctxt "key"
+msgid "Volume Down key"
+msgstr "Tecla bajar volumen"
+
+#: src/labwc.rs:249
+msgctxt "key"
+msgid "Mute key"
+msgstr "Tecla silencio"
+
+#: src/labwc.rs:250
+msgctxt "key"
+msgid "Brightness Up key"
+msgstr "Tecla subir brillo"
+
+#: src/labwc.rs:251
+msgctxt "key"
+msgid "Brightness Down key"
+msgstr "Tecla bajar brillo"
+
+#: src/labwc.rs:313
+msgid "Windows"
+msgstr "Ventanas"
+
+#: src/labwc.rs:314
+msgid "Workspaces"
+msgstr "Áreas de trabajo"
+
+#. TRANSLATORS: Programmname als Überschrift der Seite Programme
+#: src/labwc.rs:315 data/programme.txt:123
+msgid "Screenshot"
+msgstr "Captura de pantalla"
+
+#: src/labwc.rs:316
+msgid "Session"
+msgstr "Sesión"
+
+#: src/labwc.rs:317
+msgid "Other"
+msgstr "Otros"
+
+#. TRANSLATORS: joins the actions of one shortcut ("close the window, then switch to the next window")
+#: src/labwc.rs:372
+msgid ", then "
+msgstr ", luego "
+
+#: src/labwc.rs:394
+msgid "switch to the left workspace"
+msgstr "cambiar al área de trabajo de la izquierda"
+
+#: src/labwc.rs:395
+msgid "switch to the right workspace"
+msgstr "cambiar al área de trabajo de la derecha"
+
+#: src/labwc.rs:396
+msgid "switch to the workspace above"
+msgstr "cambiar al área de trabajo de arriba"
+
+#: src/labwc.rs:397
+msgid "switch to the workspace below"
+msgstr "cambiar al área de trabajo de abajo"
+
+#: src/labwc.rs:398
+msgid "switch to the next workspace"
+msgstr "cambiar al área de trabajo siguiente"
+
+#: src/labwc.rs:399
+msgid "switch to the previous workspace"
+msgstr "cambiar al área de trabajo anterior"
+
+#: src/labwc.rs:400
+msgid "switch to the last used workspace"
+msgstr "cambiar a la última área de trabajo usada"
+
+#: src/labwc.rs:401
+msgid "switch to the current workspace"
+msgstr "cambiar al área de trabajo actual"
+
+#: src/labwc.rs:402
+msgid "switch to another workspace"
+msgstr "cambiar a otra área de trabajo"
+
+#: src/labwc.rs:403
+#, no-c-format
+msgid "switch to workspace {number}"
+msgstr "cambiar al área de trabajo {number}"
+
+#: src/labwc.rs:404
+#, no-c-format
+msgid "switch to workspace “{name}”"
+msgstr "cambiar al área de trabajo «{name}»"
+
+#: src/labwc.rs:407
+msgid "take the window to the left workspace"
+msgstr "llevar la ventana al área de trabajo de la izquierda"
+
+#: src/labwc.rs:408
+msgid "take the window to the right workspace"
+msgstr "llevar la ventana al área de trabajo de la derecha"
+
+#: src/labwc.rs:409
+msgid "take the window to the workspace above"
+msgstr "llevar la ventana al área de trabajo de arriba"
+
+#: src/labwc.rs:410
+msgid "take the window to the workspace below"
+msgstr "llevar la ventana al área de trabajo de abajo"
+
+#: src/labwc.rs:411
+msgid "take the window to the next workspace"
+msgstr "llevar la ventana al área de trabajo siguiente"
+
+#: src/labwc.rs:412
+msgid "take the window to the previous workspace"
+msgstr "llevar la ventana al área de trabajo anterior"
+
+#: src/labwc.rs:413
+msgid "take the window to the last used workspace"
+msgstr "llevar la ventana a la última área de trabajo usada"
+
+#: src/labwc.rs:414
+msgid "take the window to the current workspace"
+msgstr "llevar la ventana al área de trabajo actual"
+
+#: src/labwc.rs:415
+msgid "take the window to another workspace"
+msgstr "llevar la ventana a otra área de trabajo"
+
+#: src/labwc.rs:416
+#, no-c-format
+msgid "take the window to workspace {number}"
+msgstr "llevar la ventana al área de trabajo {number}"
+
+#: src/labwc.rs:417
+#, no-c-format
+msgid "take the window to workspace “{name}”"
+msgstr "llevar la ventana al área de trabajo «{name}»"
+
+#: src/labwc.rs:420
+msgid "send the window to the left workspace (without following it)"
+msgstr "enviar la ventana al área de trabajo de la izquierda (sin seguirla)"
+
+#: src/labwc.rs:421
+msgid "send the window to the right workspace (without following it)"
+msgstr "enviar la ventana al área de trabajo de la derecha (sin seguirla)"
+
+#: src/labwc.rs:422
+msgid "send the window to the workspace above (without following it)"
+msgstr "enviar la ventana al área de trabajo de arriba (sin seguirla)"
+
+#: src/labwc.rs:423
+msgid "send the window to the workspace below (without following it)"
+msgstr "enviar la ventana al área de trabajo de abajo (sin seguirla)"
+
+#: src/labwc.rs:424
+msgid "send the window to the next workspace (without following it)"
+msgstr "enviar la ventana al área de trabajo siguiente (sin seguirla)"
+
+#: src/labwc.rs:425
+msgid "send the window to the previous workspace (without following it)"
+msgstr "enviar la ventana al área de trabajo anterior (sin seguirla)"
+
+#: src/labwc.rs:426
+msgid "send the window to the last used workspace (without following it)"
+msgstr "enviar la ventana a la última área de trabajo usada (sin seguirla)"
+
+#: src/labwc.rs:427
+msgid "send the window to the current workspace (without following it)"
+msgstr "enviar la ventana al área de trabajo actual (sin seguirla)"
+
+#: src/labwc.rs:428
+msgid "send the window to another workspace (without following it)"
+msgstr "enviar la ventana a otra área de trabajo (sin seguirla)"
+
+#: src/labwc.rs:429
+#, no-c-format
+msgid "send the window to workspace {number} (without following it)"
+msgstr "enviar la ventana al área de trabajo {number} (sin seguirla)"
+
+#: src/labwc.rs:430
+#, no-c-format
+msgid "send the window to workspace “{name}” (without following it)"
+msgstr "enviar la ventana al área de trabajo «{name}» (sin seguirla)"
+
+#: src/labwc.rs:441
+msgid "switch to the next window"
+msgstr "cambiar a la ventana siguiente"
+
+#: src/labwc.rs:442
+msgid "switch to the previous window"
+msgstr "cambiar a la ventana anterior"
+
+#: src/labwc.rs:443
+msgid "close the window"
+msgstr "cerrar la ventana"
+
+#: src/labwc.rs:444
+msgid "quit the window's program"
+msgstr "terminar el programa de la ventana"
+
+#: src/labwc.rs:445
+msgid "minimize the window"
+msgstr "minimizar la ventana"
+
+#: src/labwc.rs:446
+msgid "maximize or restore the window"
+msgstr "maximizar o restaurar la ventana"
+
+#: src/labwc.rs:447
+msgid "maximize the window"
+msgstr "maximizar la ventana"
+
+#: src/labwc.rs:448
+msgid "unmaximize the window"
+msgstr "desmaximizar la ventana"
+
+#: src/labwc.rs:449
+msgid "fullscreen on or off"
+msgstr "activar o desactivar la pantalla completa"
+
+#: src/labwc.rs:451
+msgid "snap the window to the left half of the screen"
+msgstr "ajustar la ventana a la mitad izquierda de la pantalla"
+
+#: src/labwc.rs:452
+msgid "snap the window to the right half of the screen"
+msgstr "ajustar la ventana a la mitad derecha de la pantalla"
+
+#: src/labwc.rs:453
+msgid "snap the window to the top half of the screen"
+msgstr "ajustar la ventana a la mitad superior de la pantalla"
+
+#: src/labwc.rs:454
+msgid "snap the window to the bottom half of the screen"
+msgstr "ajustar la ventana a la mitad inferior de la pantalla"
+
+#: src/labwc.rs:455
+msgid "snap the window to the screen edge"
+msgstr "ajustar la ventana al borde de la pantalla"
+
+#: src/labwc.rs:458
+msgid "move the window to the left edge"
+msgstr "mover la ventana al borde izquierdo"
+
+#: src/labwc.rs:459
+msgid "move the window to the right edge"
+msgstr "mover la ventana al borde derecho"
+
+#: src/labwc.rs:460
+msgid "move the window to the top edge"
+msgstr "mover la ventana al borde superior"
+
+#: src/labwc.rs:461
+msgid "move the window to the bottom edge"
+msgstr "mover la ventana al borde inferior"
+
+#: src/labwc.rs:462
+msgid "move the window to the edge"
+msgstr "mover la ventana al borde"
+
+#: src/labwc.rs:465
+msgid "grow the window to the left edge"
+msgstr "agrandar la ventana hasta el borde izquierdo"
+
+#: src/labwc.rs:466
+msgid "grow the window to the right edge"
+msgstr "agrandar la ventana hasta el borde derecho"
+
+#: src/labwc.rs:467
+msgid "grow the window to the top edge"
+msgstr "agrandar la ventana hasta el borde superior"
+
+#: src/labwc.rs:468
+msgid "grow the window to the bottom edge"
+msgstr "agrandar la ventana hasta el borde inferior"
+
+#: src/labwc.rs:469
+msgid "grow the window to the edge"
+msgstr "agrandar la ventana hasta el borde"
+
+#: src/labwc.rs:471
+msgid "shrink the window from the edge"
+msgstr "encoger la ventana desde el borde"
+
+#: src/labwc.rs:473
+msgid "open the window menu"
+msgstr "abrir el menú de la ventana"
+
+#: src/labwc.rs:474
+msgid "open labwc's desktop menu"
+msgstr "abrir el menú del escritorio de labwc"
+
+#: src/labwc.rs:475
+#, no-c-format
+msgid "open the labwc menu “{menu}”"
+msgstr "abrir el menú de labwc «{menu}»"
+
+#: src/labwc.rs:476
+msgid "open a menu"
+msgstr "abrir un menú"
+
+#: src/labwc.rs:478
+msgid "move the window"
+msgstr "mover la ventana"
+
+#: src/labwc.rs:479
+msgid "resize the window"
+msgstr "redimensionar la ventana"
+
+#: src/labwc.rs:480
+msgid "raise the window"
+msgstr "elevar la ventana"
+
+#: src/labwc.rs:481
+msgid "lower the window"
+msgstr "bajar la ventana"
+
+#: src/labwc.rs:482
+msgid "activate the window"
+msgstr "activar la ventana"
+
+#: src/labwc.rs:483
+msgid "“Always on top” on or off"
+msgstr "activar o desactivar «Siempre encima»"
+
+#: src/labwc.rs:484
+msgid "“Always on bottom” on or off"
+msgstr "activar o desactivar «Siempre debajo»"
+
+#: src/labwc.rs:485
+msgid "window frame on or off"
+msgstr "activar o desactivar el marco de la ventana"
+
+#: src/labwc.rs:486
+msgid "shade or unshade the window"
+msgstr "enrollar o desenrollar la ventana"
+
+#: src/labwc.rs:487
+msgid "“On all workspaces” on or off"
+msgstr "activar o desactivar «En todas las áreas de trabajo»"
+
+#: src/labwc.rs:488
+msgid "show the desktop (all windows away)"
+msgstr "mostrar el escritorio (oculta todas las ventanas)"
+
+#: src/labwc.rs:489
+msgid "labwc's keyboard shortcuts on or off"
+msgstr "activar o desactivar los atajos de teclado de labwc"
+
+#: src/labwc.rs:500
+msgid "add a workspace"
+msgstr "añadir un área de trabajo"
+
+#: src/labwc.rs:501
+msgid "remove a workspace"
+msgstr "quitar un área de trabajo"
+
+#: src/labwc.rs:502
+msgid "log out (quit labwc)"
+msgstr "cerrar la sesión (salir de labwc)"
+
+#: src/labwc.rs:503
+msgid "reload labwc's settings"
+msgstr "recargar la configuración de labwc"
+
+#: src/labwc.rs:504
+msgid "nothing (shortcut turned off)"
+msgstr "nada (atajo desactivado)"
+
+#: src/labwc.rs:506
+#, no-c-format
+msgid "labwc action “{action}”"
+msgstr "acción de labwc «{action}»"
+
+#: src/labwc.rs:522
+msgid "Show desktop: minimize or restore all windows"
+msgstr "Mostrar el escritorio: minimizar o restaurar todas las ventanas"
+
+#: src/labwc.rs:525 data/programme.txt:125
+msgid "Screenshot of a window"
+msgstr "Captura de una ventana"
+
+#: src/labwc.rs:527
+msgid "Screenshot of an area"
+msgstr "Captura de un área"
+
+#: src/labwc.rs:529
+msgid "Take a screenshot (choose screen, window or area)"
+msgstr "Hacer una captura (elegir pantalla, ventana o área)"
+
+#: src/labwc.rs:533
+msgid "lock the screen"
+msgstr "bloquear la pantalla"
+
+#: src/labwc.rs:535
+msgid "end the session: log out, lock, restart, shut down"
+msgstr "terminar la sesión: cerrar la sesión, bloquear, reiniciar, apagar"
+
+#: src/labwc.rs:538
+msgid "this overview of the keyboard shortcuts"
+msgstr "este resumen de los atajos de teclado"
+
+#: src/labwc.rs:540
+msgid "open a terminal"
+msgstr "abrir un terminal"
+
+#: src/labwc.rs:543
+msgid "sound off or on"
+msgstr "silenciar o activar el sonido"
+
+#: src/labwc.rs:545
+msgid "louder"
+msgstr "subir el volumen"
+
+#: src/labwc.rs:547
+msgid "quieter"
+msgstr "bajar el volumen"
+
+#: src/labwc.rs:549
+msgid "volume"
+msgstr "volumen"
+
+#: src/labwc.rs:553
+msgid "screen brighter"
+msgstr "subir el brillo de la pantalla"
+
+#: src/labwc.rs:555
+msgid "screen darker"
+msgstr "bajar el brillo de la pantalla"
+
+#: src/labwc.rs:558
+msgid "command without a program"
+msgstr "orden sin programa"
+
+#: src/labwc.rs:560
+#, no-c-format
+msgid "starts “{program}”"
+msgstr "inicia «{program}»"
+
+#: src/labwc.rs:663
+#, no-c-format
+msgid "Source: {path}"
+msgstr "Origen: {path}"
+
+#: src/labwc.rs:665
+#, no-c-format
+msgid "Source: {path} (running session, labwc {pid})"
+msgstr "Origen: {path} (sesión en curso, labwc {pid})"
+
+#: src/labwc.rs:673
+#, no-c-format
+msgid "Source: {path} (labwc {pid}, default path)"
+msgstr "Origen: {path} (labwc {pid}, ruta predeterminada)"
+
+#: src/labwc.rs:680
+#, no-c-format
+msgid "Source: {path} (default path; no running labwc session found)"
+msgstr ""
+"Origen: {path} (ruta predeterminada; no se detectó ninguna sesión de labwc)"
+
+#: src/labwc.rs:685
+msgid "No rc.xml found: labwc's default bindings"
+msgstr "No se encontró rc.xml: atajos predeterminados de labwc"
+
+#: src/main.rs:71
+#, no-c-format
+msgid "rc.xml not readable ({problem}); showing labwc's default bindings"
+msgstr ""
+"rc.xml no legible ({problem}); se muestran los atajos predeterminados de labwc"
+
+#: src/main.rs:89 src/main.rs:215
+msgid "labwc default"
+msgstr "predeterminado de labwc"
+
+#: src/main.rs:188
+msgid "Keyboard Shortcuts"
+msgstr "Atajos de teclado"
+
+#: src/main.rs:196
+#, no-c-format
+msgid ""
+"The session's rc.xml could not be read ({problem}). Showing labwc's default bindings."
+msgstr ""
+"No se pudo leer el rc.xml de la sesión ({problem}). Se muestran los atajos predeterminados de labwc."
+
+#: src/main.rs:222
+#, no-c-format
+msgid "{origin}: {binding}"
+msgstr "{origin}: {binding}"
+
+#. TRANSLATORS: Programmname als Überschrift der Seite Programme
+#: src/main.rs:248 data/programme.txt:33
+msgid "Desktop"
+msgstr "Escritorio"
+
+#: src/main.rs:252
+msgid "Programs"
+msgstr "Programas"
+
+#: src/main.rs:265
+msgid "_Close"
+msgstr "_Cerrar"
+
+#: src/programme.rs:80
+#, no-c-format
+msgid "Programs: {path}"
+msgstr "Programas: {path}"
+
+#: src/programme.rs:89
+msgid "Programs: built-in list"
+msgstr "Programas: lista integrada"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:34 data/programme.txt:55
+msgctxt "key"
+msgid "F2"
+msgstr "F2"
+
+#: data/programme.txt:34
+msgid "Rename the selected icon"
+msgstr "Renombrar el icono seleccionado"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:35 data/programme.txt:53 data/programme.txt:102
+msgctxt "key"
+msgid "Ctrl+A"
+msgstr "Ctrl+A"
+
+#: data/programme.txt:35
+msgid "Select all icons"
+msgstr "Seleccionar todos los iconos"
+
+#: data/programme.txt:36
+msgid "Clear the selection"
+msgstr "Anular la selección"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:37
+msgctxt "key"
+msgid "Ctrl+Click"
+msgstr "Ctrl+Clic"
+
+#: data/programme.txt:37
+msgid "Add an icon to the selection or remove it"
+msgstr "Añadir un icono a la selección o quitarlo"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:38
+msgctxt "key"
+msgid "Shift+Click"
+msgstr "Mayús+Clic"
+
+#: data/programme.txt:38
+msgid "Select the icons up to here"
+msgstr "Seleccionar los iconos hasta aquí"
+
+#. TRANSLATORS: Programmname als Überschrift der Seite Programme
+#: data/programme.txt:40
+msgid "Files"
+msgstr "Archivos"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:41
+msgctxt "key"
+msgid "Ctrl+T"
+msgstr "Ctrl+T"
+
+#: data/programme.txt:41 data/programme.txt:81 data/programme.txt:88
+msgid "New Tab"
+msgstr "Nueva pestaña"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:42 data/programme.txt:94 data/programme.txt:126
+msgctxt "key"
+msgid "Ctrl+N"
+msgstr "Ctrl+N"
+
+#: data/programme.txt:42
+msgid "New Window"
+msgstr "Nueva ventana"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:43
+msgctxt "key"
+msgid "Shift+Ctrl+N"
+msgstr "Mayús+Ctrl+N"
+
+#: data/programme.txt:43
+msgid "Create Folder"
+msgstr "Crear carpeta"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:44 data/programme.txt:95 data/programme.txt:110
+msgctxt "key"
+msgid "Ctrl+O"
+msgstr "Ctrl+O"
+
+#: data/programme.txt:44 data/programme.txt:95 data/programme.txt:110
+msgid "Open"
+msgstr "Abrir"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:45
+msgctxt "key"
+msgid "Shift+Ctrl+O"
+msgstr "Mayús+Ctrl+O"
+
+#: data/programme.txt:45
+msgid "Open in New Tab"
+msgstr "Abrir en una pestaña nueva"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:46
+msgctxt "key"
+msgid "Middle mouse button"
+msgstr "Botón central del ratón"
+
+#: data/programme.txt:46
+msgid "Open the folder in a new tab"
+msgstr "Abrir la carpeta en una pestaña nueva"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:47
+msgctxt "key"
+msgid "Alt+Enter / Ctrl+I"
+msgstr "Alt+Intro / Ctrl+I"
+
+#: data/programme.txt:47
+msgid "Properties"
+msgstr "Propiedades"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:48
+msgctxt "key"
+msgid "Shift+Ctrl+W"
+msgstr "Mayús+Ctrl+W"
+
+#: data/programme.txt:48
+msgid "Close All Windows"
+msgstr "Cerrar todas las ventanas"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:49 data/programme.txt:98 data/programme.txt:112
+msgctxt "key"
+msgid "Ctrl+W"
+msgstr "Ctrl+W"
+
+#: data/programme.txt:49
+msgid "Close tab (the last one closes the window)"
+msgstr "Cerrar la pestaña (la última cierra la ventana)"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:50
+msgctxt "key"
+msgid "Ctrl+X"
+msgstr "Ctrl+X"
+
+#: data/programme.txt:50
+msgid "Cut"
+msgstr "Cortar"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:51 data/programme.txt:128 data/programme.txt:147
+msgctxt "key"
+msgid "Ctrl+C"
+msgstr "Ctrl+C"
+
+#: data/programme.txt:51 data/programme.txt:89
+msgid "Copy"
+msgstr "Copiar"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:52
+msgctxt "key"
+msgid "Ctrl+V"
+msgstr "Ctrl+V"
+
+#: data/programme.txt:52 data/programme.txt:90
+msgid "Paste"
+msgstr "Pegar"
+
+#: data/programme.txt:53 data/programme.txt:102
+msgid "Select All"
+msgstr "Seleccionar todo"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:54
+msgctxt "key"
+msgid "Shift+Ctrl+I"
+msgstr "Mayús+Ctrl+I"
+
+#: data/programme.txt:54
+msgid "Invert Selection"
+msgstr "Invertir la selección"
+
+#: data/programme.txt:55
+msgid "Rename"
+msgstr "Renombrar"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:56
+msgctxt "key"
+msgid "Shift+F2"
+msgstr "Mayús+F2"
+
+#: data/programme.txt:56
+msgid "Rename, selecting the whole name"
+msgstr "Renombrar seleccionando el nombre completo"
+
+#: data/programme.txt:57
+msgid "Move to Trash"
+msgstr "Mover a la papelera"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:58
+msgctxt "key"
+msgid "Shift+Delete"
+msgstr "Mayús+Supr"
+
+#: data/programme.txt:58
+msgid "Delete (asks first)"
+msgstr "Eliminar (con confirmación)"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:59 data/programme.txt:91 data/programme.txt:148
+msgctxt "key"
+msgid "Menu / Shift+F10"
+msgstr "Menú / Mayús+F10"
+
+#: data/programme.txt:59 data/programme.txt:91 data/programme.txt:148
+msgid "Context menu"
+msgstr "Menú contextual"
+
+#: data/programme.txt:60
+msgid "Stop loading"
+msgstr "Detener la carga"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:61
+msgctxt "key"
+msgid "Ctrl+R / F5"
+msgstr "Ctrl+R / F5"
+
+#: data/programme.txt:61
+msgid "Reload"
+msgstr "Recargar"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:62
+msgctxt "key"
+msgid "F9"
+msgstr "F9"
+
+#: data/programme.txt:62
+msgid "Sidebar on or off"
+msgstr "Mostrar u ocultar la barra lateral"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:63 data/programme.txt:105
+msgctxt "key"
+msgid "Ctrl+H"
+msgstr "Ctrl+H"
+
+#: data/programme.txt:63
+msgid "Show Hidden Files"
+msgstr "Mostrar archivos ocultos"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:64
+msgctxt "key"
+msgid "Ctrl++ / Ctrl+- / Ctrl+0"
+msgstr "Ctrl++ / Ctrl+- / Ctrl+0"
+
+#: data/programme.txt:64
+msgid "Zoom In / Zoom Out / Normal Size"
+msgstr "Ampliar / Reducir / Tamaño normal"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:65
+msgctxt "key"
+msgid "Ctrl+1"
+msgstr "Ctrl+1"
+
+#: data/programme.txt:65
+msgid "Icon View"
+msgstr "Vista de iconos"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:66
+msgctxt "key"
+msgid "Ctrl+2"
+msgstr "Ctrl+2"
+
+#: data/programme.txt:66
+msgid "List View"
+msgstr "Vista de lista"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:67
+msgctxt "key"
+msgid "Ctrl+3"
+msgstr "Ctrl+3"
+
+#: data/programme.txt:67
+msgid "Compact View"
+msgstr "Vista compacta"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:68
+msgctxt "key"
+msgid "Alt+↑"
+msgstr "Alt+↑"
+
+#: data/programme.txt:68
+msgid "Parent Folder"
+msgstr "Carpeta superior"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:69
+msgctxt "key"
+msgid "Alt+←"
+msgstr "Alt+←"
+
+#: data/programme.txt:69
+msgid "Back"
+msgstr "Atrás"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:70
+msgctxt "key"
+msgid "Alt+→"
+msgstr "Alt+→"
+
+#: data/programme.txt:70
+msgid "Forward"
+msgstr "Adelante"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:71
+msgctxt "key"
+msgid "Alt+Home"
+msgstr "Alt+Inicio"
+
+#: data/programme.txt:71
+msgid "Home Folder"
+msgstr "Carpeta personal"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:72
+msgctxt "key"
+msgid "Ctrl+L"
+msgstr "Ctrl+L"
+
+#: data/programme.txt:72
+msgid "Enter a location"
+msgstr "Introducir una ubicación"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:73 data/programme.txt:103
+msgctxt "key"
+msgid "Ctrl+F"
+msgstr "Ctrl+F"
+
+#: data/programme.txt:73
+msgid "Search (Esc stops the search or closes the bar)"
+msgstr "Buscar (Esc detiene la búsqueda o cierra la barra)"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:74
+msgctxt "key"
+msgid "Ctrl+D"
+msgstr "Ctrl+D"
+
+#: data/programme.txt:74
+msgid "Add Bookmark"
+msgstr "Añadir marcador"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:75 data/programme.txt:84
+msgctxt "key"
+msgid "Ctrl+Page Up / Ctrl+Page Down"
+msgstr "Ctrl+RePág / Ctrl+AvPág"
+
+#: data/programme.txt:75 data/programme.txt:84
+msgid "Previous / next tab"
+msgstr "Pestaña anterior / siguiente"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:76
+msgctxt "key"
+msgid "Shift+Ctrl+Page Up / Shift+Ctrl+Page Down"
+msgstr "Mayús+Ctrl+RePág / Mayús+Ctrl+AvPág"
+
+#: data/programme.txt:76 data/programme.txt:85
+msgid "Move tab left / right"
+msgstr "Mover la pestaña a la izquierda / derecha"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:77
+msgctxt "key"
+msgid "Alt+1 … Alt+0"
+msgstr "Alt+1 … Alt+0"
+
+#: data/programme.txt:77
+msgid "Switch to tab 1 … 10"
+msgstr "Cambiar a la pestaña 1 … 10"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:78
+msgctxt "key"
+msgid "F1"
+msgstr "F1"
+
+#: data/programme.txt:78
+msgid "Online Help"
+msgstr "Ayuda en línea"
+
+#. TRANSLATORS: Programmname als Überschrift der Seite Programme
+#: data/programme.txt:80
+msgid "Querencia Terminal"
+msgstr "Querencia Terminal"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:81
+msgctxt "key"
+msgid "Ctrl+Shift+T"
+msgstr "Ctrl+Mayús+T"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:82
+msgctxt "key"
+msgid "Ctrl+Shift+W"
+msgstr "Ctrl+Mayús+W"
+
+#: data/programme.txt:82 data/programme.txt:87
+msgid "Close tab"
+msgstr "Cerrar pestaña"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:83
+msgctxt "key"
+msgid "Ctrl+Shift+Q"
+msgstr "Ctrl+Mayús+Q"
+
+#: data/programme.txt:83
+msgid "Close window"
+msgstr "Cerrar ventana"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:85
+msgctxt "key"
+msgid "Ctrl+Shift+Page Up / Ctrl+Shift+Page Down"
+msgstr "Ctrl+Mayús+RePág / Ctrl+Mayús+AvPág"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:86
+msgctxt "key"
+msgid "Alt+1 … Alt+9"
+msgstr "Alt+1 … Alt+9"
+
+#: data/programme.txt:86
+msgid "Switch to tab 1 … 9"
+msgstr "Cambiar a la pestaña 1 … 9"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:87
+msgctxt "key"
+msgid "Middle-click on a tab"
+msgstr "Clic central en una pestaña"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:88
+msgctxt "key"
+msgid "Double-click on the empty tab bar"
+msgstr "Doble clic en la barra de pestañas vacía"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:89
+msgctxt "key"
+msgid "Ctrl+Shift+C"
+msgstr "Ctrl+Mayús+C"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:90
+msgctxt "key"
+msgid "Ctrl+Shift+V / Shift+Insert"
+msgstr "Ctrl+Mayús+V / Mayús+Insert"
+
+#. TRANSLATORS: Programmname als Überschrift der Seite Programme
+#: data/programme.txt:93
+msgid "Text Editor"
+msgstr "Editor de textos"
+
+#: data/programme.txt:94
+msgid "New Document"
+msgstr "Documento nuevo"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:96 data/programme.txt:127
+msgctxt "key"
+msgid "Ctrl+S"
+msgstr "Ctrl+S"
+
+#: data/programme.txt:96 data/programme.txt:127
+msgid "Save"
+msgstr "Guardar"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:97
+msgctxt "key"
+msgid "Ctrl+Shift+S"
+msgstr "Ctrl+Mayús+S"
+
+#: data/programme.txt:97
+msgid "Save As"
+msgstr "Guardar como"
+
+#: data/programme.txt:98
+msgid "Close Document"
+msgstr "Cerrar documento"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:99 data/programme.txt:113 data/programme.txt:143
+msgctxt "key"
+msgid "Ctrl+Q"
+msgstr "Ctrl+Q"
+
+#: data/programme.txt:99 data/programme.txt:113 data/programme.txt:143
+msgid "Quit"
+msgstr "Salir"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:100 data/programme.txt:130
+msgctxt "key"
+msgid "Ctrl+Z"
+msgstr "Ctrl+Z"
+
+#: data/programme.txt:100 data/programme.txt:130
+msgid "Undo"
+msgstr "Deshacer"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:101
+msgctxt "key"
+msgid "Ctrl+Shift+Z"
+msgstr "Ctrl+Mayús+Z"
+
+#: data/programme.txt:101 data/programme.txt:131
+msgid "Redo"
+msgstr "Rehacer"
+
+#: data/programme.txt:103
+msgid "Search"
+msgstr "Buscar"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:104
+msgctxt "key"
+msgid "Ctrl+G / Ctrl+Shift+G"
+msgstr "Ctrl+G / Ctrl+Mayús+G"
+
+#: data/programme.txt:104
+msgid "Find Next / Find Previous"
+msgstr "Buscar siguiente / Buscar anterior"
+
+#: data/programme.txt:105
+msgid "Replace"
+msgstr "Reemplazar"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:106
+msgctxt "key"
+msgid "Ctrl+I"
+msgstr "Ctrl+I"
+
+#: data/programme.txt:106
+msgid "Go to Line"
+msgstr "Ir a la línea"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:107
+msgctxt "key"
+msgid "Ctrl+Alt+Page Up / Ctrl+Alt+Page Down"
+msgstr "Ctrl+Alt+RePág / Ctrl+Alt+AvPág"
+
+#: data/programme.txt:107
+msgid "Previous / next document"
+msgstr "Documento anterior / siguiente"
+
+#. TRANSLATORS: Programmname als Überschrift der Seite Programme
+#: data/programme.txt:109
+msgid "Image Viewer"
+msgstr "Visor de imágenes"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:111
+msgctxt "key"
+msgid "Alt+Enter"
+msgstr "Alt+Intro"
+
+#: data/programme.txt:111
+msgid "Image Properties"
+msgstr "Propiedades de la imagen"
+
+#: data/programme.txt:112 data/programme.txt:129 data/programme.txt:152
+msgid "Close"
+msgstr "Cerrar"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:114
+msgctxt "key"
+msgid "Ctrl+R / Ctrl+Shift+R"
+msgstr "Ctrl+R / Ctrl+Mayús+R"
+
+#: data/programme.txt:114
+msgid "Rotate right / left"
+msgstr "Rotar a la derecha / izquierda"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:115
+msgctxt "key"
+msgid "+ / -"
+msgstr "+ / -"
+
+#: data/programme.txt:115
+msgid "Zoom In / Zoom Out"
+msgstr "Ampliar / Reducir"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:116
+msgctxt "key"
+msgid "Ctrl+0 / 1"
+msgstr "Ctrl+0 / 1"
+
+#: data/programme.txt:116
+msgid "Original Size"
+msgstr "Tamaño original"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:117
+msgctxt "key"
+msgid "F"
+msgstr "F"
+
+#: data/programme.txt:117
+msgid "Fit to Window"
+msgstr "Ajustar a la ventana"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:118
+msgctxt "key"
+msgid "F11"
+msgstr "F11"
+
+#: data/programme.txt:118
+msgid "Fullscreen"
+msgstr "Pantalla completa"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:119
+msgctxt "key"
+msgid "F5"
+msgstr "F5"
+
+#: data/programme.txt:119
+msgid "Slideshow"
+msgstr "Pase de diapositivas"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:120
+msgctxt "key"
+msgid "← / →"
+msgstr "← / →"
+
+#: data/programme.txt:120
+msgid "Previous / next image"
+msgstr "Imagen anterior / siguiente"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:121
+msgctxt "key"
+msgid "Home / End"
+msgstr "Inicio / Fin"
+
+#: data/programme.txt:121
+msgid "First / last image"
+msgstr "Primera / última imagen"
+
+#: data/programme.txt:124
+msgid "Take a screenshot (screen, window or area)"
+msgstr "Hacer una captura (pantalla, ventana o área)"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:125
+msgctxt "key"
+msgid "Alt+Print"
+msgstr "Alt+ImprPant"
+
+#: data/programme.txt:126
+msgid "New screenshot (in the editing window)"
+msgstr "Nueva captura (en la ventana de edición)"
+
+#: data/programme.txt:128
+msgid "Copy to Clipboard"
+msgstr "Copiar al portapapeles"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:129
+msgctxt "key"
+msgid "Ctrl+W / Ctrl+Q"
+msgstr "Ctrl+W / Ctrl+Q"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:131
+msgctxt "key"
+msgid "Ctrl+Shift+Z / Ctrl+Y"
+msgstr "Ctrl+Mayús+Z / Ctrl+Y"
+
+#: data/programme.txt:132
+msgid "Cancel the capture or the tool"
+msgstr "Cancelar la captura o la herramienta"
+
+#. TRANSLATORS: Programmname als Überschrift der Seite Programme
+#: data/programme.txt:134
+msgid "Calculator"
+msgstr "Calculadora"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:135
+msgctxt "key"
+msgid "0 … 9 / ,"
+msgstr "0 … 9 / ,"
+
+#: data/programme.txt:135
+msgid "Digits and decimal separator"
+msgstr "Cifras y separador decimal"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:136
+msgctxt "key"
+msgid "+ - * / %"
+msgstr "+ - * / %"
+
+#: data/programme.txt:136
+msgid "Operators and percent"
+msgstr "Operadores y porcentaje"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:137
+msgctxt "key"
+msgid "Enter / ="
+msgstr "Intro / ="
+
+#: data/programme.txt:137
+msgid "Result"
+msgstr "Resultado"
+
+#: data/programme.txt:138
+msgid "Delete the last digit"
+msgstr "Borrar la última cifra"
+
+#: data/programme.txt:139
+msgid "Clear entry (C)"
+msgstr "Borrar entrada (C)"
+
+#: data/programme.txt:140
+msgid "Clear all (AC)"
+msgstr "Borrar todo (AC)"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:141
+msgctxt "key"
+msgid "S / Q / R / V"
+msgstr "S / Q / R / V"
+
+#: data/programme.txt:141
+msgid "Square root / square / reciprocal / sign"
+msgstr "Raíz / cuadrado / recíproco / signo"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:142
+msgctxt "key"
+msgid "Ctrl+C / Ctrl+V"
+msgstr "Ctrl+C / Ctrl+V"
+
+#: data/programme.txt:142
+msgid "Copy / Paste"
+msgstr "Copiar / Pegar"
+
+#. TRANSLATORS: Programmname als Überschrift der Seite Programme
+#: data/programme.txt:145
+msgid "Search for Files"
+msgstr "Buscar archivos"
+
+#: data/programme.txt:146
+msgid "Move the match to the trash"
+msgstr "Mover el resultado a la papelera"
+
+#: data/programme.txt:147
+msgid "Copy path"
+msgstr "Copiar ruta"
+
+#: data/programme.txt:149
+msgid "Cancel search"
+msgstr "Cancelar búsqueda"
+
+#. TRANSLATORS: Programmname als Überschrift der Seite Programme
+#: data/programme.txt:151
+msgid "Keyboard Shortcuts (this window)"
+msgstr "Atajos de teclado (esta ventana)"
+
+#. TRANSLATORS: Tasten wie auf der Tastatur der Sprache (Strg/Ctrl, Umschalt/Maiusc/Mayús/Maj …); „+“, „ / “ und „ … “ bleiben
+#: data/programme.txt:152
+msgctxt "key"
+msgid "Esc / Ctrl+W"
+msgstr "Esc / Ctrl+W"

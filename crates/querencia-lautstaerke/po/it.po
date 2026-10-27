@@ -17,13 +17,125 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: src/main.rs:33
+msgid "Volume Control"
+msgstr "Controllo volume"
+
+#: src/main.rs:83 src/main.rs:135 src/main.rs:628
+msgid "_Close"
+msgstr "_Chiudi"
+
+#: src/main.rs:84
+msgid "_Quit"
+msgstr "_Esci"
+
+#: src/main.rs:86
+msgid "_About"
+msgstr "_Informazioni"
+
+#: src/main.rs:88
+msgid "_File"
+msgstr "_File"
+
+#: src/main.rs:89
+msgid "_Help"
+msgstr "A_iuto"
+
+#: src/main.rs:124
+msgid "_Playback"
+msgstr "_Riproduzione"
+
+#: src/main.rs:128
+msgid "_Recording"
+msgstr "Re_gistrazione"
+
+#: src/main.rs:132
+msgid "_Applications"
+msgstr "_Applicazioni"
+
+#: src/main.rs:161 src/model.rs:287
+msgid "Connecting to the audio service…"
+msgstr "Connessione al servizio audio…"
+
+#: src/main.rs:164
+msgid ""
+"No audio service. As soon as PipeWire or PulseAudio is running, the volume control connects by itself."
+msgstr ""
+"Nessun servizio audio. Appena PipeWire o PulseAudio è in esecuzione, il controllo volume si collega da solo."
+
+#: src/main.rs:193
+#, no-c-format
+msgid "{percent} %"
+msgstr "{percent}%"
+
+#: src/main.rs:235
+msgid "_Mute"
+msgstr "_Muto"
+
+#: src/main.rs:238
+msgid "_Output device:"
+msgstr "Dispositivo di _uscita:"
+
+#: src/main.rs:240
+msgid "_Input device:"
+msgstr "_Dispositivo di ingresso:"
+
+#: src/main.rs:247
+msgid "_Volume:"
+msgstr "_Volume:"
+
+#: src/main.rs:341
+msgid "No device"
+msgstr "Nessun dispositivo"
+
+#: src/main.rs:424
+msgid "No application is playing or recording sound right now."
+msgstr "Nessuna applicazione sta riproducendo o registrando audio."
+
+#: src/main.rs:503
+msgid "Mute"
+msgstr "Muto"
+
+#: src/main.rs:560
+#, no-c-format
+msgid "{stream} (recording)"
+msgstr "{stream} (registrazione)"
+
+#: src/main.rs:572
+#, no-c-format
+msgid "About {program}"
+msgstr "Informazioni su {program}"
+
+#: src/main.rs:592
+#, no-c-format
+msgid "Version {version}"
+msgstr "Versione {version}"
+
+#: src/main.rs:596
+msgid "Adjust the volume of devices and applications"
+msgstr "Regola il volume dei dispositivi e delle applicazioni"
+
+#: src/main.rs:597
+msgid "Part of Querencia Desktop"
+msgstr "Parte di Querencia Desktop"
+
+#: src/main.rs:600
+msgid "Audio service: none"
+msgstr "Servizio audio: nessuno"
+
+#: src/main.rs:602
+#, no-c-format
+msgid "Audio service: {server}"
+msgstr "Servizio audio: {server}"
+
+#: src/main.rs:604
+#, no-c-format
+msgid "License: {license}"
+msgstr "Licenza: {license}"
+
 #: src/model.rs:286
 msgid "No audio service"
 msgstr "Nessun servizio audio"
-
-#: src/model.rs:287
-msgid "Connecting to the audio service…"
-msgstr "Connessione al servizio audio…"
 
 #: src/model.rs:289
 msgid "No output device"

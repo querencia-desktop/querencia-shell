@@ -1,5 +1,5 @@
 [Desktop Entry]
-# Querencia Tastenkürzel 0.1.0 (G2-R). Desktop-ID = GApplication-ID
+# Querencia Tastenkürzel 0.1.0 (G2-R), it/es/fr seit 0.2.3. Desktop-ID = GApplication-ID
 # org.querencia.Kuerzel. Exec/TryExec/Icon werden bei der Integration auf
 # die versionierte, schreibgeschützte Ablage gesetzt
 # (integration/kuerzel-integrieren.sh); Erscheint im Panel unter Zubehör.
@@ -7,10 +7,19 @@ Type=Application
 Version=1.5
 Name=Tastenkürzel
 Name[de]=Tastenkürzel
+Name[es]=Atajos de teclado
+Name[fr]=Raccourcis clavier
+Name[it]=Scorciatoie da tastiera
 GenericName=Keyboard Shortcuts
 GenericName[de]=Übersicht der Tastenkürzel
+GenericName[es]=Resumen de los atajos de teclado
+GenericName[fr]=Aperçu des raccourcis clavier
+GenericName[it]=Panoramica delle scorciatoie da tastiera
 Comment=Show the keyboard shortcuts of the desktop and the Querencia programs
 Comment[de]=Tastenkürzel der Arbeitsfläche und der Querencia-Programme anzeigen
+Comment[es]=Mostrar los atajos de teclado del escritorio y de los programas de Querencia
+Comment[fr]=Afficher les raccourcis clavier du bureau et des programmes Querencia
+Comment[it]=Mostra le scorciatoie da tastiera della scrivania e dei programmi Querencia
 Exec=querencia-kuerzel
 TryExec=querencia-kuerzel
 Icon=org.querencia.Kuerzel
@@ -18,5 +27,8 @@ Terminal=false
 Categories=GTK;Utility;
 Keywords=shortcuts;keyboard;keys;hotkeys;
 Keywords[de]=Tastenkürzel;Tastatur;Kürzel;Tasten;Tastenkombination;
+Keywords[es]=atajos;teclado;teclas;combinaciones;
+Keywords[fr]=raccourcis;clavier;touches;combinaisons;
+Keywords[it]=scorciatoie;tastiera;tasti;combinazioni;
 StartupNotify=true
 StartupWMClass=org.querencia.Kuerzel

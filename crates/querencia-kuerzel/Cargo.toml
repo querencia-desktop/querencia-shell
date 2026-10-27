@@ -1,6 +1,6 @@
 [package]
 name = "querencia-kuerzel"
-version = "0.2.2"
+version = "0.2.3"
 description = "Querencia Tastenkürzel: Übersicht der aktiven labwc-Kürzel und der Kürzel der Querencia-Programme"
 edition.workspace = true
 rust-version.workspace = true
@@ -11,3 +11,7 @@ license.workspace = true
 # Paket in Cargo.lock, der Offline-Bau bleibt möglich. rc.xml liest ein
 # kleiner eigener Leser (xml.rs), keine XML-Bibliothek.
 gtk4 = { version = "0.11", features = ["v4_10"] }
+# Übersetzungen über GNU gettext (Textdomäne querencia-kuerzel, po/) wie
+# querencia-lautstaerke und querencia-panel: dieselbe Version, schon in
+# Cargo.lock; gettext-system nimmt das gettext der glibc.
+gettext-rs = { version = "0.8", features = ["gettext-system"] }

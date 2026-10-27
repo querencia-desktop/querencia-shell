@@ -1,5 +1,31 @@
 # Änderungen – querencia-kuerzel
 
+## 0.2.3 – 2026-10-27
+
+Italienisch, Spanisch, Französisch (i18n-reste, 08 QD-055):
+
+- Alle Texte über GNU gettext, Textdomäne `querencia-kuerzel` (`po/`,
+  `werkzeug/i18n.py`, `src/i18n.rs`): msgid englisch, `de.po` mit dem
+  bisherigen Wortlaut, dazu `it.po`, `es.po`, `fr.po` (300 Texte) nach der
+  Begriffstabelle . Kataloge neben der Binary
+  (`share/locale`), sonst im Präfix, sonst `/usr/share/locale`.
+- `data/programme.txt` ist jetzt englisch (Quelltext der msgids):
+  Überschriften und Beschreibungen übersetzt der Katalog, Tastenfolgen mit
+  dem Kontext „key“. `werkzeug/i18n.py pot` liest die Datei mit. Eine Datei
+  gleichen Namens unter `$XDG_DATA_HOME`/`$XDG_DATA_DIRS` wird ebenso
+  übersetzt, soweit ihre Zeilen im Katalog stehen.
+- Tastennamen je Sprache wie auf der Tastatur (de Strg/Umschalt/Bild↑,
+  it Maiusc/Invio/PagSu, es Mayús/Intro/RePág, fr Maj/Entrée/Pg préc).
+- labwc-Beschreibungen als ganze Sätze statt aus Bausteinen (Arbeitsflächen-
+  ziele, Richtungen), damit Artikel und Präpositionen in jeder Sprache
+  stimmen; Deutsch unverändert.
+- Desktop-Datei mit Name, GenericName, Comment, Keywords in it/es/fr.
+- Tests prüfen die englischen msgids; `german_catalog_is_complete` prüft,
+  dass jede msgid in `de.po` steht. Fehlermeldungen auf stderr und
+  `--hilfe` bleiben deutsch (Protokoll).
+- Neue Abhängigkeit `gettext-rs` 0.8 (wie Panel und Lautstärke, schon in
+  Cargo.lock).
+
 ## 0.2.2 – 2026-10-24
 
 Integrationsstand 0.2.2-2 (Tags `kuerzel/0.2.2-2`, `kuerzel/0.2.2-2-int`):

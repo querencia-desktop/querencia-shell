@@ -5,6 +5,13 @@
 # Kürzel werden mit „+“ verbunden, mehrere Kürzel für dasselbe mit „ / “.
 # Zeilen mit „#“ sind Kommentare. Die Reihenfolge bleibt erhalten.
 #
+# Seit Kürzel 0.2.3 englisch (msgid): Überschriften und Beschreibungen
+# übersetzt der Katalog po/querencia-kuerzel.pot, die Tastenfolgen mit dem
+# Kontext „key“ (englische Tastennamen Ctrl, Shift, Enter, Delete, Insert,
+# Home, End, Page Up, Page Down, Print, Backspace, Menu, Esc, Click). Nach
+# jeder Änderung: python3 werkzeug/i18n.py pot && update, alle po/*.po
+# ergänzen, pruefen.
+#
 # Quellen (G2-R, 18.10.2026), jeweils die im Programm fest eingebauten
 # Kürzel des Live-Stands:
 #   Arbeitsfläche   querencia-runtime crates/querencia-desktop (QE-02)
@@ -23,123 +30,123 @@
 #   Dateisuche      querencia-dateisuche src/fenster.rs (0.1.0)
 # Ändert ein Programm seine Kürzel, muss diese Datei mitgezogen werden.
 
-[Arbeitsfläche]
-F2 = Ausgewähltes Symbol umbenennen
-Strg+A = Alle Symbole auswählen
-Esc = Auswahl aufheben
-Strg+Klick = Symbol zur Auswahl hinzufügen oder entfernen
-Umschalt+Klick = Symbole bis hierher auswählen
+[Desktop]
+F2 = Rename the selected icon
+Ctrl+A = Select all icons
+Esc = Clear the selection
+Ctrl+Click = Add an icon to the selection or remove it
+Shift+Click = Select the icons up to here
 
-[Querencia Dateien]
-Strg+T = Neuer Reiter
-Strg+N = Neues Fenster
-Umschalt+Strg+N = Ordner anlegen
-Strg+O = Öffnen
-Umschalt+Strg+O = In neuem Reiter öffnen
-Mittlere Maustaste = Ordner in neuem Reiter öffnen
-Alt+Eingabe / Strg+I = Eigenschaften
-Umschalt+Strg+W = Alle Fenster schließen
-Strg+W = Reiter schließen (der letzte schließt das Fenster)
-Strg+X = Ausschneiden
-Strg+C = Kopieren
-Strg+V = Einfügen
-Strg+A = Alles auswählen
-Umschalt+Strg+I = Auswahl umkehren
-F2 = Umbenennen
-Umschalt+F2 = Umbenennen, ganzen Namen markieren
-Entf = In den Papierkorb verschieben
-Umschalt+Entf = Löschen (mit Nachfrage)
-Menü / Umschalt+F10 = Kontextmenü
-Esc = Laden anhalten
-Strg+R / F5 = Aktualisieren
-F9 = Seitenleiste ein oder aus
-Strg+H = Verborgene Dateien anzeigen
-Strg++ / Strg+- / Strg+0 = Vergrößern / Verkleinern / Normale Größe
-Strg+1 = Symbolansicht
-Strg+2 = Listenansicht
-Strg+3 = Kompaktansicht
-Alt+↑ = Übergeordneter Ordner
-Alt+← = Zurück
-Alt+→ = Vor
-Alt+Pos1 = Persönlicher Ordner
-Strg+L = Ort eingeben
-Strg+F = Suchen (Esc hält die Suche an oder schließt die Leiste)
-Strg+D = Lesezeichen hinzufügen
-Strg+Bild↑ / Strg+Bild↓ = Vorheriger / nächster Reiter
-Umschalt+Strg+Bild↑ / Umschalt+Strg+Bild↓ = Reiter nach links / rechts verschieben
-Alt+1 … Alt+0 = Zu Reiter 1 … 10 wechseln
-F1 = Online-Hilfe
+[Files]
+Ctrl+T = New Tab
+Ctrl+N = New Window
+Shift+Ctrl+N = Create Folder
+Ctrl+O = Open
+Shift+Ctrl+O = Open in New Tab
+Middle mouse button = Open the folder in a new tab
+Alt+Enter / Ctrl+I = Properties
+Shift+Ctrl+W = Close All Windows
+Ctrl+W = Close tab (the last one closes the window)
+Ctrl+X = Cut
+Ctrl+C = Copy
+Ctrl+V = Paste
+Ctrl+A = Select All
+Shift+Ctrl+I = Invert Selection
+F2 = Rename
+Shift+F2 = Rename, selecting the whole name
+Delete = Move to Trash
+Shift+Delete = Delete (asks first)
+Menu / Shift+F10 = Context menu
+Esc = Stop loading
+Ctrl+R / F5 = Reload
+F9 = Sidebar on or off
+Ctrl+H = Show Hidden Files
+Ctrl++ / Ctrl+- / Ctrl+0 = Zoom In / Zoom Out / Normal Size
+Ctrl+1 = Icon View
+Ctrl+2 = List View
+Ctrl+3 = Compact View
+Alt+↑ = Parent Folder
+Alt+← = Back
+Alt+→ = Forward
+Alt+Home = Home Folder
+Ctrl+L = Enter a location
+Ctrl+F = Search (Esc stops the search or closes the bar)
+Ctrl+D = Add Bookmark
+Ctrl+Page Up / Ctrl+Page Down = Previous / next tab
+Shift+Ctrl+Page Up / Shift+Ctrl+Page Down = Move tab left / right
+Alt+1 … Alt+0 = Switch to tab 1 … 10
+F1 = Online Help
 
 [Querencia Terminal]
-Strg+Umschalt+T = Neuer Reiter
-Strg+Umschalt+W = Reiter schließen
-Strg+Umschalt+Q = Fenster schließen
-Strg+Bild↑ / Strg+Bild↓ = Vorheriger / nächster Reiter
-Strg+Umschalt+Bild↑ / Strg+Umschalt+Bild↓ = Reiter nach links / rechts verschieben
-Alt+1 … Alt+9 = Zu Reiter 1 … 9 wechseln
-Mittelklick auf einen Reiter = Reiter schließen
-Doppelklick auf die freie Reiterleiste = Neuer Reiter
-Strg+Umschalt+C = Kopieren
-Strg+Umschalt+V / Umschalt+Einfg = Einfügen
-Menü / Umschalt+F10 = Kontextmenü
+Ctrl+Shift+T = New Tab
+Ctrl+Shift+W = Close tab
+Ctrl+Shift+Q = Close window
+Ctrl+Page Up / Ctrl+Page Down = Previous / next tab
+Ctrl+Shift+Page Up / Ctrl+Shift+Page Down = Move tab left / right
+Alt+1 … Alt+9 = Switch to tab 1 … 9
+Middle-click on a tab = Close tab
+Double-click on the empty tab bar = New Tab
+Ctrl+Shift+C = Copy
+Ctrl+Shift+V / Shift+Insert = Paste
+Menu / Shift+F10 = Context menu
 
-[Texteditor]
-Strg+N = Neues Dokument
-Strg+O = Öffnen
-Strg+S = Speichern
-Strg+Umschalt+S = Speichern unter
-Strg+W = Dokument schließen
-Strg+Q = Beenden
-Strg+Z = Rückgängig
-Strg+Umschalt+Z = Wiederholen
-Strg+A = Alles auswählen
-Strg+F = Suchen
-Strg+G / Strg+Umschalt+G = Weitersuchen / Rückwärts suchen
-Strg+H = Ersetzen
-Strg+I = Gehe zu Zeile
-Strg+Alt+Bild↑ / Strg+Alt+Bild↓ = Voriges / nächstes Dokument
+[Text Editor]
+Ctrl+N = New Document
+Ctrl+O = Open
+Ctrl+S = Save
+Ctrl+Shift+S = Save As
+Ctrl+W = Close Document
+Ctrl+Q = Quit
+Ctrl+Z = Undo
+Ctrl+Shift+Z = Redo
+Ctrl+A = Select All
+Ctrl+F = Search
+Ctrl+G / Ctrl+Shift+G = Find Next / Find Previous
+Ctrl+H = Replace
+Ctrl+I = Go to Line
+Ctrl+Alt+Page Up / Ctrl+Alt+Page Down = Previous / next document
 
-[Bildbetrachter]
-Strg+O = Öffnen
-Alt+Eingabe = Bildeigenschaften
-Strg+W = Schließen
-Strg+Q = Beenden
-Strg+R / Strg+Umschalt+R = Nach rechts / links drehen
-+ / - = Vergrößern / Verkleinern
-Strg+0 / 1 = Originalgröße
-F = An Fenster anpassen
-F11 = Vollbild
-F5 = Diaschau
-← / → = Voriges / nächstes Bild
-Pos1 / Ende = Erstes / letztes Bild
+[Image Viewer]
+Ctrl+O = Open
+Alt+Enter = Image Properties
+Ctrl+W = Close
+Ctrl+Q = Quit
+Ctrl+R / Ctrl+Shift+R = Rotate right / left
++ / - = Zoom In / Zoom Out
+Ctrl+0 / 1 = Original Size
+F = Fit to Window
+F11 = Fullscreen
+F5 = Slideshow
+← / → = Previous / next image
+Home / End = First / last image
 
-[Bildschirmfoto]
-Druck = Bildschirmfoto aufnehmen (Bildschirm, Fenster oder Bereich)
-Alt+Druck = Bildschirmfoto eines Fensters
-Strg+N = Neues Bildschirmfoto (im Bearbeitungsfenster)
-Strg+S = Speichern
-Strg+C = In die Zwischenablage kopieren
-Strg+W / Strg+Q = Schließen
-Strg+Z = Rückgängig
-Strg+Umschalt+Z / Strg+Y = Wiederholen
-Esc = Aufnahme oder Werkzeug abbrechen
+[Screenshot]
+Print = Take a screenshot (screen, window or area)
+Alt+Print = Screenshot of a window
+Ctrl+N = New screenshot (in the editing window)
+Ctrl+S = Save
+Ctrl+C = Copy to Clipboard
+Ctrl+W / Ctrl+Q = Close
+Ctrl+Z = Undo
+Ctrl+Shift+Z / Ctrl+Y = Redo
+Esc = Cancel the capture or the tool
 
-[Taschenrechner]
-0 … 9 / , = Ziffern und Komma
-+ - * / % = Rechenzeichen und Prozent
-Eingabe / = = Ergebnis
-Rücktaste = Letzte Ziffer löschen
-Entf = Eingabe löschen (C)
-Esc = Alles löschen (AC)
-S / Q / R / V = Wurzel / Quadrat / Kehrwert / Vorzeichen
-Strg+C / Strg+V = Kopieren / Einfügen
-Strg+Q = Beenden
+[Calculator]
+0 … 9 / , = Digits and decimal separator
++ - * / % = Operators and percent
+Enter / = = Result
+Backspace = Delete the last digit
+Delete = Clear entry (C)
+Esc = Clear all (AC)
+S / Q / R / V = Square root / square / reciprocal / sign
+Ctrl+C / Ctrl+V = Copy / Paste
+Ctrl+Q = Quit
 
-[Nach Dateien suchen]
-Entf = Fundstelle in den Papierkorb
-Strg+C = Pfad kopieren
-Menü / Umschalt+F10 = Kontextmenü
-Esc = Suche abbrechen
+[Search for Files]
+Delete = Move the match to the trash
+Ctrl+C = Copy path
+Menu / Shift+F10 = Context menu
+Esc = Cancel search
 
-[Tastenkürzel (dieses Fenster)]
-Esc / Strg+W = Schließen
+[Keyboard Shortcuts (this window)]
+Esc / Ctrl+W = Close

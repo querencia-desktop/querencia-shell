@@ -17,12 +17,123 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/model.rs:286
-msgid "No audio service"
+#: src/main.rs:33
+msgid "Volume Control"
 msgstr ""
 
-#: src/model.rs:287
+#: src/main.rs:83 src/main.rs:135 src/main.rs:628
+msgid "_Close"
+msgstr ""
+
+#: src/main.rs:84
+msgid "_Quit"
+msgstr ""
+
+#: src/main.rs:86
+msgid "_About"
+msgstr ""
+
+#: src/main.rs:88
+msgid "_File"
+msgstr ""
+
+#: src/main.rs:89
+msgid "_Help"
+msgstr ""
+
+#: src/main.rs:124
+msgid "_Playback"
+msgstr ""
+
+#: src/main.rs:128
+msgid "_Recording"
+msgstr ""
+
+#: src/main.rs:132
+msgid "_Applications"
+msgstr ""
+
+#: src/main.rs:161 src/model.rs:287
 msgid "Connecting to the audio service…"
+msgstr ""
+
+#: src/main.rs:164
+msgid ""
+"No audio service. As soon as PipeWire or PulseAudio is running, the volume control connects by itself."
+msgstr ""
+
+#: src/main.rs:193
+#, no-c-format
+msgid "{percent} %"
+msgstr ""
+
+#: src/main.rs:235
+msgid "_Mute"
+msgstr ""
+
+#: src/main.rs:238
+msgid "_Output device:"
+msgstr ""
+
+#: src/main.rs:240
+msgid "_Input device:"
+msgstr ""
+
+#: src/main.rs:247
+msgid "_Volume:"
+msgstr ""
+
+#: src/main.rs:341
+msgid "No device"
+msgstr ""
+
+#: src/main.rs:424
+msgid "No application is playing or recording sound right now."
+msgstr ""
+
+#: src/main.rs:503
+msgid "Mute"
+msgstr ""
+
+#: src/main.rs:560
+#, no-c-format
+msgid "{stream} (recording)"
+msgstr ""
+
+#: src/main.rs:572
+#, no-c-format
+msgid "About {program}"
+msgstr ""
+
+#: src/main.rs:592
+#, no-c-format
+msgid "Version {version}"
+msgstr ""
+
+#: src/main.rs:596
+msgid "Adjust the volume of devices and applications"
+msgstr ""
+
+#: src/main.rs:597
+msgid "Part of Querencia Desktop"
+msgstr ""
+
+#: src/main.rs:600
+msgid "Audio service: none"
+msgstr ""
+
+#: src/main.rs:602
+#, no-c-format
+msgid "Audio service: {server}"
+msgstr ""
+
+#: src/main.rs:604
+#, no-c-format
+msgid "License: {license}"
+msgstr ""
+
+#: src/model.rs:286
+msgid "No audio service"
 msgstr ""
 
 #: src/model.rs:289
