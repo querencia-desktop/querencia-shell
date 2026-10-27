@@ -612,7 +612,7 @@ msgstr "Svuotamento del cestino…"
 msgid "File Operations"
 msgstr "Operazioni sui file"
 
-#: src/fortschritt.rs:411 src/operationen.rs:885 src/operationen.rs:918 src/operationen.rs:1128
+#: src/fortschritt.rs:411 src/operationen.rs:885 src/operationen.rs:918
 msgid "Cancel"
 msgstr "Annulla"
 
@@ -930,11 +930,11 @@ msgstr "S_vuota cestino…"
 msgid "Close _All Windows"
 msgstr "Chiudi _tutte le finestre"
 
-#: src/menue.rs:318 src/operationen.rs:1066
+#: src/menue.rs:318 src/operationen.rs:1078
 msgid "_Undo"
 msgstr "_Annulla"
 
-#: src/menue.rs:324 src/operationen.rs:1068
+#: src/menue.rs:324 src/operationen.rs:1080
 msgid "_Redo"
 msgstr "_Ripeti"
 
@@ -1544,7 +1544,7 @@ msgstr[1] "Eliminare definitivamente i {n} elementi selezionati?"
 msgid "If you delete an item, it will be permanently lost."
 msgstr "Se si elimina un elemento, andrà perso definitivamente."
 
-#: src/operationen.rs:885 src/operationen.rs:1128
+#: src/operationen.rs:885
 msgid "Delete"
 msgstr "Elimina"
 
@@ -1573,37 +1573,21 @@ msgstr "Nuovo documento"
 msgid "Template"
 msgstr "Modello"
 
-#: src/operationen.rs:1065
+#: src/operationen.rs:1076
 #, no-c-format
 msgid "_Undo: {what}"
 msgstr "_Annulla: {what}"
 
-#: src/operationen.rs:1067
+#: src/operationen.rs:1079
 #, no-c-format
 msgid "_Redo: {what}"
 msgstr "_Ripeti: {what}"
 
-#: src/operationen.rs:1114
-#, no-c-format
-msgid "Delete the copy “{name}”?"
-msgstr "Eliminare la copia «{name}»?"
-
-#: src/operationen.rs:1118
-#, no-c-format
-msgid "Delete the {n} copied item?"
-msgid_plural "Delete the {n} copied items?"
-msgstr[0] "Eliminare {n} elemento copiato?"
-msgstr[1] "Eliminare i {n} elementi copiati?"
-
-#: src/operationen.rs:1127
-msgid "Undoing the copy deletes the copies permanently."
-msgstr "Annullando la copia, le copie vengono eliminate definitivamente."
-
-#: src/operationen.rs:1199
+#: src/operationen.rs:1172
 msgid "The operation cannot be undone."
 msgstr "L’operazione non può essere annullata."
 
-#: src/operationen.rs:1200
+#: src/operationen.rs:1173
 msgid "The items are no longer where the operation left them."
 msgstr "Gli elementi non si trovano più dove l’operazione li aveva lasciati."
 
@@ -1730,60 +1714,65 @@ msgctxt "accel"
 msgid "<Shift><Control>PageDown"
 msgstr "<Shift><Control>Pag↓"
 
-#: src/rueckgaengig.rs:271
+#: src/rueckgaengig.rs:268
+#, no-c-format
+msgid "{what} (to the trash)"
+msgstr "{what} (nel cestino)"
+
+#: src/rueckgaengig.rs:286
 #, no-c-format
 msgid "Copy of “{name}”"
 msgstr "Copia di «{name}»"
 
-#: src/rueckgaengig.rs:272
+#: src/rueckgaengig.rs:287
 #, no-c-format
 msgid "Copy of {n} item"
 msgid_plural "Copy of {n} items"
 msgstr[0] "Copia di {n} elemento"
 msgstr[1] "Copia di {n} elementi"
 
-#: src/rueckgaengig.rs:273
+#: src/rueckgaengig.rs:288
 #, no-c-format
 msgid "Move of “{name}”"
 msgstr "Spostamento di «{name}»"
 
-#: src/rueckgaengig.rs:274
+#: src/rueckgaengig.rs:289
 #, no-c-format
 msgid "Move of {n} item"
 msgid_plural "Move of {n} items"
 msgstr[0] "Spostamento di {n} elemento"
 msgstr[1] "Spostamento di {n} elementi"
 
-#: src/rueckgaengig.rs:275
+#: src/rueckgaengig.rs:290
 #, no-c-format
 msgid "Link to “{name}”"
 msgstr "Collegamento a «{name}»"
 
-#: src/rueckgaengig.rs:276
+#: src/rueckgaengig.rs:291
 #, no-c-format
 msgid "Links to {n} item"
 msgid_plural "Links to {n} items"
 msgstr[0] "Collegamenti a {n} elemento"
 msgstr[1] "Collegamenti a {n} elementi"
 
-#: src/rueckgaengig.rs:277
+#: src/rueckgaengig.rs:292
 #, no-c-format
 msgid "Rename of “{name}”"
 msgstr "Rinomina di «{name}»"
 
-#: src/rueckgaengig.rs:278
+#: src/rueckgaengig.rs:293
 #, no-c-format
 msgid "Move of “{name}” to the trash"
 msgstr "Spostamento di «{name}» nel cestino"
 
-#: src/rueckgaengig.rs:279
+#: src/rueckgaengig.rs:294
 #, no-c-format
 msgid "Move of {n} item to the trash"
 msgid_plural "Move of {n} items to the trash"
 msgstr[0] "Spostamento di {n} elemento nel cestino"
 msgstr[1] "Spostamento di {n} elementi nel cestino"
 
-#: src/rueckgaengig.rs:285
+#: src/rueckgaengig.rs:300
 #, no-c-format
 msgid "Creation of “{name}”"
 msgstr "Creazione di «{name}»"

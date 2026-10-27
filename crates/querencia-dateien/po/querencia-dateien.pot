@@ -610,7 +610,7 @@ msgstr ""
 msgid "File Operations"
 msgstr ""
 
-#: src/fortschritt.rs:411 src/operationen.rs:885 src/operationen.rs:918 src/operationen.rs:1128
+#: src/fortschritt.rs:411 src/operationen.rs:885 src/operationen.rs:918
 msgid "Cancel"
 msgstr ""
 
@@ -924,11 +924,11 @@ msgstr ""
 msgid "Close _All Windows"
 msgstr ""
 
-#: src/menue.rs:318 src/operationen.rs:1066
+#: src/menue.rs:318 src/operationen.rs:1078
 msgid "_Undo"
 msgstr ""
 
-#: src/menue.rs:324 src/operationen.rs:1068
+#: src/menue.rs:324 src/operationen.rs:1080
 msgid "_Redo"
 msgstr ""
 
@@ -1510,7 +1510,7 @@ msgstr[1] ""
 msgid "If you delete an item, it will be permanently lost."
 msgstr ""
 
-#: src/operationen.rs:885 src/operationen.rs:1128
+#: src/operationen.rs:885
 msgid "Delete"
 msgstr ""
 
@@ -1538,37 +1538,21 @@ msgstr ""
 msgid "Template"
 msgstr ""
 
-#: src/operationen.rs:1065
+#: src/operationen.rs:1076
 #, no-c-format
 msgid "_Undo: {what}"
 msgstr ""
 
-#: src/operationen.rs:1067
+#: src/operationen.rs:1079
 #, no-c-format
 msgid "_Redo: {what}"
 msgstr ""
 
-#: src/operationen.rs:1114
-#, no-c-format
-msgid "Delete the copy “{name}”?"
-msgstr ""
-
-#: src/operationen.rs:1118
-#, no-c-format
-msgid "Delete the {n} copied item?"
-msgid_plural "Delete the {n} copied items?"
-msgstr[0] ""
-msgstr[1] ""
-
-#: src/operationen.rs:1127
-msgid "Undoing the copy deletes the copies permanently."
-msgstr ""
-
-#: src/operationen.rs:1199
+#: src/operationen.rs:1172
 msgid "The operation cannot be undone."
 msgstr ""
 
-#: src/operationen.rs:1200
+#: src/operationen.rs:1173
 msgid "The items are no longer where the operation left them."
 msgstr ""
 
@@ -1695,60 +1679,65 @@ msgctxt "accel"
 msgid "<Shift><Control>PageDown"
 msgstr ""
 
-#: src/rueckgaengig.rs:271
+#: src/rueckgaengig.rs:268
+#, no-c-format
+msgid "{what} (to the trash)"
+msgstr ""
+
+#: src/rueckgaengig.rs:286
 #, no-c-format
 msgid "Copy of “{name}”"
 msgstr ""
 
-#: src/rueckgaengig.rs:272
+#: src/rueckgaengig.rs:287
 #, no-c-format
 msgid "Copy of {n} item"
 msgid_plural "Copy of {n} items"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/rueckgaengig.rs:273
+#: src/rueckgaengig.rs:288
 #, no-c-format
 msgid "Move of “{name}”"
 msgstr ""
 
-#: src/rueckgaengig.rs:274
+#: src/rueckgaengig.rs:289
 #, no-c-format
 msgid "Move of {n} item"
 msgid_plural "Move of {n} items"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/rueckgaengig.rs:275
+#: src/rueckgaengig.rs:290
 #, no-c-format
 msgid "Link to “{name}”"
 msgstr ""
 
-#: src/rueckgaengig.rs:276
+#: src/rueckgaengig.rs:291
 #, no-c-format
 msgid "Links to {n} item"
 msgid_plural "Links to {n} items"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/rueckgaengig.rs:277
+#: src/rueckgaengig.rs:292
 #, no-c-format
 msgid "Rename of “{name}”"
 msgstr ""
 
-#: src/rueckgaengig.rs:278
+#: src/rueckgaengig.rs:293
 #, no-c-format
 msgid "Move of “{name}” to the trash"
 msgstr ""
 
-#: src/rueckgaengig.rs:279
+#: src/rueckgaengig.rs:294
 #, no-c-format
 msgid "Move of {n} item to the trash"
 msgid_plural "Move of {n} items to the trash"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/rueckgaengig.rs:285
+#: src/rueckgaengig.rs:300
 #, no-c-format
 msgid "Creation of “{name}”"
 msgstr ""

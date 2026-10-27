@@ -832,8 +832,10 @@ Nautilus 3.4), daher dessen Undo-Manager in schlank.
   Objekt seinen Namen behielt und nicht im eigenen Ordner blieb und ein
   Objekt wirklich im Papierkorb landete. Rücknahme: Verschieben → zurück
   in die alten Ordner (je Ordner ein Auftrag); Kopieren → Kopien
-  endgültig löschen nach Rückfrage (Vorgabe Abbrechen, Einstellung
-  „Vor dem Löschen nachfragen“ gilt); Verknüpfen → Verweise löschen;
+  ohne Rückfrage in den Papierkorb (Entscheidung Startsession: umkehrbar
+  vor Rückfrage; Menü „Rückgängig: Kopieren von … (in den Papierkorb)“;
+  wo der Ort keinen Papierkorb hat, fragt der Auftrag wie bei Entf, ob
+  endgültig gelöscht wird); Verknüpfen → Verweise löschen;
   Umbenennen → alter Name; Papierkorb → Einträge mit gleicher Herkunft
   und Löschzeit ab dem Start des Auftrags (`trash:///` mit
   `trash::orig-path`/`trash::deletion-date`, ohne GVfs die `.trashinfo`
@@ -879,7 +881,7 @@ Nautilus 3.4), daher dessen Undo-Manager in schlank.
   `querencia-archiv --entpacken-hier DATEI…` als eigener Prozess (Archiv
   zeigt Fortschritt, Fragen und Fehler selbst); nicht auf dem
   Rückgängig-Stapel.
-- **Texte:** 27 neue (de/it/es/fr), Glossar Nr. 12, 13, 39, 96, 107.
+- **Texte:** 25 neue (de/it/es/fr), Glossar Nr. 12, 13, 39, 96, 107.
 - **Prüfung:** Unit-Tests `rueckgaengig.rs` (Stapel, Rücknahme je Art,
   Papierkorb-Zuordnung), `sucher.rs` (Inhalt mit/ohne Schalter,
   Binärdatei, Größengrenze, Ausschnitt), `reiter/sitzung.rs` (Datei,

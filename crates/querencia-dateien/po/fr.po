@@ -612,7 +612,7 @@ msgstr "Vidage de la corbeille…"
 msgid "File Operations"
 msgstr "Opérations sur les fichiers"
 
-#: src/fortschritt.rs:411 src/operationen.rs:885 src/operationen.rs:918 src/operationen.rs:1128
+#: src/fortschritt.rs:411 src/operationen.rs:885 src/operationen.rs:918
 msgid "Cancel"
 msgstr "Annuler"
 
@@ -931,11 +931,11 @@ msgstr "Vider la co_rbeille…"
 msgid "Close _All Windows"
 msgstr "Fermer to_utes les fenêtres"
 
-#: src/menue.rs:318 src/operationen.rs:1066
+#: src/menue.rs:318 src/operationen.rs:1078
 msgid "_Undo"
 msgstr "_Annuler"
 
-#: src/menue.rs:324 src/operationen.rs:1068
+#: src/menue.rs:324 src/operationen.rs:1080
 msgid "_Redo"
 msgstr "_Rétablir"
 
@@ -1549,7 +1549,7 @@ msgstr[1] ""
 msgid "If you delete an item, it will be permanently lost."
 msgstr "Si vous supprimez un élément, il sera définitivement perdu."
 
-#: src/operationen.rs:885 src/operationen.rs:1128
+#: src/operationen.rs:885
 msgid "Delete"
 msgstr "Supprimer"
 
@@ -1578,37 +1578,21 @@ msgstr "Nouveau document"
 msgid "Template"
 msgstr "Modèle"
 
-#: src/operationen.rs:1065
+#: src/operationen.rs:1076
 #, no-c-format
 msgid "_Undo: {what}"
 msgstr "_Annuler : {what}"
 
-#: src/operationen.rs:1067
+#: src/operationen.rs:1079
 #, no-c-format
 msgid "_Redo: {what}"
 msgstr "_Rétablir : {what}"
 
-#: src/operationen.rs:1114
-#, no-c-format
-msgid "Delete the copy “{name}”?"
-msgstr "Supprimer la copie « {name} » ?"
-
-#: src/operationen.rs:1118
-#, no-c-format
-msgid "Delete the {n} copied item?"
-msgid_plural "Delete the {n} copied items?"
-msgstr[0] "Supprimer {n} élément copié ?"
-msgstr[1] "Supprimer les {n} éléments copiés ?"
-
-#: src/operationen.rs:1127
-msgid "Undoing the copy deletes the copies permanently."
-msgstr "Annuler la copie supprime définitivement les copies."
-
-#: src/operationen.rs:1199
+#: src/operationen.rs:1172
 msgid "The operation cannot be undone."
 msgstr "L’opération ne peut pas être annulée."
 
-#: src/operationen.rs:1200
+#: src/operationen.rs:1173
 msgid "The items are no longer where the operation left them."
 msgstr "Les éléments ne sont plus là où l’opération les a laissés."
 
@@ -1735,60 +1719,65 @@ msgctxt "accel"
 msgid "<Shift><Control>PageDown"
 msgstr "<Shift><Control>Pg↓"
 
-#: src/rueckgaengig.rs:271
+#: src/rueckgaengig.rs:268
+#, no-c-format
+msgid "{what} (to the trash)"
+msgstr "{what} (vers la corbeille)"
+
+#: src/rueckgaengig.rs:286
 #, no-c-format
 msgid "Copy of “{name}”"
 msgstr "Copie de « {name} »"
 
-#: src/rueckgaengig.rs:272
+#: src/rueckgaengig.rs:287
 #, no-c-format
 msgid "Copy of {n} item"
 msgid_plural "Copy of {n} items"
 msgstr[0] "Copie de {n} élément"
 msgstr[1] "Copie de {n} éléments"
 
-#: src/rueckgaengig.rs:273
+#: src/rueckgaengig.rs:288
 #, no-c-format
 msgid "Move of “{name}”"
 msgstr "Déplacement de « {name} »"
 
-#: src/rueckgaengig.rs:274
+#: src/rueckgaengig.rs:289
 #, no-c-format
 msgid "Move of {n} item"
 msgid_plural "Move of {n} items"
 msgstr[0] "Déplacement de {n} élément"
 msgstr[1] "Déplacement de {n} éléments"
 
-#: src/rueckgaengig.rs:275
+#: src/rueckgaengig.rs:290
 #, no-c-format
 msgid "Link to “{name}”"
 msgstr "Lien vers « {name} »"
 
-#: src/rueckgaengig.rs:276
+#: src/rueckgaengig.rs:291
 #, no-c-format
 msgid "Links to {n} item"
 msgid_plural "Links to {n} items"
 msgstr[0] "Liens vers {n} élément"
 msgstr[1] "Liens vers {n} éléments"
 
-#: src/rueckgaengig.rs:277
+#: src/rueckgaengig.rs:292
 #, no-c-format
 msgid "Rename of “{name}”"
 msgstr "Renommage de « {name} »"
 
-#: src/rueckgaengig.rs:278
+#: src/rueckgaengig.rs:293
 #, no-c-format
 msgid "Move of “{name}” to the trash"
 msgstr "Mise à la corbeille de « {name} »"
 
-#: src/rueckgaengig.rs:279
+#: src/rueckgaengig.rs:294
 #, no-c-format
 msgid "Move of {n} item to the trash"
 msgid_plural "Move of {n} items to the trash"
 msgstr[0] "Mise à la corbeille de {n} élément"
 msgstr[1] "Mise à la corbeille de {n} éléments"
 
-#: src/rueckgaengig.rs:285
+#: src/rueckgaengig.rs:300
 #, no-c-format
 msgid "Creation of “{name}”"
 msgstr "Création de « {name} »"
@@ -1859,7 +1848,8 @@ msgstr "Également le _contenu des fichiers"
 
 #: src/suche/mod.rs:137
 msgid "Also search the text of text files (up to 10 MB each)"
-msgstr "Rechercher aussi dans le texte des fichiers texte (jusqu’à 10 Mo chacun)"
+msgstr ""
+"Rechercher aussi dans le texte des fichiers texte (jusqu’à 10 Mo chacun)"
 
 #: src/suche/mod.rs:161
 msgid "_Advanced Search…"

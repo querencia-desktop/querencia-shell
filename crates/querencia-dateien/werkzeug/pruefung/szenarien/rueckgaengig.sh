@@ -1,5 +1,5 @@
 # Dateien 0.3.0: Rückgängig und Wiederholen (Strg+Z, Umschalt+Strg+Z) für
-# Verschieben, Umbenennen, Papierkorb, Kopieren (mit Rückfrage), neuer
+# Verschieben, Umbenennen, Papierkorb, Kopieren (in den Papierkorb), neuer
 # Ordner; ein Stapel je Fenster über Reiter hinweg; endgültiges Löschen
 # leert den Stapel (Eintrag inaktiv). Geprüft wird am Dateibaum und an den
 # Logzeilen, die Fotos zeigen das Menü Bearbeiten mit der Beschreibung.
@@ -88,7 +88,8 @@ da "$P/gamma.txt" && [ "$(cat "$P/gamma.txt")" = gamma ] \
   && fall U08 "Strg+Z im ersten Reiter: gamma.txt wiederhergestellt" 1 "$(ls_p)" \
   || fall U08 "Papierkorb rückgängig" 0 "$(ls_p) / $(grep -a 'Einträgen im Papierkorb' "$LOG" | tail -1)"
 
-# U09 Kopieren: Rückfrage, erst Abbrechen, dann Löschen
+# U09 Kopieren: Strg+Z legt die Kopie ohne Rückfrage in den Papierkorb
+TRASH="${XDG_DATA_HOME:-$HEIM/.local/share}/Trash/files"
 waehle delta
 taste ctrl+c
 taste ctrl+v
@@ -96,19 +97,17 @@ warte_log "kopieren fertig" 10
 warte_log "Rückgängig gemerkt" 5
 KOPIE=$(cd "$P" && ls | grep '^delta (' | head -1)
 [ -n "$KOPIE" ] && fall U09 "Kopie angelegt: $KOPIE" 1 "$(ls_p)" || fall U09 "Kopie" 0 "$(ls_p)"
+menue bearbeiten
+foto 05-menue-rueckgaengig-kopie
+q "key Escape" "wait 300"
+markiere
 taste ctrl+z
-warte_log "Frage: Kopie rückgängig" 5
-foto 05-frage-kopie
-q "key Escape" "wait 500"
-warte_log "Kopie rückgängig abgebrochen" 5 && da "$P/$KOPIE" \
-  && fall U10 "Esc: Kopie bleibt, Eintrag bleibt" 1 "$(ls_p)" || fall U10 "Esc bei der Rückfrage" 0 "$(ls_p)"
-taste ctrl+z
-warte_log "Frage: Kopie rückgängig" 5
-q "key Tab" "wait 200" "key Return" "wait 300"
 warte_log "Rückgängig fertig" 10
 q "wait 500"
-weg "$P/$KOPIE" && da "$P/delta.txt" \
-  && fall U11 "Löschen: Kopie weg, Original bleibt" 1 "$(ls_p)" || fall U11 "Kopie rückgängig" 0 "$(ls_p)"
+! tail -n +"$((LOG_STAND + 1))" "$LOG" | grep -a -q "Frage" && weg "$P/$KOPIE" && da "$P/delta.txt" \
+  && fall U10 "Strg+Z ohne Rückfrage: Kopie weg, Original bleibt" 1 "$(ls_p)" || fall U10 "Kopie rückgängig ohne Frage" 0 "$(ls_p)"
+[ -e "$TRASH/$KOPIE" ] && [ "$(cat "$TRASH/$KOPIE")" = delta ] \
+  && fall U11 "Die Kopie liegt im Papierkorb" 1 "$(ls "$TRASH" | tr '\n' ' ')" || fall U11 "Kopie im Papierkorb" 0 "$(ls "$TRASH" 2>&1 | tr '\n' ' ')"
 taste shift+ctrl+z
 warte_log "Wiederholt" 10
 q "wait 500"

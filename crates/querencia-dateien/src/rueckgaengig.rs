@@ -6,7 +6,8 @@
 //! | Done | Undo | Redo |
 //! |---|---|---|
 //! | Verschieben | moves back into the old folders | the job again |
-//! | Kopieren | deletes the copies for good, after a question | the job again |
+//! | Kopieren | the copies into the trash, without a question (where a place has
+//! no trash, the job asks before deleting for good) | the job again |
 //! | Verknüpfen | deletes the links | the job again |
 //! | Umbenennen | the old name | the job again |
 //! | In den Papierkorb | restores the entries deleted from then on | the job again |
@@ -213,7 +214,9 @@ impl Vorgang {
                     })
                     .collect()
             }
-            Art::Kopieren | Art::Verknuepfen => alle(Op::Delete),
+            // reversible beats a question (decision of the start session)
+            Art::Kopieren => alle(Op::Trash),
+            Art::Verknuepfen => alle(Op::Delete),
             Art::Umbenennen => paare
                 .iter()
                 .map(|(war, jetzt)| Schritt {
@@ -254,6 +257,17 @@ impl Vorgang {
             op: self.op.clone(),
             quellen: self.quellen.clone(),
             ziel: self.ziel.clone(),
+        }
+    }
+
+    /// What the menu says after "Rückgängig:": the description, for a copy
+    /// with where the copies go („… (in den Papierkorb)“).
+    pub fn beschreibung_rueckgaengig(&self) -> String {
+        let b = self.beschreibung();
+        if self.art == Art::Kopieren {
+            gettext_f("{what} (to the trash)", &[("what", &b)])
+        } else {
+            b
         }
     }
 
@@ -480,15 +494,19 @@ mod tests {
     }
 
     #[test]
-    fn copies_and_links_are_deleted_renames_get_the_old_name() {
+    fn copies_go_to_the_trash_links_are_deleted_renames_get_the_old_name() {
         let o = outcome(&[("file:///h/a/x.txt", "x (copy).txt")], &["x (copy).txt"]);
         let q = s(&["file:///h/a/x.txt"]);
         let v = Vorgang::aus(&Op::Copy, &q, Some("file:///h/a"), &o, "t").expect("Kopie");
         assert_eq!(v.beschreibung(), "Copy of “x.txt”");
         assert_eq!(
+            v.beschreibung_rueckgaengig(),
+            "Copy of “x.txt” (to the trash)"
+        );
+        assert_eq!(
             v.umkehren(&v.jetzt(), |_| true)[0],
             Schritt {
-                op: Op::Delete,
+                op: Op::Trash,
                 quellen: s(&["file:///h/a/x%20(copy).txt"]),
                 ziel: None
             }

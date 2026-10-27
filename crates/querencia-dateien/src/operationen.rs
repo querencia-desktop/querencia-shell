@@ -1072,7 +1072,9 @@ impl Operationen {
             stapel.naechstes_zurueck()
         };
         match (vor, naechstes) {
-            (false, Some(v)) => gettext_f("_Undo: {what}", &[("what", &v.beschreibung())]),
+            (false, Some(v)) => {
+                gettext_f("_Undo: {what}", &[("what", &v.beschreibung_rueckgaengig())])
+            }
             (false, None) => gettext("_Undo"),
             (true, Some(v)) => gettext_f("_Redo: {what}", &[("what", &v.beschreibung())]),
             (true, None) => gettext("_Redo"),
@@ -1116,46 +1118,7 @@ impl Operationen {
             self.nicht_umkehrbar(&v);
             return;
         }
-        if v.art != Art::Kopieren || !nachfragen() {
-            self.umkehr_starten(schritte, v);
-            return;
-        }
-        let message = match da.as_slice() {
-            [eine] => gettext_f(
-                "Delete the copy “{name}”?",
-                &[("name", &uri::name_of(eine))],
-            ),
-            mehr => ngettext_f(
-                "Delete the {n} copied item?",
-                "Delete the {n} copied items?",
-                u32::try_from(mehr.len()).unwrap_or(u32::MAX),
-                &[],
-            ),
-        };
-        let dialog = gtk4::AlertDialog::builder()
-            .message(message)
-            .detail(gettext("Undoing the copy deletes the copies permanently."))
-            .buttons([gettext("Cancel"), gettext("Delete")])
-            .cancel_button(0)
-            .default_button(0)
-            .modal(true)
-            .build();
-        protokoll("Frage: Kopie rückgängig (endgültig löschen)");
-        let weak = Rc::downgrade(self);
-        dialog.choose(
-            self.window().as_ref(),
-            gio::Cancellable::NONE,
-            move |answer| {
-                let Some(ops) = weak.upgrade() else { return };
-                if answer == Ok(1) {
-                    ops.umkehr_starten(schritte, v);
-                } else {
-                    protokoll("Kopie rückgängig abgebrochen");
-                    ops.stapel.borrow_mut().nach_wiederholen(v);
-                    ops.aktualisieren();
-                }
-            },
-        );
+        self.umkehr_starten(schritte, v);
     }
 
     /// Umschalt+Strg+Z: does the newest undone operation again.

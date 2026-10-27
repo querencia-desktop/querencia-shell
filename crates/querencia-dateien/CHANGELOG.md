@@ -5,7 +5,9 @@
 - Neu: **Rückgängig und Wiederholen** (Strg+Z, Umschalt+Strg+Z, Menü
   Bearbeiten mit Beschreibung, z. B. „Rückgängig: Verschieben von
   „a.txt““) für Verschieben, Umbenennen, In den Papierkorb, Kopieren
-  (Rückgängig löscht die Kopien nach einer Rückfrage), Neuer Ordner und
+  (Rückgängig legt die Kopien ohne Rückfrage in den Papierkorb, Menü
+  „Rückgängig: Kopieren von … (in den Papierkorb)“; nur wo es keinen
+  Papierkorb gibt, wird nach Rückfrage endgültig gelöscht), Neuer Ordner und
   Neues Dokument (leer: gelöscht, sonst in den Papierkorb). Ein Stapel je
   Fenster für alle Reiter, bis 50 Schritte, nicht über das Programmende
   hinaus. Endgültiges Löschen und „Papierkorb leeren“ lassen sich nicht
@@ -25,7 +27,7 @@
 - Neu: **„Hier entpacken“** im Kontextmenü von Archiven, wenn die
   Archivverwaltung (Querencia Archiv) installiert ist: Sie entpackt jedes
   gewählte Archiv neben sich, mit eigenem Fortschritt und eigenen Fragen.
-- Texte de, it, es, fr (27 neue).
+- Texte de, it, es, fr (25 neue).
 
 ## 0.2.4 – 27.10.2026 (Pflegestand, QD-173 P-2, P-3)
 
