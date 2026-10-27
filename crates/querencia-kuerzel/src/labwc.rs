@@ -10,6 +10,7 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::i18n::{gettext, gettext_f, pgettext};
 use crate::xml::{self, Element};
 
 /// labwc 0.9.8's default bindings (`include/config/default-bindings.h`).
@@ -105,14 +106,15 @@ impl Modifier {
         })
     }
 
-    pub fn label(self) -> &'static str {
+    /// The name printed on the key, in the language of the session.
+    pub fn label(self) -> String {
         match self {
-            Self::Ctrl => "Strg",
-            Self::Alt => "Alt",
-            Self::Shift => "Umschalt",
-            Self::Super => "Super",
-            Self::Hyper => "Hyper",
-            Self::Mod5 => "AltGr",
+            Self::Ctrl => pgettext("key", "Ctrl"),
+            Self::Alt => "Alt".to_owned(),
+            Self::Shift => pgettext("key", "Shift"),
+            Self::Super => "Super".to_owned(),
+            Self::Hyper => "Hyper".to_owned(),
+            Self::Mod5 => "AltGr".to_owned(),
         }
     }
 }
@@ -181,8 +183,8 @@ impl Keybind {
         self.modifiers == other.modifiers && normal_key(&self.key) == normal_key(&other.key)
     }
 
-    /// "Strg", "Alt", "←" … one entry per key to press together. A
-    /// symbol that is always typed with Umschalt ("?" on German and US
+    /// "Ctrl", "Alt", "←" … one entry per key to press together. A
+    /// symbol that is always typed with Shift ("?" on German and US
     /// keyboards) is shown without it: W-S-question is "Super+?".
     pub fn keys(&self) -> Vec<String> {
         let shifted = SHIFTED_SYMBOLS.contains(&normal_key(&self.key).as_str());
@@ -190,7 +192,7 @@ impl Keybind {
             .modifiers
             .iter()
             .filter(|m| !(shifted && **m == Modifier::Shift))
-            .map(|m| m.label().to_owned())
+            .map(|m| m.label())
             .collect();
         keys.push(key_label(&self.key));
         keys
@@ -201,7 +203,7 @@ impl Keybind {
     }
 }
 
-/// Keysyms that need Umschalt on German and US layouts alike.
+/// Keysyms that need Shift on German and US layouts alike.
 const SHIFTED_SYMBOLS: &[&str] = &[
     "question",
     "exclam",
@@ -225,27 +227,39 @@ fn normal_key(key: &str) -> String {
     }
 }
 
-/// The German name of a key (as printed on German keyboards).
+/// The name of a key as printed on keyboards of the session's language
+/// (German keyboards: Eingabe, Entf, Pos1, Bild↑ …; context "key").
 pub fn key_label(key: &str) -> String {
+    let translated = match normal_key(key).as_str() {
+        "return" => pgettext("key", "Enter"),
+        "kp_enter" => pgettext("key", "Enter (keypad)"),
+        "delete" => pgettext("key", "Delete"),
+        "insert" => pgettext("key", "Insert"),
+        "print" => pgettext("key", "Print"),
+        "space" => pgettext("key", "Space"),
+        "escape" => pgettext("key", "Esc"),
+        "backspace" => pgettext("key", "Backspace"),
+        "home" => pgettext("key", "Home"),
+        "end" => pgettext("key", "End"),
+        "page_up" | "prior" => pgettext("key", "Page Up"),
+        "page_down" | "next" => pgettext("key", "Page Down"),
+        "menu" => pgettext("key", "Menu"),
+        "xf86audioraisevolume" => pgettext("key", "Volume Up key"),
+        "xf86audiolowervolume" => pgettext("key", "Volume Down key"),
+        "xf86audiomute" => pgettext("key", "Mute key"),
+        "xf86monbrightnessup" => pgettext("key", "Brightness Up key"),
+        "xf86monbrightnessdown" => pgettext("key", "Brightness Down key"),
+        _ => String::new(),
+    };
+    if !translated.is_empty() {
+        return translated;
+    }
     let named = match normal_key(key).as_str() {
         "left" => "←",
         "right" => "→",
         "up" => "↑",
         "down" => "↓",
-        "return" => "Eingabe",
-        "kp_enter" => "Eingabe (Ziffernblock)",
-        "delete" => "Entf",
-        "insert" => "Einfg",
-        "print" => "Druck",
         "tab" => "Tab",
-        "space" => "Leertaste",
-        "escape" => "Esc",
-        "backspace" => "Rücktaste",
-        "home" => "Pos1",
-        "end" => "Ende",
-        "page_up" | "prior" => "Bild↑",
-        "page_down" | "next" => "Bild↓",
-        "menu" => "Menü",
         "question" => "?",
         "exclam" => "!",
         "quotedbl" => "\"",
@@ -263,11 +277,6 @@ pub fn key_label(key: &str) -> String {
         "minus" | "-" => "-",
         "plus" => "+",
         "super_l" | "super_r" => "Super",
-        "xf86audioraisevolume" => "Lauter-Taste",
-        "xf86audiolowervolume" => "Leiser-Taste",
-        "xf86audiomute" => "Stumm-Taste",
-        "xf86monbrightnessup" => "Heller-Taste",
-        "xf86monbrightnessdown" => "Dunkler-Taste",
         _ => "",
     };
     if !named.is_empty() {
@@ -299,13 +308,13 @@ impl Group {
         Group::Other,
     ];
 
-    pub fn title(self) -> &'static str {
+    pub fn title(self) -> String {
         match self {
-            Group::Windows => "Fenster",
-            Group::Workspaces => "Arbeitsflächen",
-            Group::Screenshot => "Bildschirmfoto",
-            Group::Session => "Sitzung",
-            Group::Other => "Weitere",
+            Group::Windows => gettext("Windows"),
+            Group::Workspaces => gettext("Workspaces"),
+            Group::Screenshot => gettext("Screenshot"),
+            Group::Session => gettext("Session"),
+            Group::Other => gettext("Other"),
         }
     }
 }
@@ -358,7 +367,9 @@ impl Keybind {
 
     pub fn description(&self) -> String {
         let parts: Vec<String> = self.actions.iter().map(describe).collect();
-        let mut text = parts.join(", dann ");
+        // TRANSLATORS: joins the actions of one shortcut ("close the
+        // window, then switch to the next window")
+        let mut text = parts.join(&gettext(", then "));
         if let Some(first) = text.chars().next() {
             text = first.to_uppercase().chain(text.chars().skip(1)).collect();
         }
@@ -366,98 +377,142 @@ impl Keybind {
     }
 }
 
-fn direction(word: &str) -> Option<(&'static str, &'static str)> {
-    // (adjective for "Bildschirmhälfte"/"Arbeitsfläche", edge)
-    Some(match word.to_ascii_lowercase().as_str() {
-        "left" => ("linke", "linken"),
-        "right" => ("rechte", "rechten"),
-        "up" => ("obere", "oberen"),
-        "down" => ("untere", "unteren"),
-        _ => return None,
-    })
+/// What GoToDesktop and SendToDesktop do, as whole sentences (the target
+/// changes article and preposition in German, Italian, Spanish and French).
+#[derive(Clone, Copy)]
+enum Move {
+    Go,
+    Take,
+    Send,
 }
 
-fn desktop_target(to: Option<&str>) -> String {
+fn workspace_move(how: Move, to: Option<&str>) -> String {
     let to = to.unwrap_or("");
-    match to.to_ascii_lowercase().as_str() {
-        "left" => "die linke Arbeitsfläche".to_owned(),
-        "right" => "die rechte Arbeitsfläche".to_owned(),
-        "up" => "die obere Arbeitsfläche".to_owned(),
-        "down" => "die untere Arbeitsfläche".to_owned(),
-        "next" => "die nächste Arbeitsfläche".to_owned(),
-        "previous" => "die vorige Arbeitsfläche".to_owned(),
-        "last" => "die zuletzt benutzte Arbeitsfläche".to_owned(),
-        "current" => "die aktuelle Arbeitsfläche".to_owned(),
-        "" => "eine andere Arbeitsfläche".to_owned(),
-        _ if to.chars().all(|c| c.is_ascii_digit()) => format!("Arbeitsfläche {to}"),
-        _ => format!("Arbeitsfläche „{to}“"),
+    let lower = to.to_ascii_lowercase();
+    match how {
+        Move::Go => match lower.as_str() {
+            "left" => gettext("switch to the left workspace"),
+            "right" => gettext("switch to the right workspace"),
+            "up" => gettext("switch to the workspace above"),
+            "down" => gettext("switch to the workspace below"),
+            "next" => gettext("switch to the next workspace"),
+            "previous" => gettext("switch to the previous workspace"),
+            "last" => gettext("switch to the last used workspace"),
+            "current" => gettext("switch to the current workspace"),
+            "" => gettext("switch to another workspace"),
+            _ if to.chars().all(|c| c.is_ascii_digit()) => {
+                gettext_f("switch to workspace {number}", &[("number", to)])
+            }
+            _ => gettext_f("switch to workspace “{name}”", &[("name", to)]),
+        },
+        Move::Take => match lower.as_str() {
+            "left" => gettext("take the window to the left workspace"),
+            "right" => gettext("take the window to the right workspace"),
+            "up" => gettext("take the window to the workspace above"),
+            "down" => gettext("take the window to the workspace below"),
+            "next" => gettext("take the window to the next workspace"),
+            "previous" => gettext("take the window to the previous workspace"),
+            "last" => gettext("take the window to the last used workspace"),
+            "current" => gettext("take the window to the current workspace"),
+            "" => gettext("take the window to another workspace"),
+            _ if to.chars().all(|c| c.is_ascii_digit()) => {
+                gettext_f("take the window to workspace {number}", &[("number", to)])
+            }
+            _ => gettext_f("take the window to workspace “{name}”", &[("name", to)]),
+        },
+        Move::Send => match lower.as_str() {
+            "left" => gettext("send the window to the left workspace (without following it)"),
+            "right" => gettext("send the window to the right workspace (without following it)"),
+            "up" => gettext("send the window to the workspace above (without following it)"),
+            "down" => gettext("send the window to the workspace below (without following it)"),
+            "next" => gettext("send the window to the next workspace (without following it)"),
+            "previous" => {
+                gettext("send the window to the previous workspace (without following it)")
+            }
+            "last" => gettext("send the window to the last used workspace (without following it)"),
+            "current" => gettext("send the window to the current workspace (without following it)"),
+            "" => gettext("send the window to another workspace (without following it)"),
+            _ if to.chars().all(|c| c.is_ascii_digit()) => gettext_f(
+                "send the window to workspace {number} (without following it)",
+                &[("number", to)],
+            ),
+            _ => gettext_f(
+                "send the window to workspace “{name}” (without following it)",
+                &[("name", to)],
+            ),
+        },
     }
 }
 
 fn describe(action: &Action) -> String {
-    let dir = action.arg("direction").and_then(direction);
+    let dir = action
+        .arg("direction")
+        .map(str::to_ascii_lowercase)
+        .unwrap_or_default();
     match action.name.to_ascii_lowercase().as_str() {
-        "nextwindow" => "zum nächsten Fenster wechseln".to_owned(),
-        "previouswindow" => "zum vorigen Fenster wechseln".to_owned(),
-        "close" => "Fenster schließen".to_owned(),
-        "kill" => "Programm des Fensters beenden".to_owned(),
-        "iconify" => "Fenster minimieren".to_owned(),
-        "togglemaximize" => "Fenster maximieren oder wiederherstellen".to_owned(),
-        "maximize" => "Fenster maximieren".to_owned(),
-        "unmaximize" => "Maximierung aufheben".to_owned(),
-        "togglefullscreen" => "Vollbild ein oder aus".to_owned(),
-        "snaptoedge" => match dir {
-            Some((half, _)) => format!("Fenster auf die {half} Bildschirmhälfte"),
-            None => "Fenster an den Bildschirmrand".to_owned(),
+        "nextwindow" => gettext("switch to the next window"),
+        "previouswindow" => gettext("switch to the previous window"),
+        "close" => gettext("close the window"),
+        "kill" => gettext("quit the window's program"),
+        "iconify" => gettext("minimize the window"),
+        "togglemaximize" => gettext("maximize or restore the window"),
+        "maximize" => gettext("maximize the window"),
+        "unmaximize" => gettext("unmaximize the window"),
+        "togglefullscreen" => gettext("fullscreen on or off"),
+        "snaptoedge" => match dir.as_str() {
+            "left" => gettext("snap the window to the left half of the screen"),
+            "right" => gettext("snap the window to the right half of the screen"),
+            "up" => gettext("snap the window to the top half of the screen"),
+            "down" => gettext("snap the window to the bottom half of the screen"),
+            _ => gettext("snap the window to the screen edge"),
         },
-        "movetoedge" => match dir {
-            Some((_, edge)) => format!("Fenster an den {edge} Rand schieben"),
-            None => "Fenster an den Rand schieben".to_owned(),
+        "movetoedge" => match dir.as_str() {
+            "left" => gettext("move the window to the left edge"),
+            "right" => gettext("move the window to the right edge"),
+            "up" => gettext("move the window to the top edge"),
+            "down" => gettext("move the window to the bottom edge"),
+            _ => gettext("move the window to the edge"),
         },
-        "growtoedge" => match dir {
-            Some((_, edge)) => format!("Fenster bis zum {edge} Rand vergrößern"),
-            None => "Fenster bis zum Rand vergrößern".to_owned(),
+        "growtoedge" => match dir.as_str() {
+            "left" => gettext("grow the window to the left edge"),
+            "right" => gettext("grow the window to the right edge"),
+            "up" => gettext("grow the window to the top edge"),
+            "down" => gettext("grow the window to the bottom edge"),
+            _ => gettext("grow the window to the edge"),
         },
-        "shrinktoedge" => "Fenster vom Rand her verkleinern".to_owned(),
+        "shrinktoedge" => gettext("shrink the window from the edge"),
         "showmenu" => match action.arg("menu") {
-            Some("client-menu") => "Fenstermenü öffnen".to_owned(),
-            Some("root-menu") => "Arbeitsflächenmenü von labwc öffnen".to_owned(),
-            Some(menu) => format!("labwc-Menü „{menu}“ öffnen"),
-            None => "Menü öffnen".to_owned(),
+            Some("client-menu") => gettext("open the window menu"),
+            Some("root-menu") => gettext("open labwc's desktop menu"),
+            Some(menu) => gettext_f("open the labwc menu “{menu}”", &[("menu", menu)]),
+            None => gettext("open a menu"),
         },
-        "move" => "Fenster verschieben".to_owned(),
-        "resize" => "Fenstergröße ändern".to_owned(),
-        "raise" => "Fenster nach vorne holen".to_owned(),
-        "lower" => "Fenster nach hinten stellen".to_owned(),
-        "focus" => "Fenster aktivieren".to_owned(),
-        "togglealwaysontop" => "„Immer im Vordergrund“ ein oder aus".to_owned(),
-        "togglealwaysonbottom" => "„Immer im Hintergrund“ ein oder aus".to_owned(),
-        "toggledecorations" => "Fensterrahmen ein oder aus".to_owned(),
-        "toggleshade" => "Fenster einrollen oder ausrollen".to_owned(),
-        "toggleomnipresent" => "„Auf allen Arbeitsflächen“ ein oder aus".to_owned(),
-        "toggleshowdesktop" | "showdesktop" => {
-            "Schreibtisch anzeigen (alle Fenster weg)".to_owned()
-        }
-        "togglekeybinds" => "Tastenkürzel von labwc ein oder aus".to_owned(),
-        "gotodesktop" => format!("auf {} wechseln", desktop_target(action.arg("to"))),
+        "move" => gettext("move the window"),
+        "resize" => gettext("resize the window"),
+        "raise" => gettext("raise the window"),
+        "lower" => gettext("lower the window"),
+        "focus" => gettext("activate the window"),
+        "togglealwaysontop" => gettext("“Always on top” on or off"),
+        "togglealwaysonbottom" => gettext("“Always on bottom” on or off"),
+        "toggledecorations" => gettext("window frame on or off"),
+        "toggleshade" => gettext("shade or unshade the window"),
+        "toggleomnipresent" => gettext("“On all workspaces” on or off"),
+        "toggleshowdesktop" | "showdesktop" => gettext("show the desktop (all windows away)"),
+        "togglekeybinds" => gettext("labwc's keyboard shortcuts on or off"),
+        "gotodesktop" => workspace_move(Move::Go, action.arg("to")),
         "sendtodesktop" => {
-            let target = desktop_target(action.arg("to"));
-            if action
+            let stay = action
                 .arg("follow")
-                .is_some_and(|f| f.eq_ignore_ascii_case("no"))
-            {
-                format!("Fenster auf {target} schicken (ohne mitzugehen)")
-            } else {
-                format!("Fenster auf {target} mitnehmen")
-            }
+                .is_some_and(|f| f.eq_ignore_ascii_case("no"));
+            workspace_move(if stay { Move::Send } else { Move::Take }, action.arg("to"))
         }
-        "adddesktop" => "Arbeitsfläche hinzufügen".to_owned(),
-        "removedesktop" => "Arbeitsfläche entfernen".to_owned(),
-        "exit" => "abmelden (labwc beenden)".to_owned(),
-        "reconfigure" => "Einstellungen von labwc neu laden".to_owned(),
-        "none" => "nichts (Kürzel abgeschaltet)".to_owned(),
+        "adddesktop" => gettext("add a workspace"),
+        "removedesktop" => gettext("remove a workspace"),
+        "exit" => gettext("log out (quit labwc)"),
+        "reconfigure" => gettext("reload labwc's settings"),
+        "none" => gettext("nothing (shortcut turned off)"),
         "execute" => describe_command(command_of(action)),
-        _ => format!("labwc-Aktion „{}“", action.name),
+        _ => gettext_f("labwc action “{action}”", &[("action", &action.name)]),
     }
 }
 
@@ -473,45 +528,45 @@ fn describe_command(command: &str) -> String {
     let program = program_of(command);
     let has = |word: &str| command.split_whitespace().any(|w| w == word);
     if is_show_desktop(command) {
-        "Arbeitsfläche anzeigen: alle Fenster minimieren oder wiederherstellen".to_owned()
+        gettext("Show desktop: minimize or restore all windows")
     } else if program.contains("screenshot") {
         if has("--window") {
-            "Bildschirmfoto eines Fensters".to_owned()
+            gettext("Screenshot of a window")
         } else if has("--area") || has("--bereich") {
-            "Bildschirmfoto eines Bereichs".to_owned()
+            gettext("Screenshot of an area")
         } else {
-            "Bildschirmfoto aufnehmen (Bildschirm, Fenster oder Bereich wählen)".to_owned()
+            gettext("Take a screenshot (choose screen, window or area)")
         }
     } else if program == "querencia-sitzung" {
         if has("--sperren") {
-            "Bildschirm sperren".to_owned()
+            gettext("lock the screen")
         } else {
-            "Sitzung beenden: Abmelden, Sperren, Neu starten, Herunterfahren".to_owned()
+            gettext("end the session: log out, lock, restart, shut down")
         }
     } else if program == "querencia-kuerzel" {
-        "diese Übersicht der Tastenkürzel".to_owned()
+        gettext("this overview of the keyboard shortcuts")
     } else if program == "lab-sensible-terminal" {
-        "Terminal öffnen".to_owned()
+        gettext("open a terminal")
     } else if program == "amixer" || program == "wpctl" || program == "pactl" {
         if command.contains("toggle") {
-            "Ton aus oder an".to_owned()
+            gettext("sound off or on")
         } else if command.contains('+') {
-            "lauter".to_owned()
+            gettext("louder")
         } else if command.contains('-') {
-            "leiser".to_owned()
+            gettext("quieter")
         } else {
-            "Lautstärke".to_owned()
+            gettext("volume")
         }
     } else if program == "brightnessctl" {
         if command.contains('+') {
-            "Bildschirm heller".to_owned()
+            gettext("screen brighter")
         } else {
-            "Bildschirm dunkler".to_owned()
+            gettext("screen darker")
         }
     } else if program.is_empty() {
-        "Befehl ohne Programm".to_owned()
+        gettext("command without a program")
     } else {
-        format!("startet „{program}“")
+        gettext_f("starts “{program}”", &[("program", program)])
     }
 }
 
@@ -613,18 +668,30 @@ impl Source {
 
     pub fn describe(&self) -> String {
         match self {
-            Source::Argument(rc) => format!("Quelle: {}", rc.display()),
-            Source::Session { pid, rc } => {
-                format!("Quelle: {} (laufende Sitzung, labwc {pid})", rc.display())
+            Source::Argument(rc) => {
+                gettext_f("Source: {path}", &[("path", &rc.display().to_string())])
             }
+            Source::Session { pid, rc } => gettext_f(
+                "Source: {path} (running session, labwc {pid})",
+                &[
+                    ("path", &rc.display().to_string()),
+                    ("pid", &pid.to_string()),
+                ],
+            ),
             Source::Search { rc, pid } => match pid {
-                Some(pid) => format!("Quelle: {} (labwc {pid}, Standardpfad)", rc.display()),
-                None => format!(
-                    "Quelle: {} (Standardpfad; keine laufende labwc-Sitzung erkannt)",
-                    rc.display()
+                Some(pid) => gettext_f(
+                    "Source: {path} (labwc {pid}, default path)",
+                    &[
+                        ("path", &rc.display().to_string()),
+                        ("pid", &pid.to_string()),
+                    ],
+                ),
+                None => gettext_f(
+                    "Source: {path} (default path; no running labwc session found)",
+                    &[("path", &rc.display().to_string())],
                 ),
             },
-            Source::None { .. } => "Keine rc.xml gefunden: labwc-Standardbelegung".to_owned(),
+            Source::None { .. } => gettext("No rc.xml found: labwc's default bindings"),
         }
     }
 }
@@ -755,7 +822,7 @@ mod tests {
     #[test]
     fn key_strings() {
         let b = Keybind::parse("C-A-S-Left", vec![], false).unwrap();
-        assert_eq!(b.keys_text(), "Strg+Alt+Umschalt+←");
+        assert_eq!(b.keys_text(), "Ctrl+Alt+Shift+←");
         assert_eq!(
             Keybind::parse("W--", vec![], false).unwrap().keys_text(),
             "Super+-"
@@ -768,17 +835,17 @@ mod tests {
         );
         assert_eq!(
             Keybind::parse("Print", vec![], false).unwrap().keys_text(),
-            "Druck"
+            "Print"
         );
         assert_eq!(
             Keybind::parse("C-A-l", vec![], false).unwrap().keys_text(),
-            "Strg+Alt+L"
+            "Ctrl+Alt+L"
         );
         assert_eq!(
             Keybind::parse("Mod4-Return", vec![], false)
                 .unwrap()
                 .keys_text(),
-            "Super+Eingabe"
+            "Super+Enter"
         );
         assert!(Keybind::parse("Q-x", vec![], false).is_none());
         assert!(Keybind::parse("", vec![], false).is_none());
@@ -791,10 +858,10 @@ mod tests {
         assert!(list.iter().all(|b| b.default));
         assert_eq!(
             find(&list, "Alt+Tab").unwrap().description(),
-            "Zum nächsten Fenster wechseln"
+            "Switch to the next window"
         );
         assert_eq!(find(&list, "Alt+F4").unwrap().group(), Group::Windows);
-        assert_eq!(find(&list, "Lauter-Taste").unwrap().group(), Group::Other);
+        assert_eq!(find(&list, "Volume Up key").unwrap().group(), Group::Other);
     }
 
     #[test]
@@ -815,16 +882,16 @@ mod tests {
             </keyboard></labwc_config>"#);
         assert_eq!(
             find(&list, "Alt+F4").unwrap().description(),
-            "Fenster minimieren"
+            "Minimize the window"
         );
         assert!(find(&list, "Super+A").is_none());
         let mute: Vec<_> = list
             .iter()
-            .filter(|b| b.keys_text() == "Stumm-Taste")
+            .filter(|b| b.keys_text() == "Mute key")
             .collect();
         assert_eq!(mute.len(), 1);
         assert!(!mute[0].default);
-        assert_eq!(mute[0].description(), "Ton aus oder an");
+        assert_eq!(mute[0].description(), "Sound off or on");
         assert_eq!(list.len(), DEFAULTS.len() - 1);
     }
 
@@ -832,38 +899,38 @@ mod tests {
     fn querencia_runtime_rc_xml() {
         let text = include_str!("../../../session/querencia/labwc/rc.xml");
         let list = rc(text);
-        let print = find(&list, "Druck").unwrap();
+        let print = find(&list, "Print").unwrap();
         assert_eq!(print.group(), Group::Screenshot);
-        assert!(print.description().starts_with("Bildschirmfoto aufnehmen"));
+        assert!(print.description().starts_with("Take a screenshot"));
         assert_eq!(
-            find(&list, "Alt+Druck").unwrap().description(),
-            "Bildschirmfoto eines Fensters"
+            find(&list, "Alt+Print").unwrap().description(),
+            "Screenshot of a window"
         );
-        let left = find(&list, "Strg+Alt+←").unwrap();
+        let left = find(&list, "Ctrl+Alt+←").unwrap();
         assert_eq!(
             (left.group(), left.description().as_str()),
-            (Group::Workspaces, "Auf die linke Arbeitsfläche wechseln")
+            (Group::Workspaces, "Switch to the left workspace")
         );
         assert_eq!(
-            find(&list, "Strg+Alt+Umschalt+→").unwrap().description(),
-            "Fenster auf die rechte Arbeitsfläche mitnehmen"
+            find(&list, "Ctrl+Alt+Shift+→").unwrap().description(),
+            "Take the window to the right workspace"
         );
-        assert_eq!(find(&list, "Strg+Alt+L").unwrap().group(), Group::Session);
+        assert_eq!(find(&list, "Ctrl+Alt+L").unwrap().group(), Group::Session);
         assert_eq!(
-            find(&list, "Strg+Alt+L").unwrap().description(),
-            "Bildschirm sperren"
+            find(&list, "Ctrl+Alt+L").unwrap().description(),
+            "Lock the screen"
         );
         assert_eq!(
-            find(&list, "Strg+Alt+Entf").unwrap().group(),
+            find(&list, "Ctrl+Alt+Delete").unwrap().group(),
             Group::Session
         );
         assert_eq!(
             find(&list, "Super+←").unwrap().description(),
-            "Fenster auf die linke Bildschirmhälfte"
+            "Snap the window to the left half of the screen"
         );
         assert_eq!(
-            find(&list, "Alt+Leertaste").unwrap().description(),
-            "Fenstermenü öffnen"
+            find(&list, "Alt+Space").unwrap().description(),
+            "Open the window menu"
         );
         // G2-AL: Super+D through the panel
         let show = find(&list, "Super+D").unwrap();
@@ -871,7 +938,7 @@ mod tests {
             (show.group(), show.description().as_str()),
             (
                 Group::Windows,
-                "Arbeitsfläche anzeigen: alle Fenster minimieren oder wiederherstellen"
+                "Show desktop: minimize or restore all windows"
             )
         );
         // QD-065 (G2-AK): fullscreen on Super+F and Alt+F11, not on F11
@@ -879,7 +946,7 @@ mod tests {
             let full = find(&list, keys).unwrap();
             assert_eq!(
                 (full.group(), full.description().as_str()),
-                (Group::Windows, "Vollbild ein oder aus"),
+                (Group::Windows, "Fullscreen on or off"),
                 "{keys}"
             );
         }
@@ -887,7 +954,7 @@ mod tests {
         // another gdbus call is just a program
         assert_eq!(
             describe_command("gdbus call --session --dest x --method y.Z"),
-            "startet „gdbus“"
+            "starts “gdbus”"
         );
         for group in Group::ALL {
             if group != Group::Other {
@@ -901,7 +968,10 @@ mod tests {
         let list = rc(include_str!("../../../session/querencia/labwc/rc.xml"));
         let help = find(&list, "Super+?").unwrap();
         assert_eq!(help.binding, "W-S-question");
-        assert_eq!(help.description(), "Diese Übersicht der Tastenkürzel");
+        assert_eq!(
+            help.description(),
+            "This overview of the keyboard shortcuts"
+        );
     }
 
     #[test]
@@ -912,11 +982,11 @@ mod tests {
         );
         assert_eq!(
             find(&list, "Super+1").unwrap().description(),
-            "Auf Arbeitsfläche 1 wechseln"
+            "Switch to workspace 1"
         );
         assert_eq!(
-            find(&list, "Umschalt+Super+1").unwrap().description(),
-            "Fenster auf Arbeitsfläche 1 schicken (ohne mitzugehen)"
+            find(&list, "Shift+Super+1").unwrap().description(),
+            "Send the window to workspace 1 (without following it)"
         );
     }
 

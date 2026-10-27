@@ -1,10 +1,14 @@
 //! The fixed shortcuts of the Querencia programs (data/programme.txt).
+//! The file is English (msgid); the window translates names and
+//! descriptions with gettext and the keys with the context "key".
 //!
 //! The file is built into the program; a file of the same name in
 //! `$XDG_DATA_HOME/querencia-kuerzel/` or `$XDG_DATA_DIRS/querencia-kuerzel/`
 //! takes its place (e.g. for a newer program version).
 
 use std::path::PathBuf;
+
+use crate::i18n::{gettext, gettext_f};
 
 pub const BUILT_IN: &str = include_str!("../data/programme.txt");
 
@@ -71,10 +75,13 @@ pub fn load() -> (Vec<Program>, String) {
     for dir in dirs {
         let path = dir.join("querencia-kuerzel").join("programme.txt");
         if let Ok(text) = std::fs::read_to_string(&path) {
-            return (parse(&text).0, format!("Programme: {}", path.display()));
+            return (
+                parse(&text).0,
+                gettext_f("Programs: {path}", &[("path", &path.display().to_string())]),
+            );
         }
     }
-    (parse(BUILT_IN).0, "Programme: eingebaute Liste".to_owned())
+    (parse(BUILT_IN).0, gettext("Programs: built-in list"))
 }
 
 #[cfg(test)]
@@ -89,45 +96,36 @@ mod tests {
         assert_eq!(
             names,
             [
-                "Arbeitsfläche",
-                "Querencia Dateien",
+                "Desktop",
+                "Files",
                 "Querencia Terminal",
-                "Texteditor",
-                "Bildbetrachter",
-                "Bildschirmfoto",
-                "Taschenrechner",
-                "Nach Dateien suchen",
-                "Tastenkürzel (dieses Fenster)"
+                "Text Editor",
+                "Image Viewer",
+                "Screenshot",
+                "Calculator",
+                "Search for Files",
+                "Keyboard Shortcuts (this window)"
             ]
         );
         // Querencia Dateien (Welle C): 38 keys in the order of its menus,
-        // as its menus print them (Umschalt before Strg); the keys that
+        // as its menus print them (Shift before Ctrl); the keys that
         // changed against Querencia Files keep their new meaning
         let dateien = &programs[1];
         assert_eq!(dateien.entries.len(), 38);
         let keys: Vec<&str> = dateien.entries.iter().map(|(k, _)| k.as_str()).collect();
         assert_eq!(
             keys[..5],
-            [
-                "Strg+T",
-                "Strg+N",
-                "Umschalt+Strg+N",
-                "Strg+O",
-                "Umschalt+Strg+O"
-            ]
+            ["Ctrl+T", "Ctrl+N", "Shift+Ctrl+N", "Ctrl+O", "Shift+Ctrl+O"]
         );
         assert_eq!(keys.last(), Some(&"F1"));
         for (key, what) in [
-            ("Strg+D", "Lesezeichen hinzufügen"),
-            ("F9", "Seitenleiste ein oder aus"),
-            ("Strg+3", "Kompaktansicht"),
-            ("Umschalt+Strg+I", "Auswahl umkehren"),
-            ("Umschalt+Entf", "Löschen (mit Nachfrage)"),
-            (
-                "Strg+W",
-                "Reiter schließen (der letzte schließt das Fenster)",
-            ),
-            ("Alt+1 … Alt+0", "Zu Reiter 1 … 10 wechseln"),
+            ("Ctrl+D", "Add Bookmark"),
+            ("F9", "Sidebar on or off"),
+            ("Ctrl+3", "Compact View"),
+            ("Shift+Ctrl+I", "Invert Selection"),
+            ("Shift+Delete", "Delete (asks first)"),
+            ("Ctrl+W", "Close tab (the last one closes the window)"),
+            ("Alt+1 … Alt+0", "Switch to tab 1 … 10"),
         ] {
             assert!(
                 dateien.entries.contains(&(key.to_owned(), what.to_owned())),
@@ -138,10 +136,10 @@ mod tests {
             dateien
                 .entries
                 .iter()
-                .any(|(k, w)| k == "Strg+F" && w.starts_with("Suchen"))
+                .any(|(k, w)| k == "Ctrl+F" && w.starts_with("Search"))
         );
         // Files' keys that Dateien does not have
-        for gone in ["Strg+K", "Strg+B", "Strg+,", "Strg+Z"] {
+        for gone in ["Ctrl+K", "Ctrl+B", "Ctrl+,", "Ctrl+Z"] {
             assert!(!keys.contains(&gone), "{gone}");
         }
         // Terminal 0.3.0: the tab keys come first, as in its Help → Shortcuts
@@ -150,29 +148,29 @@ mod tests {
         assert_eq!(
             keys[..6],
             [
-                "Strg+Umschalt+T",
-                "Strg+Umschalt+W",
-                "Strg+Umschalt+Q",
-                "Strg+Bild↑ / Strg+Bild↓",
-                "Strg+Umschalt+Bild↑ / Strg+Umschalt+Bild↓",
+                "Ctrl+Shift+T",
+                "Ctrl+Shift+W",
+                "Ctrl+Shift+Q",
+                "Ctrl+Page Up / Ctrl+Page Down",
+                "Ctrl+Shift+Page Up / Ctrl+Shift+Page Down",
                 "Alt+1 … Alt+9"
             ]
         );
         assert!(
             terminal
                 .entries
-                .contains(&("Strg+Umschalt+C".to_owned(), "Kopieren".to_owned()))
+                .contains(&("Ctrl+Shift+C".to_owned(), "Copy".to_owned()))
         );
         let calc = &programs[6];
         assert!(
             calc.entries
-                .contains(&("Eingabe / =".to_owned(), "Ergebnis".to_owned()))
+                .contains(&("Enter / =".to_owned(), "Result".to_owned()))
         );
-        // German key names only
+        // English key names only (msgid; the catalog has the German ones)
         for p in &programs {
             for (keys, _) in &p.entries {
-                for english in ["Ctrl", "Shift", "Enter", "Del", "Page"] {
-                    assert!(!keys.contains(english), "{keys}");
+                for german in ["Strg", "Umschalt", "Eingabe", "Entf", "Bild", "Pos1"] {
+                    assert!(!keys.contains(german), "{keys}");
                 }
             }
         }

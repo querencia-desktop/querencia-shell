@@ -5,7 +5,7 @@ msgstr ""
 "Project-Id-Version: querencia-lautstaerke\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2026-10-22 22:00+0200\n"
+"PO-Revision-Date: 2026-10-27 16:00+0100\n"
 "Last-Translator: Querencia Desktop\n"
 "Language-Team: Deutsch\n"
 "Language: de\n"
@@ -14,13 +14,125 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: src/main.rs:33
+msgid "Volume Control"
+msgstr "Lautstärkeregler"
+
+#: src/main.rs:83 src/main.rs:135 src/main.rs:628
+msgid "_Close"
+msgstr "_Schließen"
+
+#: src/main.rs:84
+msgid "_Quit"
+msgstr "_Beenden"
+
+#: src/main.rs:86
+msgid "_About"
+msgstr "_Info"
+
+#: src/main.rs:88
+msgid "_File"
+msgstr "_Datei"
+
+#: src/main.rs:89
+msgid "_Help"
+msgstr "_Hilfe"
+
+#: src/main.rs:124
+msgid "_Playback"
+msgstr "_Wiedergabe"
+
+#: src/main.rs:128
+msgid "_Recording"
+msgstr "_Aufnahme"
+
+#: src/main.rs:132
+msgid "_Applications"
+msgstr "A_nwendungen"
+
+#: src/main.rs:161 src/model.rs:287
+msgid "Connecting to the audio service…"
+msgstr "Verbindung zum Audiodienst …"
+
+#: src/main.rs:164
+msgid ""
+"No audio service. As soon as PipeWire or PulseAudio is running, the volume control connects by itself."
+msgstr ""
+"Kein Audiodienst. Sobald PipeWire oder PulseAudio läuft, verbindet sich der Lautstärkeregler von selbst."
+
+#: src/main.rs:193
+#, no-c-format
+msgid "{percent} %"
+msgstr "{percent} %"
+
+#: src/main.rs:235
+msgid "_Mute"
+msgstr "St_umm"
+
+#: src/main.rs:238
+msgid "_Output device:"
+msgstr "Aus_gabegerät:"
+
+#: src/main.rs:240
+msgid "_Input device:"
+msgstr "_Eingabegerät:"
+
+#: src/main.rs:247
+msgid "_Volume:"
+msgstr "_Lautstärke:"
+
+#: src/main.rs:341
+msgid "No device"
+msgstr "Kein Gerät"
+
+#: src/main.rs:424
+msgid "No application is playing or recording sound right now."
+msgstr "Keine Anwendung gibt gerade Ton wieder oder nimmt auf."
+
+#: src/main.rs:503
+msgid "Mute"
+msgstr "Stumm"
+
+#: src/main.rs:560
+#, no-c-format
+msgid "{stream} (recording)"
+msgstr "{stream} (Aufnahme)"
+
+#: src/main.rs:572
+#, no-c-format
+msgid "About {program}"
+msgstr "Info zu {program}"
+
+#: src/main.rs:592
+#, no-c-format
+msgid "Version {version}"
+msgstr "Version {version}"
+
+#: src/main.rs:596
+msgid "Adjust the volume of devices and applications"
+msgstr "Lautstärke der Geräte und Anwendungen einstellen"
+
+#: src/main.rs:597
+msgid "Part of Querencia Desktop"
+msgstr "Teil von Querencia Desktop"
+
+#: src/main.rs:600
+msgid "Audio service: none"
+msgstr "Audiodienst: keiner"
+
+#: src/main.rs:602
+#, no-c-format
+msgid "Audio service: {server}"
+msgstr "Audiodienst: {server}"
+
+#: src/main.rs:604
+#, no-c-format
+msgid "License: {license}"
+msgstr "Lizenz: {license}"
+
 #: src/model.rs:286
 msgid "No audio service"
 msgstr "Kein Audiodienst"
-
-#: src/model.rs:287
-msgid "Connecting to the audio service…"
-msgstr "Verbindung zum Audiodienst …"
 
 #: src/model.rs:289
 msgid "No output device"

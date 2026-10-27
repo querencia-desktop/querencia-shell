@@ -256,8 +256,8 @@ impl Level {
     }
 }
 
-/// "Kein Audiodienst" in the mixer (`main.rs`), which is not translated yet;
-/// the panel's tooltip comes from the catalog ([`look`]).
+/// "Kein Audiodienst" in the German diagnosis `querencia-lautstaerke
+/// --zustand`; window and panel take "No audio service" from the catalog.
 pub const NO_SERVICE: &str = "Kein Audiodienst";
 
 /// What the panel applet shows.
