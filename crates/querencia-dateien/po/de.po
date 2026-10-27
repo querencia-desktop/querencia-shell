@@ -15,7 +15,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. TRANSLATORS: Desktop-Datei, Schlüssel Name
-#: data/org.querencia.Dateien.desktop.in:4 src/main.rs:135
+#: data/org.querencia.Dateien.desktop.in:4 src/main.rs:139
 msgid "Files"
 msgstr "Querencia Dateien"
 
@@ -63,19 +63,19 @@ msgstr "In dieser Ansicht ist Umbenennen nicht möglich."
 msgid "Only one item can be renamed at a time."
 msgstr "Es kann nur ein Objekt auf einmal umbenannt werden."
 
-#: src/ansichtsregeln.rs:173 src/suche/ergebnisse.rs:48
+#: src/ansichtsregeln.rs:173 src/suche/ergebnisse.rs:58
 msgid "Name"
 msgstr "Name"
 
-#: src/ansichtsregeln.rs:174 src/einstellungen.rs:232 src/suche/ergebnisse.rs:51
+#: src/ansichtsregeln.rs:174 src/einstellungen.rs:241 src/suche/ergebnisse.rs:64
 msgid "Size"
 msgstr "Größe"
 
-#: src/ansichtsregeln.rs:175 src/einstellungen.rs:234 src/suche/ergebnisse.rs:52
+#: src/ansichtsregeln.rs:175 src/einstellungen.rs:243 src/suche/ergebnisse.rs:65
 msgid "Type"
 msgstr "Typ"
 
-#: src/ansichtsregeln.rs:176 src/einstellungen.rs:233 src/suche/ergebnisse.rs:53
+#: src/ansichtsregeln.rs:176 src/einstellungen.rs:242 src/suche/ergebnisse.rs:66
 msgid "Date Modified"
 msgstr "Änderungsdatum"
 
@@ -156,7 +156,7 @@ msgstr "Grundlegend"
 msgid "Open With"
 msgstr "Öffnen mit"
 
-#: src/eigenschaften_dialog.rs:322 src/einstellungen.rs:394 src/info.rs:186 src/menue.rs:301 src/umbenennen.rs:233
+#: src/eigenschaften_dialog.rs:322 src/einstellungen.rs:403 src/info.rs:186 src/menue.rs:304 src/umbenennen.rs:233
 msgid "_Close"
 msgstr "_Schließen"
 
@@ -304,7 +304,7 @@ msgstr "_Doppelklick zum Öffnen von Objekten"
 msgid "_Single click to open items"
 msgstr "_Einfacher Klick zum Öffnen von Objekten"
 
-#: src/einstellungen.rs:185 src/einstellungen.rs:386
+#: src/einstellungen.rs:185 src/einstellungen.rs:395
 msgid "Behavior"
 msgstr "Verhalten"
 
@@ -328,7 +328,7 @@ msgstr "Anzeigen"
 msgid "Run them"
 msgstr "Ausführen"
 
-#: src/einstellungen.rs:201 src/orte.rs:13 src/reiter/mod.rs:191 src/seitenleiste.rs:95
+#: src/einstellungen.rs:201 src/orte.rs:13 src/reiter/mod.rs:193 src/seitenleiste.rs:95
 msgid "Trash"
 msgstr "Papierkorb"
 
@@ -341,7 +341,7 @@ msgid "Include a Dele_te command that bypasses the trash"
 msgstr "Befehl „_Löschen“ anbieten, der den Papierkorb umgeht"
 
 #. TRANSLATORS: column of the search results: the folder of a hit
-#: src/einstellungen.rs:218 src/suche/ergebnisse.rs:50
+#: src/einstellungen.rs:218 src/suche/ergebnisse.rs:60
 msgid "Location"
 msgstr "Ort"
 
@@ -349,129 +349,146 @@ msgstr "Ort"
 msgid "Always use the location _entry instead of the path buttons"
 msgstr "Adressleiste immer als _Textfeld"
 
-#: src/einstellungen.rs:231
+#: src/einstellungen.rs:227
+msgid "Tabs"
+msgstr "Reiter"
+
+#: src/einstellungen.rs:229
+msgid "_Restore tabs at start"
+msgstr "Reiter beim Start _wiederherstellen"
+
+#: src/einstellungen.rs:240
 msgid "None"
 msgstr "Nichts"
 
-#: src/einstellungen.rs:240
+#: src/einstellungen.rs:249
 msgid "Icon Captions"
 msgstr "Symbolbeschriftungen"
 
-#: src/einstellungen.rs:243
+#: src/einstellungen.rs:252
 msgid "_Below the name:"
 msgstr "Unter dem _Namen zusätzlich:"
 
-#: src/einstellungen.rs:250
+#: src/einstellungen.rs:259
 msgid "From 150 % _also:"
 msgstr "Ab 150 % _außerdem:"
 
-#: src/einstellungen.rs:259
+#: src/einstellungen.rs:268
 msgid "Date"
 msgstr "Datum"
 
-#: src/einstellungen.rs:261
+#: src/einstellungen.rs:270
 msgid "_Format:"
 msgstr "_Format:"
 
-#: src/einstellungen.rs:263
+#: src/einstellungen.rs:272
 msgid "As the region"
 msgstr "Wie die Region"
 
-#: src/einstellungen.rs:264
+#: src/einstellungen.rs:273
 msgid "ISO 8601"
 msgstr "ISO 8601"
 
-#: src/einstellungen.rs:273 src/regeln.rs:96
+#: src/einstellungen.rs:282 src/regeln.rs:96
 msgid "Compact View"
 msgstr "Kompaktansicht"
 
-#: src/einstellungen.rs:275
+#: src/einstellungen.rs:284
 msgid "A_ll columns have the same width"
 msgstr "Alle S_palten haben dieselbe Breite"
 
-#: src/einstellungen.rs:286 src/einstellungen.rs:388
+#: src/einstellungen.rs:295 src/einstellungen.rs:397
 msgid "List Columns"
 msgstr "Listenspalten"
 
-#: src/einstellungen.rs:288
+#: src/einstellungen.rs:297
 msgid "_Size"
 msgstr "_Größe"
 
-#: src/einstellungen.rs:292
+#: src/einstellungen.rs:301
 msgid "_Type"
 msgstr "_Typ"
 
-#: src/einstellungen.rs:293
+#: src/einstellungen.rs:302
 msgid "_Date Modified"
 msgstr "Ä_nderungsdatum"
 
-#: src/einstellungen.rs:297
+#: src/einstellungen.rs:306
 msgid "_Permissions"
 msgstr "_Zugriffsrechte"
 
-#: src/einstellungen.rs:301
+#: src/einstellungen.rs:310
 msgid "_Owner"
 msgstr "_Eigentümer"
 
-#: src/einstellungen.rs:305
+#: src/einstellungen.rs:314
 msgid "_Group"
 msgstr "G_ruppe"
 
-#: src/einstellungen.rs:311
+#: src/einstellungen.rs:320
 msgid "The name is always shown."
 msgstr "Der Name wird immer angezeigt."
 
-#: src/einstellungen.rs:321
+#: src/einstellungen.rs:330
 msgid "Always"
 msgstr "Immer"
 
-#: src/einstellungen.rs:322
+#: src/einstellungen.rs:331
 msgid "Local files only"
 msgstr "Nur lokale Dateien"
 
-#: src/einstellungen.rs:323
+#: src/einstellungen.rs:332
 msgid "Never"
 msgstr "Nie"
 
-#: src/einstellungen.rs:329
+#: src/einstellungen.rs:338
 msgid "Thumbnails"
 msgstr "Vorschaubilder"
 
-#: src/einstellungen.rs:332
+#: src/einstellungen.rs:341
 msgid "_Show thumbnails:"
 msgstr "Vorschaubilder _anzeigen:"
 
-#: src/einstellungen.rs:339
+#: src/einstellungen.rs:348
 msgid "_Only for files smaller than:"
 msgstr "_Nur für Dateien bis:"
 
-#: src/einstellungen.rs:351
+#: src/einstellungen.rs:360
 msgid "Folders"
 msgstr "Ordner"
 
-#: src/einstellungen.rs:353
+#: src/einstellungen.rs:362
 msgid "_Count number of items:"
 msgstr "Anzahl der Objekte in Ordnern _zählen:"
 
-#: src/einstellungen.rs:376
+#: src/einstellungen.rs:385
 msgid "File Management Preferences"
 msgstr "Einstellungen zur Dateiverwaltung"
 
-#: src/einstellungen.rs:385
+#: src/einstellungen.rs:394
 msgid "Views"
 msgstr "Ansichten"
 
-#: src/einstellungen.rs:387
+#: src/einstellungen.rs:396
 msgid "Display"
 msgstr "Anzeige"
 
-#: src/einstellungen.rs:389
+#: src/einstellungen.rs:398
 msgid "Preview"
 msgstr "Vorschau"
 
-#: src/einstellungen.rs:393 src/menue.rs:749 src/netzwerk/verbinden_dialog.rs:219
+#: src/einstellungen.rs:402 src/menue.rs:774 src/netzwerk/verbinden_dialog.rs:219
 msgid "_Help"
 msgstr "_Hilfe"
+
+#: src/entpacken.rs:103
+#, no-c-format
+msgid "The Archive Manager could not be started: {error}"
+msgstr "Die Archivverwaltung konnte nicht gestartet werden: {error}"
+
+#: src/entpacken.rs:126
+msgid "_Extract Here"
+msgstr "_Hier entpacken"
 
 #: src/fortschritt.rs:54
 #, no-c-format
@@ -592,7 +609,7 @@ msgstr "Papierkorb wird geleert …"
 msgid "File Operations"
 msgstr "Dateioperationen"
 
-#: src/fortschritt.rs:411 src/operationen.rs:789 src/operationen.rs:822
+#: src/fortschritt.rs:411 src/operationen.rs:885 src/operationen.rs:918
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -776,266 +793,274 @@ msgstr "_Löschen"
 msgid "_Retry"
 msgstr "_Wiederholen"
 
-#: src/kontextmenue.rs:125
+#: src/kontextmenue.rs:127
 #, no-c-format
 msgid "Open with “{app}”"
 msgstr "Mit „{app}“ öffnen"
 
-#: src/kontextmenue.rs:129 src/menue.rs:255 src/seitenleiste.rs:559 src/suche/ergebnisse.rs:330
+#: src/kontextmenue.rs:131 src/menue.rs:258 src/seitenleiste.rs:559 src/suche/ergebnisse.rs:391
 msgid "_Open"
 msgstr "Ö_ffnen"
 
-#: src/kontextmenue.rs:133 src/menue.rs:261 src/seitenleiste.rs:566
+#: src/kontextmenue.rs:135 src/menue.rs:264 src/seitenleiste.rs:566
 msgid "Open in New _Tab"
 msgstr "In neuem _Reiter öffnen"
 
-#: src/kontextmenue.rs:137 src/menue.rs:267 src/seitenleiste.rs:573
+#: src/kontextmenue.rs:139 src/menue.rs:270 src/seitenleiste.rs:573
 msgid "Open in New _Window"
 msgstr "In neuem F_enster öffnen"
 
-#: src/kontextmenue.rs:154 src/menue.rs:272
+#: src/kontextmenue.rs:156 src/menue.rs:275
 msgid "Open Wit_h"
 msgstr "Öffnen _mit"
 
-#: src/kontextmenue.rs:160 src/menue.rs:314
+#: src/kontextmenue.rs:168 src/menue.rs:332
 msgid "Cu_t"
 msgstr "_Ausschneiden"
 
-#: src/kontextmenue.rs:161 src/menue.rs:320
+#: src/kontextmenue.rs:169 src/menue.rs:338
 msgid "_Copy"
 msgstr "_Kopieren"
 
-#: src/kontextmenue.rs:165
+#: src/kontextmenue.rs:173
 msgid "Paste Into Folder"
 msgstr "In Ordner einfügen"
 
-#: src/kontextmenue.rs:170 src/kontextmenue.rs:172 src/menue.rs:346
+#: src/kontextmenue.rs:178 src/kontextmenue.rs:180 src/menue.rs:364
 msgid "_Rename…"
 msgstr "_Umbenennen …"
 
-#: src/kontextmenue.rs:178 src/menue.rs:349
+#: src/kontextmenue.rs:189 src/menue.rs:367
 msgid "Mo_ve to Trash"
 msgstr "In den _Papierkorb verschieben"
 
-#: src/kontextmenue.rs:179 src/kontextmenue.rs:187 src/kontextmenue.rs:254 src/menue.rs:282
+#: src/kontextmenue.rs:190 src/kontextmenue.rs:199 src/kontextmenue.rs:266 src/menue.rs:285
 msgid "_Properties"
 msgstr "Ei_genschaften"
 
-#: src/kontextmenue.rs:185 src/menue.rs:360
+#: src/kontextmenue.rs:197 src/menue.rs:378
 msgid "_Restore"
 msgstr "_Wiederherstellen"
 
-#: src/kontextmenue.rs:186 src/menue.rs:355
+#: src/kontextmenue.rs:198 src/menue.rs:373
 msgid "_Delete…"
 msgstr "_Löschen …"
 
-#: src/kontextmenue.rs:196 src/menue.rs:652
+#: src/kontextmenue.rs:208 src/menue.rs:677
 msgid "No templates installed"
 msgstr "Keine Vorlagen installiert"
 
-#: src/kontextmenue.rs:206 src/menue.rs:662
+#: src/kontextmenue.rs:218 src/menue.rs:687
 msgid "Empty File"
 msgstr "Leere Datei"
 
-#: src/kontextmenue.rs:211 src/menue.rs:245
+#: src/kontextmenue.rs:223 src/menue.rs:248
 msgid "Create _Folder"
 msgstr "_Ordner anlegen"
 
-#: src/kontextmenue.rs:213 src/menue.rs:251
+#: src/kontextmenue.rs:225 src/menue.rs:254
 msgid "Create _Document"
 msgstr "_Dokument anlegen"
 
-#: src/kontextmenue.rs:223 src/menue.rs:432
+#: src/kontextmenue.rs:235 src/menue.rs:450
 msgid "By _Name"
 msgstr "Nach _Name"
 
-#: src/kontextmenue.rs:224 src/menue.rs:433
+#: src/kontextmenue.rs:236 src/menue.rs:451
 msgid "By _Size"
 msgstr "Nach _Größe"
 
-#: src/kontextmenue.rs:225 src/menue.rs:434
+#: src/kontextmenue.rs:237 src/menue.rs:452
 msgid "By _Type"
 msgstr "Nach _Typ"
 
-#: src/kontextmenue.rs:226 src/menue.rs:435
+#: src/kontextmenue.rs:238 src/menue.rs:453
 msgid "By Modification _Date"
 msgstr "Nach Änderungs_datum"
 
-#: src/kontextmenue.rs:234 src/menue.rs:399
+#: src/kontextmenue.rs:246 src/menue.rs:417
 msgid "Arran_ge Items"
 msgstr "Objekte _anordnen"
 
-#: src/kontextmenue.rs:238 src/menue.rs:437
+#: src/kontextmenue.rs:250 src/menue.rs:455
 msgid "Re_versed Order"
 msgstr "Umge_kehrte Reihenfolge"
 
-#: src/kontextmenue.rs:246 src/menue.rs:326
+#: src/kontextmenue.rs:258 src/menue.rs:344
 msgid "_Paste"
 msgstr "_Einfügen"
 
-#: src/kontextmenue.rs:249 src/menue.rs:403
+#: src/kontextmenue.rs:261 src/menue.rs:421
 msgid "Zoom _In"
 msgstr "Ver_größern"
 
-#: src/kontextmenue.rs:250 src/menue.rs:409
+#: src/kontextmenue.rs:262 src/menue.rs:427
 msgid "Zoom _Out"
 msgstr "Ver_kleinern"
 
-#: src/kontextmenue.rs:251 src/menue.rs:415
+#: src/kontextmenue.rs:263 src/menue.rs:433
 msgid "Normal Si_ze"
 msgstr "_Normale Größe"
 
 #. TRANSLATORS: shortcut shown in the Go menu, deutsch „<Alt>Pos1“
-#: src/menue.rs:209
+#: src/menue.rs:212
 msgctxt "accel"
 msgid "<Alt>Home"
 msgstr "<Alt>Pos1"
 
-#: src/menue.rs:231
+#: src/menue.rs:234
 msgid "New _Tab"
 msgstr "Neuer _Reiter"
 
-#: src/menue.rs:237
+#: src/menue.rs:240
 msgid "New _Window"
 msgstr "Neues _Fenster"
 
-#: src/menue.rs:276 src/seitenleiste.rs:633
+#: src/menue.rs:279 src/seitenleiste.rs:633
 msgid "Connect to _Server…"
 msgstr "Mit _Server verbinden …"
 
-#: src/menue.rs:288 src/seitenleiste.rs:622
+#: src/menue.rs:291 src/seitenleiste.rs:622
 msgid "_Empty Trash…"
 msgstr "Papierkorb _leeren …"
 
-#: src/menue.rs:295
+#: src/menue.rs:298
 msgid "Close _All Windows"
 msgstr "_Alle Fenster schließen"
 
-#: src/menue.rs:334
+#: src/menue.rs:318 src/operationen.rs:1078
+msgid "_Undo"
+msgstr "_Rückgängig"
+
+#: src/menue.rs:324 src/operationen.rs:1080
+msgid "_Redo"
+msgstr "_Wiederholen"
+
+#: src/menue.rs:352
 msgid "Select _All"
 msgstr "Alles au_swählen"
 
-#: src/menue.rs:340
+#: src/menue.rs:358
 msgid "_Invert Selection"
 msgstr "Aus_wahl umkehren"
 
-#: src/menue.rs:363
+#: src/menue.rs:381
 msgid "Prefere_nces"
 msgstr "E_instellungen"
 
-#: src/menue.rs:375
+#: src/menue.rs:393
 msgid "_Stop"
 msgstr "_Stopp"
 
-#: src/menue.rs:381
+#: src/menue.rs:399
 msgid "_Reload"
 msgstr "A_ktualisieren"
 
-#: src/menue.rs:388
+#: src/menue.rs:406
 msgid "_Toolbar"
 msgstr "_Werkzeugleiste"
 
-#: src/menue.rs:389
+#: src/menue.rs:407
 msgid "Side _Pane"
 msgstr "S_eitenleiste"
 
-#: src/menue.rs:390
+#: src/menue.rs:408
 msgid "Location _Bar"
 msgstr "_Adressleiste"
 
-#: src/menue.rs:391
+#: src/menue.rs:409
 msgid "St_atusbar"
 msgstr "S_tatusleiste"
 
-#: src/menue.rs:395
+#: src/menue.rs:413
 msgid "Show _Hidden Files"
 msgstr "_Verborgene Dateien anzeigen"
 
-#: src/menue.rs:422
+#: src/menue.rs:440
 msgid "_Icons"
 msgstr "_Symbole"
 
-#: src/menue.rs:423
+#: src/menue.rs:441
 msgid "_List"
 msgstr "_Liste"
 
-#: src/menue.rs:424
+#: src/menue.rs:442
 msgid "_Compact"
 msgstr "_Kompakt"
 
-#: src/menue.rs:445
+#: src/menue.rs:463
 msgid "Open _Parent"
 msgstr "_Nach oben"
 
-#: src/menue.rs:451
+#: src/menue.rs:469
 msgid "_Back"
 msgstr "_Zurück"
 
-#: src/menue.rs:456
+#: src/menue.rs:474
 msgid "_Forward"
 msgstr "_Vor"
 
-#: src/menue.rs:460
+#: src/menue.rs:478
 msgid "_Home Folder"
 msgstr "_Persönlicher Ordner"
 
-#: src/menue.rs:465
+#: src/menue.rs:483
 msgid "_Computer"
 msgstr "_Rechner"
 
-#: src/menue.rs:467
+#: src/menue.rs:485
 msgid "_Trash"
 msgstr "_Papierkorb"
 
-#: src/menue.rs:474
+#: src/menue.rs:492
 msgid "_Network"
 msgstr "_Netzwerk"
 
-#: src/menue.rs:481
+#: src/menue.rs:499
 msgid "_Location…"
 msgstr "_Ort …"
 
-#: src/menue.rs:484
+#: src/menue.rs:502
 msgid "_Search…"
 msgstr "_Suchen …"
 
-#: src/menue.rs:497
+#: src/menue.rs:515
 msgid "Online _Help"
 msgstr "_Online-Hilfe"
 
-#: src/menue.rs:502
+#: src/menue.rs:520
 msgid "_Report a Bug"
 msgstr "_Fehler melden"
 
-#: src/menue.rs:504
+#: src/menue.rs:522
 msgid "_About"
 msgstr "_Info"
 
-#: src/menue.rs:600
+#: src/menue.rs:625
 msgid "_Add Bookmark"
 msgstr "Lesezeichen _hinzufügen"
 
-#: src/menue.rs:743
+#: src/menue.rs:768
 msgid "_File"
 msgstr "_Datei"
 
-#: src/menue.rs:744
+#: src/menue.rs:769
 msgid "_Edit"
 msgstr "_Bearbeiten"
 
-#: src/menue.rs:745
+#: src/menue.rs:770
 msgid "_View"
 msgstr "_Ansicht"
 
-#: src/menue.rs:746
+#: src/menue.rs:771
 msgid "_Go"
 msgstr "_Gehe zu"
 
-#: src/menue.rs:747
+#: src/menue.rs:772
 msgid "_Bookmarks"
 msgstr "_Lesezeichen"
 
-#: src/menue.rs:748
+#: src/menue.rs:773
 msgid "_Tabs"
 msgstr "_Reiter"
 
@@ -1493,59 +1518,77 @@ msgstr "Möchten Sie „{name}“ ausführen?"
 msgid "“{name}” is an executable file."
 msgstr "„{name}“ ist eine ausführbare Datei."
 
-#: src/operationen.rs:378
+#: src/operationen.rs:445
 msgid "Close"
 msgstr "Schließen"
 
-#: src/operationen.rs:726
+#: src/operationen.rs:822
 #, no-c-format
 msgid "“{name}” cannot be renamed."
 msgstr "„{name}“ kann nicht umbenannt werden."
 
-#: src/operationen.rs:773
+#: src/operationen.rs:869
 #, no-c-format
 msgid "Are you sure you want to permanently delete “{name}”?"
 msgstr "Möchten Sie „{name}“ wirklich endgültig löschen?"
 
-#: src/operationen.rs:777
+#: src/operationen.rs:873
 #, no-c-format
 msgid "Are you sure you want to permanently delete the {n} selected item?"
 msgid_plural "Are you sure you want to permanently delete the {n} selected items?"
 msgstr[0] "Möchten Sie das {n} ausgewählte Objekt wirklich endgültig löschen?"
 msgstr[1] "Möchten Sie die {n} ausgewählten Objekte wirklich endgültig löschen?"
 
-#: src/operationen.rs:786
+#: src/operationen.rs:882
 msgid "If you delete an item, it will be permanently lost."
 msgstr "Wenn Sie ein Objekt löschen, ist es unwiderruflich verloren."
 
-#: src/operationen.rs:789
+#: src/operationen.rs:885
 msgid "Delete"
 msgstr "Löschen"
 
-#: src/operationen.rs:818
+#: src/operationen.rs:914
 msgid "Empty all items from the trash?"
 msgstr "Möchten Sie alle Dateien im Papierkorb endgültig löschen?"
 
-#: src/operationen.rs:819
+#: src/operationen.rs:915
 msgid "If you empty the trash, all items in it will be permanently lost."
 msgstr ""
 "Wenn Sie den Papierkorb leeren, werden alle darin befindlichen Objekte unwiderruflich gelöscht."
 
-#: src/operationen.rs:822
+#: src/operationen.rs:918
 msgid "Empty Trash"
 msgstr "Papierkorb leeren"
 
-#: src/operationen.rs:856
+#: src/operationen.rs:952
 msgid "New Folder"
 msgstr "Neuer Ordner"
 
-#: src/operationen.rs:865
+#: src/operationen.rs:961
 msgid "New Document"
 msgstr "Neues Dokument"
 
-#: src/operationen.rs:874
+#: src/operationen.rs:970
 msgid "Template"
 msgstr "Vorlage"
+
+#: src/operationen.rs:1076
+#, no-c-format
+msgid "_Undo: {what}"
+msgstr "_Rückgängig: {what}"
+
+#: src/operationen.rs:1079
+#, no-c-format
+msgid "_Redo: {what}"
+msgstr "_Wiederholen: {what}"
+
+#: src/operationen.rs:1172
+msgid "The operation cannot be undone."
+msgstr "Der Vorgang kann nicht rückgängig gemacht werden."
+
+#: src/operationen.rs:1173
+msgid "The items are no longer where the operation left them."
+msgstr "Die Objekte liegen nicht mehr dort, wo der Vorgang sie abgelegt hat."
 
 #: src/orte.rs:14
 msgid "Computer"
@@ -1622,53 +1665,116 @@ msgstr[1] "{n} andere Objekte ausgewählt ({size})"
 msgid "{folders}, {others}"
 msgstr "{folders}, {others}"
 
-#: src/reiter/mod.rs:195
+#: src/reiter/mod.rs:197
 msgid "Empty Trash…"
 msgstr "Papierkorb leeren …"
 
-#: src/reiter/mod.rs:316
+#: src/reiter/mod.rs:318
 msgid "Close tab"
 msgstr "Reiter schließen"
 
-#: src/reiter/mod.rs:604
+#: src/reiter/mod.rs:606
 msgid "_Previous Tab"
 msgstr "_Vorheriger Reiter"
 
 #. TRANSLATORS: shortcut shown in the Tabs menu, deutsch „<Control>Bild↑“
-#: src/reiter/mod.rs:607
+#: src/reiter/mod.rs:609
 msgctxt "accel"
 msgid "<Control>PageUp"
 msgstr "<Control>Bild↑"
 
-#: src/reiter/mod.rs:610
+#: src/reiter/mod.rs:612
 msgid "_Next Tab"
 msgstr "_Nächster Reiter"
 
 #. TRANSLATORS: shortcut shown in the Tabs menu, deutsch „<Control>Bild↓“
-#: src/reiter/mod.rs:613
+#: src/reiter/mod.rs:615
 msgctxt "accel"
 msgid "<Control>PageDown"
 msgstr "<Control>Bild↓"
 
-#: src/reiter/mod.rs:618
+#: src/reiter/mod.rs:620
 msgid "Move Tab _Left"
 msgstr "Reiter nach _links verschieben"
 
 #. TRANSLATORS: shortcut shown in the Tabs menu
-#: src/reiter/mod.rs:621
+#: src/reiter/mod.rs:623
 msgctxt "accel"
 msgid "<Shift><Control>PageUp"
 msgstr "<Shift><Control>Bild↑"
 
-#: src/reiter/mod.rs:624
+#: src/reiter/mod.rs:626
 msgid "Move Tab _Right"
 msgstr "Reiter nach _rechts verschieben"
 
 #. TRANSLATORS: shortcut shown in the Tabs menu
-#: src/reiter/mod.rs:627
+#: src/reiter/mod.rs:629
 msgctxt "accel"
 msgid "<Shift><Control>PageDown"
 msgstr "<Shift><Control>Bild↓"
+
+#: src/rueckgaengig.rs:268
+#, no-c-format
+msgid "{what} (to the trash)"
+msgstr "{what} (in den Papierkorb)"
+
+#: src/rueckgaengig.rs:286
+#, no-c-format
+msgid "Copy of “{name}”"
+msgstr "Kopieren von „{name}“"
+
+#: src/rueckgaengig.rs:287
+#, no-c-format
+msgid "Copy of {n} item"
+msgid_plural "Copy of {n} items"
+msgstr[0] "Kopieren von {n} Objekt"
+msgstr[1] "Kopieren von {n} Objekten"
+
+#: src/rueckgaengig.rs:288
+#, no-c-format
+msgid "Move of “{name}”"
+msgstr "Verschieben von „{name}“"
+
+#: src/rueckgaengig.rs:289
+#, no-c-format
+msgid "Move of {n} item"
+msgid_plural "Move of {n} items"
+msgstr[0] "Verschieben von {n} Objekt"
+msgstr[1] "Verschieben von {n} Objekten"
+
+#: src/rueckgaengig.rs:290
+#, no-c-format
+msgid "Link to “{name}”"
+msgstr "Verknüpfen von „{name}“"
+
+#: src/rueckgaengig.rs:291
+#, no-c-format
+msgid "Links to {n} item"
+msgid_plural "Links to {n} items"
+msgstr[0] "Verknüpfen von {n} Objekt"
+msgstr[1] "Verknüpfen von {n} Objekten"
+
+#: src/rueckgaengig.rs:292
+#, no-c-format
+msgid "Rename of “{name}”"
+msgstr "Umbenennen von „{name}“"
+
+#: src/rueckgaengig.rs:293
+#, no-c-format
+msgid "Move of “{name}” to the trash"
+msgstr "Verschieben von „{name}“ in den Papierkorb"
+
+#: src/rueckgaengig.rs:294
+#, no-c-format
+msgid "Move of {n} item to the trash"
+msgid_plural "Move of {n} items to the trash"
+msgstr[0] "Verschieben von {n} Objekt in den Papierkorb"
+msgstr[1] "Verschieben von {n} Objekten in den Papierkorb"
+
+#: src/rueckgaengig.rs:300
+#, no-c-format
+msgid "Creation of “{name}”"
+msgstr "Anlegen von „{name}“"
 
 #: src/seitenleiste.rs:77
 msgid "Desktop"
@@ -1707,64 +1813,82 @@ msgstr "Der Ordner konnte nicht gelesen werden: {error}"
 msgid "Loading…"
 msgstr "Wird geladen …"
 
+#. TRANSLATORS: column of the search results with file contents: the line of the text that holds the word
+#: src/suche/ergebnisse.rs:63
+msgid "Match"
+msgstr "Fundstelle"
+
+#: src/suche/ergebnisse.rs:90
+#, no-c-format
+msgid "Line {line}: {text}"
+msgstr "Zeile {line}: {text}"
+
 #. TRANSLATORS: context menu of a search result
-#: src/suche/ergebnisse.rs:339
+#: src/suche/ergebnisse.rs:400
 msgid "Show in _Folder"
 msgstr "Im _Ordner anzeigen"
 
-#: src/suche/mod.rs:73
+#: src/suche/mod.rs:76
 msgid "Search documents and folders by name"
 msgstr "Dokumente und Ordner nach Namen durchsuchen"
 
-#: src/suche/mod.rs:127
+#: src/suche/mod.rs:130
 msgid "_Search for:"
 msgstr "_Suchen nach:"
 
-#: src/suche/mod.rs:152
+#: src/suche/mod.rs:136
+msgid "Also file _contents"
+msgstr "Auch Datei_inhalt"
+
+#: src/suche/mod.rs:137
+msgid "Also search the text of text files (up to 10 MB each)"
+msgstr "Auch im Text von Textdateien suchen (je bis 10 MB)"
+
+#: src/suche/mod.rs:161
 msgid "_Advanced Search…"
 msgstr "_Erweiterte Suche …"
 
-#: src/suche/mod.rs:153
+#: src/suche/mod.rs:162
 msgid "Search with more criteria in Querencia File Search"
 msgstr "Mit weiteren Kriterien in Querencia Dateisuche suchen"
 
-#: src/suche/mod.rs:167
+#: src/suche/mod.rs:176
 msgid "Close the search"
 msgstr "Suche schließen"
 
-#: src/suche/mod.rs:305
+#: src/suche/mod.rs:327
 msgid "Search results"
 msgstr "Suchergebnisse"
 
-#: src/suche/mod.rs:350
+#: src/suche/mod.rs:374
 msgid "Searching…"
 msgstr "Suche läuft …"
 
-#: src/suche/mod.rs:378
+#: src/suche/mod.rs:417
 #, no-c-format
 msgid "Searching… {n} match so far"
 msgid_plural "Searching… {n} matches so far"
 msgstr[0] "Suche läuft … bisher {n} Treffer"
 msgstr[1] "Suche läuft … bisher {n} Treffer"
 
-#: src/suche/mod.rs:399
+#: src/suche/mod.rs:439
 #, no-c-format
 msgid "{n} match"
 msgid_plural "{n} matches"
 msgstr[0] "{n} Treffer"
 msgstr[1] "{n} Treffer"
 
-#: src/suche/mod.rs:401
+#: src/suche/mod.rs:441
 #, no-c-format
 msgid "{matches} (search stopped)"
 msgstr "{matches} (Suche angehalten)"
 
-#: src/suche/mod.rs:403
+#: src/suche/mod.rs:443
 #, no-c-format
 msgid "{matches} (limit reached)"
 msgstr "{matches} (Grenze erreicht)"
 
-#: src/suche/mod.rs:437
+#: src/suche/mod.rs:478
 #, no-c-format
 msgid "Querencia File Search could not be started: {error}"
 msgstr "Querencia Dateisuche konnte nicht gestartet werden: {error}"

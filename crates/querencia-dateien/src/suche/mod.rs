@@ -1,5 +1,6 @@
-//! Search for file names (Welle C2, B §1 „Suche“: names only, from the
-//! shown folder down, no criteria, no index): the button „Suchen“ in the
+//! Search for file names (Welle C2, B §1 „Suche“: from the shown folder
+//! down, no criteria, no index; 0.3.0: the switch „Auch Dateiinhalt“, off
+//! for every new search bar, reads text files too): the button „Suchen“ in the
 //! toolbar, Gehe zu → „Suchen …“ and Strg+F open a search bar above the
 //! view, as Nautilus 2.30; Enter searches in a background thread
 //! (`sucher.rs`), the hits replace the view as „Suchergebnisse“ with a
@@ -36,6 +37,8 @@ pub struct Suche {
     fenster: Weak<Fenster>,
     leiste: gtk4::Box,
     feld: gtk4::Entry,
+    /// „Auch Dateiinhalt“ (0.3.0).
+    inhalt: gtk4::CheckButton,
     drehen: gtk4::Spinner,
     ergebnisse: Rc<Ergebnisse>,
     /// Number of the running (or last) search.
@@ -130,6 +133,11 @@ impl Suche {
         feld.set_hexpand(true);
         titel.set_mnemonic_widget(Some(&feld));
         leiste.append(&feld);
+        let inhalt = gtk4::CheckButton::with_mnemonic(&gettext("Also file _contents"));
+        inhalt.set_tooltip_text(Some(&gettext(
+            "Also search the text of text files (up to 10 MB each)",
+        )));
+        leiste.append(&inhalt);
         let drehen = gtk4::Spinner::new();
         drehen.set_visible(false);
         leiste.append(&drehen);
@@ -137,6 +145,7 @@ impl Suche {
             fenster: Rc::downgrade(fenster),
             leiste,
             feld,
+            inhalt,
             drehen,
             ergebnisse: Ergebnisse::new(Rc::new(FensterHandlung(weak.clone()))),
             nummer: Cell::new(0),
@@ -180,6 +189,19 @@ impl Suche {
             }
         });
 
+        // the switch searches again when hits are shown
+        let weak = Rc::downgrade(&suche);
+        suche.inhalt.connect_toggled(move |k| {
+            let Some(s) = weak.upgrade() else { return };
+            protokoll(&format!(
+                "Suche: Dateiinhalt {}",
+                if k.is_active() { "an" } else { "aus" }
+            ));
+            let text = s.feld.text();
+            if s.zeigt.get() && !text.trim().is_empty() {
+                s.starten(&text);
+            }
+        });
         // every change of the text stops a running search (the hits of the
         // old text would not match the field any more)
         let weak = Rc::downgrade(&suche);
@@ -337,6 +359,8 @@ impl Suche {
             .app()
             .map(|a| a.konfig().werte().verborgene)
             .unwrap_or(false);
+        let inhalt = self.inhalt.is_active();
+        self.ergebnisse.fundstellen_zeigen(inhalt);
         let nummer = sucher::neue_nummer();
         self.nummer.set(nummer);
         let abbruch = gio::Cancellable::new();
@@ -349,11 +373,12 @@ impl Suche {
         self.beginn.set(Some(Instant::now()));
         self.stand_setzen(&f, gettext("Searching…"));
         protokoll(&format!(
-            "Suche {nummer}: „{}“ ab {} (verborgene {verborgene})",
+            "Suche {nummer}: „{}“ ab {} (verborgene {verborgene}, Inhalt {inhalt})",
             text,
             ort.parse_name()
         ));
-        if let Err(e) = sucher::starten(nummer, ort, worte, verborgene, abbruch, empfangen) {
+        if let Err(e) = sucher::starten(nummer, ort, worte, verborgene, inhalt, abbruch, empfangen)
+        {
             crate::log(&format!("Suche: Faden nicht gestartet: {e}"));
             self.laeuft.set(false);
         }
@@ -371,7 +396,21 @@ impl Suche {
         match m {
             Meldung::Funde(funde) => {
                 let neu: Vec<Eintrag> = funde.iter().map(sucher::Fund::eintrag).collect();
-                self.ergebnisse.anhaengen(&neu);
+                let stellen: Vec<(String, sucher::Fundstelle)> = funde
+                    .iter()
+                    .zip(&neu)
+                    .filter_map(|(f, e)| {
+                        f.fundstelle
+                            .clone()
+                            .map(|s| (e.datei().uri().to_string(), s))
+                    })
+                    .collect();
+                if crate::operationen::debugging() {
+                    for (uri, s) in &stellen {
+                        protokoll(&format!("Fundstelle: {uri} Zeile {}: {}", s.zeile, s.text));
+                    }
+                }
+                self.ergebnisse.anhaengen(&neu, stellen);
                 let n = self.ergebnisse.anzahl();
                 self.stand_setzen(
                     &f,
@@ -390,6 +429,7 @@ impl Suche {
                 ms,
                 abgebrochen,
                 begrenzt,
+                inhalte,
             } => {
                 self.laeuft.set(false);
                 self.abbruch.replace(None);
@@ -408,7 +448,8 @@ impl Suche {
                 let gesamt = self.beginn.take().map_or(0, |b| b.elapsed().as_millis());
                 protokoll(&format!(
                     "Suche {} fertig: {n} Treffer, {eintraege} Einträge in {ordner} Ordnern \
-                     ({fehler} nicht lesbar), Faden {ms} ms, bis zur Anzeige {gesamt} ms{}{}",
+                     ({fehler} nicht lesbar), {inhalte} Inhalte gelesen, Faden {ms} ms, \
+                     bis zur Anzeige {gesamt} ms{}{}",
                     self.nummer.get(),
                     if abgebrochen { ", angehalten" } else { "" },
                     if begrenzt { ", Grenze erreicht" } else { "" }
@@ -443,7 +484,8 @@ impl Suche {
 }
 
 /// The status bar while hits are shown: the selection of hits as in a
-/// folder („„a.txt“ ausgewählt (12,3 kB)“), else the search's own text.
+/// folder („„a.txt“ ausgewählt (12,3 kB)“, a hit in the text with its
+/// line), else the search's own text.
 fn status(suche: &Weak<Suche>) -> String {
     let Some(s) = suche.upgrade() else {
         return String::new();
@@ -453,7 +495,15 @@ fn status(suche: &Weak<Suche>) -> String {
         return s.stand.borrow().clone();
     }
     let g: Vec<crate::regeln::Gewaehlt> = gewaehlt.iter().map(|e| e.gewaehlt()).collect();
-    crate::regeln::status_mit_auswahl(&g)
+    let text = crate::regeln::status_mit_auswahl(&g);
+    // one hit in the text: where (0.3.0)
+    match gewaehlt.as_slice() {
+        [e] => match s.ergebnisse.fundstelle(e.datei().uri().as_str()) {
+            Some(f) => format!("{text} – {}", ergebnisse::fundstelle_tipp(&f)),
+            None => text,
+        },
+        _ => text,
+    }
 }
 
 /// A report of a search thread (main thread).

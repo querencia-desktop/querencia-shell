@@ -39,6 +39,9 @@ mod eigenschaften_dialog;
 mod fortschritt;
 mod konflikt;
 mod operationen;
+mod rueckgaengig;
+// 0.3.0: „Hier entpacken“ über Querencia Archiv
+mod entpacken;
 mod ziehen;
 mod zwischenablage;
 
@@ -73,6 +76,7 @@ fn erweiterungen(register: &mut app::Register) {
 
     // Welle B3: Aufrufe unter dieser Zeile.
     operationen::registrieren(register);
+    entpacken::registrieren(register);
 
     // Welle C1 (dateien-netzwerk): Aufrufe unter dieser Zeile.
     netzwerk::registrieren(register);
@@ -155,6 +159,11 @@ fn main() -> glib::ExitCode {
     });
     app.connect_activate(|_| {
         if let Some(a) = app::app_wenn() {
+            // the first window of a start without a folder: the tabs of
+            // last time (0.3.0), else the home folder
+            if a.alle_fenster().is_empty() && reiter::sitzung::wiederherstellen(&a).is_some() {
+                return;
+            }
             a.neues_fenster(None);
         }
     });

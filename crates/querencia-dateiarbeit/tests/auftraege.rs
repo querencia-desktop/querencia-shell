@@ -760,3 +760,76 @@ fn a_folder_is_never_replaced_by_something_inside_it() {
     }
     remove(&base);
 }
+
+#[test]
+fn undo_lists_only_objects_that_can_simply_go_back() {
+    let base = scratch("undo");
+    let (from, to) = (base.join("quelle"), base.join("ziel"));
+    for n in ["a.txt", "b.txt", "c.txt", "d.txt"] {
+        write(&from.join(n), n);
+    }
+    std::fs::create_dir_all(from.join("Ordner")).expect("fixture");
+    write(&from.join("Ordner/innen.txt"), "i");
+    write(&to.join("b.txt"), "alt");
+    write(&to.join("c.txt"), "alt");
+    write(&to.join("d.txt"), "alt");
+    std::fs::create_dir_all(to.join("Ordner")).expect("fixture");
+    // a moves cleanly; b replaces, c keeps both under a new name, d is
+    // skipped, the folder is merged: only a can go back
+    let (outcome, cancelled, _) = run(
+        job(
+            Op::Move,
+            &[
+                &from.join("a.txt"),
+                &from.join("b.txt"),
+                &from.join("c.txt"),
+                &from.join("d.txt"),
+                &from.join("Ordner"),
+            ],
+            Some(&to),
+        ),
+        [
+            once(Answer::Replace),
+            once(Answer::Rename(String::new())),
+            once(Answer::Skip),
+            once(Answer::Merge),
+        ],
+    );
+    assert!(!cancelled);
+    assert_eq!(outcome.done, 4);
+    assert_eq!(
+        outcome.undo,
+        vec![(uri(&from.join("a.txt")), "a.txt".to_owned())]
+    );
+    // a copy with a new name can go back (the copy is deleted); a move
+    // into its own folder changes nothing and is not listed
+    write(&from.join("e.txt"), "e");
+    write(&to.join("e.txt"), "alt");
+    let (outcome, _, _) = run(
+        job(Op::Copy, &[&from.join("e.txt")], Some(&to)),
+        [once(Answer::Rename(String::new()))],
+    );
+    assert_eq!(
+        outcome.undo,
+        vec![(uri(&from.join("e.txt")), "e (copy).txt".to_owned())]
+    );
+    let (outcome, _, _) = run(job(Op::Move, &[&to.join("e.txt")], Some(&to)), []);
+    assert_eq!(outcome.done, 1);
+    assert!(outcome.undo.is_empty());
+    // rename: the new name
+    let (outcome, _, _) = run(
+        job(
+            Op::Rename {
+                new: "f.txt".to_owned(),
+            },
+            &[&to.join("e.txt")],
+            None,
+        ),
+        [],
+    );
+    assert_eq!(
+        outcome.undo,
+        vec![(uri(&to.join("e.txt")), "f.txt".to_owned())]
+    );
+    remove(&base);
+}

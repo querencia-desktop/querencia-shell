@@ -815,3 +815,86 @@ baut darauf auf.
   Fenster, die Ansicht blättert). Unit-Test `grenze_px`.
 - **Integration** `integration/dateien-024/` (Update 0.2.2 → 0.2.4,
   Rückfall 0.2.2).
+
+### 10.4 0.3.0 (Rückgängig, Inhaltssuche, Reiter wiederherstellen, Hier entpacken)
+
+Vorbild Nautilus 2.30, wo es passt; Rückgängig gab es dort nicht (erst
+Nautilus 3.4), daher dessen Undo-Manager in schlank.
+
+- **Rückgängig/Wiederholen** (`src/rueckgaengig.rs`, Anbindung in
+  `operationen.rs`): Jeder Auftrag, den ein Fenster startet (Einfügen,
+  Ziehen, Umbenennen im Platz und im Eigenschaften-Dialog, Papierkorb,
+  Neuer Ordner/Neues Dokument), wird nach dem Ende als `Vorgang` auf den
+  Stapel des Fensters gelegt (für alle Reiter, 50 Schritte, `Stapel`).
+  Grundlage ist `Outcome::undo` aus querencia-dateiarbeit 0.1.3: je
+  gewähltem, erledigtem Objekt Quelle und Ankunftsname, aber nur, wenn
+  nichts am Ziel ersetzt oder zusammengeführt wurde, ein verschobenes
+  Objekt seinen Namen behielt und nicht im eigenen Ordner blieb und ein
+  Objekt wirklich im Papierkorb landete. Rücknahme: Verschieben → zurück
+  in die alten Ordner (je Ordner ein Auftrag); Kopieren → Kopien
+  ohne Rückfrage in den Papierkorb (Entscheidung Startsession: umkehrbar
+  vor Rückfrage; Menü „Rückgängig: Kopieren von … (in den Papierkorb)“;
+  wo der Ort keinen Papierkorb hat, fragt der Auftrag wie bei Entf, ob
+  endgültig gelöscht wird); Verknüpfen → Verweise löschen;
+  Umbenennen → alter Name; Papierkorb → Einträge mit gleicher Herkunft
+  und Löschzeit ab dem Start des Auftrags (`trash:///` mit
+  `trash::orig-path`/`trash::deletion-date`, ohne GVfs die `.trashinfo`
+  des Heim-Papierkorbs) wiederherstellen; Neuer Ordner/Neues Dokument →
+  leer löschen, sonst in den Papierkorb. Wiederholen startet den
+  ursprünglichen Auftrag neu. Objekte, die nicht mehr da sind, werden
+  übergangen; ist keines mehr da, kommt die Meldung „Der Vorgang kann
+  nicht rückgängig gemacht werden.“ und der Eintrag entfällt. Endgültiges
+  Löschen und „Papierkorb leeren“ leeren den Stapel (Strg+Z nimmt dann
+  nicht stattdessen etwas Älteres zurück; der Menüeintrag ist inaktiv).
+  Tasten nur im Ansichtsbereich (`KUERZEL_IM_BEREICH`), damit Strg+Z in
+  Textfeldern dem Feld bleibt. Während eine Rücknahme läuft, sind beide
+  Aktionen gesperrt. Protokoll: „Rückgängig gemerkt: …“, „Rückgängig
+  fertig: …“, „Wiederholt: …“, „Stapel geleert“.
+- **Inhaltssuche** (`suche/sucher.rs` `im_inhalt`, `suche/mod.rs`,
+  `suche/ergebnisse.rs`): Schalter „Auch Dateiinhalt“ in der Suchleiste
+  (Vorgabe aus, gilt für das Fenster, bis es schließt; ein Umschalten
+  sucht die gezeigte Suche neu). Gelesen werden nur Dateien, deren Name
+  nicht schon passt: lokal, regulär, höchstens `Grenzen::datei_bytes`
+  (10 MiB), ohne Nullbyte; ungültiges UTF-8 wird verlustbehaftet gelesen.
+  Treffer ist eine Datei, in deren Text alle Wörter vorkommen (NFD,
+  Kleinschreibung wie bei Namen). Die erste Zeile mit einem der Wörter
+  kommt als `Fundstelle` mit (Ausschnitt bis 100 Zeichen um das Wort);
+  Spalte „Fundstelle“ (nur bei eingeschaltetem Schalter), Tooltip
+  „Zeile N: …“, bei einem gewählten Treffer auch in der Statusleiste. Das
+  Ende-Protokoll nennt „N Inhalte gelesen“.
+- **Reiter wiederherstellen** (`reiter/sitzung.rs`): Schließt ein Fenster,
+  schreibt es seine Reiter (Ordner-URIs, aktiver Reiter) nach
+  `$XDG_STATE_HOME/querencia/dateien-reiter` (ohne Variable
+  `~/.local/state/…`), solange die Einstellung an ist (`dateien.ini`
+  `[Verhalten] ReiterWiederherstellen`, Vorgabe an; Einstellungen →
+  Verhalten → „Reiter“). Ein Start ohne Ordner (`activate`, noch kein
+  Fenster) öffnet sie wieder; ein Start mit Ordner und weitere Fenster
+  nicht. Erreichbar ist ein vorhandener lokaler Ordner, ein Ort auf einem
+  eingehängten Laufwerk oder `trash:`/`network:`/…, wenn GIO das Schema
+  kennt; es wird nichts eingehängt und nicht aufs Netz gewartet. Bei
+  mehreren Fenstern zählt das zuletzt geschlossene.
+- **Hier entpacken** (`entpacken.rs`): Kontextmenü-Eintrag nach der
+  Öffnen-Gruppe, wenn `querencia-archiv` gefunden wird
+  (`QUERENCIA_ARCHIV`, PATH, `~/opt/querencia/bin`) und jedes gewählte
+  Objekt eine lokale Datei eines Typs aus dem `MimeType=` von
+  `org.querencia.Archiv.desktop` ist. Aufruf
+  `querencia-archiv --entpacken-hier DATEI…` als eigener Prozess (Archiv
+  zeigt Fortschritt, Fragen und Fehler selbst); nicht auf dem
+  Rückgängig-Stapel.
+- **Texte:** 25 neue (de/it/es/fr), Glossar Nr. 12, 13, 39, 96, 107.
+- **Prüfung:** Unit-Tests `rueckgaengig.rs` (Stapel, Rücknahme je Art,
+  Papierkorb-Zuordnung), `sucher.rs` (Inhalt mit/ohne Schalter,
+  Binärdatei, Größengrenze, Ausschnitt), `reiter/sitzung.rs` (Datei,
+  Übergehen, Erreichbarkeit), `entpacken.rs`, `kontextmenue.rs`;
+  querencia-dateiarbeit `undo_lists_only_objects_that_can_simply_go_back`.
+  Szenarien `szenarien/rueckgaengig.sh` (U01–U18), `inhaltssuche.sh`
+  (I01–I08), `reiter-wiederherstellen.sh` (R01–R07), `entpacken.sh`
+  (E01–E05, `LAUF_ARCHIV`).
+- **Grenzen:** Rückgängig nur für Aufträge dieses Programms und dieses
+  Fensters, nicht über das Programmende hinaus; ersetzte Dateien kommen
+  nicht zurück; Verschieben aus dem Papierkorb kommt nicht auf den Stapel
+  (die `.trashinfo` ginge verloren, „Wiederherstellen“ ist der Weg); die Inhaltssuche hat keinen Index (große Bäume dauern),
+  liest keine entfernten Orte und keine Dokumente in Containerformaten
+  (odt, pdf); Reiter merkt nur Ordner, nicht Ansicht, Zoom oder Verlauf.
+- **Integration** `integration/dateien-030/` (Update 0.2.4 → 0.3.0,
+  Rückfall 0.2.4).

@@ -1,18 +1,22 @@
 //! Querencia Tastenkürzel (G2-R): shows the active labwc shortcuts of the
-//! running session, grouped as Fenster, Arbeitsflächen, Bildschirmfoto,
-//! Sitzung (and Weitere), and the fixed shortcuts of the Querencia
-//! programs.
+//! running session, grouped as Windows, Workspaces, Screenshot, Session
+//! (and Other), and the fixed shortcuts of the Querencia programs. Texts
+//! through gettext (domain `querencia-kuerzel`, msgid English, German from
+//! `po/de.po`, see `i18n.rs`).
 //!
 //!   querencia-kuerzel                 window
 //!   querencia-kuerzel --liste         the same as text (no display needed)
 //!   querencia-kuerzel --rc <datei>    another rc.xml (tests)
 //!   querencia-kuerzel --seite programme   opens on the second page
 
+mod i18n;
 mod labwc;
 mod programme;
 mod xml;
 
 use std::path::PathBuf;
+
+use i18n::{gettext, gettext_f};
 
 use gtk4::prelude::*;
 use gtk4::{gdk, glib};
@@ -64,9 +68,11 @@ impl Overview {
         out.push_str(&self.source.describe());
         out.push('\n');
         if let Some(problem) = &self.problem {
-            out.push_str(&format!(
-                "rc.xml nicht lesbar ({problem}); gezeigt wird die labwc-Standardbelegung\n"
+            out.push_str(&gettext_f(
+                "rc.xml not readable ({problem}); showing labwc's default bindings",
+                &[("problem", problem)],
             ));
+            out.push('\n');
         }
         for group in labwc::Group::ALL {
             let list = self.group(group);
@@ -80,18 +86,19 @@ impl Overview {
                     bind.keys_text(),
                     bind.description(),
                     if bind.default {
-                        "  [labwc-Standard]"
+                        format!("  [{}]", gettext("labwc default"))
                     } else {
-                        ""
+                        String::new()
                     }
                 ));
             }
         }
         out.push_str(&format!("\n{}\n", self.programs_source));
         for program in &self.programs {
-            out.push_str(&format!("\n{}\n", program.name));
+            out.push_str(&format!("\n{}\n", gettext(&program.name)));
             for (keys, what) in &program.entries {
-                out.push_str(&format!("  {keys:<28} {what}\n"));
+                let keys = i18n::key(keys);
+                out.push_str(&format!("  {keys:<28} {}\n", gettext(what)));
             }
         }
         out
@@ -144,7 +151,7 @@ fn table(rows: &[(String, String, Option<String>)], key_column: &gtk4::SizeGroup
         key.set_halign(gtk4::Align::Start);
         key.set_valign(gtk4::Align::Start);
         key.set_tooltip_text(tooltip.as_deref());
-        // "Strg+Alt+Bild↑ / Strg+Alt+Bild↓" breaks after the slash
+        // "Ctrl+Alt+Page Up / Ctrl+Alt+Page Down" breaks after the slash
         key.set_wrap(true);
         key.set_max_width_chars(20);
         key.set_xalign(0.0);
@@ -178,7 +185,7 @@ fn page(content: &gtk4::Box) -> gtk4::ScrolledWindow {
 
 fn build(app: &gtk4::Application, overview: &Overview, programs_first: bool) {
     let window = gtk4::ApplicationWindow::new(app);
-    window.set_title(Some("Tastenkürzel"));
+    window.set_title(Some(&gettext("Keyboard Shortcuts")));
     window.set_default_size(620, 660);
     window.set_icon_name(Some(APP_ID));
     window.add_css_class("querencia-kuerzel");
@@ -186,8 +193,9 @@ fn build(app: &gtk4::Application, overview: &Overview, programs_first: bool) {
     let desktop = gtk4::Box::new(gtk4::Orientation::Vertical, 6);
     let desktop_keys = gtk4::SizeGroup::new(gtk4::SizeGroupMode::Horizontal);
     if let Some(problem) = &overview.problem {
-        let warn = gtk4::Label::new(Some(&format!(
-            "Die rc.xml der Sitzung konnte nicht gelesen werden ({problem}). Gezeigt wird die Standardbelegung von labwc."
+        let warn = gtk4::Label::new(Some(&gettext_f(
+            "The session's rc.xml could not be read ({problem}). Showing labwc's default bindings.",
+            &[("problem", problem)],
         )));
         warn.add_css_class("kuerzel-warnung");
         warn.set_wrap(true);
@@ -199,19 +207,22 @@ fn build(app: &gtk4::Application, overview: &Overview, programs_first: bool) {
         if list.is_empty() {
             continue;
         }
-        desktop.append(&heading(group.title()));
+        desktop.append(&heading(&group.title()));
         let rows: Vec<_> = list
             .iter()
             .map(|b| {
                 let origin = if b.default {
-                    "labwc-Standard"
+                    gettext("labwc default")
                 } else {
-                    "rc.xml"
+                    "rc.xml".to_owned()
                 };
                 (
                     b.keys_text(),
                     b.description(),
-                    Some(format!("{origin}: {}", b.binding)),
+                    Some(gettext_f(
+                        "{origin}: {binding}",
+                        &[("origin", &origin), ("binding", &b.binding)],
+                    )),
                 )
             })
             .collect();
@@ -219,11 +230,12 @@ fn build(app: &gtk4::Application, overview: &Overview, programs_first: bool) {
     }
     let programs = gtk4::Box::new(gtk4::Orientation::Vertical, 6);
     for program in &overview.programs {
-        programs.append(&heading(&program.name));
+        programs.append(&heading(&gettext(&program.name)));
+        // the file is English (msgid); keys with the context "key"
         let rows: Vec<_> = program
             .entries
             .iter()
-            .map(|(k, w)| (k.clone(), w.clone(), None))
+            .map(|(k, w)| (i18n::key(k), gettext(w), None))
             .collect();
         // each program its own key column: one long entry (Texteditor)
         // does not widen all the others
@@ -233,9 +245,12 @@ fn build(app: &gtk4::Application, overview: &Overview, programs_first: bool) {
     let notebook = gtk4::Notebook::new();
     notebook.append_page(
         &page(&desktop),
-        Some(&gtk4::Label::new(Some("Arbeitsfläche"))),
+        Some(&gtk4::Label::new(Some(&gettext("Desktop")))),
     );
-    notebook.append_page(&page(&programs), Some(&gtk4::Label::new(Some("Programme"))));
+    notebook.append_page(
+        &page(&programs),
+        Some(&gtk4::Label::new(Some(&gettext("Programs")))),
+    );
     if programs_first {
         notebook.set_current_page(Some(1));
     }
@@ -247,7 +262,7 @@ fn build(app: &gtk4::Application, overview: &Overview, programs_first: bool) {
     source.set_xalign(0.0);
     source.set_hexpand(true);
     source.set_selectable(true);
-    let close = gtk4::Button::with_mnemonic("_Schließen");
+    let close = gtk4::Button::with_mnemonic(&gettext("_Close"));
     close.set_valign(gtk4::Align::End);
     let w = window.clone();
     close.connect_clicked(move |_| w.close());
@@ -287,6 +302,7 @@ fn build(app: &gtk4::Application, overview: &Overview, programs_first: bool) {
 }
 
 fn main() -> glib::ExitCode {
+    i18n::init();
     let args: Vec<String> = std::env::args().collect();
     let mut rc = None;
     let mut list = false;

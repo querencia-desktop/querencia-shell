@@ -13,6 +13,7 @@
 //! | `win.wiederherstellen` | puts trash entries back where they were | – |
 //! | `win.ordner-anlegen` | "Neuer Ordner", then renaming in the view | Umschalt+Strg+N |
 //! | `win.dokument-anlegen` (s) | a copy of the template (URI), `""`: "Leere Datei" | – |
+//! | `win.rueckgaengig`, `win.wiederholen` | undo and redo (0.3.0, `rueckgaengig.rs`) | Strg+Z, Umschalt+Strg+Z |
 //!
 //! Öffnen, Öffnen mit and Eigenschaften are actions of the window (B1);
 //! `eigenschaften_dialog::zeigen` is the function B1 hangs on
@@ -23,9 +24,10 @@
 //! its own thread) with progress (`fortschritt`), cancel and questions
 //! (`konflikt`, E2: Überspringen is the default). [`Dienst`] shows them
 //! for every job of the queue, also the ones the window starts itself
-//! (renaming). Undo comes after the beta (E8).
+//! (renaming). Every job a window starts is remembered in the window's
+//! undo stack when it can go back (0.3.0, `rueckgaengig.rs`).
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
@@ -34,6 +36,7 @@ use gtk4::{gdk, gio, glib};
 use querencia_dateiarbeit::auftraege::{self, Event, Job, JobId, Op, Outcome, Queue};
 use querencia_dateiarbeit::papierkorb;
 use querencia_dateiarbeit::{namen, uri};
+use std::path::PathBuf;
 
 use crate::app::{self, Register};
 use crate::eintrag::Eintrag;
@@ -41,6 +44,7 @@ use crate::fenster::Fenster;
 use crate::fortschritt::{self, Fortschritt};
 use crate::i18n::{gettext, gettext_f, ngettext_f};
 use crate::konflikt::Fragen;
+use crate::rueckgaengig::{self, Art, Schritt, Stapel, Vorgang};
 use crate::ziehen::{self, Ablage, Ziel};
 use crate::zwischenablage::Zwischenablage;
 
@@ -85,11 +89,31 @@ pub fn registrieren(register: &mut Register) {
 /// What follows when a job ends: (outcome, cancelled).
 type Nachher = Box<dyn FnOnce(&Outcome, bool)>;
 
+/// What a finished job means for the undo stack of its window.
+#[derive(Clone, Debug)]
+pub enum Merken {
+    /// Nothing (jobs not started by a window).
+    Nein,
+    /// A new operation.
+    Neu,
+    /// The job undoes this operation: it can be redone afterwards.
+    Rueckgaengig(Vorgang),
+    /// One more job of an undo (several folders): nothing to remember.
+    Teil,
+    /// The job redoes an operation: what it did can be undone again.
+    Wiederholen,
+}
+
 /// A job as this module knows it.
 struct Laufend {
     op: Op,
     ziel_name: String,
     nachher: Option<Nachher>,
+    quellen: Vec<String>,
+    ziel: Option<String>,
+    fenster: Option<glib::WeakRef<gtk4::Window>>,
+    merken: Merken,
+    beginn: String,
 }
 
 /// The window "Dateioperationen" and the open questions of the process,
@@ -112,6 +136,7 @@ pub struct Auftrag {
     pub ziel: Option<gio::File>,
     pub fenster: Option<gtk4::Window>,
     nachher: Option<Nachher>,
+    merken: Merken,
 }
 
 impl Auftrag {
@@ -122,7 +147,13 @@ impl Auftrag {
             ziel,
             fenster: None,
             nachher: None,
+            merken: Merken::Neu,
         }
+    }
+
+    pub fn merken(mut self, merken: Merken) -> Self {
+        self.merken = merken;
+        self
     }
 
     pub fn fenster(mut self, fenster: Option<gtk4::Window>) -> Self {
@@ -195,6 +226,7 @@ impl Dienst {
             ziel,
             fenster,
             nachher,
+            merken,
         } = auftrag;
         let namen: Vec<String> = quellen.iter().map(anzeigename).collect();
         let ziel_name = ziel.as_ref().map(anzeigename).unwrap_or_default();
@@ -211,11 +243,13 @@ impl Dienst {
             namen.first().map_or("", String::as_str),
             &ziel_name,
         );
+        let job_quellen: Vec<String> = quellen.iter().map(|f| f.uri().to_string()).collect();
         let job = Job::new(
             op.clone(),
-            quellen.iter().map(|f| f.uri().to_string()).collect(),
+            job_quellen.clone(),
             ziel.as_ref().map(|z| z.uri().to_string()),
         );
+        let beginn = rueckgaengig::jetzt_zeit();
         let id = match app::app_wenn() {
             Some(a) => a.auftrag_starten(job, fenster.as_ref()),
             None => self.queue.start(job),
@@ -226,6 +260,11 @@ impl Dienst {
                 op: op.clone(),
                 ziel_name,
                 nachher,
+                quellen: job_quellen,
+                ziel: ziel.as_ref().map(|z| z.uri().to_string()),
+                fenster: fenster.as_ref().map(|f| f.downgrade()),
+                merken,
+                beginn,
             },
         );
         self.fortschritt.begonnen(id, op, title);
@@ -257,6 +296,11 @@ impl Dienst {
                             op: op.clone(),
                             ziel_name: String::new(),
                             nachher: None,
+                            quellen: Vec::new(),
+                            ziel: None,
+                            fenster: None,
+                            merken: Merken::Nein,
+                            beginn: String::new(),
                         },
                     );
                     let title = fortschritt::title(op, total_items.unwrap_or(1), "", "");
@@ -340,7 +384,30 @@ impl Dienst {
 }
 
 fn fertig(laufend: Laufend, outcome: &Outcome, cancelled: bool, fenster: Option<&gtk4::Window>) {
-    let Laufend { op, nachher, .. } = laufend;
+    let Laufend {
+        op,
+        nachher,
+        quellen,
+        ziel,
+        fenster: von,
+        merken,
+        beginn,
+        ..
+    } = laufend;
+    if let Some(ops) = von
+        .and_then(|w| w.upgrade())
+        .and_then(|w| Operationen::von_window(&w))
+    {
+        ops.merken(
+            merken,
+            &op,
+            &quellen,
+            ziel.as_deref(),
+            outcome,
+            cancelled,
+            &beginn,
+        );
+    }
     protokoll(&format!(
         "{} fertig: {} erledigt, {} übersprungen, {} nicht{}{}",
         op.verb(),
@@ -390,7 +457,7 @@ fn nachfragen() -> bool {
 }
 
 /// The actions of this module.
-const AKTIONEN: [&str; 10] = [
+const AKTIONEN: [&str; 12] = [
     "ausschneiden",
     "kopieren",
     "einfuegen",
@@ -401,6 +468,8 @@ const AKTIONEN: [&str; 10] = [
     "wiederherstellen",
     "ordner-anlegen",
     "dokument-anlegen",
+    "rueckgaengig",
+    "wiederholen",
 ];
 
 thread_local! {
@@ -413,6 +482,10 @@ pub struct Operationen {
     fenster: Weak<Fenster>,
     window: glib::WeakRef<gtk4::ApplicationWindow>,
     aktionen: RefCell<HashMap<&'static str, gio::SimpleAction>>,
+    /// Undo and redo of this window, for all its tabs.
+    stapel: RefCell<Stapel>,
+    /// Undo or redo jobs of this window still running.
+    umkehr_laeuft: Cell<u32>,
 }
 
 impl Operationen {
@@ -434,6 +507,8 @@ impl Operationen {
             fenster: Rc::downgrade(fenster),
             window: window.downgrade(),
             aktionen: RefCell::default(),
+            stapel: RefCell::default(),
+            umkehr_laeuft: Cell::new(0),
         });
         ops.aktionen_anlegen(&window);
         ALLE.with(|alle| alle.borrow_mut().push(ops.clone()));
@@ -472,6 +547,20 @@ impl Operationen {
             });
         }
         ops
+    }
+
+    /// The operations of the window `window`, if it has them.
+    pub fn von_window(window: &gtk4::Window) -> Option<Rc<Self>> {
+        ALLE.with(|alle| {
+            alle.borrow()
+                .iter()
+                .find(|o| {
+                    o.window
+                        .upgrade()
+                        .is_some_and(|w| w.upcast_ref::<gtk4::Window>() == window)
+                })
+                .cloned()
+        })
     }
 
     fn aktionen_anlegen(self: &Rc<Self>, window: &gtk4::ApplicationWindow) {
@@ -560,6 +649,11 @@ impl Operationen {
         setzen("wiederherstellen", etwas && papierkorb);
         setzen("ordner-anlegen", ort && !papierkorb);
         setzen("dokument-anlegen", ort && !papierkorb);
+        let frei = self.umkehr_laeuft.get() == 0;
+        let stapel = self.stapel.borrow();
+        setzen("rueckgaengig", frei && stapel.naechstes_zurueck().is_some());
+        setzen("wiederholen", frei && stapel.naechstes_vor().is_some());
+        drop(stapel);
         if debugging() {
             let formate = gdk::Display::default()
                 .map(|d| d.clipboard().formats().to_str().to_string())
@@ -599,6 +693,8 @@ impl Operationen {
             "wiederherstellen" => self.wiederherstellen(auswahl),
             "ordner-anlegen" => self.ordner_anlegen(),
             "dokument-anlegen" => self.dokument_anlegen(wert),
+            "rueckgaengig" => self.rueckgaengig(),
+            "wiederholen" => self.wiederholen(),
             _ => {}
         }
     }
@@ -893,6 +989,276 @@ impl Operationen {
             }),
         );
     }
+
+    // ------------------------------------------------------ undo and redo
+
+    /// After a job of this window: what it means for the undo stack.
+    #[allow(clippy::too_many_arguments)]
+    fn merken(
+        &self,
+        merken: Merken,
+        op: &Op,
+        quellen: &[String],
+        ziel: Option<&str>,
+        outcome: &Outcome,
+        cancelled: bool,
+        beginn: &str,
+    ) {
+        if !matches!(merken, Merken::Nein | Merken::Neu) {
+            self.umkehr_laeuft
+                .set(self.umkehr_laeuft.get().saturating_sub(1));
+        }
+        // out of the trash: moving back would leave the entry without its
+        // `.trashinfo` (it went with the move); „Wiederherstellen“ is the way
+        let aus_papierkorb = *op == Op::Move
+            && quellen
+                .iter()
+                .any(|q| ziehen::im_papierkorb(&gio::File::for_uri(q)));
+        let vorgang = if aus_papierkorb {
+            None
+        } else {
+            Vorgang::aus(op, quellen, ziel, outcome, beginn)
+        };
+        {
+            let mut stapel = self.stapel.borrow_mut();
+            match merken {
+                Merken::Nein | Merken::Teil => {}
+                Merken::Neu => match vorgang {
+                    Some(v) => {
+                        protokoll(&format!(
+                            "Rückgängig gemerkt: {} ({} Objekte{})",
+                            v.beschreibung(),
+                            v.paare.len(),
+                            if cancelled { ", abgebrochen" } else { "" }
+                        ));
+                        stapel.neu(v);
+                    }
+                    None if matches!(op, Op::Delete | Op::EmptyTrash) && outcome.done > 0 => {
+                        protokoll("Rückgängig: Stapel geleert (endgültig gelöscht)");
+                        stapel.leeren();
+                    }
+                    None => {}
+                },
+                Merken::Rueckgaengig(v) if outcome.done > 0 => {
+                    protokoll(&format!(
+                        "Rückgängig fertig: {} ({} Objekte)",
+                        v.beschreibung(),
+                        outcome.done
+                    ));
+                    stapel.nach_rueckgaengig(v);
+                }
+                Merken::Rueckgaengig(v) => {
+                    protokoll(&format!("Rückgängig ohne Wirkung: {}", v.beschreibung()));
+                }
+                Merken::Wiederholen => match vorgang {
+                    Some(v) => {
+                        protokoll(&format!("Wiederholt: {}", v.beschreibung()));
+                        stapel.nach_wiederholen(v);
+                    }
+                    None => protokoll("Wiederholen ohne Wirkung"),
+                },
+            }
+        }
+        self.aktualisieren();
+    }
+
+    /// The menu text of "Rückgängig" (`vor`: "Wiederholen") with what it
+    /// would do.
+    pub fn umkehr_text(&self, vor: bool) -> String {
+        let stapel = self.stapel.borrow();
+        let naechstes = if vor {
+            stapel.naechstes_vor()
+        } else {
+            stapel.naechstes_zurueck()
+        };
+        match (vor, naechstes) {
+            (false, Some(v)) => {
+                gettext_f("_Undo: {what}", &[("what", &v.beschreibung_rueckgaengig())])
+            }
+            (false, None) => gettext("_Undo"),
+            (true, Some(v)) => gettext_f("_Redo: {what}", &[("what", &v.beschreibung())]),
+            (true, None) => gettext("_Redo"),
+        }
+    }
+
+    /// Strg+Z: undoes the newest operation of the window.
+    fn rueckgaengig(self: &Rc<Self>) {
+        if self.umkehr_laeuft.get() > 0 {
+            return;
+        }
+        let Some(v) = self.stapel.borrow_mut().rueckgaengig() else {
+            return;
+        };
+        protokoll(&format!("Rückgängig: {}", v.beschreibung()));
+        if v.art == Art::Papierkorb {
+            let eintraege = papierkorb_eintraege();
+            let uris = rueckgaengig::passende_eintraege(&eintraege, &v.originale(), &v.beginn);
+            protokoll(&format!(
+                "Rückgängig: {} von {} Einträgen im Papierkorb gefunden",
+                uris.len(),
+                v.paare.len()
+            ));
+            if uris.is_empty() {
+                self.nicht_umkehrbar(&v);
+            } else {
+                self.umkehr_starten(
+                    vec![Schritt {
+                        op: Op::Restore,
+                        quellen: uris,
+                        ziel: None,
+                    }],
+                    v,
+                );
+            }
+            return;
+        }
+        let da: Vec<String> = v.jetzt().into_iter().filter(|u| vorhanden(u)).collect();
+        let schritte = v.umkehren(&da, leer);
+        if schritte.is_empty() {
+            self.nicht_umkehrbar(&v);
+            return;
+        }
+        self.umkehr_starten(schritte, v);
+    }
+
+    /// Umschalt+Strg+Z: does the newest undone operation again.
+    fn wiederholen(self: &Rc<Self>) {
+        if self.umkehr_laeuft.get() > 0 {
+            return;
+        }
+        let Some(v) = self.stapel.borrow_mut().wiederholen() else {
+            return;
+        };
+        protokoll(&format!("Wiederholen: {}", v.beschreibung()));
+        let s = v.wiederholen();
+        self.umkehr_laeuft.set(self.umkehr_laeuft.get() + 1);
+        self.starten(
+            Auftrag::new(
+                s.op,
+                s.quellen.iter().map(|u| gio::File::for_uri(u)).collect(),
+                s.ziel.as_deref().map(gio::File::for_uri),
+            )
+            .merken(Merken::Wiederholen),
+        );
+        self.aktualisieren();
+    }
+
+    fn umkehr_starten(&self, schritte: Vec<Schritt>, v: Vorgang) {
+        let n = schritte.len();
+        for (i, s) in schritte.into_iter().enumerate() {
+            let merken = if i + 1 == n {
+                Merken::Rueckgaengig(v.clone())
+            } else {
+                Merken::Teil
+            };
+            self.umkehr_laeuft.set(self.umkehr_laeuft.get() + 1);
+            self.starten(
+                Auftrag::new(
+                    s.op,
+                    s.quellen.iter().map(|u| gio::File::for_uri(u)).collect(),
+                    s.ziel.as_deref().map(gio::File::for_uri),
+                )
+                .merken(merken),
+            );
+        }
+        self.aktualisieren();
+    }
+
+    /// The objects of `v` are gone: the entry is dropped with a message.
+    fn nicht_umkehrbar(&self, v: &Vorgang) {
+        protokoll(&format!("Rückgängig nicht möglich: {}", v.beschreibung()));
+        fehler(
+            self.window().as_ref(),
+            &gettext("The operation cannot be undone."),
+            &gettext("The items are no longer where the operation left them."),
+        );
+        self.aktualisieren();
+    }
+}
+
+/// Whether `uri` names an object (a link counts as itself, also a dead one).
+fn vorhanden(uri: &str) -> bool {
+    gio::File::for_uri(uri).query_file_type(
+        gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+        gio::Cancellable::NONE,
+    ) != gio::FileType::Unknown
+}
+
+/// Whether a new object is still empty (an empty file, a folder without
+/// entries): undoing it then deletes it, else it goes into the trash.
+fn leer(uri: &str) -> bool {
+    let datei = gio::File::for_uri(uri);
+    match datei.query_file_type(
+        gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+        gio::Cancellable::NONE,
+    ) {
+        gio::FileType::Directory => datei
+            .enumerate_children(
+                "standard::name",
+                gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+                gio::Cancellable::NONE,
+            )
+            .ok()
+            .is_some_and(|e| matches!(e.next_file(gio::Cancellable::NONE), Ok(None))),
+        gio::FileType::Regular => datei
+            .query_info(
+                "standard::size",
+                gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+                gio::Cancellable::NONE,
+            )
+            .is_ok_and(|i| i.size() == 0),
+        _ => false,
+    }
+}
+
+/// The entries of the trash with origin and deletion date: `trash:///`
+/// with GVfs, else the home trash and its `.trashinfo` files.
+fn papierkorb_eintraege() -> Vec<rueckgaengig::Eintrag> {
+    let mut liste = Vec::new();
+    if papierkorb::gvfs_trash() {
+        let trash = gio::File::for_uri(papierkorb::TRASH_URI);
+        if let Ok(kinder) = trash.enumerate_children(
+            "standard::name,trash::orig-path,trash::deletion-date",
+            gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS,
+            gio::Cancellable::NONE,
+        ) {
+            while let Ok(Some(info)) = kinder.next_file(gio::Cancellable::NONE) {
+                let (Some(herkunft), Some(datum)) = (
+                    papierkorb::orig_path(&info),
+                    info.attribute_string("trash::deletion-date"),
+                ) else {
+                    continue;
+                };
+                liste.push(rueckgaengig::Eintrag {
+                    uri: trash.child(info.name()).uri().to_string(),
+                    herkunft,
+                    datum: datum.to_string(),
+                });
+            }
+        }
+        return liste;
+    }
+    let oben = papierkorb::home_trash();
+    let Ok(dateien) = std::fs::read_dir(oben.join("files")) else {
+        return liste;
+    };
+    for d in dateien.filter_map(Result::ok) {
+        let mut name = d.file_name();
+        name.push(".trashinfo");
+        let info: PathBuf = oben.join("info").join(name);
+        let Some((herkunft, datum)) = std::fs::read_to_string(&info)
+            .ok()
+            .and_then(|t| rueckgaengig::trashinfo_lesen(&t))
+        else {
+            continue;
+        };
+        liste.push(rueckgaengig::Eintrag {
+            uri: gio::File::for_path(d.path()).uri().to_string(),
+            herkunft: rueckgaengig::herkunft_absolut(herkunft, std::path::Path::new("/")),
+            datum,
+        });
+    }
+    liste
 }
 
 /// For the views (B2): whether `uri` was cut and waits (shown faded).

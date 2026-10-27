@@ -1,8 +1,13 @@
 //! The search thread: walks the folder tree below the shown folder with
 //! `g_file_enumerate_children` (breadth first, as Nautilus 2.30's simple
 //! search engine), compares every display name with the words of the
-//! query and hands the hits in batches to the main thread. No index, no
-//! file contents (decision for Querencia Dateien: names only).
+//! query and hands the hits in batches to the main thread. No index.
+//!
+//! With „Auch Dateiinhalt“ (0.3.0, off by default) a file whose name does
+//! not match is read as well, grep-like, when it is a text file
+//! ([`im_inhalt`]: a local file up to [`Grenzen::datei_bytes`], no zero
+//! byte): it is a hit when every word of the query is in its text; the
+//! first line with one of the words comes along ([`Fundstelle`]).
 //!
 //! Rules of Nautilus 2.30 (`nautilus-search-engine-simple.c`): name and
 //! query are compared in NFD and lower case, a hit contains every word of
@@ -44,6 +49,104 @@ pub fn passt(worte: &[String], name: &str) -> bool {
     worte.iter().all(|w| n.contains(w.as_str()))
 }
 
+/// Where a word of the query stands in a file's text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Fundstelle {
+    /// Line number, from 1.
+    pub zeile: u32,
+    /// The line, shortened around the word ([`ausschnitt`]).
+    pub text: String,
+}
+
+/// Characters of a line [`Fundstelle::text`] keeps at most.
+pub const AUSSCHNITT: usize = 100;
+
+/// `zeile` with white space folded, cut to [`AUSSCHNITT`] characters so
+/// that `wort` (lower case) stays visible; cuts are marked with "…".
+pub fn ausschnitt(zeile: &str, wort: &str) -> String {
+    let zeichen: Vec<char> = zeile
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .collect();
+    if zeichen.len() <= AUSSCHNITT {
+        return zeichen.into_iter().collect();
+    }
+    let klein: String = zeichen.iter().collect::<String>().to_lowercase();
+    // the word's position in characters (lower case may change the length
+    // of some characters: then the start)
+    let pos = klein
+        .find(wort)
+        .filter(|_| klein.chars().count() == zeichen.len())
+        .map_or(0, |b| klein[..b].chars().count());
+    let anfang = pos
+        .saturating_sub(AUSSCHNITT / 3)
+        .min(zeichen.len() - AUSSCHNITT);
+    let mut out: String = zeichen[anfang..anfang + AUSSCHNITT].iter().collect();
+    if anfang > 0 {
+        out.insert(0, '…');
+    }
+    if anfang + AUSSCHNITT < zeichen.len() {
+        out.push('…');
+    }
+    out
+}
+
+/// Searches the text of `datei` for `worte`: `Some` when every word is in
+/// it, with the first line holding one of them. Only local files up to
+/// `max` bytes; a zero byte marks a binary file (not searched). Invalid
+/// UTF-8 is read lossily (Latin-1 umlauts then do not match).
+pub fn im_inhalt(
+    datei: &gio::File,
+    worte: &[String],
+    max: u64,
+    abbruch: &gio::Cancellable,
+) -> Option<Fundstelle> {
+    use std::io::Read;
+    if worte.is_empty() {
+        return None;
+    }
+    let pfad = datei.path()?;
+    let mut daten = Vec::new();
+    std::fs::File::open(&pfad)
+        .ok()?
+        .take(max + 1)
+        .read_to_end(&mut daten)
+        .ok()?;
+    if daten.len() as u64 > max || daten.contains(&0) {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&daten);
+    let mut gefunden = vec![false; worte.len()];
+    let mut erste: Option<Fundstelle> = None;
+    for (i, zeile) in text.lines().enumerate() {
+        if i % 4096 == 0 && abbruch.is_cancelled() {
+            return None;
+        }
+        let n = normal(zeile);
+        for (k, w) in worte.iter().enumerate() {
+            if n.contains(w.as_str()) {
+                gefunden[k] = true;
+                if erste.is_none() {
+                    erste = Some(Fundstelle {
+                        zeile: u32::try_from(i + 1).unwrap_or(u32::MAX),
+                        text: ausschnitt(zeile, w),
+                    });
+                }
+            }
+        }
+        if erste.is_some() && gefunden.iter().all(|g| *g) {
+            break;
+        }
+    }
+    if gefunden.iter().all(|g| *g) {
+        erste
+    } else {
+        None
+    }
+}
+
 /// One hit, as plain data (a `gio::FileInfo` may not cross threads); the
 /// main thread makes an `Eintrag` of it ([`Fund::eintrag`]).
 #[derive(Clone, Debug)]
@@ -63,6 +166,8 @@ pub struct Fund {
     pub besitzer: Option<String>,
     pub gruppe: Option<String>,
     pub darf: [Option<bool>; 6],
+    /// A hit in the text (not in the name): where.
+    pub fundstelle: Option<Fundstelle>,
 }
 
 const DARF: [&str; 6] = [
@@ -101,6 +206,7 @@ impl Fund {
             besitzer: s("owner::user"),
             gruppe: s("owner::group"),
             darf: DARF.map(b),
+            fundstelle: None,
         }
     }
 
@@ -157,6 +263,8 @@ pub enum Meldung {
         abgebrochen: bool,
         /// Stopped at [`Grenzen`] (hits or depth).
         begrenzt: bool,
+        /// Files whose text was searched.
+        inhalte: u64,
     },
 }
 
@@ -166,15 +274,19 @@ pub enum Meldung {
 pub struct Grenzen {
     pub tiefe: u32,
     pub treffer: usize,
+    /// Larger files are not searched for their text.
+    pub datei_bytes: u64,
 }
 
 impl Default for Grenzen {
     /// 64 levels, 50,000 hits (a home folder of half a million files
-    /// stays answerable; the list of hits stays below ~200 MB).
+    /// stays answerable; the list of hits stays below ~200 MB), texts up
+    /// to 10 MiB.
     fn default() -> Self {
         Self {
             tiefe: 64,
             treffer: 50_000,
+            datei_bytes: 10 * 1024 * 1024,
         }
     }
 }
@@ -192,12 +304,15 @@ pub fn neue_nummer() -> u64 {
     NUMMER.fetch_add(1, Ordering::Relaxed) + 1
 }
 
-/// Searches below `wurzel` for `worte`; `melden` gets the batches (on the
-/// search thread). Stops when `abbruch` is cancelled.
+/// Searches below `wurzel` for `worte` (in the names; with `inhalt` also
+/// in the texts); `melden` gets the batches (on the search thread). Stops
+/// when `abbruch` is cancelled.
+#[allow(clippy::too_many_arguments)]
 pub fn suchen(
     wurzel: &gio::File,
     worte: &[String],
     verborgene: bool,
+    inhalt: bool,
     grenzen: Grenzen,
     abbruch: &gio::Cancellable,
     melden: &dyn Fn(Meldung),
@@ -218,6 +333,7 @@ pub fn suchen(
     let mut zuletzt = Instant::now();
     let (mut eintraege, mut ordner, mut fehler, mut treffer) = (0u64, 0u64, 0u64, 0usize);
     let mut begrenzt = false;
+    let mut inhalte = 0u64;
     'ordner: while let Some((dir, tiefe)) = warteschlange.pop_front() {
         if abbruch.is_cancelled() {
             break;
@@ -247,8 +363,24 @@ pub fn suchen(
             if !verborgene && (info.is_hidden() || info.is_backup()) {
                 continue;
             }
+            let mut fund = None;
             if passt(worte, &info.display_name()) {
-                funde.push(Fund::aus(&dir, &info));
+                fund = Some(Fund::aus(&dir, &info));
+            } else if inhalt
+                && info.file_type() == gio::FileType::Regular
+                && u64::try_from(info.size()).is_ok_and(|g| g <= grenzen.datei_bytes)
+            {
+                inhalte += 1;
+                if let Some(stelle) =
+                    im_inhalt(&dir.child(info.name()), worte, grenzen.datei_bytes, abbruch)
+                {
+                    let mut f = Fund::aus(&dir, &info);
+                    f.fundstelle = Some(stelle);
+                    fund = Some(f);
+                }
+            }
+            if let Some(f) = fund {
+                funde.push(f);
                 treffer += 1;
                 if treffer >= grenzen.treffer {
                     begrenzt = true;
@@ -288,6 +420,7 @@ pub fn suchen(
         ms: start.elapsed().as_millis(),
         abgebrochen: abbruch.is_cancelled(),
         begrenzt,
+        inhalte,
     });
 }
 
@@ -298,6 +431,7 @@ pub fn starten(
     wurzel: gio::File,
     worte: Vec<String>,
     verborgene: bool,
+    inhalt: bool,
     abbruch: gio::Cancellable,
     empfang: fn(u64, Meldung),
 ) -> std::io::Result<()> {
@@ -305,9 +439,17 @@ pub fn starten(
     std::thread::Builder::new()
         .name("qd-suche".to_owned())
         .spawn(move || {
-            suchen(&wurzel, &worte, verborgene, Grenzen::default(), &ab, &|m| {
-                glib::idle_add_once(move || empfang(nummer, m));
-            });
+            suchen(
+                &wurzel,
+                &worte,
+                verborgene,
+                inhalt,
+                Grenzen::default(),
+                &ab,
+                &|m| {
+                    glib::idle_add_once(move || empfang(nummer, m));
+                },
+            );
         })
         .map(|_| ())
 }
@@ -357,6 +499,7 @@ mod tests {
                 &gio::File::for_path(&d),
                 &worte("rechnung"),
                 verborgene,
+                false,
                 Grenzen::default(),
                 &gio::Cancellable::new(),
                 &|m| match m {
@@ -384,6 +527,7 @@ mod tests {
         suchen(
             &gio::File::for_path(&d),
             &worte("r"),
+            false,
             false,
             Grenzen::default(),
             &c,
@@ -436,6 +580,7 @@ mod tests {
                 &gio::File::for_path(&d),
                 &worte("treffer"),
                 false,
+                false,
                 g,
                 &gio::Cancellable::new(),
                 &|m| match m {
@@ -455,6 +600,7 @@ mod tests {
         let (n, (ordner, begrenzt)) = lauf(Grenzen {
             tiefe: 2,
             treffer: 1000,
+            ..Grenzen::default()
         });
         assert_eq!(
             (n, ordner, begrenzt),
@@ -464,8 +610,106 @@ mod tests {
         let (n, (_, begrenzt)) = lauf(Grenzen {
             tiefe: 64,
             treffer: 4,
+            ..Grenzen::default()
         });
         assert_eq!((n, begrenzt), (4, true), "nach 4 Treffern Schluss");
         let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn contents_are_searched_only_with_the_switch_and_only_in_texts() {
+        let d = std::env::temp_dir().join(format!("qd-suche-inhalt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("unter")).unwrap();
+        std::fs::write(
+            d.join("brief.txt"),
+            "Hallo,\nanbei die Rechnung für März.\nGruß\n",
+        )
+        .unwrap();
+        std::fs::write(
+            d.join("unter/notiz.md"),
+            "# Notiz\n\nRECHNUNG bezahlt, März 2026\n",
+        )
+        .unwrap();
+        std::fs::write(d.join("nur-rechnung.txt"), "Rechnung ohne Monat\n").unwrap();
+        // a zero byte: binary, not searched
+        std::fs::write(d.join("bild.bin"), b"Rechnung M\xc3\xa4rz\0\x01").unwrap();
+        std::fs::write(d.join("gross.txt"), "Rechnung März ".repeat(100)).unwrap();
+        std::fs::write(d.join("März-Rechnung.odt"), b"PK\x03\x04").unwrap();
+        let lauf = |inhalt: bool, max: u64| {
+            let funde = RefCell::new(Vec::new());
+            let gelesen = RefCell::new(0);
+            suchen(
+                &gio::File::for_path(&d),
+                &worte("rechnung märz"),
+                false,
+                inhalt,
+                Grenzen {
+                    datei_bytes: max,
+                    ..Grenzen::default()
+                },
+                &gio::Cancellable::new(),
+                &|m| match m {
+                    Meldung::Funde(f) => funde.borrow_mut().extend(f),
+                    Meldung::Ende { inhalte, .. } => *gelesen.borrow_mut() = inhalte,
+                },
+            );
+            let mut f: Vec<(String, Option<u32>)> = funde
+                .borrow()
+                .iter()
+                .map(|f| (f.name.clone(), f.fundstelle.as_ref().map(|s| s.zeile)))
+                .collect();
+            f.sort();
+            (f, gelesen.into_inner())
+        };
+        // without the switch: names only
+        assert_eq!(
+            lauf(false, 1000),
+            (vec![("März-Rechnung.odt".to_owned(), None)], 0)
+        );
+        // with it: every word somewhere in the text, the line of the first
+        let (f, gelesen) = lauf(true, 1000);
+        assert_eq!(
+            f,
+            vec![
+                ("März-Rechnung.odt".to_owned(), None),
+                ("brief.txt".to_owned(), Some(2)),
+                ("notiz.md".to_owned(), Some(3)),
+            ]
+        );
+        // read: brief, notiz, nur-rechnung, bild (gross.txt is too large)
+        assert_eq!(gelesen, 4);
+        let (f, _) = lauf(true, 10 * 1024 * 1024);
+        assert!(f.iter().any(|(n, z)| n == "gross.txt" && *z == Some(1)));
+        let stelle = im_inhalt(
+            &gio::File::for_path(d.join("brief.txt")),
+            &worte("märz"),
+            1000,
+            &gio::Cancellable::new(),
+        )
+        .unwrap();
+        assert_eq!(stelle.text, "anbei die Rechnung für März.");
+        assert!(
+            im_inhalt(
+                &gio::File::for_path(d.join("brief.txt")),
+                &worte("januar"),
+                1000,
+                &gio::Cancellable::new()
+            )
+            .is_none()
+        );
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn a_long_line_is_cut_around_the_word() {
+        assert_eq!(ausschnitt("  kurz \t und   gut ", "gut"), "kurz und gut");
+        let lang = format!("{} Treffer {}", "a".repeat(150), "b".repeat(150));
+        let a = ausschnitt(&lang, "treffer");
+        assert!(a.starts_with('…') && a.ends_with('…'), "{a}");
+        assert!(a.contains("Treffer"));
+        assert_eq!(a.chars().count(), AUSSCHNITT + 2);
+        let vorn = ausschnitt(&format!("Treffer {}", "c".repeat(200)), "treffer");
+        assert!(vorn.starts_with("Treffer") && vorn.ends_with('…'));
     }
 }

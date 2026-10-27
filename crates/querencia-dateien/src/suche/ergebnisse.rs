@@ -1,6 +1,8 @@
 //! The view „Suchergebnisse“: a list of the hits with the columns Name,
-//! Ort (the folder of the hit), Größe, Typ and Änderungsdatum, sortable by
-//! a click on a column head. A double click or Enter opens the selected
+//! Ort (the folder of the hit), Fundstelle (only while the search reads
+//! file contents, 0.3.0: the line with the word, its number in the
+//! tooltip), Größe, Typ and Änderungsdatum, sortable by a click on a
+//! column head. A double click or Enter opens the selected
 //! hits, the context menu offers „Öffnen“ and „Im Ordner anzeigen“.
 //! Thumbnails come through the Bildquelle je Eintrag as in the list view.
 //!
@@ -8,6 +10,8 @@
 //! the window binds there for the folder (Entf, Strg+C …) are kept from it
 //! here, they would act on the hidden folder's selection.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use gtk4::prelude::*;
@@ -17,10 +21,14 @@ use querencia_oberflaeche::classic_menu;
 use crate::ansichtskern;
 use crate::ansichtsregeln::{datumsmuster, groesse_text};
 use crate::eintrag::Eintrag;
-use crate::i18n::gettext;
+use crate::i18n::{gettext, gettext_f};
 use crate::menue;
 use crate::miniaturen::bildquelle;
 use crate::regeln;
+use crate::suche::sucher::Fundstelle;
+
+/// Where the hits of the text stand, by URI.
+type Fundstellen = Rc<RefCell<HashMap<String, Fundstelle>>>;
 
 /// Icon size of the rows (the list view's standard zoom, 50 %).
 const SYMBOL: i32 = 24;
@@ -29,15 +37,17 @@ const SYMBOL: i32 = 24;
 enum Spalte {
     Name,
     Ort,
+    Fundstelle,
     Groesse,
     Typ,
     Datum,
 }
 
 impl Spalte {
-    const ALLE: [Spalte; 5] = [
+    const ALLE: [Spalte; 6] = [
         Spalte::Name,
         Spalte::Ort,
+        Spalte::Fundstelle,
         Spalte::Groesse,
         Spalte::Typ,
         Spalte::Datum,
@@ -48,6 +58,9 @@ impl Spalte {
             Spalte::Name => gettext("Name"),
             // TRANSLATORS: column of the search results: the folder of a hit
             Spalte::Ort => gettext("Location"),
+            // TRANSLATORS: column of the search results with file contents:
+            // the line of the text that holds the word
+            Spalte::Fundstelle => gettext("Match"),
             Spalte::Groesse => gettext("Size"),
             Spalte::Typ => gettext("Type"),
             Spalte::Datum => gettext("Date Modified"),
@@ -72,11 +85,24 @@ pub fn ort_text(datei: &gio::File) -> String {
     }
 }
 
-fn text(spalte: Spalte, e: &Eintrag) -> String {
+/// The tooltip of a Fundstelle cell: „Zeile 12: …“.
+pub fn fundstelle_tipp(f: &Fundstelle) -> String {
+    gettext_f(
+        "Line {line}: {text}",
+        &[("line", &f.zeile.to_string()), ("text", &f.text)],
+    )
+}
+
+fn text(spalte: Spalte, e: &Eintrag, fundstellen: &Fundstellen) -> String {
     let d = e.daten();
     match spalte {
         Spalte::Name => d.anzeige.clone(),
         Spalte::Ort => ort_text(&d.datei),
+        Spalte::Fundstelle => fundstellen
+            .borrow()
+            .get(d.datei.uri().as_str())
+            .map(|f| f.text.clone())
+            .unwrap_or_default(),
         Spalte::Groesse => groesse_text(d.ist_ordner, ansichtskern::groesse(e), regeln::groesse),
         Spalte::Typ => ansichtskern::typ_text(e),
         Spalte::Datum => glib::DateTime::from_unix_local(ansichtskern::zeit(e))
@@ -87,11 +113,17 @@ fn text(spalte: Spalte, e: &Eintrag) -> String {
     }
 }
 
-fn vergleich(spalte: Spalte, a: &Eintrag, b: &Eintrag) -> std::cmp::Ordering {
+fn vergleich(
+    spalte: Spalte,
+    a: &Eintrag,
+    b: &Eintrag,
+    fundstellen: &Fundstellen,
+) -> std::cmp::Ordering {
     let (x, y) = (&a.daten().sort, &b.daten().sort);
     match spalte {
         Spalte::Name => x.name.cmp(&y.name),
         Spalte::Ort => ort_text(a.datei()).cmp(&ort_text(b.datei())),
+        Spalte::Fundstelle => text(spalte, a, fundstellen).cmp(&text(spalte, b, fundstellen)),
         Spalte::Groesse => x.groesse.cmp(&y.groesse),
         Spalte::Typ => x.typ.cmp(&y.typ),
         Spalte::Datum => x.zeit.cmp(&y.zeit),
@@ -114,6 +146,8 @@ pub struct Ergebnisse {
     auswahl: gtk4::MultiSelection,
     anker: gtk4::MenuButton,
     menue: gio::Menu,
+    fundstellen: Fundstellen,
+    fundstelle_spalte: gtk4::ColumnViewColumn,
 }
 
 impl Ergebnisse {
@@ -128,23 +162,35 @@ impl Ergebnisse {
         let sortiert = gtk4::SortListModel::new(Some(store.clone()), liste.sorter());
         let auswahl = gtk4::MultiSelection::new(Some(sortiert));
         let mut name_spalte = None;
+        let fundstellen: Fundstellen = Rc::default();
+        let mut fundstelle_spalte = None;
         for spalte in Spalte::ALLE {
             let factory = gtk4::SignalListItemFactory::new();
-            fabrik(spalte, &factory);
+            fabrik(spalte, &factory, fundstellen.clone());
             let col = gtk4::ColumnViewColumn::new(Some(&spalte.titel()), Some(factory));
             col.set_resizable(true);
-            col.set_expand(matches!(spalte, Spalte::Name | Spalte::Ort));
+            col.set_expand(matches!(
+                spalte,
+                Spalte::Name | Spalte::Ort | Spalte::Fundstelle
+            ));
+            let fs = fundstellen.clone();
             col.set_sorter(Some(&gtk4::CustomSorter::new(move |a, b| {
                 match (a.downcast_ref::<Eintrag>(), b.downcast_ref::<Eintrag>()) {
-                    (Some(a), Some(b)) => vergleich(spalte, a, b).into(),
+                    (Some(a), Some(b)) => vergleich(spalte, a, b, &fs).into(),
                     _ => gtk4::Ordering::Equal,
                 }
             })));
             liste.append_column(&col);
-            if spalte == Spalte::Name {
-                name_spalte = Some(col);
+            match spalte {
+                Spalte::Name => name_spalte = Some(col),
+                Spalte::Fundstelle => {
+                    col.set_visible(false);
+                    fundstelle_spalte = Some(col);
+                }
+                _ => {}
             }
         }
+        let fundstelle_spalte = fundstelle_spalte.expect("Spalte Fundstelle");
         liste.set_model(Some(&auswahl));
         liste.sort_by_column(name_spalte.as_ref(), gtk4::SortType::Ascending);
         let scroller = gtk4::ScrolledWindow::builder()
@@ -173,6 +219,8 @@ impl Ergebnisse {
             auswahl,
             anker,
             menue,
+            fundstellen,
+            fundstelle_spalte,
         });
         e.signale(handlung);
         e
@@ -184,10 +232,23 @@ impl Ergebnisse {
 
     pub fn leeren(&self) {
         self.store.remove_all();
+        self.fundstellen.borrow_mut().clear();
     }
 
-    pub fn anhaengen(&self, eintraege: &[Eintrag]) {
+    /// Hits with, for hits in the text, where the word stands.
+    pub fn anhaengen(&self, eintraege: &[Eintrag], stellen: Vec<(String, Fundstelle)>) {
+        self.fundstellen.borrow_mut().extend(stellen);
         self.store.extend_from_slice(eintraege);
+    }
+
+    /// Shows the column Fundstelle (the search reads file contents).
+    pub fn fundstellen_zeigen(&self, an: bool) {
+        self.fundstelle_spalte.set_visible(an);
+    }
+
+    /// Where the word stands in the text of `uri`, if it was found there.
+    pub fn fundstelle(&self, uri: &str) -> Option<Fundstelle> {
+        self.fundstellen.borrow().get(uri).cloned()
     }
 
     pub fn anzahl(&self) -> u32 {
@@ -388,7 +449,7 @@ fn zeile_von(w: &gtk4::Widget) -> Option<u32> {
     })
 }
 
-fn fabrik(spalte: Spalte, factory: &gtk4::SignalListItemFactory) {
+fn fabrik(spalte: Spalte, factory: &gtk4::SignalListItemFactory, fundstellen: Fundstellen) {
     factory.connect_setup(move |_, obj| {
         let Some(li) = obj.downcast_ref::<gtk4::ListItem>() else {
             return;
@@ -428,9 +489,17 @@ fn fabrik(spalte: Spalte, factory: &gtk4::SignalListItemFactory) {
             bildquelle::binden(&bild, &e, bildquelle::Groesse::liste(SYMBOL));
         }
         if let Some(t) = zelle.last_child().and_downcast::<gtk4::Label>() {
-            let s = text(spalte, &e);
-            if spalte == Spalte::Ort {
-                t.set_tooltip_text(Some(&s));
+            let s = text(spalte, &e, &fundstellen);
+            match spalte {
+                Spalte::Ort => t.set_tooltip_text(Some(&s)),
+                Spalte::Fundstelle => {
+                    let tipp = fundstellen
+                        .borrow()
+                        .get(e.datei().uri().as_str())
+                        .map(fundstelle_tipp);
+                    t.set_tooltip_text(tipp.as_deref());
+                }
+                _ => {}
             }
             t.set_text(&s);
         }

@@ -56,6 +56,8 @@ pub struct Umgebung {
     /// Templates as (shown name, URI).
     pub vorlagen: Vec<(String, String)>,
     pub sortierung: Sortierung,
+    /// „Hier entpacken“ fits the selection (0.3.0, `entpacken.rs`).
+    pub entpacken: bool,
 }
 
 /// One row of a menu group.
@@ -156,6 +158,12 @@ fn objekte(a: &Auswahlinfo, u: &Umgebung) -> Vec<Vec<Zeile>> {
             });
         }
     }
+    // archives: the file-roller extension's entry after the open group
+    let entpacken = if u.entpacken {
+        vec![eintrag(t(crate::entpacken::text()), "win.hier-entpacken")]
+    } else {
+        Vec::new()
+    };
     let mut ablage = vec![
         eintrag(t(gettext("Cu_t")), "win.ausschneiden"),
         eintrag(t(gettext("_Copy")), "win.kopieren"),
@@ -171,13 +179,17 @@ fn objekte(a: &Auswahlinfo, u: &Umgebung) -> Vec<Vec<Zeile>> {
     } else {
         gesperrt(t(gettext("_Rename…")))
     };
-    vec![
-        oeffnen,
+    let mut gruppen = vec![oeffnen];
+    if !entpacken.is_empty() {
+        gruppen.push(entpacken);
+    }
+    gruppen.extend([
         ablage,
         vec![umbenennen],
         vec![eintrag(t(gettext("Mo_ve to Trash")), "win.papierkorb")],
         vec![eintrag(t(gettext("_Properties")), "win.eigenschaften")],
-    ]
+    ]);
+    gruppen
 }
 
 fn papierkorb_objekt(_a: &Auswahlinfo) -> Vec<Vec<Zeile>> {
@@ -380,11 +392,13 @@ pub fn zeigen(
     } else {
         Vec::new()
     };
+    let im_papierkorb = ordner.is_some_and(|o| o.has_uri_scheme("trash"));
     let umgebung = Umgebung {
-        im_papierkorb: ordner.is_some_and(|o| o.has_uri_scheme("trash")),
+        im_papierkorb,
         programme,
         vorlagen,
         sortierung,
+        entpacken: !im_papierkorb && crate::entpacken::moeglich(gewaehlt),
     };
     let gruppen = zeilen(&ort, &umgebung);
     let modell = als_menue(&gruppen, &|a| aktion_verfuegbar(widget, a));
@@ -608,6 +622,17 @@ mod tests {
         assert_eq!(
             beschreibung(&zeilen(&datei(), &umgebung())),
             "Open with “Editor”, Open With ▸ {Dokumente} \
+             | Cut, Copy | Rename… | Move to Trash | Properties"
+        );
+    }
+
+    #[test]
+    fn archives_get_extract_here_after_the_open_group() {
+        let mut u = umgebung();
+        u.entpacken = true;
+        assert_eq!(
+            beschreibung(&zeilen(&datei(), &u)),
+            "Open with “Editor”, Open With ▸ {Dokumente} | Extract Here \
              | Cut, Copy | Rename… | Move to Trash | Properties"
         );
     }

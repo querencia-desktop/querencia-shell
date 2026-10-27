@@ -12,7 +12,10 @@
 #   GTK-Themas, Vorgabe ~/.local/share/themes/Querencia-Klassisch),
 #   LAUF_STUFE (L|G, Vorgabe L: G startet gvfsd im Wegwerf-Bus, trash:///),
 #   LAUF_ATTRAPPEN (Laufwerks-Attrappen des Prüfrahmens, z. B.
-#   "schreibbar eingehaengt nicht-eingehaengt").
+#   "schreibbar eingehaengt nicht-eingehaengt"),
+#   LAUF_ARCHIV (Programm querencia-archiv für „Hier entpacken“, 0.3.0: nur
+#   lesend in der Hülle, QUERENCIA_ARCHIV, Desktop-Datei mit MimeType im
+#   Profil).
 # Ausgabe: ${DATEIEN_ARBEIT:-~/projects/dateien-arbeit}/laeufe/NAME/
 #   (ergebnis.txt, programm.log, fotos/, aufrufe.log, huelle.log).
 # Das Szenario läuft in der Hülle mit den Hilfen aus innen.sh.
@@ -74,8 +77,22 @@ for art in ${LAUF_ATTRAPPEN:-}; do
   # shellcheck disable=SC2207
   ATT+=($(bash "$REPO/werkzeug/dateien-pruefrahmen/attrappen.sh" "$art" optionen))
 done
+ARCHIV=()
+if [ -n "${LAUF_ARCHIV:-}" ]; then
+  AB=$(readlink -f "$LAUF_ARCHIV")
+  [ -x "$AB" ] || { echo "lauf: LAUF_ARCHIV ist kein Programm: $LAUF_ARCHIV" >&2; exit 1; }
+  mkdir -p "$PROFIL/data/applications"
+  cat > "$PROFIL/data/applications/org.querencia.Archiv.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Archivverwaltung
+Exec=$AB %F
+MimeType=application/zip;application/x-tar;application/gzip;application/x-xz;application/x-bzip2;application/zstd;application/x-7z-compressed;application/vnd.rar;application/x-compressed-tar;application/x-xz-compressed-tar;
+DESKTOP
+  ARCHIV=(--lesen "$(dirname "$AB")" --setenv "QUERENCIA_ARCHIV=$AB")
+fi
 set +e
-bash "$REPO/werkzeug/dateien-pruefrahmen/huelle.sh" "${ATT[@]}" --profil "$PROFIL" --labwc --sprache "$LOC" \
+bash "$REPO/werkzeug/dateien-pruefrahmen/huelle.sh" "${ATT[@]}" "${ARCHIV[@]}" --profil "$PROFIL" --labwc --sprache "$LOC" \
   --lesen "$BIN" --lesen "$A/bin" --lesen "$HIER" --lesen "$SZENARIO" --schreiben "$OUT" \
   --setenv "LANGUAGE=$LANGU" --setenv "QUERENCIA_DATEIEN_LOCALEDIR=$PROFIL/locale" \
   --setenv "LAUF_GROESSE=$GROESSE" --setenv "LAUF_OUT=$OUT" --setenv "LAUF_PROG=$BIN" \

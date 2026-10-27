@@ -17,13 +17,125 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: src/main.rs:33
+msgid "Volume Control"
+msgstr "Control de volumen"
+
+#: src/main.rs:83 src/main.rs:135 src/main.rs:628
+msgid "_Close"
+msgstr "_Cerrar"
+
+#: src/main.rs:84
+msgid "_Quit"
+msgstr "_Salir"
+
+#: src/main.rs:86
+msgid "_About"
+msgstr "_Acerca de"
+
+#: src/main.rs:88
+msgid "_File"
+msgstr "_Archivo"
+
+#: src/main.rs:89
+msgid "_Help"
+msgstr "Ay_uda"
+
+#: src/main.rs:124
+msgid "_Playback"
+msgstr "_Reproducción"
+
+#: src/main.rs:128
+msgid "_Recording"
+msgstr "_Grabación"
+
+#: src/main.rs:132
+msgid "_Applications"
+msgstr "A_plicaciones"
+
+#: src/main.rs:161 src/model.rs:287
+msgid "Connecting to the audio service…"
+msgstr "Conectando con el servicio de sonido…"
+
+#: src/main.rs:164
+msgid ""
+"No audio service. As soon as PipeWire or PulseAudio is running, the volume control connects by itself."
+msgstr ""
+"Sin servicio de sonido. En cuanto PipeWire o PulseAudio esté en marcha, el control de volumen se conectará solo."
+
+#: src/main.rs:193
+#, no-c-format
+msgid "{percent} %"
+msgstr "{percent} %"
+
+#: src/main.rs:235
+msgid "_Mute"
+msgstr "_Silenciar"
+
+#: src/main.rs:238
+msgid "_Output device:"
+msgstr "_Dispositivo de salida:"
+
+#: src/main.rs:240
+msgid "_Input device:"
+msgstr "_Dispositivo de entrada:"
+
+#: src/main.rs:247
+msgid "_Volume:"
+msgstr "_Volumen:"
+
+#: src/main.rs:341
+msgid "No device"
+msgstr "Ningún dispositivo"
+
+#: src/main.rs:424
+msgid "No application is playing or recording sound right now."
+msgstr "Ninguna aplicación está reproduciendo ni grabando sonido."
+
+#: src/main.rs:503
+msgid "Mute"
+msgstr "Silenciar"
+
+#: src/main.rs:560
+#, no-c-format
+msgid "{stream} (recording)"
+msgstr "{stream} (grabación)"
+
+#: src/main.rs:572
+#, no-c-format
+msgid "About {program}"
+msgstr "Acerca de {program}"
+
+#: src/main.rs:592
+#, no-c-format
+msgid "Version {version}"
+msgstr "Versión {version}"
+
+#: src/main.rs:596
+msgid "Adjust the volume of devices and applications"
+msgstr "Ajustar el volumen de los dispositivos y las aplicaciones"
+
+#: src/main.rs:597
+msgid "Part of Querencia Desktop"
+msgstr "Parte de Querencia Desktop"
+
+#: src/main.rs:600
+msgid "Audio service: none"
+msgstr "Servicio de sonido: ninguno"
+
+#: src/main.rs:602
+#, no-c-format
+msgid "Audio service: {server}"
+msgstr "Servicio de sonido: {server}"
+
+#: src/main.rs:604
+#, no-c-format
+msgid "License: {license}"
+msgstr "Licencia: {license}"
+
 #: src/model.rs:286
 msgid "No audio service"
 msgstr "Sin servicio de sonido"
-
-#: src/model.rs:287
-msgid "Connecting to the audio service…"
-msgstr "Conectando con el servicio de sonido…"
 
 #: src/model.rs:289
 msgid "No output device"

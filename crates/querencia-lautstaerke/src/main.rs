@@ -23,13 +23,16 @@ use gtk4::{
     glib,
 };
 
+use querencia_lautstaerke::i18n::{gettext, gettext_f};
 use querencia_lautstaerke::model::{self, Device, State, Stream};
 use querencia_lautstaerke::service::{self, Service};
 use querencia_lautstaerke::{MIXER_APP_ID, MIXER_PROGRAM, icons};
 
-const TITLE: &str = "Lautstärkeregler";
-/// The only entry of an empty device list.
-const NO_DEVICE: &str = "Kein Gerät";
+/// The window title (msgid English, German from po/de.po).
+fn title() -> String {
+    gettext("Volume Control")
+}
+
 /// After a change by the user, events of the service do not move that
 /// slider for this long, so a dragged slider does not jump back to a value
 /// the server reported a moment earlier.
@@ -39,6 +42,7 @@ fn main() -> glib::ExitCode {
     if std::env::args().nth(1).as_deref() == Some("--zustand") {
         return print_state();
     }
+    querencia_lautstaerke::i18n::init();
     let app = Application::builder().application_id(MIXER_APP_ID).build();
     app.connect_startup(|app| {
         app.set_menubar(Some(&menu_model()));
@@ -73,23 +77,23 @@ fn main() -> glib::ExitCode {
     app.run()
 }
 
-/// The classic menu bar: Datei and Hilfe, German, with mnemonics.
+/// The classic menu bar: File and Help, with mnemonics.
 fn menu_model() -> gio::Menu {
     let file = gio::Menu::new();
-    file.append(Some("_Schließen"), Some("window.close"));
-    file.append(Some("_Beenden"), Some("app.quit"));
+    file.append(Some(&gettext("_Close")), Some("window.close"));
+    file.append(Some(&gettext("_Quit")), Some("app.quit"));
     let help = gio::Menu::new();
-    help.append(Some("_Info"), Some("app.about"));
+    help.append(Some(&gettext("_About")), Some("app.about"));
     let bar = gio::Menu::new();
-    bar.append_submenu(Some("_Datei"), &file);
-    bar.append_submenu(Some("_Hilfe"), &help);
+    bar.append_submenu(Some(&gettext("_File")), &file);
+    bar.append_submenu(Some(&gettext("_Help")), &help);
     bar
 }
 
 fn build_window(app: &Application) -> ApplicationWindow {
     let window = ApplicationWindow::builder()
         .application(app)
-        .title(TITLE)
+        .title(title())
         .icon_name(MIXER_APP_ID)
         .default_width(520)
         .default_height(400)
@@ -115,11 +119,20 @@ fn build_window(app: &Application) -> ApplicationWindow {
         .margin_top(8)
         .vexpand(true)
         .build();
-    notebook.append_page(&playback.root, Some(&Label::with_mnemonic("_Wiedergabe")));
-    notebook.append_page(&recording.root, Some(&Label::with_mnemonic("_Aufnahme")));
-    notebook.append_page(&streams.root, Some(&Label::with_mnemonic("A_nwendungen")));
+    notebook.append_page(
+        &playback.root,
+        Some(&Label::with_mnemonic(&gettext("_Playback"))),
+    );
+    notebook.append_page(
+        &recording.root,
+        Some(&Label::with_mnemonic(&gettext("_Recording"))),
+    );
+    notebook.append_page(
+        &streams.root,
+        Some(&Label::with_mnemonic(&gettext("_Applications"))),
+    );
 
-    let close = Button::with_mnemonic("_Schließen");
+    let close = Button::with_mnemonic(&gettext("_Close"));
     close.set_halign(Align::End);
     close.set_margin_end(8);
     close.set_margin_top(8);
@@ -145,13 +158,12 @@ fn build_window(app: &Application) -> ApplicationWindow {
             let (text, usable) = match &state.connection {
                 model::Connection::Ready => (String::new(), true),
                 model::Connection::Connecting => {
-                    ("Verbindung zum Audiodienst …".to_string(), false)
+                    (gettext("Connecting to the audio service…"), false)
                 }
                 model::Connection::Unavailable(_) => (
-                    format!(
-                        "{}. Sobald PipeWire oder PulseAudio läuft, verbindet sich der \
-                         Lautstärkeregler von selbst.",
-                        model::NO_SERVICE
+                    gettext(
+                        "No audio service. As soon as PipeWire or PulseAudio is running, \
+                         the volume control connects by itself.",
                     ),
                     false,
                 ),
@@ -178,7 +190,7 @@ fn held(last: &Cell<Option<Instant>>) -> bool {
 }
 
 fn percent_text(percent: u32) -> String {
-    format!("{percent} %")
+    gettext_f("{percent} %", &[("percent", &percent.to_string())])
 }
 
 fn volume_scale() -> Scale {
@@ -192,7 +204,7 @@ fn volume_scale() -> Scale {
     scale.set_draw_value(false);
     scale.set_increments(1.0, f64::from(model::SCROLL_STEP));
     scale.add_mark(0.0, gtk4::PositionType::Bottom, None);
-    scale.add_mark(100.0, gtk4::PositionType::Bottom, Some("100 %"));
+    scale.add_mark(100.0, gtk4::PositionType::Bottom, Some(&percent_text(100)));
     scale
 }
 
@@ -220,19 +232,19 @@ impl DevicePage {
         let devices = DropDown::builder().model(&labels).hexpand(true).build();
         let scale = volume_scale();
         let percent = Label::builder().width_chars(6).xalign(1.0).build();
-        let mute = CheckButton::with_mnemonic("_Stumm");
+        let mute = CheckButton::with_mnemonic(&gettext("_Mute"));
         let device_label = Label::builder()
             .label(if sink {
-                "_Ausgabegerät:"
+                gettext("_Output device:")
             } else {
-                "_Eingabegerät:"
+                gettext("_Input device:")
             })
             .use_underline(true)
             .mnemonic_widget(&devices)
             .xalign(0.0)
             .build();
         let volume_label = Label::builder()
-            .label("_Lautstärke:")
+            .label(gettext("_Volume:"))
             .use_underline(true)
             .mnemonic_widget(&scale)
             .xalign(0.0)
@@ -326,10 +338,11 @@ impl DevicePage {
         };
         self.updating.set(true);
         let names: Vec<String> = devices.iter().map(|d| d.name.clone()).collect();
+        let no_device = gettext("No device");
         let mut labels: Vec<&str> = devices.iter().map(|d| d.label()).collect();
         // Never GTK's untranslated „(None)“ for an empty list.
         if labels.is_empty() {
-            labels.push(NO_DEVICE);
+            labels.push(&no_device);
         }
         let shown: Vec<String> = (0..self.labels.n_items())
             .filter_map(|i| self.labels.string(i).map(|s| s.to_string()))
@@ -408,9 +421,9 @@ impl StreamsPage {
             .margin_start(18)
             .margin_end(18)
             .build();
-        let empty = Label::new(Some(
-            "Keine Anwendung gibt gerade Ton wieder oder nimmt auf.",
-        ));
+        let empty = Label::new(Some(&gettext(
+            "No application is playing or recording sound right now.",
+        )));
         empty.add_css_class("dim-label");
         empty.set_margin_top(24);
         let scrolled = ScrolledWindow::builder()
@@ -487,7 +500,7 @@ impl StreamsPage {
         head.append(&title);
         let scale = volume_scale();
         let percent = Label::builder().width_chars(6).xalign(1.0).build();
-        let mute = CheckButton::with_label("Stumm");
+        let mute = CheckButton::with_label(&gettext("Mute"));
         let controls = GtkBox::new(Orientation::Horizontal, 8);
         controls.set_margin_start(32);
         controls.append(&scale);
@@ -544,7 +557,7 @@ fn row_label(playback: bool, stream: &Stream) -> String {
     if playback {
         stream.label()
     } else {
-        format!("{} (Aufnahme)", stream.label())
+        gettext_f("{stream} (recording)", &[("stream", &stream.label())])
     }
 }
 
@@ -556,7 +569,7 @@ fn about(app: &Application) {
         .into_iter()
         .find(|w| w.is::<ApplicationWindow>());
     let dialog = Window::builder()
-        .title(format!("Info zu {TITLE}"))
+        .title(gettext_f("About {program}", &[("program", &title())]))
         .resizable(false)
         .modal(true)
         .build();
@@ -568,21 +581,30 @@ fn about(app: &Application) {
         logo.set_paintable(Some(&texture));
     }
     let name = Label::builder()
-        .label(format!("<b><big>{TITLE}</big></b>"))
+        .label(format!(
+            "<b><big>{}</big></b>",
+            glib::markup_escape_text(&title())
+        ))
         .use_markup(true)
         .build();
     let server = service::get(MIXER_PROGRAM).state().server;
     let mut lines = vec![
-        format!("Version {}", env!("CARGO_PKG_VERSION")),
-        "Lautstärke der Geräte und Anwendungen einstellen".to_string(),
-        "Teil von Querencia Desktop".to_string(),
+        gettext_f(
+            "Version {version}",
+            &[("version", env!("CARGO_PKG_VERSION"))],
+        ),
+        gettext("Adjust the volume of devices and applications"),
+        gettext("Part of Querencia Desktop"),
     ];
     lines.push(if server.is_empty() {
-        format!("Audiodienst: {}", model::NO_SERVICE.to_lowercase())
+        gettext("Audio service: none")
     } else {
-        format!("Audiodienst: {server}")
+        gettext_f("Audio service: {server}", &[("server", &server)])
     });
-    lines.push(format!("Lizenz: {}", env!("CARGO_PKG_LICENSE")));
+    lines.push(gettext_f(
+        "License: {license}",
+        &[("license", env!("CARGO_PKG_LICENSE"))],
+    ));
     let content = GtkBox::builder()
         .orientation(Orientation::Vertical)
         .spacing(6)
@@ -603,7 +625,7 @@ fn about(app: &Application) {
                 .build(),
         );
     }
-    let close = Button::with_mnemonic("_Schließen");
+    let close = Button::with_mnemonic(&gettext("_Close"));
     close.set_halign(Align::End);
     close.set_margin_top(12);
     close.connect_clicked(glib::clone!(

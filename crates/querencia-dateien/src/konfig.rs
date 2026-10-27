@@ -101,6 +101,8 @@ pub struct Werte {
     pub nachfragen: bool,
     pub loeschen_anbieten: bool,
     pub adresse_als_text: bool,
+    /// „Reiter beim Start wiederherstellen“ (0.3.0, `reiter/sitzung.rs`).
+    pub reiter_wiederherstellen: bool,
     // Anzeige (Beta)
     pub zusatz: Zusatz,
     pub zusatz_gross: Zusatz,
@@ -145,6 +147,7 @@ impl Default for Werte {
             nachfragen: true,
             loeschen_anbieten: false,
             adresse_als_text: false,
+            reiter_wiederherstellen: true,
             zusatz: Zusatz::Nichts,
             zusatz_gross: Zusatz::Groesse,
             datum_iso: false,
@@ -234,6 +237,7 @@ impl Werte {
             ("Verhalten", "Nachfragen") => self.nachfragen = b(v),
             ("Verhalten", "LoeschenAnbieten") => self.loeschen_anbieten = b(v),
             ("Verhalten", "AdresseAlsText") => self.adresse_als_text = b(v),
+            ("Verhalten", "ReiterWiederherstellen") => self.reiter_wiederherstellen = b(v),
             ("Anzeige", "Zusatz") => {
                 if let Some(z) = Zusatz::aus_kennung(v) {
                     self.zusatz = z;
@@ -301,6 +305,10 @@ impl Werte {
         s += &format!("Nachfragen={}\n", b(self.nachfragen));
         s += &format!("LoeschenAnbieten={}\n", b(self.loeschen_anbieten));
         s += &format!("AdresseAlsText={}\n", b(self.adresse_als_text));
+        s += &format!(
+            "ReiterWiederherstellen={}\n",
+            b(self.reiter_wiederherstellen)
+        );
         s += "\n[Anzeige]\n";
         s += &format!("Zusatz={}\n", self.zusatz.kennung());
         s += &format!("ZusatzGross={}\n", self.zusatz_gross.kennung());
@@ -527,6 +535,11 @@ mod tests {
         assert!(!w.einfacher_klick);
         assert!(w.ordner_zuerst && w.nachfragen && !w.verborgene && !w.loeschen_anbieten);
         assert!(w.kompakt_gleich_breit);
+        // 0.3.0: tabs come back at start unless switched off
+        assert!(w.reiter_wiederherstellen);
+        let aus = Werte::aus_ini("[Verhalten]\nReiterWiederherstellen=false\n");
+        assert!(!aus.reiter_wiederherstellen);
+        assert!(Werte::aus_ini(&aus.als_ini()) == aus);
         assert_eq!(w.ausfuehrbare_texte, AusfuehrbareTexte::Nachfragen);
         assert_eq!((w.breite, w.hoehe), (800, 550));
     }
