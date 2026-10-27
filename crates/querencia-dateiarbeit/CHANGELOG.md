@@ -1,5 +1,11 @@
 # Änderungen – querencia-dateiarbeit
 
+## 0.1.3 – 2026-10-27
+
+Für Rückgängig in Querencia Dateien 0.3.0:
+
+- `Outcome::undo` nennt je gewähltem, erledigtem Objekt Quelle und Ankunftsnamen, wenn es sich einfach zurücknehmen lässt: nichts am Ziel ersetzt oder zusammengeführt, beim Verschieben kein neuer Name und nicht in den eigenen Ordner, beim Papierkorb wirklich im Papierkorb (nicht nach Rückfrage gelöscht). Test `undo_lists_only_objects_that_can_simply_go_back`.
+
 ## 0.1.2 – 2026-10-26
 
 Italienisch, Spanisch, Französisch:

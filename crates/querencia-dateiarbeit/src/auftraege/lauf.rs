@@ -43,6 +43,7 @@ pub fn ausfuehren(
         for_all: Vec::new(),
         serial: 0,
         stopped: false,
+        no_undo: false,
     };
     lauf.run();
     let cancelled = lauf.stopped || cancellable.is_cancelled();
@@ -177,6 +178,8 @@ struct Lauf<'a> {
     for_all: Vec<(u8, Answer)>,
     serial: u64,
     stopped: bool,
+    /// The object in work cannot simply go back (see `Outcome::undo`).
+    no_undo: bool,
 }
 
 impl Lauf<'_> {
@@ -357,6 +360,7 @@ impl Lauf<'_> {
                 };
                 self.current = name_of(source);
                 let result = self.rename(source, new);
+                self.note_undo(source, &result);
                 self.settle(name_of(source), result);
                 self.progress(true);
                 return;
@@ -369,6 +373,7 @@ impl Lauf<'_> {
             }
             let name = name_of(source);
             self.current = name.clone();
+            self.no_undo = false;
             let result = match (&job.op, &target) {
                 (Op::Copy, Some(dir)) => self.deliver(source, dir, &name, Mode::Copy, true),
                 (Op::Move, Some(dir)) => self.deliver(source, dir, &name, Mode::Move, true),
@@ -380,11 +385,24 @@ impl Lauf<'_> {
                 _ => Ok(None),
             };
             let cancelled = matches!(result, Err(Stop::Cancelled));
+            self.note_undo(source, &result);
             self.settle(name, result);
             self.progress(true);
             if cancelled {
                 break;
             }
+        }
+    }
+
+    /// Notes `source` for undo when it is done and can simply go back.
+    fn note_undo(&mut self, source: &gio::File, result: &Result<Option<String>, Stop>) {
+        if let Ok(arrived) = result
+            && !self.no_undo
+        {
+            self.outcome.undo.push((
+                source.uri().to_string(),
+                arrived.clone().unwrap_or_default(),
+            ));
         }
     }
 
@@ -427,6 +445,7 @@ impl Lauf<'_> {
         let same_parent = source.parent().is_some_and(|parent| parent.equal(dir));
         if same_parent && mode == Mode::Move {
             // a drop or paste into its own folder: nothing to move
+            self.no_undo = true;
             self.item_done(0);
             return Ok(Some(name.to_owned()));
         }
@@ -514,14 +533,20 @@ impl Lauf<'_> {
                     if new != name {
                         // a build made for the old name fits the new one
                         name = new;
+                        // undo moves back into the folder: the name differs
+                        if mode == Mode::Move {
+                            self.no_undo = true;
+                        }
                     }
                 }
                 Answer::Merge if both_dirs => {
+                    self.no_undo = true;
                     self.discard(built.take());
                     self.merge(source, &dest, mode)?;
                     return Ok(Some(name));
                 }
                 Answer::Replace => {
+                    self.no_undo = true;
                     return self.replace(source, dir, &dest, &name, mode, built.take());
                 }
                 // Skip, and answers that do not fit this question
@@ -879,6 +904,7 @@ impl Lauf<'_> {
                         file: facts(source),
                     }) {
                         Answer::Delete => {
+                            self.no_undo = true;
                             return self
                                 .delete_tree(source, true)
                                 .map(|()| None)

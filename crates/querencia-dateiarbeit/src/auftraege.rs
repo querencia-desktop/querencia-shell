@@ -316,6 +316,12 @@ pub struct Outcome {
     pub skipped: usize,
     /// (name, why) for every object that failed.
     pub failed: Vec<(String, String)>,
+    /// For undo (Querencia Dateien 0.3.0): (source URI, what [`Self::arrived`]
+    /// says for it, empty for the trash) of every chosen object that is done
+    /// and can simply go back: nothing at its target was replaced or merged,
+    /// a move kept its name and did not stay in its own folder, a trashed
+    /// object really went into the trash.
+    pub undo: Vec<(String, String)>,
 }
 
 /// The error dialog's text: up to five objects, then how many more.
