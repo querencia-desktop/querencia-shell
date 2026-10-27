@@ -18,7 +18,20 @@ menue_zeile() { grep -a 'Kontextmenü: ' "$LOG" | tail -1 | sed 's/.*Kontextmen�
 starte "$P"
 warte_log "Ordner gelesen" 15 || fall E00 "Start" 0 "keine Logzeile"
 q "wait 500"
-[ -n "${QUERENCIA_ARCHIV:-}" ] || fall E00 "LAUF_ARCHIV gesetzt" 0 "ohne Archivprogramm"
+# ohne LAUF_ARCHIV: kein Programm in der Hülle, also nirgends der Eintrag
+if [ -z "${QUERENCIA_ARCHIV:-}" ]; then
+  waehle paket
+  markiere
+  q "key Menu" "wait 500"
+  warte_log "Kontextmenü: " 3
+  [[ $(menue_zeile) == Open* || $(menue_zeile) == Öffnen* ]] && [[ $(menue_zeile) != *"$EINTRAG"* ]] \
+    && fall E10 "Ohne Archivverwaltung: zip ohne „$EINTRAG“" 1 "$(menue_zeile | cut -c1-160)" \
+    || fall E10 "Ohne Archivverwaltung kein Eintrag" 0 "$(menue_zeile)"
+  q "key Escape" "wait 300"
+  grep -a -E "CRITICAL|panicked" "$LOG" > /dev/null && fall E11 "Keine Warnung CRITICAL, kein Absturz" 0 "$(grep -a -E 'CRITICAL|panicked' "$LOG" | head -2 | tr '\n' ' ')" \
+    || fall E11 "Keine Warnung CRITICAL, kein Absturz" 1 "programm.log"
+  return 0
+fi
 
 # E01 Textdatei: kein „Hier entpacken“
 waehle notiz
