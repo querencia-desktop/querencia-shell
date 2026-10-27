@@ -29,7 +29,8 @@ French; documentation is in German.
   Ordner `Schreibtisch`, Laufwerke und Papierkorb, Kontextmenü, Umbenennen,
   Raster und Mehrfachauswahl.
 - **Dateien** (`querencia-dateien`, Beta, seit Alpha 3 der Dateimanager): klassischer Dateimanager nach dem
-  Vorbild von Nautilus 2.30 (Reiter, kompakte Ansicht, Miniaturen, Suche,
+  Vorbild von Nautilus 2.30 (Reiter, kompakte Ansicht, Miniaturen, Suche
+  auch im Dateiinhalt, Rückgängig/Wiederholen, „Hier entpacken“,
   Netzwerkorte); dazu die Bibliotheken `querencia-dateiarbeit`
   (Dateioperationen, Laufwerke, Papierkorb) und `querencia-oberflaeche`
   (gemeinsame GTK-Bausteine von Panel, Arbeitsfläche und Dateimanager).
@@ -54,7 +55,7 @@ Anwendungskennungen (App-IDs): `org.querencia.Panel` (bis Panel 0.2.3
 
 | | |
 |---|---|
-| Version | Panel 0.4.0 mit Infobereich (Tag `panel/0.4.0-2`), Arbeitsfläche 0.3.1 (Tag `desktop/0.3.1`), Dateien 0.2.4 Beta (Tag `dateien/0.2.4`; löst Querencia Files ab), Oberfläche 0.1.3 und Dateiarbeit 0.1.2 (im Tag `dateien/0.2.4`), Kürzel 0.2.2 (Tag `kuerzel/0.2.2-2`); Stand von Querencia Desktop Alpha 3.3 (27.10.2026) |
+| Version | Panel 0.4.0 mit Infobereich (Tag `panel/0.4.0-2`), Arbeitsfläche 0.3.1 (Tag `desktop/0.3.1`), Dateien 0.3.0 Beta (Tag `dateien/0.3.0`; löst Querencia Files ab), Oberfläche 0.1.3 und Dateiarbeit 0.1.3 (im Tag `dateien/0.3.0`), Kürzel 0.2.3 (Tag `kuerzel/0.2.3`), Lautstärkeregler 0.1.2 (Tag `lautstaerke/0.1.2`); Stand von Querencia Desktop Alpha 3.4 (27.10.2026) |
 | Sprachen | Deutsch, Englisch, Italienisch, Spanisch, Französisch (GNU gettext, `po/` je Crate) |
 | Letzte Prüfung | Stand der Quelle vom 27.10.2026: fmt, Clippy und Unit-Tests der Crates; isolierte GUI-Prüfungen je Baustein mit den Werkzeugen unter `tools/` |
 | Bekannte Lücken | `session/` und `tools/` enthalten Pfade der Entwicklungsmaschine (neutral `/home/user`) und sind nicht allgemein einsetzbar |
