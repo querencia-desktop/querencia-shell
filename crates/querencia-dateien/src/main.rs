@@ -40,6 +40,8 @@ mod fortschritt;
 mod konflikt;
 mod operationen;
 mod rueckgaengig;
+// 0.3.0: „Hier entpacken“ über Querencia Archiv
+mod entpacken;
 mod ziehen;
 mod zwischenablage;
 
@@ -74,6 +76,7 @@ fn erweiterungen(register: &mut app::Register) {
 
     // Welle B3: Aufrufe unter dieser Zeile.
     operationen::registrieren(register);
+    entpacken::registrieren(register);
 
     // Welle C1 (dateien-netzwerk): Aufrufe unter dieser Zeile.
     netzwerk::registrieren(register);
