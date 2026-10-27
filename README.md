@@ -9,7 +9,8 @@ Anleitung auf <https://querencialinux.org>.
 
 *English summary:* The panel, desktop surface and shortcut overview of
 Querencia Desktop, modelled on GNOME 2 and running on the Wayland compositor
-labwc. Alpha software; documentation is in German.
+labwc. Alpha software; user interface in German, English, Italian, Spanish and
+French; documentation is in German.
 
 > **Alpha.** Die Bausteine sind in virtuellen Maschinen aus der APT-Quelle
 > geprüft, noch nicht auf echter Hardware. Keine Sicherheits- oder
@@ -18,7 +19,9 @@ labwc. Alpha software; documentation is in German.
 ## Zweck
 
 - **Panel** (`querencia-panel`): oben Anwendungen, Orte, System, Uhr mit
-  Kalender, Benachrichtigungsglocke sowie Lautstärke- und Netzwerk-Applet;
+  Kalender, Infobereich (Statussymbole anderer Programme über
+  StatusNotifierItem, seit Panel 0.4.0), Benachrichtigungsglocke sowie
+  Lautstärke- und Netzwerk-Applet;
   unten Fensterliste, „Arbeitsfläche anzeigen“ und Arbeitsflächenumschalter.
   Beide Panels sind `wlr-layer-shell`-Ebenen und nehmen nie selbst den
   Tastaturfokus.
@@ -51,8 +54,9 @@ Anwendungskennungen (App-IDs): `org.querencia.Panel` (bis Panel 0.2.3
 
 | | |
 |---|---|
-| Version | Panel 0.3.2 (Tag `panel/0.3.2-2`), Arbeitsfläche 0.3.0 (Tag `desktop/0.3.0`), Dateien 0.2.2 Beta (Tag `dateien/0.2.2`; löst Querencia Files ab), Oberfläche 0.1.1 (im Tag `dateien/0.2.2`), Dateiarbeit 0.1.1 (Tag `dateiarbeit/0.1.1`), Kürzel 0.2.2 (Tag `kuerzel/0.2.2-2`) |
-| Letzte Prüfung | Stand der Quelle vom 26.10.2026: fmt, Clippy und Unit-Tests der Crates; isolierte GUI-Prüfungen je Baustein mit den Werkzeugen unter `tools/` |
+| Version | Panel 0.4.0 mit Infobereich (Tag `panel/0.4.0-2`), Arbeitsfläche 0.3.1 (Tag `desktop/0.3.1`), Dateien 0.2.4 Beta (Tag `dateien/0.2.4`; löst Querencia Files ab), Oberfläche 0.1.3 und Dateiarbeit 0.1.2 (im Tag `dateien/0.2.4`), Kürzel 0.2.2 (Tag `kuerzel/0.2.2-2`); Stand von Querencia Desktop Alpha 3.3 (27.10.2026) |
+| Sprachen | Deutsch, Englisch, Italienisch, Spanisch, Französisch (GNU gettext, `po/` je Crate) |
+| Letzte Prüfung | Stand der Quelle vom 27.10.2026: fmt, Clippy und Unit-Tests der Crates; isolierte GUI-Prüfungen je Baustein mit den Werkzeugen unter `tools/` |
 | Bekannte Lücken | `session/` und `tools/` enthalten Pfade der Entwicklungsmaschine (neutral `/home/user`) und sind nicht allgemein einsetzbar |
 | Getestet auf | Ubuntu 26.04, labwc 0.9.8, GTK 4.22, gtk4-layer-shell 1.3, Rust 1.93 |
 | Nicht getestet | andere Distributionen und Compositoren, HiDPI, Mehrmonitor |
