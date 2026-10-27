@@ -9,7 +9,8 @@
 //! - each row: 16 px icon, label, ▸ for a submenu; sections become
 //!   separator lines; an item's `accel` attribute (GTK notation, e.g.
 //!   `<Control><Alt>l`) is shown on the right as GTK 2 did, in German
-//!   ([`accel_label`]), only shown: the compositor binds the key;
+//!   ([`accel_label`]), only shown: the compositor binds the key; a check
+//!   or radio item ([`TOGGLE_ATTRIBUTE`]) shows its mark in the icon column;
 //! - submenus open beside their row, in their own popover (`position`
 //!   right, `valign` start, no arrow: as GTK's own nested menus), after
 //!   [`SUBMENU_DELAY_MS`] on hover or at once on click or keyboard;
@@ -71,6 +72,9 @@ pub enum Row {
         target: Option<glib::Variant>,
         /// Shortcut shown next to the label ([`accel_label`]).
         accel: Option<String>,
+        /// A check or radio item ([`TOGGLE_ATTRIBUTE`]), drawn with its
+        /// mark in the icon column.
+        toggle: Option<Toggle>,
     },
     Submenu {
         label: String,
@@ -87,6 +91,36 @@ impl Row {
             Row::Entry { action, .. } => action.is_some(),
             Row::Submenu { model, .. } => model.n_items() > 0,
         }
+    }
+}
+
+/// Whether an entry is a check or radio item, and whether it is on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Toggle {
+    Check(bool),
+    Radio(bool),
+}
+
+/// Menu item attribute (string) that makes an entry a check (`"check"`)
+/// or radio item (`"radio"`); [`TOGGLED_ATTRIBUTE`] (boolean) says whether
+/// it is on. `PopoverMenu` takes this from the state of the item's action;
+/// the classic menus cannot ask a widget's action groups for a state, so
+/// whoever builds the model sets both (the panel's notification area for
+/// the menus of other programs, `com.canonical.dbusmenu`).
+pub const TOGGLE_ATTRIBUTE: &str = "x-querencia-toggle";
+/// See [`TOGGLE_ATTRIBUTE`].
+pub const TOGGLED_ATTRIBUTE: &str = "x-querencia-toggled";
+
+/// The toggle of item `i` of `model` ([`TOGGLE_ATTRIBUTE`]).
+fn toggle_of(model: &gio::MenuModel, i: i32) -> Option<Toggle> {
+    let on = model
+        .item_attribute_value(i, TOGGLED_ATTRIBUTE, Some(glib::VariantTy::BOOLEAN))
+        .and_then(|v| v.get::<bool>())
+        .unwrap_or(false);
+    match string_attribute(model, i, TOGGLE_ATTRIBUTE).as_deref() {
+        Some("check") => Some(Toggle::Check(on)),
+        Some("radio") => Some(Toggle::Radio(on)),
+        _ => None,
     }
 }
 
@@ -126,6 +160,7 @@ pub fn rows(model: &gio::MenuModel) -> Vec<Row> {
                 accel: string_attribute(model, i, "accel")
                     .as_deref()
                     .and_then(accel_label),
+                toggle: toggle_of(model, i),
             });
         }
     }
@@ -313,6 +348,8 @@ pub const ACTIVE_CLASS: &str = "qmenu-active";
 const ARROW_CLASS: &str = "qmenu-arrow";
 /// Style class of a row's shortcut text ([`accel_label`]).
 pub const ACCEL_CLASS: &str = "qmenu-accel";
+/// Style class of the mark of a check or radio item ([`Toggle`]).
+pub const TOGGLE_CLASS: &str = "qmenu-toggle";
 const ICON_SIZE: i32 = 16;
 /// Icon of an entry whose icon the theme does not have.
 const MISSING_ICON: &str = "application-x-executable";
@@ -1178,29 +1215,59 @@ fn cancel(timer: &RefCell<Option<glib::SourceId>>) {
 /// The widget for one row: icon column, label, ▸ for a submenu; a line for
 /// a separator. Rows that cannot be chosen are insensitive.
 fn row_widget(row: &Row) -> Widget {
-    let (label, icon, submenu, accel) = match row {
+    let (label, icon, submenu, accel, toggle) = match row {
         Row::Separator => {
             return Separator::new(Orientation::Horizontal).upcast();
         }
         Row::Entry {
-            label, icon, accel, ..
-        } => (label, icon, false, accel.as_deref()),
-        Row::Submenu { label, icon, .. } => (label, icon, true, None),
+            label,
+            icon,
+            accel,
+            toggle,
+            ..
+        } => (label, icon, false, accel.as_deref(), *toggle),
+        Row::Submenu { label, icon, .. } => (label, icon, true, None, None),
+    };
+    let role = match toggle {
+        Some(Toggle::Check(_)) => AccessibleRole::MenuItemCheckbox,
+        Some(Toggle::Radio(_)) => AccessibleRole::MenuItemRadio,
+        None => AccessibleRole::MenuItem,
     };
     let line = GtkBox::builder()
         .orientation(Orientation::Horizontal)
         .spacing(6)
         .css_classes([ITEM_CLASS])
         .focusable(true)
-        .accessible_role(AccessibleRole::MenuItem)
+        .accessible_role(role)
         .sensitive(row.selectable())
         .build();
-    let image = Image::new();
-    image.set_pixel_size(ICON_SIZE);
-    if let Some(icon) = icon.as_ref().map(usable_icon) {
-        show_icon(&image, &icon);
+    if let Some(toggle) = toggle {
+        // GTK 2 drew the mark of a check or radio item where other rows
+        // have their icon; an item that is off shows the empty column.
+        let (on, mark) = match toggle {
+            Toggle::Check(on) => (on, "\u{2713}"),
+            Toggle::Radio(on) => (on, "\u{2022}"),
+        };
+        let indicator = Label::builder()
+            .label(if on { mark } else { "" })
+            .width_request(ICON_SIZE)
+            .xalign(0.5)
+            .build();
+        indicator.add_css_class(TOGGLE_CLASS);
+        line.append(&indicator);
+        line.update_state(&[gtk4::accessible::State::Checked(if on {
+            gtk4::AccessibleTristate::True
+        } else {
+            gtk4::AccessibleTristate::False
+        })]);
+    } else {
+        let image = Image::new();
+        image.set_pixel_size(ICON_SIZE);
+        if let Some(icon) = icon.as_ref().map(usable_icon) {
+            show_icon(&image, &icon);
+        }
+        line.append(&image);
     }
-    line.append(&image);
     line.append(
         &Label::builder()
             .label(label)
@@ -1300,8 +1367,14 @@ mod tests {
                     action,
                     target,
                     accel,
+                    toggle,
                 } => format!(
-                    "{label} [{}] -> {}{}{}",
+                    "{}{label} [{}] -> {}{}{}",
+                    match toggle {
+                        Some(Toggle::Check(on)) => format!("check({on}) "),
+                        Some(Toggle::Radio(on)) => format!("radio({on}) "),
+                        None => String::new(),
+                    },
                     icon_name(icon),
                     action.as_deref().unwrap_or("-"),
                     target
@@ -1396,6 +1469,47 @@ mod tests {
         ] {
             assert_eq!(accel_label(accel).as_deref(), text, "{accel:?}");
         }
+    }
+
+    #[test]
+    fn check_and_radio_items_come_from_their_attributes() {
+        let menu = gio::Menu::new();
+        for (label, kind, on) in [
+            ("An", Some("check"), Some(true)),
+            ("Aus", Some("check"), Some(false)),
+            ("Ohne Zustand", Some("check"), None),
+            ("Eins", Some("radio"), Some(true)),
+            ("Zwei", Some("radio"), Some(false)),
+            ("Fremd", Some("schalter"), Some(true)),
+            ("Normal", None, Some(true)),
+        ] {
+            let item = entry(label, "", Some("x.k"), None);
+            if let Some(kind) = kind {
+                item.set_attribute_value(TOGGLE_ATTRIBUTE, Some(&kind.to_variant()));
+            }
+            if let Some(on) = on {
+                item.set_attribute_value(TOGGLED_ATTRIBUTE, Some(&on.to_variant()));
+            }
+            menu.append_item(&item);
+        }
+        // a toggled state of the wrong type counts as off
+        let item = entry("Zahl", "", Some("x.k"), None);
+        item.set_attribute_value(TOGGLE_ATTRIBUTE, Some(&"check".to_variant()));
+        item.set_attribute_value(TOGGLED_ATTRIBUTE, Some(&1i32.to_variant()));
+        menu.append_item(&item);
+        assert_eq!(
+            summary(&rows(menu.upcast_ref())),
+            [
+                "check(true) An [] -> x.k",
+                "check(false) Aus [] -> x.k",
+                "check(false) Ohne Zustand [] -> x.k",
+                "radio(true) Eins [] -> x.k",
+                "radio(false) Zwei [] -> x.k",
+                "Fremd [] -> x.k",
+                "Normal [] -> x.k",
+                "check(false) Zahl [] -> x.k",
+            ]
+        );
     }
 
     #[test]

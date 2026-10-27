@@ -1,5 +1,11 @@
 # Änderungen – querencia-desktop
 
+## 0.3.1 – 2026-10-26
+
+Italienisch, Spanisch, Französisch:
+
+- Kataloge `po/it.po`, `po/es.po`, `po/fr.po` (je 118 Texte): Kontextmenüs, Rückfragen, Eigenschaften und Dateioperationen der Arbeitsfläche; Wortwahl nach der gemeinsamen Querencia-Begriffstabelle.
+
 ## 0.3.0 – 2026-10-23
 
 Welle A von „Querencia Dateien“ (QD-140): Der Desktop nutzt die Bibliothek

@@ -1,5 +1,36 @@
 # Änderungen – querencia-panel
 
+## 0.4.0 – 2026-10-27
+
+Infobereich (QD-164, `docs/panel-040-infobereich.md`):
+
+- Neues Status-Applet `notification-area` („Infobereich“, „Notification
+  Area“): Symbole anderer Programme über das StatusNotifierItem-Protokoll
+  (Webex, Nextcloud, Discord, Programme mit libappindicator …). Im
+  Standardlayout oben rechts vor der Glocke; höchstens einer je Layout.
+- Das Panel bietet `org.kde.StatusNotifierWatcher` an, solange niemand
+  sonst ihn anbietet (Warteschlange, Übernahme nach dessen Ende), mit dem
+  Alias `org.freedesktop.StatusNotifierWatcher`; es ist immer Host.
+- Je Item: Symbol (Themenname, eigener Symbolordner, Datei, Pixmap),
+  Overlay, Aufmerksamkeit (hervorgehoben), Passive ausgeblendet, Tooltip;
+  Linksklick `Activate` (mit xdg-activation-Token), mittlere Taste
+  `SecondaryActivate`, Mausrad `Scroll`, Rechtsklick das Menü des Programms
+  (com.canonical.dbusmenu als klassisches Querencia-Menü mit Untermenüs,
+  Häkchen, Radio, grauen Einträgen, Symbolen, Kürzeln) bzw.
+  `ContextMenu`. Rechtsklick auf den Rand des Infobereichs: Appletmenü.
+- `--panel-ini infobereich-ergaenzen|infobereich-zuruecknehmen <datei>`:
+  Infobereich vor die Glocke setzen bzw. nur ihn herausnehmen (für die
+  Integration; das Panel ändert die Benutzerdatei nie von selbst).
+- Braucht querencia-oberflaeche 0.1.3 (Häkchen und Radio in
+  `classic_menu`); Kataloge: „Infobereich“, „Statussymbole laufender
+  Programme“ in de, it, es, fr. Enthält 0.3.3 (it/es/fr).
+
+## 0.3.3 – 2026-10-26
+
+Italienisch, Spanisch, Französisch:
+
+- Kataloge `po/it.po`, `po/es.po`, `po/fr.po` (je 151 Texte): Menüs Anwendungen/Orte/System, Applets, „Zum Panel hinzufügen“, Netzwerk-, Lautstärke- und Mitteilungsmenüs; Uhr numerisch wie im Deutschen; Wortwahl nach der gemeinsamen Querencia-Begriffstabelle.
+
 ## 0.3.2 – 2026-10-24
 
 Integrationsstand 0.3.2-2 (Tags `panel/0.3.2-2`, `panel/0.3.2-2-int`):

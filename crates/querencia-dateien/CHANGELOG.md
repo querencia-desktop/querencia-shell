@@ -1,5 +1,23 @@
 # Änderungen – Querencia Dateien (`querencia-dateien`)
 
+## 0.2.4 – 27.10.2026 (Pflegestand, QD-173 P-2, P-3)
+
+- Behoben: Die Kompaktansicht kürzte gewöhnliche Namen, bei 50 % schon
+  nach 13 Zeichen („querencia-…“). Die Spalten sind jetzt so breit wie der
+  längste Name, höchstens 42 Zeichen und höchstens so breit wie die
+  Ansicht, in jeder Zoomstufe gleich. Längere Namen enden mit „…“ und
+  stehen ganz im Tooltip. Die Markierung umfasst nur den Namen.
+- Behoben: Nach dem Schließen der Suche (Esc, Strg+F) blieb die
+  Statusleiste leer. Jetzt steht dort wieder die Zeile des Ordners. Solange
+  Treffer gezeigt werden, nennt sie die Trefferzahl, bei Auswahl im
+  Suchergebnis die Auswahl mit Größe wie im Ordner.
+
+## 0.2.3 – 2026-10-26
+
+Italienisch, Spanisch, Französisch:
+
+- Kataloge `po/it.po`, `po/es.po`, `po/fr.po` (je 401 Texte) samt Desktop-Datei; Menüs, Dialoge, Einstellungen, Netzwerk-Anmeldung. Zugriffstasten je Menü und Dialog eindeutig, Wortwahl nach Nautilus 2.30 der jeweiligen Sprache; Wortwahl nach der gemeinsamen Querencia-Begriffstabelle.
+
 ## 0.2.2 – 25.10.2026 (Pflegestand, QD-176, QD-173 P-4)
 
 - Behoben: Ein offenes Kontextmenü (Ansicht, Seitenleiste, Suchergebnisse)

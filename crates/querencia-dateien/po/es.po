@@ -1,0 +1,1838 @@
+# Querencia Dateien: spanische Übersetzung.
+# Copyright (C) 2026 Querencia Desktop contributors
+# Diese Datei steht unter derselben Lizenz wie Querencia Dateien (GPL-3.0-or-later).
+# Begriffe nach der gemeinsamen Querencia-Begriffstabelle (GNOME-Wortwahl).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-dateien\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-26 23:41+0100\n"
+"Last-Translator: Querencia Desktop contributors\n"
+"Language-Team: Español (Querencia)\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. TRANSLATORS: Desktop-Datei, Schlüssel Name
+#: data/org.querencia.Dateien.desktop.in:4 src/main.rs:135
+msgid "Files"
+msgstr "Archivos"
+
+#. TRANSLATORS: Desktop-Datei, Schlüssel GenericName
+#: data/org.querencia.Dateien.desktop.in:5
+msgid "File Manager"
+msgstr "Gestor de archivos"
+
+#. TRANSLATORS: Desktop-Datei, Schlüssel Comment
+#: data/org.querencia.Dateien.desktop.in:6
+msgid "Browse folders and manage files"
+msgstr "Examinar carpetas y gestionar archivos"
+
+#. TRANSLATORS: Desktop-Datei, Schlüssel Keywords (Liste, Einträge mit ; trennen und abschließen)
+#: data/org.querencia.Dateien.desktop.in:7
+msgid "folder;file manager;files;explorer;"
+msgstr "carpeta;gestor de archivos;archivos;explorador;"
+
+#: src/adressleiste.rs:198
+msgid "Show the folders before"
+msgstr "Mostrar las carpetas anteriores"
+
+#: src/adressleiste.rs:199
+msgid "Show the folders after"
+msgstr "Mostrar las carpetas siguientes"
+
+#: src/adressleiste.rs:206 src/eigenschaften_dialog.rs:459
+msgid "Location:"
+msgstr "Ubicación:"
+
+#: src/adressleiste.rs:456 src/orte.rs:20 src/regeln.rs:325 src/seitenleiste.rs:83
+msgid "File System"
+msgstr "Sistema de archivos"
+
+#: src/adressleiste.rs:534
+#, no-c-format
+msgid "The location “{location}” could not be found."
+msgstr "No se encontró la ubicación «{location}»."
+
+#: src/ansicht.rs:518
+msgid "Renaming is not possible in this view."
+msgstr "En esta vista no se puede renombrar."
+
+#: src/ansichtskern.rs:1372
+msgid "Only one item can be renamed at a time."
+msgstr "Solo se puede renombrar un elemento a la vez."
+
+#: src/ansichtsregeln.rs:173 src/suche/ergebnisse.rs:48
+msgid "Name"
+msgstr "Nombre"
+
+#: src/ansichtsregeln.rs:174 src/einstellungen.rs:232 src/suche/ergebnisse.rs:51
+msgid "Size"
+msgstr "Tamaño"
+
+#: src/ansichtsregeln.rs:175 src/einstellungen.rs:234 src/suche/ergebnisse.rs:52
+msgid "Type"
+msgstr "Tipo"
+
+#: src/ansichtsregeln.rs:176 src/einstellungen.rs:233 src/suche/ergebnisse.rs:53
+msgid "Date Modified"
+msgstr "Fecha de modificación"
+
+#: src/ansichtsregeln.rs:177 src/eigenschaften_dialog.rs:304
+msgid "Permissions"
+msgstr "Permisos"
+
+#: src/ansichtsregeln.rs:178
+msgid "Owner"
+msgstr "Propietario"
+
+#: src/ansichtsregeln.rs:179
+msgid "Group"
+msgstr "Grupo"
+
+#. TRANSLATORS: no access at all for group or others (Nautilus 2.30)
+#: src/eigenschaften_dialog.rs:60
+msgctxt "permissions"
+msgid "None"
+msgstr "Ninguno"
+
+#: src/eigenschaften_dialog.rs:63
+msgid "List files only"
+msgstr "Solo listar archivos"
+
+#: src/eigenschaften_dialog.rs:64
+msgid "Access files"
+msgstr "Acceder a los archivos"
+
+#: src/eigenschaften_dialog.rs:65
+msgid "Create and delete files"
+msgstr "Crear y eliminar archivos"
+
+#: src/eigenschaften_dialog.rs:67
+msgid "Read-only"
+msgstr "Solo lectura"
+
+#: src/eigenschaften_dialog.rs:68
+msgid "Read and write"
+msgstr "Lectura y escritura"
+
+#. TRANSLATORS: date and time of the last change (strftime format of GLib's GDateTime)
+#: src/eigenschaften_dialog.rs:132 src/konflikt.rs:106
+msgid "%Y-%m-%d %H:%M"
+msgstr "%d/%m/%Y %H:%M"
+
+#: src/eigenschaften_dialog.rs:134
+msgid "unknown"
+msgstr "desconocido"
+
+#: src/eigenschaften_dialog.rs:232
+#, no-c-format
+msgid "{n} item, totalling {size}"
+msgid_plural "{n} items, totalling {size}"
+msgstr[0] "{n} elemento, en total {size}"
+msgstr[1] "{n} elementos, en total {size}"
+
+#: src/eigenschaften_dialog.rs:239
+#, no-c-format
+msgid "{contents} (some contents unreadable)"
+msgstr "{contents} (algunos contenidos no se pueden leer)"
+
+#: src/eigenschaften_dialog.rs:279
+#, no-c-format
+msgid "The properties of “{name}” cannot be read."
+msgstr "No se pueden leer las propiedades de «{name}»."
+
+#: src/eigenschaften_dialog.rs:291
+#, no-c-format
+msgid "“{name}” Properties"
+msgstr "Propiedades de «{name}»"
+
+#: src/eigenschaften_dialog.rs:300
+msgid "Basic"
+msgstr "General"
+
+#: src/eigenschaften_dialog.rs:313
+msgid "Open With"
+msgstr "Abrir con"
+
+#: src/eigenschaften_dialog.rs:322 src/einstellungen.rs:394 src/info.rs:186 src/menue.rs:301 src/umbenennen.rs:233
+msgid "_Close"
+msgstr "_Cerrar"
+
+#: src/eigenschaften_dialog.rs:385
+msgid "Name:"
+msgstr "Nombre:"
+
+#: src/eigenschaften_dialog.rs:393
+msgid "Link"
+msgstr "Enlace"
+
+#: src/eigenschaften_dialog.rs:400
+msgid "Type:"
+msgstr "Tipo:"
+
+#: src/eigenschaften_dialog.rs:406
+msgid "Link target:"
+msgstr "Destino del enlace:"
+
+#: src/eigenschaften_dialog.rs:412
+msgid "counting …"
+msgstr "contando…"
+
+#: src/eigenschaften_dialog.rs:413
+msgid "Contents:"
+msgstr "Contenido:"
+
+#: src/eigenschaften_dialog.rs:446
+msgid "Size:"
+msgstr "Tamaño:"
+
+#: src/eigenschaften_dialog.rs:467
+msgid "Free space:"
+msgstr "Espacio libre:"
+
+#: src/eigenschaften_dialog.rs:475
+msgid "Accessed:"
+msgstr "Último acceso:"
+
+#: src/eigenschaften_dialog.rs:486
+msgid "Modified:"
+msgstr "Modificado:"
+
+#: src/eigenschaften_dialog.rs:499
+#, no-c-format
+msgid "The permissions of “{name}” could not be determined."
+msgstr "No se pudieron determinar los permisos de «{name}»."
+
+#: src/eigenschaften_dialog.rs:520
+msgid "Owner:"
+msgstr "Propietario:"
+
+#: src/eigenschaften_dialog.rs:524 src/eigenschaften_dialog.rs:554 src/eigenschaften_dialog.rs:561
+msgid "Access:"
+msgstr "Acceso:"
+
+#: src/eigenschaften_dialog.rs:525 src/eigenschaften_dialog.rs:529
+msgid "Group:"
+msgstr "Grupo:"
+
+#: src/eigenschaften_dialog.rs:526 src/eigenschaften_dialog.rs:559
+msgid "Others:"
+msgstr "Otros:"
+
+#: src/eigenschaften_dialog.rs:570
+msgid "Allow _executing file as program"
+msgstr "Permitir _ejecutar el archivo como un programa"
+
+#: src/eigenschaften_dialog.rs:580
+msgid "Execute:"
+msgstr "Ejecución:"
+
+#: src/eigenschaften_dialog.rs:584
+msgid "You are not the owner, so you cannot change these permissions."
+msgstr "No es el propietario, así que no puede cambiar estos permisos."
+
+#: src/eigenschaften_dialog.rs:618
+msgid "The permissions could not be changed."
+msgstr "No se pudieron cambiar los permisos."
+
+#: src/eigenschaften_dialog.rs:630
+#, no-c-format
+msgid "Select an application to open “{type}” and other files of this type:"
+msgstr ""
+"Seleccione una aplicación para abrir «{type}» y otros archivos de este tipo:"
+
+#: src/eigenschaften_dialog.rs:647
+msgid "No applications are installed for this type."
+msgstr "No hay aplicaciones instaladas para este tipo."
+
+#: src/einstellungen.rs:98
+msgid "Default View"
+msgstr "Vista predeterminada"
+
+#: src/einstellungen.rs:101
+msgid "_View new folders using:"
+msgstr "_Ver carpetas nuevas usando:"
+
+#: src/einstellungen.rs:111
+msgid "_Arrange items:"
+msgstr "_Disponer elementos:"
+
+#: src/einstellungen.rs:113
+msgid "By Name"
+msgstr "Por nombre"
+
+#: src/einstellungen.rs:114
+msgid "By Size"
+msgstr "Por tamaño"
+
+#: src/einstellungen.rs:115
+msgid "By Type"
+msgstr "Por tipo"
+
+#: src/einstellungen.rs:116
+msgid "By Modification Date"
+msgstr "Por fecha de modificación"
+
+#: src/einstellungen.rs:123
+msgid "Sort _folders before files"
+msgstr "_Mostrar las carpetas antes que los archivos"
+
+#: src/einstellungen.rs:128
+msgid "Show _hidden files"
+msgstr "Mostrar archivos _ocultos"
+
+#: src/einstellungen.rs:135
+msgid "Default Zoom Levels"
+msgstr "Niveles de ampliación predeterminados"
+
+#: src/einstellungen.rs:138
+msgid "Icon _view:"
+msgstr "Vista de _iconos:"
+
+#: src/einstellungen.rs:144
+msgid "_List view:"
+msgstr "Vista de _lista:"
+
+#: src/einstellungen.rs:174
+msgid "_Double click to open items"
+msgstr "_Doble clic para abrir los elementos"
+
+#: src/einstellungen.rs:180
+msgid "_Single click to open items"
+msgstr "Clic _simple para abrir los elementos"
+
+#: src/einstellungen.rs:185 src/einstellungen.rs:386
+msgid "Behavior"
+msgstr "Comportamiento"
+
+#: src/einstellungen.rs:187
+msgid "Executable Text Files"
+msgstr "Archivos de texto ejecutables"
+
+#: src/einstellungen.rs:189
+msgid "When _opened:"
+msgstr "Al _abrirlos:"
+
+#: src/einstellungen.rs:191
+msgid "Ask each time"
+msgstr "Preguntar cada vez"
+
+#: src/einstellungen.rs:192
+msgid "View them"
+msgstr "Mostrarlos"
+
+#: src/einstellungen.rs:193
+msgid "Run them"
+msgstr "Ejecutarlos"
+
+#: src/einstellungen.rs:201 src/orte.rs:13 src/reiter/mod.rs:191 src/seitenleiste.rs:95
+msgid "Trash"
+msgstr "Papelera"
+
+#: src/einstellungen.rs:204
+msgid "Ask before _emptying the trash or deleting files"
+msgstr "Preguntar antes de _vaciar la papelera o eliminar archivos"
+
+#: src/einstellungen.rs:210
+msgid "Include a Dele_te command that bypasses the trash"
+msgstr "Incluir una orden _Eliminar que no use la papelera"
+
+#. TRANSLATORS: column of the search results: the folder of a hit
+#: src/einstellungen.rs:218 src/suche/ergebnisse.rs:50
+msgid "Location"
+msgstr "Ubicación"
+
+#: src/einstellungen.rs:220
+msgid "Always use the location _entry instead of the path buttons"
+msgstr "Usar siempre el campo de _texto en lugar de los botones de ruta"
+
+#: src/einstellungen.rs:231
+msgid "None"
+msgstr "Nada"
+
+#: src/einstellungen.rs:240
+msgid "Icon Captions"
+msgstr "Leyendas de los iconos"
+
+#: src/einstellungen.rs:243
+msgid "_Below the name:"
+msgstr "_Bajo el nombre:"
+
+#: src/einstellungen.rs:250
+msgid "From 150 % _also:"
+msgstr "A partir del 150 % _también:"
+
+#: src/einstellungen.rs:259
+msgid "Date"
+msgstr "Fecha"
+
+#: src/einstellungen.rs:261
+msgid "_Format:"
+msgstr "_Formato:"
+
+#: src/einstellungen.rs:263
+msgid "As the region"
+msgstr "Como la región"
+
+#: src/einstellungen.rs:264
+msgid "ISO 8601"
+msgstr "ISO 8601"
+
+#: src/einstellungen.rs:273 src/regeln.rs:96
+msgid "Compact View"
+msgstr "Vista compacta"
+
+#: src/einstellungen.rs:275
+msgid "A_ll columns have the same width"
+msgstr "Todas las co_lumnas tienen el mismo ancho"
+
+#: src/einstellungen.rs:286 src/einstellungen.rs:388
+msgid "List Columns"
+msgstr "Columnas de la lista"
+
+#: src/einstellungen.rs:288
+msgid "_Size"
+msgstr "Ta_maño"
+
+#: src/einstellungen.rs:292
+msgid "_Type"
+msgstr "T_ipo"
+
+#: src/einstellungen.rs:293
+msgid "_Date Modified"
+msgstr "Fec_ha de modificación"
+
+#: src/einstellungen.rs:297
+msgid "_Permissions"
+msgstr "_Permisos"
+
+#: src/einstellungen.rs:301
+msgid "_Owner"
+msgstr "P_ropietario"
+
+#: src/einstellungen.rs:305
+msgid "_Group"
+msgstr "_Grupo"
+
+#: src/einstellungen.rs:311
+msgid "The name is always shown."
+msgstr "El nombre siempre se muestra."
+
+#: src/einstellungen.rs:321
+msgid "Always"
+msgstr "Siempre"
+
+#: src/einstellungen.rs:322
+msgid "Local files only"
+msgstr "Solo archivos locales"
+
+#: src/einstellungen.rs:323
+msgid "Never"
+msgstr "Nunca"
+
+#: src/einstellungen.rs:329
+msgid "Thumbnails"
+msgstr "Miniaturas"
+
+#: src/einstellungen.rs:332
+msgid "_Show thumbnails:"
+msgstr "_Mostrar miniaturas:"
+
+#: src/einstellungen.rs:339
+msgid "_Only for files smaller than:"
+msgstr "_Solo para archivos de menos de:"
+
+#: src/einstellungen.rs:351
+msgid "Folders"
+msgstr "Carpetas"
+
+#: src/einstellungen.rs:353
+msgid "_Count number of items:"
+msgstr "Contar el _número de elementos:"
+
+#: src/einstellungen.rs:376
+msgid "File Management Preferences"
+msgstr "Preferencias de gestión de archivos"
+
+#: src/einstellungen.rs:385
+msgid "Views"
+msgstr "Vistas"
+
+#: src/einstellungen.rs:387
+msgid "Display"
+msgstr "Visualización"
+
+#: src/einstellungen.rs:389
+msgid "Preview"
+msgstr "Vista previa"
+
+#: src/einstellungen.rs:393 src/menue.rs:749 src/netzwerk/verbinden_dialog.rs:219
+msgid "_Help"
+msgstr "Ay_uda"
+
+#: src/fortschritt.rs:54
+#, no-c-format
+msgid "Copying “{name}” to “{target}”"
+msgstr "Copiando «{name}» en «{target}»"
+
+#: src/fortschritt.rs:58
+#, no-c-format
+msgid "Copying {n} file to “{target}”"
+msgid_plural "Copying {n} files to “{target}”"
+msgstr[0] "Copiando {n} archivo en «{target}»"
+msgstr[1] "Copiando {n} archivos en «{target}»"
+
+#: src/fortschritt.rs:64
+#, no-c-format
+msgid "Moving “{name}” to “{target}”"
+msgstr "Moviendo «{name}» a «{target}»"
+
+#: src/fortschritt.rs:68
+#, no-c-format
+msgid "Moving {n} file to “{target}”"
+msgid_plural "Moving {n} files to “{target}”"
+msgstr[0] "Moviendo {n} archivo a «{target}»"
+msgstr[1] "Moviendo {n} archivos a «{target}»"
+
+#: src/fortschritt.rs:74
+#, no-c-format
+msgid "Moving “{name}” to the trash"
+msgstr "Moviendo «{name}» a la papelera"
+
+#: src/fortschritt.rs:75
+#, no-c-format
+msgid "Moving {n} file to the trash"
+msgid_plural "Moving {n} files to the trash"
+msgstr[0] "Moviendo {n} archivo a la papelera"
+msgstr[1] "Moviendo {n} archivos a la papelera"
+
+#: src/fortschritt.rs:81
+#, no-c-format
+msgid "Deleting “{name}”"
+msgstr "Eliminando «{name}»"
+
+#: src/fortschritt.rs:82
+#, no-c-format
+msgid "Deleting {n} file"
+msgid_plural "Deleting {n} files"
+msgstr[0] "Eliminando {n} archivo"
+msgstr[1] "Eliminando {n} archivos"
+
+#: src/fortschritt.rs:83
+msgid "Emptying the trash"
+msgstr "Vaciando la papelera"
+
+#: src/fortschritt.rs:84
+#, no-c-format
+msgid "Working on “{name}”"
+msgstr "Procesando «{name}»"
+
+#: src/fortschritt.rs:92
+#, no-c-format
+msgid "{n} second left"
+msgid_plural "{n} seconds left"
+msgstr[0] "queda {n} segundo"
+msgstr[1] "quedan {n} segundos"
+
+#: src/fortschritt.rs:100
+#, no-c-format
+msgid "{n} minute left"
+msgid_plural "{n} minutes left"
+msgstr[0] "queda {n} minuto"
+msgstr[1] "quedan {n} minutos"
+
+#: src/fortschritt.rs:103
+#, no-c-format
+msgid "{n} hour left"
+msgid_plural "{n} hours left"
+msgstr[0] "queda {n} hora"
+msgstr[1] "quedan {n} horas"
+
+#: src/fortschritt.rs:112
+#, no-c-format
+msgid "{done} of {total}"
+msgstr "{done} de {total}"
+
+#: src/fortschritt.rs:122
+#, no-c-format
+msgid "{amount} — {left} ({rate}/s)"
+msgstr "{amount} – {left} ({rate}/s)"
+
+#: src/fortschritt.rs:134
+#, no-c-format
+msgid "{done} of {n} file"
+msgid_plural "{done} of {n} files"
+msgstr[0] "{done} de {n} archivo"
+msgstr[1] "{done} de {n} archivos"
+
+#: src/fortschritt.rs:194
+msgid "Copying Files"
+msgstr "Copiando archivos…"
+
+#: src/fortschritt.rs:196
+msgid "Moving Files"
+msgstr "Moviendo archivos…"
+
+#: src/fortschritt.rs:198
+msgid "Moving Files to the Trash"
+msgstr "Moviendo archivos a la papelera…"
+
+#: src/fortschritt.rs:200
+msgid "Deleting Files"
+msgstr "Eliminando archivos…"
+
+#: src/fortschritt.rs:202
+msgid "Emptying the Trash"
+msgstr "Vaciando la papelera…"
+
+#: src/fortschritt.rs:204 src/fortschritt.rs:368
+msgid "File Operations"
+msgstr "Operaciones con archivos"
+
+#: src/fortschritt.rs:411 src/operationen.rs:789 src/operationen.rs:822
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: src/fortschritt.rs:455
+msgid "Preparing…"
+msgstr "Preparando…"
+
+#. TRANSLATORS: Dezimalzeichen in Größen („3.4 GB“, deutsch „3,4 GB“)
+#: src/i18n.rs:128
+msgctxt "decimal separator"
+msgid "."
+msgstr ","
+
+#: src/i18n.rs:150 src/regeln.rs:233
+#, no-c-format
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} elemento"
+msgstr[1] "{n} elementos"
+
+#. TRANSLATORS: address of the online help; only change the language code (German …/de/docs/).
+#: src/info.rs:81
+msgid "https://querencialinux.org/en/docs/"
+msgstr "https://querencialinux.org/es/docs/"
+
+#. TRANSLATORS: title of the about dialog
+#: src/info.rs:133
+msgid "About Files"
+msgstr "Acerca de Archivos"
+
+#. TRANSLATORS: program name and version in the about dialog; German „Querencia Dateien {version}“.
+#: src/info.rs:145
+#, no-c-format
+msgid "Files {version}"
+msgstr "Archivos {version}"
+
+#: src/info.rs:151
+msgid ""
+"Classic file manager for Querencia Desktop\n"
+"modelled on Nautilus 2.30."
+msgstr ""
+"Gestor de archivos clásico para Querencia Desktop\n"
+"inspirado en Nautilus 2.30."
+
+#: src/info.rs:158
+#, no-c-format
+msgid "Querencia Desktop {release}"
+msgstr "Querencia Desktop {release}"
+
+#: src/info.rs:164
+msgid "Beta – not released for everyday use."
+msgstr "Beta: no apto todavía para el uso diario."
+
+#: src/info.rs:179
+msgid "License: GPL-3.0-or-later"
+msgstr "Licencia: GPL-3.0-or-later"
+
+#: src/info.rs:180
+msgid "Contains code from Strata, MIT"
+msgstr "Contiene código de Strata, MIT"
+
+#: src/konflikt.rs:38 src/konflikt.rs:50 src/konflikt.rs:62
+msgid "File conflict"
+msgstr "Conflicto de archivos"
+
+#: src/konflikt.rs:39
+#, no-c-format
+msgid "Replace folder “{name}”?"
+msgstr "¿Reemplazar la carpeta «{name}»?"
+
+#: src/konflikt.rs:42 src/konflikt.rs:66
+#, no-c-format
+msgid "Another folder with the same name already exists in “{folder}”."
+msgstr "Ya existe otra carpeta con el mismo nombre en «{folder}»."
+
+#: src/konflikt.rs:46
+msgid "Replacing it will remove all files in the folder."
+msgstr "Si la reemplaza, se quitarán todos los archivos de la carpeta."
+
+#: src/konflikt.rs:51
+#, no-c-format
+msgid "Replace file “{name}”?"
+msgstr "¿Reemplazar el archivo «{name}»?"
+
+#: src/konflikt.rs:54
+#, no-c-format
+msgid "Another file with the same name already exists in “{folder}”."
+msgstr "Ya existe otro archivo con el mismo nombre en «{folder}»."
+
+#: src/konflikt.rs:58
+msgid "Replacing it will overwrite its content."
+msgstr "Si lo reemplaza, se sobrescribirá su contenido."
+
+#: src/konflikt.rs:63
+#, no-c-format
+msgid "Merge folder “{name}”?"
+msgstr "¿Combinar la carpeta «{name}»?"
+
+#: src/konflikt.rs:70
+msgid ""
+"Merging will ask for confirmation before replacing any files in the folder that conflict with the files being copied."
+msgstr ""
+"Al combinar, se pedirá confirmación antes de reemplazar los archivos de la carpeta que entren en conflicto con los que se copian."
+
+#: src/konflikt.rs:77
+msgid "No trash"
+msgstr "Sin papelera"
+
+#: src/konflikt.rs:78
+#, no-c-format
+msgid ""
+"Cannot move “{name}” to the trash. Do you want to delete it immediately?"
+msgstr ""
+"No se puede mover «{name}» a la papelera. ¿Desea eliminarlo inmediatamente?"
+
+#: src/konflikt.rs:82
+msgid "This place has no trash. Deleted items cannot be restored."
+msgstr ""
+"Esta ubicación no tiene papelera. Los elementos eliminados no se pueden restaurar."
+
+#: src/konflikt.rs:85
+msgid "Error"
+msgstr "Error"
+
+#: src/konflikt.rs:86
+#, no-c-format
+msgid "“{name}” could not be handled."
+msgstr "No se pudo procesar «{name}»."
+
+#: src/konflikt.rs:96
+#, no-c-format
+msgid "Size: {size}"
+msgstr "Tamaño: {size}"
+
+#: src/konflikt.rs:108
+#, no-c-format
+msgid "Last modified: {when}"
+msgstr "Última modificación: {when}"
+
+#: src/konflikt.rs:220
+msgid "Original file"
+msgstr "Archivo original"
+
+#: src/konflikt.rs:221
+msgid "Replace with"
+msgstr "Reemplazar con"
+
+#: src/konflikt.rs:240
+msgid "Select a new _name for the destination"
+msgstr "Elegir un _nombre nuevo para el destino"
+
+#: src/konflikt.rs:246
+msgid "Apply this action to all _files"
+msgstr "Aplicar esta acción a todos los _archivos"
+
+#: src/konflikt.rs:254 src/netzwerk/anmeldung.rs:347 src/netzwerk/verbinden_dialog.rs:220 src/oeffnen.rs:246 src/oeffnen.rs:327 src/oeffnen.rs:332
+msgid "_Cancel"
+msgstr "_Cancelar"
+
+#: src/konflikt.rs:259 src/konflikt.rs:270 src/konflikt.rs:285 src/konflikt.rs:292
+msgid "_Skip"
+msgstr "_Omitir"
+
+#: src/konflikt.rs:261 src/konflikt.rs:272
+msgid "Re_name"
+msgstr "_Renombrar"
+
+#: src/konflikt.rs:265 src/konflikt.rs:276
+msgid "_Replace"
+msgstr "R_eemplazar"
+
+#: src/konflikt.rs:280
+msgid "_Merge"
+msgstr "Co_mbinar"
+
+#: src/konflikt.rs:287
+msgid "_Delete"
+msgstr "_Eliminar"
+
+#: src/konflikt.rs:294
+msgid "_Retry"
+msgstr "Rein_tentar"
+
+#: src/kontextmenue.rs:125
+#, no-c-format
+msgid "Open with “{app}”"
+msgstr "Abrir con «{app}»"
+
+#: src/kontextmenue.rs:129 src/menue.rs:255 src/seitenleiste.rs:559 src/suche/ergebnisse.rs:330
+msgid "_Open"
+msgstr "_Abrir"
+
+#: src/kontextmenue.rs:133 src/menue.rs:261 src/seitenleiste.rs:566
+msgid "Open in New _Tab"
+msgstr "Abrir en una _pestaña nueva"
+
+#: src/kontextmenue.rs:137 src/menue.rs:267 src/seitenleiste.rs:573
+msgid "Open in New _Window"
+msgstr "Abrir en una ventana nu_eva"
+
+#: src/kontextmenue.rs:154 src/menue.rs:272
+msgid "Open Wit_h"
+msgstr "Abrir c_on"
+
+#: src/kontextmenue.rs:160 src/menue.rs:314
+msgid "Cu_t"
+msgstr "Cor_tar"
+
+#: src/kontextmenue.rs:161 src/menue.rs:320
+msgid "_Copy"
+msgstr "_Copiar"
+
+#: src/kontextmenue.rs:165
+msgid "Paste Into Folder"
+msgstr "Pegar en la carpeta"
+
+#: src/kontextmenue.rs:170 src/kontextmenue.rs:172 src/menue.rs:346
+msgid "_Rename…"
+msgstr "_Renombrar…"
+
+#: src/kontextmenue.rs:178 src/menue.rs:349
+msgid "Mo_ve to Trash"
+msgstr "Mo_ver a la papelera"
+
+#: src/kontextmenue.rs:179 src/kontextmenue.rs:187 src/kontextmenue.rs:254 src/menue.rs:282
+msgid "_Properties"
+msgstr "Prop_iedades"
+
+#: src/kontextmenue.rs:185 src/menue.rs:360
+msgid "_Restore"
+msgstr "Rest_aurar"
+
+#: src/kontextmenue.rs:186 src/menue.rs:355
+msgid "_Delete…"
+msgstr "_Eliminar…"
+
+#: src/kontextmenue.rs:196 src/menue.rs:652
+msgid "No templates installed"
+msgstr "No hay plantillas instaladas"
+
+#: src/kontextmenue.rs:206 src/menue.rs:662
+msgid "Empty File"
+msgstr "Archivo vacío"
+
+#: src/kontextmenue.rs:211 src/menue.rs:245
+msgid "Create _Folder"
+msgstr "Crear ca_rpeta"
+
+#: src/kontextmenue.rs:213 src/menue.rs:251
+msgid "Create _Document"
+msgstr "Crear _documento"
+
+#: src/kontextmenue.rs:223 src/menue.rs:432
+msgid "By _Name"
+msgstr "Por _nombre"
+
+#: src/kontextmenue.rs:224 src/menue.rs:433
+msgid "By _Size"
+msgstr "Por _tamaño"
+
+#: src/kontextmenue.rs:225 src/menue.rs:434
+msgid "By _Type"
+msgstr "Por t_ipo"
+
+#: src/kontextmenue.rs:226 src/menue.rs:435
+msgid "By Modification _Date"
+msgstr "Por _fecha de modificación"
+
+#: src/kontextmenue.rs:234 src/menue.rs:399
+msgid "Arran_ge Items"
+msgstr "Or_ganizar elementos"
+
+#: src/kontextmenue.rs:238 src/menue.rs:437
+msgid "Re_versed Order"
+msgstr "Orden in_verso"
+
+#: src/kontextmenue.rs:246 src/menue.rs:326
+msgid "_Paste"
+msgstr "_Pegar"
+
+#: src/kontextmenue.rs:249 src/menue.rs:403
+msgid "Zoom _In"
+msgstr "_Ampliar"
+
+#: src/kontextmenue.rs:250 src/menue.rs:409
+msgid "Zoom _Out"
+msgstr "Reduc_ir"
+
+#: src/kontextmenue.rs:251 src/menue.rs:415
+msgid "Normal Si_ze"
+msgstr "Tamaño _normal"
+
+#. TRANSLATORS: shortcut shown in the Go menu, deutsch „<Alt>Pos1“
+#: src/menue.rs:209
+msgctxt "accel"
+msgid "<Alt>Home"
+msgstr "<Alt>Inicio"
+
+#: src/menue.rs:231
+msgid "New _Tab"
+msgstr "Pestaña _nueva"
+
+#: src/menue.rs:237
+msgid "New _Window"
+msgstr "_Ventana nueva"
+
+#: src/menue.rs:276 src/seitenleiste.rs:633
+msgid "Connect to _Server…"
+msgstr "Conectar con un _servidor…"
+
+#: src/menue.rs:288 src/seitenleiste.rs:622
+msgid "_Empty Trash…"
+msgstr "Vaciar la pape_lera…"
+
+#: src/menue.rs:295
+msgid "Close _All Windows"
+msgstr "Cerrar _todas las ventanas"
+
+#: src/menue.rs:334
+msgid "Select _All"
+msgstr "_Seleccionar todo"
+
+#: src/menue.rs:340
+msgid "_Invert Selection"
+msgstr "_Invertir la selección"
+
+#: src/menue.rs:363
+msgid "Prefere_nces"
+msgstr "Prefere_ncias"
+
+#: src/menue.rs:375
+msgid "_Stop"
+msgstr "_Detener"
+
+#: src/menue.rs:381
+msgid "_Reload"
+msgstr "_Recargar"
+
+#: src/menue.rs:388
+msgid "_Toolbar"
+msgstr "Barra de _herramientas"
+
+#: src/menue.rs:389
+msgid "Side _Pane"
+msgstr "Panel _lateral"
+
+#: src/menue.rs:390
+msgid "Location _Bar"
+msgstr "Barra de _ubicación"
+
+#: src/menue.rs:391
+msgid "St_atusbar"
+msgstr "Barra de _estado"
+
+#: src/menue.rs:395
+msgid "Show _Hidden Files"
+msgstr "Mostrar archivos _ocultos"
+
+#: src/menue.rs:422
+msgid "_Icons"
+msgstr "I_conos"
+
+#: src/menue.rs:423
+msgid "_List"
+msgstr "Li_sta"
+
+#: src/menue.rs:424
+msgid "_Compact"
+msgstr "Com_pacta"
+
+#: src/menue.rs:445
+msgid "Open _Parent"
+msgstr "Carpeta _superior"
+
+#: src/menue.rs:451
+msgid "_Back"
+msgstr "_Atrás"
+
+#: src/menue.rs:456
+msgid "_Forward"
+msgstr "A_delante"
+
+#: src/menue.rs:460
+msgid "_Home Folder"
+msgstr "Carpeta _personal"
+
+#: src/menue.rs:465
+msgid "_Computer"
+msgstr "_Equipo"
+
+#: src/menue.rs:467
+msgid "_Trash"
+msgstr "Pape_lera"
+
+#: src/menue.rs:474
+msgid "_Network"
+msgstr "_Red"
+
+#: src/menue.rs:481
+msgid "_Location…"
+msgstr "_Ubicación…"
+
+#: src/menue.rs:484
+msgid "_Search…"
+msgstr "_Buscar…"
+
+#: src/menue.rs:497
+msgid "Online _Help"
+msgstr "Ayuda en _línea"
+
+#: src/menue.rs:502
+msgid "_Report a Bug"
+msgstr "_Informar de un error"
+
+#: src/menue.rs:504
+msgid "_About"
+msgstr "Acerca _de"
+
+#: src/menue.rs:600
+msgid "_Add Bookmark"
+msgstr "_Añadir marcador"
+
+#: src/menue.rs:743
+msgid "_File"
+msgstr "_Archivo"
+
+#: src/menue.rs:744
+msgid "_Edit"
+msgstr "_Editar"
+
+#: src/menue.rs:745
+msgid "_View"
+msgstr "_Ver"
+
+#: src/menue.rs:746
+msgid "_Go"
+msgstr "_Ir"
+
+#: src/menue.rs:747
+msgid "_Bookmarks"
+msgstr "_Marcadores"
+
+#: src/menue.rs:748
+msgid "_Tabs"
+msgstr "_Pestañas"
+
+#: src/netzwerk/adresse.rs:36
+msgid "SSH (SFTP)"
+msgstr "SSH (SFTP)"
+
+#: src/netzwerk/adresse.rs:37
+msgid "Windows share (SMB)"
+msgstr "Recurso compartido de Windows (SMB)"
+
+#: src/netzwerk/adresse.rs:38
+msgid "FTP (with login)"
+msgstr "FTP (con inicio de sesión)"
+
+#: src/netzwerk/adresse.rs:39
+msgid "WebDAV (HTTP)"
+msgstr "WebDAV (HTTP)"
+
+#: src/netzwerk/adresse.rs:40
+msgid "Secure WebDAV (HTTPS)"
+msgstr "WebDAV seguro (HTTPS)"
+
+#: src/netzwerk/adresse.rs:41
+msgid "Custom location"
+msgstr "Ubicación personalizada"
+
+#: src/netzwerk/adresse.rs:104
+msgid "Enter the name or the address of the server."
+msgstr "Escriba el nombre o la dirección del servidor."
+
+#: src/netzwerk/adresse.rs:105
+msgid ""
+"The server name must not contain spaces, slashes or “@”. Enter the user name in its own field."
+msgstr ""
+"El nombre del servidor no puede contener espacios, barras ni «@». Escriba el nombre de usuario en su propio campo."
+
+#: src/netzwerk/adresse.rs:109
+msgid "The port must be a number from 1 to 65535."
+msgstr "El puerto debe ser un número entre 1 y 65535."
+
+#: src/netzwerk/adresse.rs:110
+msgid "Enter the address of the server."
+msgstr "Escriba la dirección del servidor."
+
+#: src/netzwerk/adresse.rs:111
+#, no-c-format
+msgid "The address needs a protocol at the start, for example “{example}”."
+msgstr ""
+"La dirección necesita un protocolo al principio, por ejemplo «{example}»."
+
+#: src/netzwerk/adresse.rs:115
+msgid "That is not a valid server address."
+msgstr "No es una dirección de servidor válida."
+
+#: src/netzwerk/adresse.rs:116
+msgid "The address does not name a server."
+msgstr "La dirección no indica ningún servidor."
+
+#: src/netzwerk/adresse.rs:117
+#, no-c-format
+msgid ""
+"“{scheme}” is not a network protocol. Use smb://, sftp://, ftp:// or dav://."
+msgstr ""
+"«{scheme}» no es un protocolo de red. Use smb://, sftp://, ftp:// o dav://."
+
+#: src/netzwerk/adresse.rs:121
+#, no-c-format
+msgid ""
+"This system cannot connect to “{scheme}” servers. The package “gvfs-backends” provides them."
+msgstr ""
+"Este sistema no puede conectarse a servidores «{scheme}». El paquete «gvfs-backends» los proporciona."
+
+#: src/netzwerk/adresse.rs:126
+msgid ""
+"Do not write the password into the address. It is asked for when connecting."
+msgstr "No escriba la contraseña en la dirección. Se pedirá al conectar."
+
+#: src/netzwerk/anmeldung.rs:269
+#, no-c-format
+msgid "You log in as “{user}”."
+msgstr "Inicia sesión como «{user}»."
+
+#: src/netzwerk/anmeldung.rs:272
+msgid "The login failed. Check the user name and the password."
+msgstr ""
+"Falló el inicio de sesión. Compruebe el nombre de usuario y la contraseña."
+
+#: src/netzwerk/anmeldung.rs:280
+msgid "Password Required"
+msgstr "Se necesita una contraseña"
+
+#: src/netzwerk/anmeldung.rs:288
+msgid "Connect _anonymously"
+msgstr "Conectar de forma _anónima"
+
+#: src/netzwerk/anmeldung.rs:289
+msgid "Connect as u_ser:"
+msgstr "Conectar como _usuario:"
+
+#: src/netzwerk/anmeldung.rs:315 src/netzwerk/verbinden_dialog.rs:156
+msgid "_User name:"
+msgstr "_Nombre de usuario:"
+
+#: src/netzwerk/anmeldung.rs:322
+msgid "_Domain:"
+msgstr "_Dominio:"
+
+#: src/netzwerk/anmeldung.rs:329
+msgid "_Password:"
+msgstr "Con_traseña:"
+
+#: src/netzwerk/anmeldung.rs:332
+msgid "_Remember password"
+msgstr "_Recordar contraseña"
+
+#: src/netzwerk/anmeldung.rs:335
+msgid ""
+"The password is kept in the keyring of your session and used for this server next time."
+msgstr ""
+"La contraseña se guarda en el depósito de claves de su sesión y se usará para este servidor la próxima vez."
+
+#: src/netzwerk/anmeldung.rs:348 src/netzwerk/verbinden_dialog.rs:221
+msgid "C_onnect"
+msgstr "C_onectar"
+
+#: src/netzwerk/anmeldung.rs:474
+msgid "Verify Server Identity"
+msgstr "Verificar la identidad del servidor"
+
+#: src/netzwerk/anmeldung.rs:476 src/netzwerk/verbinden_dialog.rs:77
+msgid "Connect to Server"
+msgstr "Conectar con un servidor"
+
+#: src/netzwerk/anmeldung.rs:589
+#, no-c-format
+msgid ""
+"The connection was stopped: while logging in, the server showed a different key than the fingerprint you confirmed ({fingerprint}). ssh has saved that other key. Remove it with “{command}” and ask the administrator of the server for the right fingerprint before you connect again."
+msgstr ""
+"Se detuvo la conexión: al iniciar sesión, el servidor mostró una clave distinta de la huella que confirmó ({fingerprint}). ssh ha guardado esa otra clave. Elimínela con «{command}» y pida al administrador del servidor la huella correcta antes de volver a conectar."
+
+#: src/netzwerk/einhaengen.rs:201 src/netzwerk/mod.rs:81
+#, no-c-format
+msgid "Connecting to “{server}” …"
+msgstr "Conectando con «{server}»…"
+
+#: src/netzwerk/einhaengen.rs:280
+#, no-c-format
+msgid "Could not connect to “{server}”."
+msgstr "No se pudo conectar con «{server}»."
+
+#: src/netzwerk/einhaengen.rs:319
+#, no-c-format
+msgid ""
+"The server did not answer within {seconds} seconds. Check that it is switched on and reachable, then try again."
+msgstr ""
+"El servidor no respondió en {seconds} segundos. Compruebe que está encendido y accesible, y vuelva a intentarlo."
+
+#: src/netzwerk/einhaengen.rs:427 src/netzwerk/mod.rs:86
+#, no-c-format
+msgid "Not connected to “{server}”."
+msgstr "No conectado con «{server}»."
+
+#: src/netzwerk/gvfs_texte.rs:50
+#, no-c-format
+msgid "Message from the system: {message}"
+msgstr "Mensaje del sistema: {message}"
+
+#: src/netzwerk/gvfs_texte.rs:76
+msgid ""
+"The identity of the server could not be confirmed, so no connection was made. Ask the administrator of the server for its key fingerprint before you try again."
+msgstr ""
+"No se pudo confirmar la identidad del servidor, así que no se estableció la conexión. Pida al administrador del servidor la huella de su clave antes de volver a intentarlo."
+
+#: src/netzwerk/gvfs_texte.rs:82
+msgid ""
+"The server did not accept the user name or the password. Check both and try again."
+msgstr ""
+"El servidor no aceptó el nombre de usuario o la contraseña. Compruebe ambos y vuelva a intentarlo."
+
+#: src/netzwerk/gvfs_texte.rs:87
+msgid ""
+"This system cannot open this kind of server address. The package “gvfs-backends” provides the network protocols."
+msgstr ""
+"Este sistema no puede abrir este tipo de dirección de servidor. El paquete «gvfs-backends» proporciona los protocolos de red."
+
+#: src/netzwerk/gvfs_texte.rs:105
+msgid "The server could not be found. Check its name or address."
+msgstr "No se encontró el servidor. Compruebe su nombre o dirección."
+
+#: src/netzwerk/gvfs_texte.rs:113
+msgid ""
+"The server refused the connection. Check the type of service and the port, and whether the service runs on the server."
+msgstr ""
+"El servidor rechazó la conexión. Compruebe el tipo de servicio, el puerto y si el servicio se ejecuta en el servidor."
+
+#: src/netzwerk/gvfs_texte.rs:124
+msgid ""
+"The server did not answer in time. Check that it is switched on and reachable."
+msgstr ""
+"El servidor no respondió a tiempo. Compruebe que está encendido y accesible."
+
+#: src/netzwerk/gvfs_texte.rs:136
+msgid ""
+"The server cannot be reached. Check the network connection of this computer."
+msgstr ""
+"No se puede acceder al servidor. Compruebe la conexión de red de este equipo."
+
+#: src/netzwerk/gvfs_texte.rs:141
+msgid ""
+"The server did not provide a list of its shared folders. Enter the name of the share in the dialog “Connect to Server”."
+msgstr ""
+"El servidor no proporcionó la lista de sus carpetas compartidas. Escriba el nombre del recurso compartido en el diálogo «Conectar con un servidor»."
+
+#: src/netzwerk/gvfs_texte.rs:153
+msgid ""
+"The shared folder or the folder does not exist on this server. Check the share and the folder."
+msgstr ""
+"La carpeta compartida o la carpeta no existe en este servidor. Compruebe el recurso compartido y la carpeta."
+
+#: src/netzwerk/gvfs_texte.rs:157
+msgid "The connection to the server was closed. Connect again."
+msgstr "Se cerró la conexión con el servidor. Vuelva a conectar."
+
+#: src/netzwerk/gvfs_texte.rs:168
+msgid ""
+"The connection to the server broke off. Check the address, the port and whether the service runs on the server."
+msgstr ""
+"Se interrumpió la conexión con el servidor. Compruebe la dirección, el puerto y si el servicio se ejecuta en el servidor."
+
+#: src/netzwerk/gvfs_texte.rs:172
+msgid "The connection to the server failed."
+msgstr "Falló la conexión con el servidor."
+
+#: src/netzwerk/gvfs_texte.rs:223
+#, no-c-format
+msgid "The identity of the server “{host}” is not known yet."
+msgstr "Todavía no se conoce la identidad del servidor «{host}»."
+
+#: src/netzwerk/gvfs_texte.rs:230
+#, no-c-format
+msgid ""
+"The server sent this key fingerprint:\n"
+"{fingerprint}\n"
+"Compare it with the fingerprint you know from the administrator of the server."
+msgstr ""
+"El servidor envió esta huella de clave:\n"
+"{fingerprint}\n"
+"Compárela con la huella que le dio el administrador del servidor."
+
+#: src/netzwerk/gvfs_texte.rs:238
+msgid ""
+"This is normal when you connect to this server for the first time. If you connected before, the server may have been replaced, or someone may be pretending to be the server."
+msgstr ""
+"Es normal cuando se conecta a este servidor por primera vez. Si ya se había conectado antes, puede que el servidor se haya sustituido o que alguien se esté haciendo pasar por él."
+
+#: src/netzwerk/gvfs_texte.rs:260
+#, no-c-format
+msgid ""
+"Querencia Dateien read the key of the server over a separate connection. Fingerprint of the {key_type} key:\n"
+"{fingerprint}\n"
+"Compare it with the fingerprint you know from the administrator of the server."
+msgstr ""
+"Querencia Dateien leyó la clave del servidor mediante una conexión aparte. Huella de la clave {key_type}:\n"
+"{fingerprint}\n"
+"Compárela con la huella que le dio el administrador del servidor."
+
+#: src/netzwerk/gvfs_texte.rs:269
+msgid ""
+"The fingerprint of the server key could not be read, so it cannot be compared here. Confirm it with the administrator of the server before you connect."
+msgstr ""
+"No se pudo leer la huella de la clave del servidor, así que no se puede comparar aquí. Confírmela con el administrador del servidor antes de conectar."
+
+#: src/netzwerk/gvfs_texte.rs:345
+#, no-c-format
+msgid ""
+"Enter the password for the shared folder “{share}” on the server “{host}”."
+msgstr ""
+"Escriba la contraseña de la carpeta compartida «{share}» en el servidor «{host}»."
+
+#: src/netzwerk/gvfs_texte.rs:349
+#, no-c-format
+msgid ""
+"Enter user name and password for the shared folder “{share}” on the server “{host}”."
+msgstr ""
+"Escriba el nombre de usuario y la contraseña de la carpeta compartida «{share}» en el servidor «{host}»."
+
+#: src/netzwerk/gvfs_texte.rs:354
+#, no-c-format
+msgid "Enter user name and password for “{name}”."
+msgstr "Escriba el nombre de usuario y la contraseña de «{name}»."
+
+#: src/netzwerk/gvfs_texte.rs:358
+#, no-c-format
+msgid "Enter the password of “{user}” on the server “{host}”."
+msgstr "Escriba la contraseña de «{user}» en el servidor «{host}»."
+
+#: src/netzwerk/gvfs_texte.rs:362
+#, no-c-format
+msgid "Enter the password for “{name}”."
+msgstr "Escriba la contraseña de «{name}»."
+
+#: src/netzwerk/gvfs_texte.rs:363
+msgid "Enter the password of the proxy server."
+msgstr "Escriba la contraseña del servidor proxy."
+
+#: src/netzwerk/gvfs_texte.rs:394 src/netzwerk/gvfs_texte.rs:396
+msgid "Connect _Anyway"
+msgstr "Conectar _de todos modos"
+
+#: src/netzwerk/gvfs_texte.rs:395 src/netzwerk/gvfs_texte.rs:397
+msgid "_Cancel Connection"
+msgstr "_Cancelar la conexión"
+
+#: src/netzwerk/mod.rs:128
+#, no-c-format
+msgid "The bookmark could not be saved: {error}"
+msgstr "No se pudo guardar el marcador: {error}"
+
+#: src/netzwerk/netzansicht.rs:68
+msgid "No computers found in the network – File → Connect to Server…"
+msgstr ""
+"No se encontraron equipos en la red – Archivo → Conectar con un servidor…"
+
+#: src/netzwerk/verbinden_dialog.rs:79
+msgid "Connect to a server"
+msgstr "Conectar con un servidor"
+
+#: src/netzwerk/verbinden_dialog.rs:80
+msgid ""
+"Choose the type of server and enter its name. The password is asked for when connecting."
+msgstr ""
+"Elija el tipo de servidor y escriba su nombre. La contraseña se pedirá al conectar."
+
+#: src/netzwerk/verbinden_dialog.rs:102
+msgid "Add _bookmark"
+msgstr "Añadir _marcador"
+
+#: src/netzwerk/verbinden_dialog.rs:109
+msgid "for example server.example or 192.0.2.7"
+msgstr "por ejemplo server.example o 192.0.2.7"
+
+#: src/netzwerk/verbinden_dialog.rs:110
+msgid "for example smb://server/share or \\\\server\\share"
+msgstr "por ejemplo smb://servidor/recurso o \\\\servidor\\recurso"
+
+#: src/netzwerk/verbinden_dialog.rs:136
+msgid "Service _type:"
+msgstr "_Tipo de servicio:"
+
+#: src/netzwerk/verbinden_dialog.rs:137
+msgid "_Server:"
+msgstr "_Servidor:"
+
+#: src/netzwerk/verbinden_dialog.rs:138
+msgid "_Location (URI):"
+msgstr "Ubicación (_URI):"
+
+#: src/netzwerk/verbinden_dialog.rs:142
+msgid "Optional information:"
+msgstr "Información opcional:"
+
+#: src/netzwerk/verbinden_dialog.rs:153
+msgid "_Port:"
+msgstr "_Puerto:"
+
+#: src/netzwerk/verbinden_dialog.rs:154
+msgid "Sh_are:"
+msgstr "_Recurso compartido:"
+
+#: src/netzwerk/verbinden_dialog.rs:155
+msgid "_Folder:"
+msgstr "Carp_eta:"
+
+#: src/netzwerk/verbinden_dialog.rs:157
+msgid "_Domain name:"
+msgstr "Nombre de _dominio:"
+
+#: src/netzwerk/verbinden_dialog.rs:167
+msgid "Bookmark _name:"
+msgstr "_Nombre del marcador:"
+
+#: src/netzwerk/verbinden_dialog.rs:317
+#, no-c-format
+msgid "{folder} on {server}"
+msgstr "{folder} en {server}"
+
+#: src/oeffnen.rs:108 src/oeffnen.rs:154
+#, no-c-format
+msgid "“{name}” could not be opened."
+msgstr "No se pudo abrir «{name}»."
+
+#: src/oeffnen.rs:164 src/oeffnen.rs:300
+#, no-c-format
+msgid "“{name}” cannot be opened."
+msgstr "No se puede abrir «{name}»."
+
+#: src/oeffnen.rs:165
+#, no-c-format
+msgid "There is no program installed for “{type}” files."
+msgstr "No hay ningún programa instalado para archivos «{type}»."
+
+#: src/oeffnen.rs:184 src/oeffnen.rs:204 src/oeffnen.rs:225
+#, no-c-format
+msgid "“{program}” could not be started."
+msgstr "No se pudo iniciar «{program}»."
+
+#: src/oeffnen.rs:240
+msgid "Untrusted application launcher"
+msgstr "Lanzador de aplicaciones no confiable"
+
+#: src/oeffnen.rs:241
+#, no-c-format
+msgid ""
+"The application launcher “{name}” has not been marked as trusted. If you do not know the source of this file, launching it may be unsafe."
+msgstr ""
+"El lanzador de aplicaciones «{name}» no se ha marcado como confiable. Si no conoce el origen de este archivo, ejecutarlo puede no ser seguro."
+
+#: src/oeffnen.rs:246
+msgid "_Trust and Launch"
+msgstr "Con_fiar y ejecutar"
+
+#: src/oeffnen.rs:263
+msgid "The launcher could not be marked as trusted."
+msgstr "No se pudo marcar el lanzador como confiable."
+
+#: src/oeffnen.rs:285
+#, no-c-format
+msgid "“{name}” could not be run."
+msgstr "No se pudo ejecutar «{name}»."
+
+#: src/oeffnen.rs:304
+msgid "There is no program installed for text files."
+msgstr "No hay ningún programa instalado para archivos de texto."
+
+#: src/oeffnen.rs:323
+#, no-c-format
+msgid "Do you want to run “{name}”, or display its contents?"
+msgstr "¿Desea ejecutar «{name}» o mostrar su contenido?"
+
+#: src/oeffnen.rs:327
+msgid "_Display"
+msgstr "_Mostrar"
+
+#: src/oeffnen.rs:327 src/oeffnen.rs:332
+msgid "_Run"
+msgstr "_Ejecutar"
+
+#: src/oeffnen.rs:331
+#, no-c-format
+msgid "Do you want to run “{name}”?"
+msgstr "¿Desea ejecutar «{name}»?"
+
+#: src/oeffnen.rs:337
+#, no-c-format
+msgid "“{name}” is an executable file."
+msgstr "«{name}» es un archivo ejecutable."
+
+#: src/operationen.rs:378
+msgid "Close"
+msgstr "Cerrar"
+
+#: src/operationen.rs:726
+#, no-c-format
+msgid "“{name}” cannot be renamed."
+msgstr "No se puede renombrar «{name}»."
+
+#: src/operationen.rs:773
+#, no-c-format
+msgid "Are you sure you want to permanently delete “{name}”?"
+msgstr "¿Está seguro de que quiere eliminar «{name}» de forma permanente?"
+
+#: src/operationen.rs:777
+#, no-c-format
+msgid "Are you sure you want to permanently delete the {n} selected item?"
+msgid_plural "Are you sure you want to permanently delete the {n} selected items?"
+msgstr[0] ""
+"¿Está seguro de que quiere eliminar de forma permanente {n} elemento seleccionado?"
+msgstr[1] ""
+"¿Está seguro de que quiere eliminar de forma permanente los {n} elementos seleccionados?"
+
+#: src/operationen.rs:786
+msgid "If you delete an item, it will be permanently lost."
+msgstr "Si elimina un elemento, se perderá definitivamente."
+
+#: src/operationen.rs:789
+msgid "Delete"
+msgstr "Eliminar"
+
+#: src/operationen.rs:818
+msgid "Empty all items from the trash?"
+msgstr "¿Vaciar todos los elementos de la papelera?"
+
+#: src/operationen.rs:819
+msgid "If you empty the trash, all items in it will be permanently lost."
+msgstr "Si vacía la papelera, todos sus elementos se perderán definitivamente."
+
+#: src/operationen.rs:822
+msgid "Empty Trash"
+msgstr "Vaciar la papelera"
+
+#: src/operationen.rs:856
+msgid "New Folder"
+msgstr "Carpeta nueva"
+
+#: src/operationen.rs:865
+msgid "New Document"
+msgstr "Documento nuevo"
+
+#: src/operationen.rs:874
+msgid "Template"
+msgstr "Plantilla"
+
+#: src/orte.rs:14
+msgid "Computer"
+msgstr "Equipo"
+
+#: src/orte.rs:15 src/seitenleiste.rs:89
+msgid "Network"
+msgstr "Red"
+
+#: src/orte.rs:26 src/regeln.rs:319 src/seitenleiste.rs:69
+msgid "Home Folder"
+msgstr "Carpeta personal"
+
+#. TRANSLATORS: zoom level in the toolbar, deutsch „{percent} %“
+#: src/regeln.rs:58
+#, no-c-format
+msgid "{percent}%"
+msgstr "{percent} %"
+
+#: src/regeln.rs:94
+msgid "Icon View"
+msgstr "Vista de iconos"
+
+#: src/regeln.rs:95
+msgid "List View"
+msgstr "Vista de lista"
+
+#: src/regeln.rs:218
+#, no-c-format
+msgid "{n} byte"
+msgid_plural "{n} bytes"
+msgstr[0] "{n} byte"
+msgstr[1] "{n} bytes"
+
+#: src/regeln.rs:239
+#, no-c-format
+msgid "{items}, Free space: {size}"
+msgstr "{items}, espacio libre: {size}"
+
+#: src/regeln.rs:269
+#, no-c-format
+msgid "“{name}” selected"
+msgstr "«{name}» seleccionado"
+
+#: src/regeln.rs:271
+#, no-c-format
+msgid "“{name}” selected ({size})"
+msgstr "«{name}» seleccionado ({size})"
+
+#: src/regeln.rs:277
+#, no-c-format
+msgid "{n} folder selected"
+msgid_plural "{n} folders selected"
+msgstr[0] "{n} carpeta seleccionada"
+msgstr[1] "{n} carpetas seleccionadas"
+
+#: src/regeln.rs:280
+#, no-c-format
+msgid "{n} item selected ({size})"
+msgid_plural "{n} items selected ({size})"
+msgstr[0] "{n} elemento seleccionado ({size})"
+msgstr[1] "{n} elementos seleccionados ({size})"
+
+#: src/regeln.rs:287
+#, no-c-format
+msgid "{n} other item selected ({size})"
+msgid_plural "{n} other items selected ({size})"
+msgstr[0] "{n} elemento más seleccionado ({size})"
+msgstr[1] "{n} elementos más seleccionados ({size})"
+
+#. TRANSLATORS: "2 folders selected, 3 other items selected (1.2 MB)"
+#: src/regeln.rs:294
+#, no-c-format
+msgid "{folders}, {others}"
+msgstr "{folders}, {others}"
+
+#: src/reiter/mod.rs:195
+msgid "Empty Trash…"
+msgstr "Vaciar la papelera…"
+
+#: src/reiter/mod.rs:316
+msgid "Close tab"
+msgstr "Cerrar pestaña"
+
+#: src/reiter/mod.rs:604
+msgid "_Previous Tab"
+msgstr "Pestaña _anterior"
+
+#. TRANSLATORS: shortcut shown in the Tabs menu, deutsch „<Control>Bild↑“
+#: src/reiter/mod.rs:607
+msgctxt "accel"
+msgid "<Control>PageUp"
+msgstr "<Control>RePág"
+
+#: src/reiter/mod.rs:610
+msgid "_Next Tab"
+msgstr "Pestaña _siguiente"
+
+#. TRANSLATORS: shortcut shown in the Tabs menu, deutsch „<Control>Bild↓“
+#: src/reiter/mod.rs:613
+msgctxt "accel"
+msgid "<Control>PageDown"
+msgstr "<Control>AvPág"
+
+#: src/reiter/mod.rs:618
+msgid "Move Tab _Left"
+msgstr "Mover pestaña a la _izquierda"
+
+#. TRANSLATORS: shortcut shown in the Tabs menu
+#: src/reiter/mod.rs:621
+msgctxt "accel"
+msgid "<Shift><Control>PageUp"
+msgstr "<Shift><Control>RePág"
+
+#: src/reiter/mod.rs:624
+msgid "Move Tab _Right"
+msgstr "Mover pestaña a la _derecha"
+
+#. TRANSLATORS: shortcut shown in the Tabs menu
+#: src/reiter/mod.rs:627
+msgctxt "accel"
+msgid "<Shift><Control>PageDown"
+msgstr "<Shift><Control>AvPág"
+
+#: src/seitenleiste.rs:77
+msgid "Desktop"
+msgstr "Escritorio"
+
+#: src/seitenleiste.rs:215
+msgid "Places"
+msgstr "Lugares"
+
+#: src/seitenleiste.rs:221
+msgid "Close the side pane"
+msgstr "Cerrar el panel lateral"
+
+#: src/seitenleiste.rs:584
+msgid "_Remove Bookmark"
+msgstr "_Quitar marcador"
+
+#: src/seitenleiste.rs:594
+msgid "_Mount"
+msgstr "_Montar"
+
+#: src/seitenleiste.rs:603
+msgid "_Eject"
+msgstr "E_xpulsar"
+
+#: src/seitenleiste.rs:610
+msgid "_Unmount"
+msgstr "_Desmontar"
+
+#: src/statusleiste.rs:93
+#, no-c-format
+msgid "The folder could not be read: {error}"
+msgstr "No se pudo leer la carpeta: {error}"
+
+#: src/statusleiste.rs:143
+msgid "Loading…"
+msgstr "Cargando…"
+
+#. TRANSLATORS: context menu of a search result
+#: src/suche/ergebnisse.rs:339
+msgid "Show in _Folder"
+msgstr "Mostrar en la _carpeta"
+
+#: src/suche/mod.rs:73
+msgid "Search documents and folders by name"
+msgstr "Buscar documentos y carpetas por nombre"
+
+#: src/suche/mod.rs:127
+msgid "_Search for:"
+msgstr "_Buscar:"
+
+#: src/suche/mod.rs:152
+msgid "_Advanced Search…"
+msgstr "Búsqueda avan_zada…"
+
+#: src/suche/mod.rs:153
+msgid "Search with more criteria in Querencia File Search"
+msgstr "Buscar con más criterios en Querencia Búsqueda de archivos"
+
+#: src/suche/mod.rs:167
+msgid "Close the search"
+msgstr "Cerrar la búsqueda"
+
+#: src/suche/mod.rs:305
+msgid "Search results"
+msgstr "Resultados de la búsqueda"
+
+#: src/suche/mod.rs:350
+msgid "Searching…"
+msgstr "Buscando…"
+
+#: src/suche/mod.rs:378
+#, no-c-format
+msgid "Searching… {n} match so far"
+msgid_plural "Searching… {n} matches so far"
+msgstr[0] "Buscando… {n} coincidencia hasta ahora"
+msgstr[1] "Buscando… {n} coincidencias hasta ahora"
+
+#: src/suche/mod.rs:399
+#, no-c-format
+msgid "{n} match"
+msgid_plural "{n} matches"
+msgstr[0] "{n} coincidencia"
+msgstr[1] "{n} coincidencias"
+
+#: src/suche/mod.rs:401
+#, no-c-format
+msgid "{matches} (search stopped)"
+msgstr "{matches} (búsqueda detenida)"
+
+#: src/suche/mod.rs:403
+#, no-c-format
+msgid "{matches} (limit reached)"
+msgstr "{matches} (límite alcanzado)"
+
+#: src/suche/mod.rs:437
+#, no-c-format
+msgid "Querencia File Search could not be started: {error}"
+msgstr "No se pudo iniciar Querencia Búsqueda de archivos: {error}"
+
+#: src/umbenennen.rs:38
+#, no-c-format
+msgid ""
+"The name “{name}” is already used in this folder. Please use a different name."
+msgstr "El nombre «{name}» ya se usa en esta carpeta. Use otro nombre."
+
+#: src/umbenennen.rs:231
+msgid "The item could not be renamed."
+msgstr "No se pudo renombrar el elemento."
+
+#: src/werkzeugleiste.rs:55
+msgid "Back"
+msgstr "Atrás"
+
+#: src/werkzeugleiste.rs:56
+msgid "Go to the previous visited location"
+msgstr "Ir a la ubicación visitada anteriormente"
+
+#: src/werkzeugleiste.rs:61
+msgid "Forward"
+msgstr "Adelante"
+
+#: src/werkzeugleiste.rs:62
+msgid "Go to the next visited location"
+msgstr "Ir a la siguiente ubicación visitada"
+
+#: src/werkzeugleiste.rs:68
+msgid "Go to the parent folder"
+msgstr "Ir a la carpeta superior"
+
+#: src/werkzeugleiste.rs:74
+msgid "Stop loading the current location"
+msgstr "Detener la carga de la ubicación actual"
+
+#: src/werkzeugleiste.rs:80
+msgid "Reload the current location"
+msgstr "Recargar la ubicación actual"
+
+#: src/werkzeugleiste.rs:87
+msgid "Go to the home folder"
+msgstr "Ir a la carpeta personal"
+
+#: src/werkzeugleiste.rs:93
+msgid ""
+"Browse all local and remote disks and folders accessible from this computer"
+msgstr ""
+"Examinar todos los discos y carpetas locales y remotos accesibles desde este equipo"
+
+#: src/werkzeugleiste.rs:106
+msgid "Decrease the view size"
+msgstr "Reducir el tamaño de la vista"
+
+#: src/werkzeugleiste.rs:115
+msgid "Increase the view size"
+msgstr "Aumentar el tamaño de la vista"
+
+#: src/werkzeugleiste.rs:124
+msgid "Use the normal view size"
+msgstr "Usar el tamaño normal de la vista"
+
+#: src/werkzeugleiste.rs:134
+msgid "Choose how the items are shown"
+msgstr "Elegir cómo se muestran los elementos"

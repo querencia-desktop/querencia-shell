@@ -1,0 +1,45 @@
+# Querencia Desktop – querencia-lautstaerke: spanische Übersetzung.
+# Copyright (C) 2026 Querencia Desktop contributors
+# Diese Datei steht unter derselben Lizenz wie Querencia Desktop – querencia-lautstaerke (GPL-3.0-or-later).
+# Begriffe nach der gemeinsamen Querencia-Begriffstabelle (GNOME-Wortwahl).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-lautstaerke\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-26 23:41+0100\n"
+"Last-Translator: Querencia Desktop contributors\n"
+"Language-Team: Español (Querencia)\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/model.rs:286
+msgid "No audio service"
+msgstr "Sin servicio de sonido"
+
+#: src/model.rs:287
+msgid "Connecting to the audio service…"
+msgstr "Conectando con el servicio de sonido…"
+
+#: src/model.rs:289
+msgid "No output device"
+msgstr "Ningún dispositivo de salida"
+
+#: src/model.rs:294
+#, no-c-format
+msgid "Volume: muted ({percent} %)"
+msgstr "Volumen: silenciado ({percent} %)"
+
+#: src/model.rs:296
+#, no-c-format
+msgid "Volume: {percent} %"
+msgstr "Volumen: {percent} %"
+
+#: src/model.rs:298
+#, no-c-format
+msgid "Device: {device}"
+msgstr "Dispositivo: {device}"

@@ -36,9 +36,14 @@ impl Edge {
 /// Applet types placed right of a neighbour type when added to the end
 /// region (see [`Region::insertion_index_for`]): (type, neighbour). G2-AL:
 /// the bell right of the network applet, or of the volume applet without
-/// one (the first neighbour the region has counts).
+/// one (the first neighbour the region has counts). Panel 0.4.0: the
+/// notification area right of network or volume, so left of the bell, and
+/// a bell added later right of the notification area.
 pub const RIGHT_OF: &[(&str, &str)] = &[
     ("network", "volume"),
+    ("notification-area", "network"),
+    ("notification-area", "volume"),
+    ("benachrichtigungen", "notification-area"),
     ("benachrichtigungen", "network"),
     ("benachrichtigungen", "volume"),
 ];
@@ -317,7 +322,8 @@ impl Layout {
     /// The layout the panel had before it became configurable: Anwendungen,
     /// Orte, System and the clock on top; window list and workspace switcher
     /// at the bottom. G2-AL: the bell left of the clock and „Arbeitsfläche
-    /// anzeigen“ left of the window list.
+    /// anzeigen“ left of the window list. Panel 0.4.0: the notification
+    /// area left of the bell.
     pub fn standard() -> Layout {
         let mut top = PanelSpec::new("top", Edge::Top, DEFAULT_HEIGHT);
         top.push(
@@ -326,6 +332,10 @@ impl Layout {
         );
         top.push(Region::Start, Instance::new("places-1", "places"));
         top.push(Region::Start, Instance::new("system-1", "system"));
+        top.push(
+            Region::End,
+            Instance::new("notification-area-1", "notification-area"),
+        );
         top.push(
             Region::End,
             Instance::new("benachrichtigungen-1", "benachrichtigungen"),
@@ -837,8 +847,8 @@ mod tests {
         );
     }
 
-    /// The standard layout as before G2-AL (no bell, no show-desktop), for
-    /// the rules that are about other applets.
+    /// The standard layout as before G2-AL (no bell, no show-desktop, no
+    /// notification area), for the rules that are about other applets.
     fn ohne_glocke() -> Layout {
         let mut layout = Layout::standard();
         layout
@@ -846,6 +856,74 @@ mod tests {
             .expect("Glocke");
         layout.remove_applet("show-desktop-1").expect("Knopf");
         layout
+            .remove_applet("notification-area-1")
+            .expect("Infobereich");
+        layout
+    }
+
+    /// Panel 0.4.0: the notification area right of network (else volume,
+    /// else first), so left of the bell; a bell added later goes right of
+    /// the notification area.
+    #[test]
+    fn notification_area_goes_left_of_the_bell() {
+        let mut layout = ohne_glocke();
+        for applet in ["volume", "network", "benachrichtigungen"] {
+            layout
+                .add_applet("top", applet, Region::End, known)
+                .unwrap();
+        }
+        let added = layout
+            .add_applet("top", "notification-area", Region::End, known)
+            .unwrap();
+        assert_eq!(added.index, 2);
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            [
+                "volume",
+                "network",
+                "notification-area",
+                "benachrichtigungen",
+                "clock"
+            ]
+        );
+        // only volume: right of it
+        let mut layout = ohne_glocke();
+        for applet in ["volume", "benachrichtigungen", "notification-area"] {
+            layout
+                .add_applet("top", applet, Region::End, known)
+                .unwrap();
+        }
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            ["volume", "notification-area", "benachrichtigungen", "clock"]
+        );
+        // the bell after the notification area: right of it
+        let mut layout = ohne_glocke();
+        for applet in [
+            "volume",
+            "network",
+            "notification-area",
+            "benachrichtigungen",
+        ] {
+            layout
+                .add_applet("top", applet, Region::End, known)
+                .unwrap();
+        }
+        assert_eq!(
+            types(&layout.panels[0], Region::End),
+            [
+                "volume",
+                "network",
+                "notification-area",
+                "benachrichtigungen",
+                "clock"
+            ]
+        );
+        // neither: first, as the standard layout has it
+        assert_eq!(
+            types(&Layout::standard().panels[0], Region::End),
+            ["notification-area", "benachrichtigungen", "clock"]
+        );
     }
 
     /// G2-AL: the bell right of the network applet (else of the volume
@@ -921,7 +999,10 @@ mod tests {
             ["applications", "places", "system"]
         );
         assert!(top.region(Region::Center).is_empty());
-        assert_eq!(types(top, Region::End), ["benachrichtigungen", "clock"]);
+        assert_eq!(
+            types(top, Region::End),
+            ["notification-area", "benachrichtigungen", "clock"]
+        );
         assert_eq!(
             (bottom.id.as_str(), bottom.edge, bottom.height),
             ("bottom", Edge::Bottom, 32)
@@ -958,6 +1039,7 @@ mod tests {
                 "applications-1",
                 "places-1",
                 "system-1",
+                "notification-area-1",
                 "benachrichtigungen-1",
                 "clock-1",
                 "show-desktop-1",
@@ -1101,7 +1183,7 @@ mod tests {
         assert_eq!(panel(&layout, "bottom"), &Layout::standard().panels[1]);
         assert_eq!(
             ids(panel(&layout, "top"), Region::End),
-            ["benachrichtigungen-1", "clock-1"]
+            ["notification-area-1", "benachrichtigungen-1", "clock-1"]
         );
     }
 
@@ -1126,7 +1208,12 @@ mod tests {
         assert_eq!((added.region, added.index), (Region::End, 0));
         assert_eq!(
             ids(panel(&layout, "top"), Region::End),
-            ["system-2", "benachrichtigungen-1", "clock-1"]
+            [
+                "system-2",
+                "notification-area-1",
+                "benachrichtigungen-1",
+                "clock-1"
+            ]
         );
     }
 
@@ -1199,6 +1286,7 @@ mod tests {
                 "applications-1",
                 "places-1",
                 "system-1",
+                "notification-area-1",
                 "benachrichtigungen-1",
                 "clock-1",
                 "show-desktop-1",

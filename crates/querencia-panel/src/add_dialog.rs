@@ -559,6 +559,7 @@ mod tests {
                 "Applications",
                 "Clock",
                 "Network",
+                "Notification Area",
                 "Notifications",
                 "Places",
                 "Show Desktop",

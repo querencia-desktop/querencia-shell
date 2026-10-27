@@ -1,7 +1,9 @@
 //! The status bar (B §1.6): "12 Objekte, freier Speicherplatz: 3,4 GB"
 //! without selection, "»a.txt« ausgewählt (12,3 kB)" and the mixed forms
 //! with one; while loading "Lade …"; a message of the window (e.g. a
-//! location not found) until the next change. Menu hints: Beta.
+//! location not found) until the next change. While search results stand
+//! in for the folder, their text ([`Statusleiste::ersatz_setzen`]).
+//! Menu hints: Beta.
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
@@ -9,6 +11,7 @@ use std::rc::{Rc, Weak};
 use gtk4::prelude::*;
 use gtk4::{gio, glib};
 
+use crate::ansichtskern::protokoll;
 use crate::fenster::Fenster;
 use crate::i18n::{gettext, gettext_f};
 use crate::modell::Zustand;
@@ -22,6 +25,8 @@ pub struct Statusleiste {
     meldung: RefCell<Option<String>>,
     fehler: RefCell<Option<String>>,
     generation: Cell<u64>,
+    /// The text while the search results are shown (`suche/`).
+    ersatz: RefCell<Option<Box<dyn Fn() -> String>>>,
 }
 
 impl Statusleiste {
@@ -45,6 +50,7 @@ impl Statusleiste {
             meldung: RefCell::default(),
             fehler: RefCell::default(),
             generation: Cell::new(0),
+            ersatz: RefCell::default(),
         })
     }
 
@@ -55,7 +61,23 @@ impl Statusleiste {
     /// A message until the next change of selection or folder.
     pub fn melden(&self, text: &str) {
         self.meldung.replace(Some(text.to_owned()));
-        self.text.set_text(text);
+        self.zeigen(text);
+    }
+
+    /// Sets the text; with `QUERENCIA_DATEIEN_DEBUG=1` each new text goes
+    /// to the log (the checks read it there).
+    fn zeigen(&self, text: &str) {
+        if self.text.text() != text {
+            protokoll(&format!("Statusleiste: {text}"));
+            self.text.set_text(text);
+        }
+    }
+
+    /// While `ersatz` is set, it gives the text instead of the folder (the
+    /// search results, QD-173 P-3); `None` shows the folder again.
+    pub fn ersatz_setzen(&self, ersatz: Option<Box<dyn Fn() -> String>>) {
+        self.ersatz.replace(ersatz);
+        self.aktualisieren();
     }
 
     pub fn zustand(self: &Rc<Self>, z: &Zustand) {
@@ -101,11 +123,15 @@ impl Statusleiste {
     /// Shows the text for the current state (selection, folder, loading).
     pub fn aktualisieren(&self) {
         self.meldung.replace(None);
+        if let Some(ersatz) = self.ersatz.borrow().as_ref() {
+            self.zeigen(&ersatz());
+            return;
+        }
         let Some(f) = self.fenster.upgrade() else {
             return;
         };
         if let Some(fehler) = self.fehler.borrow().as_ref() {
-            self.text.set_text(fehler);
+            self.zeigen(fehler);
             return;
         }
         let m = f.modell();
@@ -118,6 +144,6 @@ impl Statusleiste {
         } else {
             regeln::status_ohne_auswahl(m.anzahl(), self.frei.get())
         };
-        self.text.set_text(&text);
+        self.zeigen(&text);
     }
 }

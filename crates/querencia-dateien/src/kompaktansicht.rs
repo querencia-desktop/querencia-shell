@@ -5,16 +5,18 @@
 //! icon with the name on its right. Keyboard, focus, type-ahead, rename,
 //! selection and context menus are the other views' ([`crate::ansichtskern`]).
 //!
-//! Column widths as `nautilus-icon-container.c` (lay_down_icons_vertical)
-//! and `nautilus-icon-canvas-item.c` (max text width): with „Alle Spalten
-//! haben dieselbe Breite“ (default) every column is as wide as the widest
-//! name of the folder, longer names are cut with „…“; without it each
-//! column is as wide as its own widest name, nothing is cut. Nautilus cut
-//! at 150 px × zoom (its fonts: 10 pt, 8 pt at 33 and 50 %); the limit
-//! here is the same number of characters in the session's font
-//! ([`zeichen_grenze`]), so a larger font does not cut names earlier. The
-//! GridView makes each column as wide as its widest cell, so the cells
-//! carry the width (`breite_fuer`).
+//! Column widths as `nautilus-icon-container.c` (lay_down_icons_vertical):
+//! with „Alle Spalten haben dieselbe Breite“ (default) every column is as
+//! wide as the widest name of the folder, without it each column is as
+//! wide as its own widest name, nothing is cut. Nautilus 2.30 capped equal
+//! columns at 150 px × zoom (13 characters at 50 %) and shrank its font
+//! with the zoom; the session's font here keeps its size, so that cap cut
+//! ordinary names (QD-173 P-2). The cap is [`ZEICHEN_GRENZE`] characters
+//! of the session's font in every zoom, at most the visible width of the
+//! view ([`grenze_px`]); longer names are cut with „…“ and show whole in
+//! the tooltip. The GridView makes each column as wide as its widest
+//! cell, so the cells carry the width (`breite_fuer`); the name label is
+//! only as wide as its name, so the highlight stays on the name.
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -31,37 +33,37 @@ use crate::konfig::Werte;
 use crate::miniaturen::bildquelle;
 use crate::regeln::Ansichtsart;
 
-/// Nautilus 2.30: `MAX_TEXT_WIDTH_BESIDE_TOP_TO_BOTTOM`, at 100 %.
-pub const TEXTBREITE_GLEICH: i32 = 150;
-/// Average character width of Nautilus' fonts in px × 10: Sans 10 pt
-/// (7 px), at 33 and 50 % Sans 8 pt (`font_size_table`: −2 pt, 5.6 px).
-const ZEICHEN_NORMAL: i32 = 70;
-const ZEICHEN_KLEIN: i32 = 56;
+/// The cap of equal columns in characters, in every zoom: Nautilus 2.30's
+/// 150 px × zoom at 200 % (42 characters of its font).
+pub const ZEICHEN_GRENZE: i32 = 42;
+/// However narrow the view, a column keeps room for this many characters
+/// (Nautilus' cap at 33 %).
+pub const ZEICHEN_MINDESTENS: i32 = 8;
 /// Gap between icon and name (Nautilus' hbox spacing in the beside layout).
 pub const ABSTAND: i32 = 4;
 /// The name label's padding left and right ([`STIL`]: `padding: 0 3px`):
 /// GTK counts it into the size request.
 const RAND: i32 = 6;
+/// The cell's padding left and right ([`STIL`]: `padding: 1px 6px 1px 3px`).
+const ZELLRAND: i32 = 9;
 /// How many of the longest names are measured for the folder's widest
 /// name (the width follows the length closely; measuring 20 000 names on
 /// every change would hold up loading, B35).
 pub const GEMESSEN: usize = 48;
 
-/// Nautilus' text limit at zoom `prozent` with equal columns: 150 px at
-/// 100 %, scaled as its canvas (`pixels_per_unit` = icon size / 48).
-pub fn textbreite_nautilus(prozent: u32) -> i32 {
-    TEXTBREITE_GLEICH * symbolgroesse(prozent) / 48
-}
-
-/// The same limit in characters (Nautilus' font at that zoom): 8 at 33 %,
-/// 13 at 50 %, 14 at 66 %, 21 at 100 %, 32 at 150 %, 42 at 200 %.
-pub fn zeichen_grenze(prozent: u32) -> i32 {
-    let zeichen = if symbolgroesse(prozent) <= 24 {
-        ZEICHEN_KLEIN
+/// The text limit of equal columns in px: [`ZEICHEN_GRENZE`] characters
+/// of `zeichen` px × 1024 (Pango units), within the `sichtbar` px of the
+/// view beside an icon of `symbol` px (no cap while the view has no
+/// width), never below [`ZEICHEN_MINDESTENS`] characters.
+pub fn grenze_px(zeichen: i32, sichtbar: i32, symbol: i32) -> i32 {
+    let text = ZEICHEN_GRENZE * zeichen / pango::SCALE;
+    let mindestens = ZEICHEN_MINDESTENS * zeichen / pango::SCALE;
+    let platz = if sichtbar > 0 {
+        sichtbar - symbol - ABSTAND - RAND - ZELLRAND
     } else {
-        ZEICHEN_NORMAL
+        text
     };
-    textbreite_nautilus(prozent) * 10 / zeichen
+    text.min(platz).max(mindestens).max(1)
 }
 
 /// The width a name label gets: with equal columns the folder's widest
@@ -104,6 +106,9 @@ pub struct Kompaktansicht {
     /// Measured name widths (font of the view), for the own width.
     breiten: RefCell<HashMap<String, i32>>,
     messen_geplant: Cell<bool>,
+    /// The text limit the cells were bound with ([`grenze_px`]).
+    grenze: Cell<i32>,
+    breite_geplant: Cell<bool>,
 }
 
 impl Kompaktansicht {
@@ -140,6 +145,8 @@ impl Kompaktansicht {
             breiteste: Cell::new(1),
             breiten: RefCell::default(),
             messen_geplant: Cell::new(false),
+            grenze: Cell::new(0),
+            breite_geplant: Cell::new(false),
         });
         ansicht.fabrik(&factory);
         ansicht.grid.set_model(Some(auswahl));
@@ -165,6 +172,16 @@ impl Kompaktansicht {
             .connect_page_size_notify(move |_| {
                 if let Some(a) = weak.upgrade() {
                     a.zeilen_anpassen();
+                }
+            });
+        // a wider or narrower view moves the limit of equal columns
+        let weak = Rc::downgrade(&ansicht);
+        ansicht
+            .scroller
+            .hadjustment()
+            .connect_page_size_notify(move |_| {
+                if let Some(a) = weak.upgrade() {
+                    a.breite_planen();
                 }
             });
         // the model may be read already (the view is made on first use)
@@ -226,15 +243,34 @@ impl Kompaktansicht {
         }
     }
 
-    /// The text limit of equal columns in px: [`zeichen_grenze`] characters
-    /// of the view's font.
+    /// The text limit of equal columns in px ([`grenze_px`]): the view's
+    /// font and visible width.
     fn grenze(&self) -> i32 {
         let zeichen = self
             .grid
             .pango_context()
             .metrics(None, None)
             .approximate_char_width();
-        (zeichen_grenze(self.kern.zoom()) * zeichen / pango::SCALE).max(1)
+        let sichtbar = self.scroller.hadjustment().page_size() as i32;
+        grenze_px(zeichen, sichtbar, self.symbolgroesse())
+    }
+
+    /// After the view's width changed (idle, once, not inside the
+    /// allocation): bind the cells again when the limit moved.
+    fn breite_planen(self: &Rc<Self>) {
+        if !self.gleich.get() || self.breite_geplant.replace(true) {
+            return;
+        }
+        let weak = Rc::downgrade(self);
+        glib::idle_add_local_once(move || {
+            if let Some(a) = weak.upgrade() {
+                a.breite_geplant.set(false);
+                let grenze = a.grenze();
+                if grenze != a.grenze.get() {
+                    a.neu_binden();
+                }
+            }
+        });
     }
 
     /// Pixel width of `text` in the view's font.
@@ -299,7 +335,7 @@ impl Kompaktansicht {
             text.add_css_class("beschriftung");
             text.set_xalign(0.0);
             text.set_single_line_mode(true);
-            // the width comes from set_size_request (breite_fuer); one
+            // the widths come from set_size_request (`binden`); one
             // character keeps the label's own natural width below it
             text.set_ellipsize(pango::EllipsizeMode::End);
             text.set_max_width_chars(1);
@@ -346,23 +382,31 @@ impl Kompaktansicht {
         // thumbnail through the Bildquelle je Eintrag (Welle C2)
         bildquelle::binden(&bild, eintrag, bildquelle::Groesse::liste(groesse));
         text.set_text(&d.anzeige);
-        let eigene = if self.gleich.get() {
-            0
-        } else {
-            self.messen(&d.anzeige)
-        };
+        let eigene = self.messen(&d.anzeige);
         let grenze = self.grenze();
-        text.set_size_request(
-            breite_fuer(eigene, self.breiteste.get(), self.gleich.get(), grenze) + RAND,
-            -1,
-        );
+        self.grenze.set(grenze);
+        let breite = breite_fuer(eigene, self.breiteste.get(), self.gleich.get(), grenze);
+        // the cell carries the column's width, the label only its name's:
+        // the highlight sits on the name as in Nautilus, not on the column
+        text.set_size_request(eigene.min(breite) + RAND, -1);
+        zelle.set_size_request(groesse + ABSTAND + breite + RAND, -1);
         // a cut name shows whole in the tooltip
-        zelle.set_tooltip_text(
-            (self.gleich.get() && self.messen(&d.anzeige) > grenze).then_some(d.anzeige.as_str()),
-        );
+        zelle.set_tooltip_text((eigene > breite).then_some(d.anzeige.as_str()));
     }
 
     fn neu_binden(&self) {
+        let grenze = self.grenze();
+        protokoll(&format!(
+            "Kompaktansicht: Spaltenbreite {} px (breitester Name {} px, Grenze {grenze} px, Zoom {} %, {})",
+            breite_fuer(1, self.breiteste.get(), true, grenze),
+            self.breiteste.get(),
+            self.kern.zoom(),
+            if self.gleich.get() {
+                "gleich breit"
+            } else {
+                "je nach Inhalt"
+            }
+        ));
         for (zelle, li) in self.kern.lebende_zellen() {
             if let Some(e) = li.item().and_downcast::<Eintrag>() {
                 self.binden(&zelle, &e);
@@ -511,18 +555,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn equal_columns_are_capped_as_nautilus_150_px_times_zoom() {
-        assert_eq!(textbreite_nautilus(100), 150);
-        assert_eq!(textbreite_nautilus(50), 75);
-        assert_eq!(textbreite_nautilus(66), 100);
-        assert_eq!(textbreite_nautilus(150), 225);
-        assert_eq!(textbreite_nautilus(200), 300);
-        // in characters of Nautilus' fonts (8 pt at 50 %, 10 pt above)
-        let z: Vec<i32> = [33, 50, 66, 100, 150, 200]
-            .into_iter()
-            .map(zeichen_grenze)
-            .collect();
-        assert_eq!(z, vec![8, 13, 14, 21, 32, 42]);
+    fn the_limit_does_not_shrink_with_the_zoom() {
+        // QD-173 P-2: 7 px per character (Pango units), no width yet:
+        // 42 characters whatever the icon size
+        let z = 7 * pango::SCALE;
+        for symbol in [16, 24, 48, 96] {
+            assert_eq!(grenze_px(z, 0, symbol), 294);
+        }
+        // a wide view does not widen it
+        assert_eq!(grenze_px(z, 1500, 96), 294);
+        // a narrow view: its width beside icon, gap, padding
+        assert_eq!(grenze_px(z, 300, 24), 300 - 24 - ABSTAND - RAND - ZELLRAND);
+        assert_eq!(grenze_px(z, 300, 96), 300 - 96 - ABSTAND - RAND - ZELLRAND);
+        // never below 8 characters
+        assert_eq!(grenze_px(z, 60, 96), 56);
+        assert_eq!(grenze_px(0, 0, 24), 1);
+        // the names of the finding (L1-05) fit in every zoom
+        let querencia_tiefblau = 22 * 7;
+        assert!(querencia_tiefblau <= grenze_px(z, 650, 24));
+        assert!(querencia_tiefblau <= grenze_px(z, 650, 96));
     }
 
     #[test]

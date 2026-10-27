@@ -616,10 +616,12 @@ weiter; das Mausrad blättert waagrecht (Strg+Rad zoomt). Zoom 50–200 %
 (B §3.6). Breite nach `nautilus-icon-container.c`: „Alle Spalten haben
 dieselbe Breite“ (Einstellungen → Anzeige, `[Anzeige] KompaktGleichBreit`,
 Vorgabe an) macht jede Spalte so breit wie den breitesten Namen des Ordners,
-höchstens so viele Zeichen wie Nautilus bei 150 px × Zoom (8 bei 33 %, 13
-bei 50 %, 21 bei 100 %; gekürzte Namen stehen im Tooltip); ohne die
-Einstellung ist jede Spalte so breit wie ihr längster Name, nichts wird
-gekürzt. Der breiteste Name wird an den 48 längsten Namen gemessen
+seit 0.2.4 höchstens 42 Zeichen der Sitzungsschrift in jeder Zoomstufe und
+höchstens die sichtbare Breite der Ansicht (`grenze_px`; gekürzte Namen
+stehen im Tooltip, §10.3); ohne die Einstellung ist jede Spalte so breit
+wie ihr längster Name, nichts wird gekürzt. Die Zelle trägt die
+Spaltenbreite, die Beschriftung nur die ihres Namens (Markierung am Namen
+wie in Nautilus). Der breiteste Name wird an den 48 längsten Namen gemessen
 (`GEMESSEN`), nicht an allen.
 
 ### 9.3 Migration (B §4.2)
@@ -671,7 +673,8 @@ nach, `zurueck` entfernt genau das Angelegte; Live-Kopie unverändert) mit Probe
   Schließen-Knopf kam in einem Ablauf einmal pixman „Invalid rectangle“
   (zehn Zeilen), ohne sichtbare Folge; nicht nachgestellt.
 - Die Kompaktansicht nutzt die Schrift der Sitzung in allen Zoomstufen
-  (Nautilus verkleinerte sie bei 33 und 50 % um 2 pt).
+  (Nautilus verkleinerte sie bei 33 und 50 % um 2 pt); deshalb hängt die
+  Grenze der Spaltenbreite seit 0.2.4 nicht mehr vom Zoom ab.
 
 ## 10. 0.2.0 Beta (Zusammenbau, Welle C, QD-168)
 
@@ -769,3 +772,46 @@ Zusammenbau „dateien-020“ auf main `801a016` (C1 `dateien/netzwerk-1`, C2
   Quelltext).
 - **Integration** `integration/dateien-022/` (Update 0.2.1 → 0.2.2,
   Rückfall 0.2.1).
+
+### 10.3 0.2.4 Pflegestand (QD-173 P-2, P-3)
+
+0.2.3 brachte nur die Kataloge it/es/fr und wurde nicht aktiviert; 0.2.4
+baut darauf auf.
+
+- **Kompaktansicht kürzt Namen (P-2):** Die Grenze gleich breiter Spalten
+  war Nautilus' 150 px × Zoom, umgerechnet in Zeichen (13 bei 50 %, 21 bei
+  100 %). Nautilus verkleinerte dabei die Schrift, Dateien nicht: Bei 50 %
+  stand „querencia-…“ statt „querencia-abend.png“ (Weg B, L1-05).
+  Gemessen (1024×768, Schrift DejaVu Sans 12): Die Beschriftung bekam die
+  Breite `breite_fuer(…, grenze)` per `set_size_request` und kürzte mit
+  „…“ (`EllipsizeMode::End`); die Grenze war die einzige Ursache, die
+  Zoomstufe nur über sie. Jetzt `grenze_px`: 42 Zeichen (Nautilus' Wert
+  bei 200 %) in jeder Zoomstufe, höchstens die sichtbare Breite der
+  Ansicht neben dem Symbol, mindestens 8 Zeichen; ändert sich die Breite
+  der Ansicht, binden die Zellen im Leerlauf neu. Gemessen: Grenze 350 px
+  bei 50, 100 und 200 %, breitester Name der Probe (29 Zeichen) 258 px,
+  nichts gekürzt; ein Name mit 66 Zeichen (566 px) wird an der Grenze
+  gekürzt und steht ganz im Tooltip. Die Zelle trägt die Spaltenbreite,
+  die Beschriftung nur die Breite ihres Namens: Die Markierung sitzt am
+  Namen, nicht über der ganzen Spalte.
+- **Statusleiste nach der Suche leer (P-3):** `suche/mod.rs` setzte beim
+  Schließen der Suche `f.melden("")`; die Leerzeile blieb bis zur nächsten
+  Auswahl im Ordner. Eine Auswahl im Suchergebnis erreichte die
+  Statusleiste gar nicht. Jetzt gibt die Suche der Statusleiste einen
+  Ersatz (`Statusleiste::ersatz_setzen`), solange Treffer gezeigt werden:
+  ohne Auswahl der Stand der Suche („Suche läuft …“, „3 Treffer“, „…
+  (Suche angehalten)“), mit Auswahl wie im Ordner („„a.png“ ausgewählt
+  (3,8 MB)“, „4 Objekte ausgewählt (…)“). Esc, Strg+F, der Knopf und jeder
+  Ordnerwechsel nehmen den Ersatz weg; die Ordnerzeile steht wieder da.
+  Keine neuen Texte (alle fünf Kataloge hatten sie).
+- **Protokoll:** Mit `QUERENCIA_DATEIEN_DEBUG=1` schreibt die Statusleiste
+  jeden neuen Text („Statusleiste: …“), die Kompaktansicht jede neue
+  Bindung („Spaltenbreite W px (breitester Name B px, Grenze G px, Zoom
+  Z %, …)“).
+- **Prüfung:** Szenarien `szenarien/kompakt-namen.sh` (KN1–KN6) und
+  `szenarien/suche-status.sh` (SS1–SS9), je de/en in 1024×768 und
+  1920×1080; `kompakt.sh` K10c misst die Zellbreiten statt der Abstände
+  (die gleich breiten Spalten passen nicht mehr alle ins 800 px breite
+  Fenster, die Ansicht blättert). Unit-Test `grenze_px`.
+- **Integration** `integration/dateien-024/` (Update 0.2.2 → 0.2.4,
+  Rückfall 0.2.2).

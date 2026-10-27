@@ -1,0 +1,366 @@
+# Querencia Desktop – querencia-dateiarbeit: französische Übersetzung.
+# Copyright (C) 2026 Querencia Desktop contributors
+# Diese Datei steht unter derselben Lizenz wie Querencia Desktop – querencia-dateiarbeit (GPL-3.0-or-later).
+# Begriffe nach der gemeinsamen Querencia-Begriffstabelle (GNOME-Wortwahl).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: querencia-dateiarbeit\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2026-10-26 23:41+0100\n"
+"Last-Translator: Querencia Desktop contributors\n"
+"Language-Team: Français (Querencia)\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: src/auftraege.rs:100
+msgid "Error while copying."
+msgstr "Erreur lors de la copie."
+
+#: src/auftraege.rs:101
+msgid "Error while moving."
+msgstr "Erreur lors du déplacement."
+
+#: src/auftraege.rs:102
+msgid "Error while creating links."
+msgstr "Erreur lors de la création des liens."
+
+#: src/auftraege.rs:103
+msgid "Not everything could be moved to the trash."
+msgstr "Tout n’a pas pu être mis à la corbeille."
+
+#: src/auftraege.rs:104
+msgid "Not everything could be deleted."
+msgstr "Tout n’a pas pu être supprimé."
+
+#: src/auftraege.rs:105
+msgid "Not everything could be restored."
+msgstr "Tout n’a pas pu être restauré."
+
+#: src/auftraege.rs:106
+msgid "The trash could not be emptied completely."
+msgstr "La corbeille n’a pas pu être entièrement vidée."
+
+#: src/auftraege.rs:107
+msgid "The folder could not be created."
+msgstr "Impossible de créer le dossier."
+
+#: src/auftraege.rs:108
+msgid "The document could not be created."
+msgstr "Impossible de créer le document."
+
+#: src/auftraege.rs:109
+msgid "The item could not be renamed."
+msgstr "Impossible de renommer l’élément."
+
+#: src/auftraege.rs:331
+#, no-c-format
+msgid "{n} of {total} items was not copied:"
+msgid_plural "{n} of {total} items were not copied:"
+msgstr[0] "{n} élément sur {total} n’a pas été copié :"
+msgstr[1] "{n} éléments sur {total} n’ont pas été copiés :"
+
+#: src/auftraege.rs:337
+#, no-c-format
+msgid "{n} of {total} items was not moved:"
+msgid_plural "{n} of {total} items were not moved:"
+msgstr[0] "{n} élément sur {total} n’a pas été déplacé :"
+msgstr[1] "{n} éléments sur {total} n’ont pas été déplacés :"
+
+#: src/auftraege.rs:343
+#, no-c-format
+msgid "{n} of {total} items was not moved to the trash:"
+msgid_plural "{n} of {total} items were not moved to the trash:"
+msgstr[0] "{n} élément sur {total} n’a pas été mis à la corbeille :"
+msgstr[1] "{n} éléments sur {total} n’ont pas été mis à la corbeille :"
+
+#: src/auftraege.rs:349
+#, no-c-format
+msgid "{n} of {total} items was not deleted:"
+msgid_plural "{n} of {total} items were not deleted:"
+msgstr[0] "{n} élément sur {total} n’a pas été supprimé :"
+msgstr[1] "{n} éléments sur {total} n’ont pas été supprimés :"
+
+#: src/auftraege.rs:355
+#, no-c-format
+msgid "{n} of {total} items could not be deleted and is still in the trash:"
+msgid_plural "{n} of {total} items could not be deleted and are still in the trash:"
+msgstr[0] ""
+"{n} élément sur {total} n’a pas pu être supprimé et se trouve encore dans la corbeille :"
+msgstr[1] ""
+"{n} éléments sur {total} n’ont pas pu être supprimés et se trouvent encore dans la corbeille :"
+
+#: src/auftraege.rs:361
+#, no-c-format
+msgid "{n} of {total} items was not restored:"
+msgid_plural "{n} of {total} items were not restored:"
+msgstr[0] "{n} élément sur {total} n’a pas été restauré :"
+msgstr[1] "{n} éléments sur {total} n’ont pas été restaurés :"
+
+#: src/auftraege.rs:367
+#, no-c-format
+msgid "{n} of {total} items failed:"
+msgid_plural "{n} of {total} items failed:"
+msgstr[0] "{n} élément sur {total} a échoué :"
+msgstr[1] "{n} éléments sur {total} ont échoué :"
+
+#. TRANSLATORS: one line of the error list: file name and reason
+#: src/auftraege.rs:381
+#, no-c-format
+msgid "“{name}”: {why}"
+msgstr "« {name} » : {why}"
+
+#: src/auftraege.rs:387 src/laufwerke.rs:347
+#, no-c-format
+msgid "… and {n} more"
+msgid_plural "… and {n} more"
+msgstr[0] "… et {n} autre"
+msgstr[1] "… et {n} autres"
+
+#: src/auftraege/lauf.rs:126
+msgid "permission denied"
+msgstr "permission refusée"
+
+#: src/auftraege/lauf.rs:127 src/auftraege/lauf.rs:418 src/auftraege/lauf.rs:841 src/auftraege/lauf.rs:1030
+msgid "no longer there"
+msgstr "n’existe plus"
+
+#: src/auftraege/lauf.rs:129 src/papierkorb/wiederherstellen.rs:75
+msgid "There is already an item with this name at the target."
+msgstr "Un élément portant ce nom existe déjà à la destination."
+
+#: src/auftraege/lauf.rs:131
+msgid "There is no space left at the target."
+msgstr "Il n’y a plus d’espace à la destination."
+
+#: src/auftraege/lauf.rs:132
+msgid "The target is read-only."
+msgstr "La destination est en lecture seule."
+
+#: src/auftraege/lauf.rs:134 src/auftraege/lauf.rs:1036
+msgid "The name is not allowed at the target."
+msgstr "Le nom n’est pas autorisé à la destination."
+
+#: src/auftraege/lauf.rs:137
+msgid "There is no trash at this location."
+msgstr "Il n’y a pas de corbeille à cet emplacement."
+
+#: src/auftraege/lauf.rs:144
+msgid "volume not reachable"
+msgstr "volume inaccessible"
+
+#: src/auftraege/lauf.rs:331
+msgid "Trash"
+msgstr "Corbeille"
+
+#: src/auftraege/lauf.rs:345 src/auftraege/lauf.rs:379
+msgid "no target"
+msgstr "pas de destination"
+
+#: src/auftraege/lauf.rs:423
+msgid "A folder cannot be copied into itself."
+msgstr "Un dossier ne peut pas être copié dans lui-même."
+
+#: src/auftraege/lauf.rs:424
+msgid "A folder cannot be moved into itself."
+msgstr "Un dossier ne peut pas être déplacé dans lui-même."
+
+#: src/auftraege/lauf.rs:550
+msgid "A folder cannot be replaced by an item it contains."
+msgstr "Un dossier ne peut pas être remplacé par un élément qu’il contient."
+
+#: src/auftraege/lauf.rs:699
+#, no-c-format
+msgid "copied, but the original remained: {why}"
+msgstr "copié, mais l’original est resté : {why}"
+
+#. TRANSLATORS: digit group separator in "1.2 kB (1,234 bytes)"
+#: src/i18n.rs:106 src/typ.rs:114
+msgctxt "thousands separator"
+msgid ","
+msgstr " "
+
+#: src/laufwerke.rs:263
+msgid "Eject"
+msgstr "Éjecter"
+
+#: src/laufwerke.rs:264
+msgid "Unmount"
+msgstr "Démonter"
+
+#: src/laufwerke.rs:279
+#, no-c-format
+msgid "“{name}” could not be ejected."
+msgstr "Impossible d’éjecter « {name} »."
+
+#: src/laufwerke.rs:280
+#, no-c-format
+msgid "“{name}” could not be unmounted."
+msgstr "Impossible de démonter « {name} »."
+
+#: src/laufwerke.rs:284
+msgid ""
+"The volume is still in use. Close all programs and windows that have files on this volume open, and try again."
+msgstr ""
+"Le volume est encore utilisé. Fermez tous les programmes et fenêtres qui ont des fichiers ouverts sur ce volume, puis réessayez."
+
+#: src/laufwerke.rs:289 src/laufwerke.rs:617
+msgid "You do not have the permissions for this volume."
+msgstr "Vous n’avez pas les droits sur ce volume."
+
+#: src/laufwerke.rs:292
+msgid "The volume is no longer mounted."
+msgstr "Le volume n’est plus monté."
+
+#: src/laufwerke.rs:334
+msgid "A program still has files on the volume open."
+msgstr "Un programme a encore des fichiers ouverts sur le volume."
+
+#: src/laufwerke.rs:336
+msgid "These programs still have files on the volume open:"
+msgstr "Ces programmes ont encore des fichiers ouverts sur le volume :"
+
+#: src/laufwerke.rs:339
+#, no-c-format
+msgid "• {program} (process {pid})"
+msgstr "• {program} (processus {pid})"
+
+#: src/laufwerke.rs:353
+msgid ""
+"Close the programs, or eject the volume anyway. Unsaved data of these programs may be lost."
+msgstr ""
+"Fermez les programmes ou éjectez quand même le volume. Les données non enregistrées de ces programmes peuvent être perdues."
+
+#: src/laufwerke.rs:357
+msgid "Eject Anyway"
+msgstr "Éjecter quand même"
+
+#: src/laufwerke.rs:360
+msgid ""
+"Close the programs, or unmount the volume anyway. Unsaved data of these programs may be lost."
+msgstr ""
+"Fermez les programmes ou démontez quand même le volume. Les données non enregistrées de ces programmes peuvent être perdues."
+
+#: src/laufwerke.rs:364
+msgid "Unmount Anyway"
+msgstr "Démonter quand même"
+
+#: src/laufwerke.rs:370
+#, no-c-format
+msgid "The volume “{name}” is still in use."
+msgstr "Le volume « {name} » est encore utilisé."
+
+#: src/laufwerke.rs:372
+msgid "Cancel"
+msgstr "Annuler"
+
+#: src/laufwerke.rs:580
+msgid "The volume was mounted, but it has no mount point."
+msgstr "Le volume a été monté, mais il n’a pas de point de montage."
+
+#: src/laufwerke.rs:613
+#, no-c-format
+msgid "“{name}” could not be mounted."
+msgstr "Impossible de monter « {name} »."
+
+#: src/laufwerke.rs:619
+msgid "The volume is already mounted."
+msgstr "Le volume est déjà monté."
+
+#. TRANSLATORS: name of a copy next to the original, e.g. "notes (copy).txt"
+#: src/namen.rs:46
+#, no-c-format
+msgid "{stem} (copy){ext}"
+msgstr "{stem} (copie){ext}"
+
+#. TRANSLATORS: the second, third … copy, e.g. "notes (copy 2).txt"
+#: src/namen.rs:52
+#, no-c-format
+msgid "{stem} (copy {n}){ext}"
+msgstr "{stem} (copie {n}){ext}"
+
+#. TRANSLATORS: name of a symbolic link, as Nautilus 2.30 named it
+#: src/namen.rs:65
+#, no-c-format
+msgid "Link to {name}"
+msgstr "Lien vers {name}"
+
+#: src/namen.rs:98
+msgid "The name cannot be empty."
+msgstr "Le nom ne peut pas être vide."
+
+#: src/namen.rs:99
+#, no-c-format
+msgid ""
+"The name “{name}” is not valid because it contains the character “/”. Please use a different name."
+msgstr ""
+"Le nom « {name} » n’est pas valide car il contient le caractère « / ». Veuillez utiliser un autre nom."
+
+#: src/namen.rs:104
+#, no-c-format
+msgid "“{name}” is not a valid file name. Please use a different name."
+msgstr ""
+"« {name} » n’est pas un nom de fichier valide. Veuillez utiliser un autre nom."
+
+#: src/namen.rs:108
+msgid "The name contains an invalid character."
+msgstr "Le nom contient un caractère non valide."
+
+#: src/papierkorb/wiederherstellen.rs:56
+msgid "The original location is invalid."
+msgstr "L’emplacement d’origine n’est pas valide."
+
+#: src/papierkorb/wiederherstellen.rs:57
+msgid "The original location is unavailable."
+msgstr "L’emplacement d’origine n’est pas disponible."
+
+#: src/papierkorb/wiederherstellen.rs:59
+msgid "It cannot be determined where this item was deleted from."
+msgstr "Impossible de déterminer d’où cet élément a été supprimé."
+
+#: src/papierkorb/wiederherstellen.rs:61
+msgid ""
+"The volume of the trash cannot be determined because the mount table is unavailable."
+msgstr ""
+"Impossible de déterminer le volume de la corbeille car la table des montages n’est pas disponible."
+
+#: src/papierkorb/wiederherstellen.rs:64
+msgid ""
+"The original location is outside the volume of the trash and cannot be restored."
+msgstr ""
+"L’emplacement d’origine se trouve hors du volume de la corbeille et ne peut pas être restauré."
+
+#: src/papierkorb/wiederherstellen.rs:67
+msgid ""
+"The original location crosses a bind mount or subvolume boundary and cannot be restored."
+msgstr ""
+"L’emplacement d’origine traverse un montage lié ou une limite de sous-volume et ne peut pas être restauré."
+
+#: src/papierkorb/wiederherstellen.rs:70
+msgid "The original location must not be inside the trash."
+msgstr "L’emplacement d’origine ne doit pas se trouver dans la corbeille."
+
+#: src/papierkorb/wiederherstellen.rs:71
+msgid "The original folder no longer exists."
+msgstr "Le dossier d’origine n’existe plus."
+
+#: src/papierkorb/wiederherstellen.rs:72
+msgid ""
+"The original folder is a symbolic link; the item cannot be restored there."
+msgstr ""
+"Le dossier d’origine est un lien symbolique ; l’élément ne peut pas y être restauré."
+
+#: src/papierkorb/wiederherstellen.rs:76
+msgid ""
+"The file system cannot restore without the risk of replacing data; copy the item instead."
+msgstr ""
+"Le système de fichiers ne peut pas restaurer sans risquer de remplacer des données ; copiez plutôt l’élément."
+
+#: src/typ.rs:122
+#, no-c-format
+msgid "{size} ({bytes} bytes)"
+msgstr "{size} ({bytes} octets)"

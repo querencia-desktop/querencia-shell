@@ -1,6 +1,6 @@
 [package]
 name = "querencia-netzwerk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Querencia Netzwerk: Netzwerkzustand (NetworkManager über D-Bus, sonst nur lesend aus dem Kernel und systemd-networkd) für das Panel-Applet"
 edition.workspace = true
 rust-version.workspace = true
