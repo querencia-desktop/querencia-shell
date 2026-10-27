@@ -223,7 +223,16 @@ fn verhalten(w: &Werte) -> gtk4::Box {
         )
         .upcast()],
     );
-    seite(&[oeffnen, texte, papierkorb, adresse])
+    let reiter = rahmen(
+        &gettext("Tabs"),
+        &[schalter(
+            &gettext("_Restore tabs at start"),
+            w.reiter_wiederherstellen,
+            |k, v| k.reiter_wiederherstellen = v,
+        )
+        .upcast()],
+    );
+    seite(&[oeffnen, texte, papierkorb, adresse, reiter])
 }
 
 fn zusatzwahl() -> Vec<(Zusatz, String)> {

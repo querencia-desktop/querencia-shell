@@ -11,10 +11,12 @@
 //! and next tab, Umschalt+Strg+Bild↑/↓ moves the tab, Alt+1 … Alt+0 the
 //! first ten tabs. The middle button on a folder, a path button or a place
 //! and „In neuem Reiter öffnen“ open folders in new tabs behind the
-//! current one; files dropped on a tab's head go into its folder. No
-//! restore at start, no dragging of tabs, no detaching.
+//! current one; files dropped on a tab's head go into its folder. Since
+//! 0.3.0 the tabs of the window closed last come back at the next start
+//! ([`sitzung`]); no dragging of tabs, no detaching.
 
 pub mod regeln;
+pub mod sitzung;
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};

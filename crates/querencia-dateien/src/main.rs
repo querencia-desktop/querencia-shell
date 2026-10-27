@@ -156,6 +156,11 @@ fn main() -> glib::ExitCode {
     });
     app.connect_activate(|_| {
         if let Some(a) = app::app_wenn() {
+            // the first window of a start without a folder: the tabs of
+            // last time (0.3.0), else the home folder
+            if a.alle_fenster().is_empty() && reiter::sitzung::wiederherstellen(&a).is_some() {
+                return;
+            }
             a.neues_fenster(None);
         }
     });

@@ -142,10 +142,12 @@ impl Fenster {
                 f.einstellungen_anwenden(w);
             }
         });
-        // remember size and pane width when the window closes
+        // remember size and pane width when the window closes, and its
+        // tabs for the next start (0.3.0)
         let weak = Rc::downgrade(self);
         self.window.connect_close_request(move |w| {
             if let (Some(f), Some(app)) = (weak.upgrade(), crate::app::app_wenn()) {
+                reiter::sitzung::merken(&f, &app);
                 let (breite, hoehe) = (w.default_width(), w.default_height());
                 let seite = f.paned.position();
                 app.konfig().aendern(|k| {
