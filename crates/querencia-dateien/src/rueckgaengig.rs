@@ -13,7 +13,8 @@
 //! | Neuer Ordner, neue Datei | deletes it when empty, else into the trash | the job again |
 //!
 //! Only objects `querencia_dateiarbeit` lists in `Outcome::undo` take part:
-//! nothing replaced or merged, a move with its own name. Deleting for good
+//! nothing replaced or merged, a move with its own name; a move out of the
+//! trash is not remembered (`operationen.rs`). Deleting for good
 //! and emptying the trash cannot be undone: they clear the stack, so that
 //! Strg+Z never undoes something older instead (the entry is inactive).
 //! The stack lives as long as the window; it is not saved.

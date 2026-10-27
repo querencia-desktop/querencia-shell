@@ -1008,7 +1008,17 @@ impl Operationen {
             self.umkehr_laeuft
                 .set(self.umkehr_laeuft.get().saturating_sub(1));
         }
-        let vorgang = Vorgang::aus(op, quellen, ziel, outcome, beginn);
+        // out of the trash: moving back would leave the entry without its
+        // `.trashinfo` (it went with the move); „Wiederherstellen“ is the way
+        let aus_papierkorb = *op == Op::Move
+            && quellen
+                .iter()
+                .any(|q| ziehen::im_papierkorb(&gio::File::for_uri(q)));
+        let vorgang = if aus_papierkorb {
+            None
+        } else {
+            Vorgang::aus(op, quellen, ziel, outcome, beginn)
+        };
         {
             let mut stapel = self.stapel.borrow_mut();
             match merken {

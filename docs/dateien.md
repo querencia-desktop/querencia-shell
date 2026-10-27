@@ -890,7 +890,8 @@ Nautilus 3.4), daher dessen Undo-Manager in schlank.
   (E01–E05, `LAUF_ARCHIV`).
 - **Grenzen:** Rückgängig nur für Aufträge dieses Programms und dieses
   Fensters, nicht über das Programmende hinaus; ersetzte Dateien kommen
-  nicht zurück; die Inhaltssuche hat keinen Index (große Bäume dauern),
+  nicht zurück; Verschieben aus dem Papierkorb kommt nicht auf den Stapel
+  (die `.trashinfo` ginge verloren, „Wiederherstellen“ ist der Weg); die Inhaltssuche hat keinen Index (große Bäume dauern),
   liest keine entfernten Orte und keine Dokumente in Containerformaten
   (odt, pdf); Reiter merkt nur Ordner, nicht Ansicht, Zoom oder Verlauf.
 - **Integration** `integration/dateien-030/` (Update 0.2.4 → 0.3.0,
