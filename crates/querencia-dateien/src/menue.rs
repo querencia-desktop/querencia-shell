@@ -37,6 +37,9 @@ pub const KUERZEL_IM_BEREICH: &[(&str, &[&str])] = &[
     ("papierkorb", &["Delete", "KP_Delete"]),
     ("loeschen", &["<Shift>Delete", "<Shift>KP_Delete"]),
     ("stopp", &["Escape"]),
+    // 0.3.0: undo and redo of file operations (not in text fields)
+    ("rueckgaengig", &["<Control>z"]),
+    ("wiederholen", &["<Shift><Control>z"]),
 ];
 
 /// Application accels (detailed action names).
@@ -309,6 +312,21 @@ fn datei() -> Vec<Vec<Punkt>> {
 
 fn bearbeiten() -> Vec<Vec<Punkt>> {
     vec![
+        // 0.3.0: the label says what (`operationen::Operationen::umkehr_text`)
+        vec![
+            p(
+                N_("_Undo"),
+                "win.rueckgaengig",
+                Some("<Control>z"),
+                Some("edit-undo"),
+            ),
+            p(
+                N_("_Redo"),
+                "win.wiederholen",
+                Some("<Shift><Control>z"),
+                Some("edit-redo"),
+            ),
+        ],
         vec![
             p(
                 N_("Cu_t"),
@@ -578,8 +596,15 @@ fn fuellen(menue: &gio::Menu, tabelle: Vec<Vec<Punkt>>, fenster: &Rc<Fenster>) {
                     .map(|_| gio::ThemedIcon::new("media-record-symbolic").upcast()),
             };
             let kuerzel = punkt.kuerzel.map(kuerzel_text);
+            let beschriftung = match punkt.aktion {
+                "win.rueckgaengig" | "win.wiederholen" => {
+                    crate::operationen::Operationen::fuer(fenster)
+                        .umkehr_text(punkt.aktion == "win.wiederholen")
+                }
+                _ => text(punkt.text),
+            };
             abschnitt.append_item(&eintrag(
-                &text(punkt.text),
+                &beschriftung,
                 an.then_some(punkt.aktion),
                 punkt.ziel,
                 kuerzel.as_deref(),
@@ -843,10 +868,14 @@ mod tests {
         assert_eq!(finde("Open in New _Tab").kuerzel, Some("<Shift><Control>o"));
         assert_eq!(finde("_Compact").kuerzel, Some("<Control>3"));
         assert_eq!(finde("_Compact").ziel, Some("kompakt"));
+        // 0.3.0: undo and redo
+        assert_eq!(finde("_Undo").kuerzel, Some("<Control>z"));
+        assert_eq!(finde("_Redo").aktion, "win.wiederholen");
         // no other B-stage entries yet (B §3.3)
-        for b in ["_Undo", "D_uplicate"] {
-            assert!(!alle.iter().any(|p| p.text == b), "{b} ist Beta");
-        }
+        assert!(
+            !alle.iter().any(|p| p.text == "D_uplicate"),
+            "Duplizieren ist Beta"
+        );
     }
 
     #[test]

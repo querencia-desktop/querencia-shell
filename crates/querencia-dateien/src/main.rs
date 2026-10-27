@@ -39,6 +39,7 @@ mod eigenschaften_dialog;
 mod fortschritt;
 mod konflikt;
 mod operationen;
+mod rueckgaengig;
 mod ziehen;
 mod zwischenablage;
 

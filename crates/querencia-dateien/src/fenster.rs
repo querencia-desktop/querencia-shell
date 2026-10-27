@@ -753,7 +753,18 @@ impl Fenster {
                 }
             });
         }
-        app.auftrag_starten(job, Some(self.window.upcast_ref()));
+        // through the service: progress, questions and the undo stack
+        match crate::operationen::Dienst::get() {
+            Some(dienst) => {
+                dienst.auftrag(
+                    crate::operationen::Auftrag::new(job.op, vec![datei.clone()], None)
+                        .fenster(Some(self.window.clone().upcast())),
+                );
+            }
+            None => {
+                app.auftrag_starten(job, Some(self.window.upcast_ref()));
+            }
+        }
     }
 
     // ------------------------------------------------------------ actions
