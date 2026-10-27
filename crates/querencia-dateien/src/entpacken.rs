@@ -20,7 +20,7 @@ use crate::eintrag::Eintrag;
 use crate::fenster::Fenster;
 use crate::i18n::{gettext, gettext_f};
 
-/// The desktop file of Querencia Archiv.
+/// Its `MimeType=` decides which files get „Hier entpacken“ (no list here).
 pub const ARCHIV_ID: &str = "org.querencia.Archiv.desktop";
 
 /// The program: `QUERENCIA_ARCHIV`, then PATH, then `~/opt/querencia/bin`
