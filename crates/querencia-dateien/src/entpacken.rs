@@ -101,7 +101,7 @@ fn entpacken(fenster: &Rc<Fenster>) {
             Err(e) => crate::log(&format!("Hier entpacken: Archiv meldet {}", e.message())),
         }),
         Err(e) => fenster.melden(&gettext_f(
-            "Querencia Archive could not be started: {error}",
+            "The Archive Manager could not be started: {error}",
             &[("error", e.message())],
         )),
     }

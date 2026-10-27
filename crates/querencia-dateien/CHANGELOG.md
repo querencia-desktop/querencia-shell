@@ -1,5 +1,32 @@
 # Änderungen – Querencia Dateien (`querencia-dateien`)
 
+## 0.3.0 – 27.10.2026 (Rückgängig, Inhaltssuche, Reiter wiederherstellen)
+
+- Neu: **Rückgängig und Wiederholen** (Strg+Z, Umschalt+Strg+Z, Menü
+  Bearbeiten mit Beschreibung, z. B. „Rückgängig: Verschieben von
+  „a.txt““) für Verschieben, Umbenennen, In den Papierkorb, Kopieren
+  (Rückgängig löscht die Kopien nach einer Rückfrage), Neuer Ordner und
+  Neues Dokument (leer: gelöscht, sonst in den Papierkorb). Ein Stapel je
+  Fenster für alle Reiter, bis 50 Schritte, nicht über das Programmende
+  hinaus. Endgültiges Löschen und „Papierkorb leeren“ lassen sich nicht
+  zurücknehmen und leeren den Stapel. Was beim Einfügen ersetzt oder
+  zusammengeführt wurde, bleibt außen vor (querencia-dateiarbeit 0.1.3).
+- Neu: **Suche im Dateiinhalt.** Die Suchleiste (Strg+F) hat den Schalter
+  „Auch Dateiinhalt“ (Vorgabe aus). Dann sind auch Textdateien bis 10 MB
+  Treffer, in denen alle Wörter vorkommen; Binärdateien (Nullbyte) und
+  entfernte Orte werden nicht gelesen. Die Spalte „Fundstelle“ zeigt die
+  erste Zeile mit dem Wort, der Tooltip und die Statusleiste die
+  Zeilennummer. „Erweiterte Suche …“ bleibt.
+- Neu: **Reiter beim Start wiederherstellen** (Bearbeiten → Einstellungen
+  → Verhalten, Vorgabe an): Ein Start ohne Ordner öffnet die Reiter des
+  zuletzt geschlossenen Fensters wieder, in derselben Reihenfolge und mit
+  demselben aktiven Reiter. Orte, die dann nicht erreichbar sind, werden
+  übersprungen. Zustand in `~/.local/state/querencia/dateien-reiter`.
+- Neu: **„Hier entpacken“** im Kontextmenü von Archiven, wenn die
+  Archivverwaltung (Querencia Archiv) installiert ist: Sie entpackt jedes
+  gewählte Archiv neben sich, mit eigenem Fortschritt und eigenen Fragen.
+- Texte de, it, es, fr (27 neue).
+
 ## 0.2.4 – 27.10.2026 (Pflegestand, QD-173 P-2, P-3)
 
 - Behoben: Die Kompaktansicht kürzte gewöhnliche Namen, bei 50 % schon
