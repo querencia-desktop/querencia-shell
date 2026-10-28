@@ -55,9 +55,9 @@ Anwendungskennungen (App-IDs): `org.querencia.Panel` (bis Panel 0.2.3
 
 | | |
 |---|---|
-| Version | Panel 0.4.0 mit Infobereich (Tag `panel/0.4.0-2`), Arbeitsfläche 0.3.1 (Tag `desktop/0.3.1`), Dateien 0.3.0 Beta (Tag `dateien/0.3.0`; löst Querencia Files ab), Oberfläche 0.1.3 und Dateiarbeit 0.1.3 (im Tag `dateien/0.3.0`), Kürzel 0.2.3 (Tag `kuerzel/0.2.3`), Lautstärkeregler 0.1.2 (Tag `lautstaerke/0.1.2`); Stand von Querencia Desktop Alpha 3.4 (27.10.2026) |
+| Version | Panel 0.4.1 mit Infobereich (Tag `panel/0.4.1`), Arbeitsfläche 0.3.2 (Tag `desktop/0.3.2`), Dateien 0.3.1 Beta (Tag `dateien/0.3.1`; löst Querencia Files ab), Oberfläche 0.1.4 und Dateiarbeit 0.1.3 (im Tag `dateien/0.3.1`), Kürzel 0.2.3 (Tag `kuerzel/0.2.3`), Lautstärkeregler 0.1.2 (Tag `lautstaerke/0.1.2`); Stand von Querencia Desktop Alpha 3.6 (28.10.2026) |
 | Sprachen | Deutsch, Englisch, Italienisch, Spanisch, Französisch (GNU gettext, `po/` je Crate) |
-| Letzte Prüfung | Stand der Quelle vom 27.10.2026: fmt, Clippy und Unit-Tests der Crates; isolierte GUI-Prüfungen je Baustein mit den Werkzeugen unter `tools/` |
+| Letzte Prüfung | Stand der Quelle vom 28.10.2026: fmt, Clippy und Unit-Tests der Crates; isolierte GUI-Prüfungen je Baustein mit den Werkzeugen unter `tools/` |
 | Bekannte Lücken | `session/` und `tools/` enthalten Pfade der Entwicklungsmaschine (neutral `/home/user`) und sind nicht allgemein einsetzbar |
 | Getestet auf | Ubuntu 26.04, labwc 0.9.8, GTK 4.22, gtk4-layer-shell 1.3, Rust 1.93 |
 | Nicht getestet | andere Distributionen und Compositoren, HiDPI, Mehrmonitor |
