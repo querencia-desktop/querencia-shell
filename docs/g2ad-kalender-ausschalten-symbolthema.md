@@ -87,6 +87,28 @@ an `session/` und eine Entscheidung für den Besitzer.
 - Gesetzt wird weiter nur `GtkSettings` des eigenen Prozesses; keine Datei,
   kein anderes Programm.
 
+### Nachtrag 28.10.2026: Vorgabe der Sitzung (Oberfläche 0.1.4)
+
+- Befund: In einer frischen Installation (ISO Alpha 3.5) zeigten Panel,
+  Desktop und Dateien GNOME Human, obwohl die Einstellungen „Querencia“
+  anzeigten. Das Sitzungspaket setzt Querencia nur als Schema-Vorgabe
+  (`20_querencia-session.gschema.override`, Gruppe
+  `[org.gnome.desktop.interface:X-Querencia]`, gilt nur mit
+  `XDG_CURRENT_DESKTOP=X-Querencia`), nicht als Benutzerwert; die alte Regel
+  nahm ohne Benutzerwert immer GNOME Human. Auf der Entwicklungsmaschine ist
+  der Benutzerwert „Querencia“ gesetzt, dort fiel es nicht auf.
+- Regel jetzt (`crates/querencia-oberflaeche/src/icon_theme.rs`, für
+  Panel 0.4.1, Desktop 0.3.2, Dateien 0.3.1):
+  1. Benutzerwert gesetzt und installiert → dieses Thema (wie bisher).
+  2. Kein Benutzerwert: der wirksame Wert des Schlüssels (Vorgabe samt
+     Override, `g_settings_get_string`). Installiert und keine
+     GTK-Grundeinstellung („“, Adwaita, hicolor) → dieses Thema.
+  3. Sonst GNOME Human. Ohne Schema unverändert.
+- Logzeilen: „Symbolthema Querencia (Vorgabe „Querencia“)“, ohne Override
+  „Symbolthema gnome-human (keine Benutzereinstellung, Vorgabe „Adwaita“)“,
+  mit Benutzerwert „Symbolthema Querencia (Benutzereinstellung „Querencia“)“.
+- Mit gesetztem Benutzerwert (Entwicklungsmaschine) ändert sich nichts.
+
 ## Prüfung
 
 - Unit-Tests: `clock::tests` (Zeitformat aus `LANGUAGE`/`LC_*`/`LANG`),

@@ -402,8 +402,8 @@ impl Seitenleiste {
                 && l.mounted
                 && let Some(how) = l.removal
             {
-                // the sign itself: the Querencia icon theme (gnome-human)
-                // has no media-eject
+                // the sign itself: the Querencia icon theme and gnome-human
+                // beneath it have no media-eject
                 let aus = gtk4::Button::with_label("⏏");
                 aus.update_property(&[gtk4::accessible::Property::Label(&how.menu_label())]);
                 aus.set_has_frame(false);

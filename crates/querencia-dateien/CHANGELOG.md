@@ -1,5 +1,12 @@
 # Änderungen – Querencia Dateien (`querencia-dateien`)
 
+## 0.3.1 – 28.10.2026 (Symbolthema nach der Vorgabe der Sitzung)
+
+- Ohne eigene Wahl des Symbolthemas nimmt Querencia Dateien die Vorgabe der
+  Sitzung (in der Querencia-Sitzung „Querencia“ aus dem Sitzungspaket) statt
+  immer GNOME Human (querencia-oberflaeche 0.1.4). Wer ein Thema gewählt
+  hat, sieht keinen Unterschied.
+
 ## 0.3.0 – 27.10.2026 (Rückgängig, Inhaltssuche, Reiter wiederherstellen)
 
 - Neu: **Rückgängig und Wiederholen** (Strg+Z, Umschalt+Strg+Z, Menü
