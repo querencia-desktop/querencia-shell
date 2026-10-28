@@ -1,5 +1,13 @@
 # Änderungen – querencia-desktop
 
+## 0.3.2 – 2026-10-28
+
+Symbolthema nach der Vorgabe der Sitzung (querencia-oberflaeche 0.1.4):
+
+- Ohne eigene Wahl des Symbolthemas nimmt die Arbeitsfläche die Vorgabe der
+  Sitzung (in der Querencia-Sitzung „Querencia“ aus dem Sitzungspaket) statt
+  immer GNOME Human. Wer ein Thema gewählt hat, sieht keinen Unterschied.
+
 ## 0.3.1 – 2026-10-26
 
 Italienisch, Spanisch, Französisch:

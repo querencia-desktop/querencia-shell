@@ -1,5 +1,22 @@
 # Änderungen – querencia-oberflaeche
 
+## 0.1.4 – 2026-10-28 (Symbolthema nach der Vorgabe der Sitzung)
+
+- `icon_theme`: Ohne Nutzerwert von `org.gnome.desktop.interface
+  icon-theme` zählt jetzt der wirksame Wert des Schlüssels, also die
+  Schema-Vorgabe samt Override (z. B. `[org.gnome.desktop.interface:X-Querencia]
+  icon-theme='Querencia'` aus dem Sitzungspaket). Er wird genommen, wenn das
+  Thema installiert und keine GTK-Grundeinstellung („“, „Adwaita“,
+  „hicolor“) ist; sonst wie bisher GNOME Human. Ein Nutzerwert geht weiter
+  vor, ein Nutzerwert ohne installiertes Thema führt weiter zu GNOME Human.
+  Ohne Schema unverändert. Befund: In einer frischen Installation (Alpha 3.5)
+  zeigten Panel, Desktop und Dateien GNOME Human statt Querencia, obwohl die
+  Einstellungen „Querencia“ anzeigten.
+- `UserChoice::Default` trägt die Vorgabe (`Default { schema_default }`),
+  neu `UserChoice::from_key`. Log z. B. „Symbolthema Querencia (Vorgabe
+  „Querencia“)“ bzw. „Symbolthema gnome-human (keine Benutzereinstellung,
+  Vorgabe „Adwaita“)“.
+
 ## 0.1.3 – 2026-10-27 (Panel 0.4.0, QD-164)
 
 - `classic_menu`: Häkchen- und Radio-Einträge. Ein Eintrag mit dem

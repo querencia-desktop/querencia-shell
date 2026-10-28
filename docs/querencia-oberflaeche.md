@@ -26,7 +26,7 @@ Verhalten sind die von Panel 0.3.0; neu sind nur die Stellen in §3 und §4.
 | `classic_menu` | GNOME-2-Menüs aus `gio::MenuModel` (HMP-03/04/05): Symbole, Kürzel, Untermenüs mit Zielkegel, GTK-2-Tastatur, Menüleiste |
 | `classic_menu::gui_test` | isolierter GUI-Test der Menüs, nur mit Feature `gui-test` |
 | `symbole` | Themensymbole ohne GTKs Vorladen im Thread-Pool (QD-106) |
-| `icon_theme` | Symbolthema des Nutzers, sonst GNOME Human, Wechsel zur Laufzeit (G2-AD) |
+| `icon_theme` | Symbolthema des Nutzers, sonst die Vorgabe der Sitzung (ab 0.1.4), sonst GNOME Human, Wechsel zur Laufzeit (G2-AD) |
 | `farbschema` | dunkle Regeln der Programm-CSS nur bei `dunkel` (QD-081) |
 | `portal` | Settings-Portal beim Start, GSettings als Rückfall (QD-062) |
 | `i18n` | Textdomäne `querencia-oberflaeche` |

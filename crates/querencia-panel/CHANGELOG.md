@@ -1,5 +1,13 @@
 # Änderungen – querencia-panel
 
+## 0.4.1 – 2026-10-28
+
+Symbolthema nach der Vorgabe der Sitzung (querencia-oberflaeche 0.1.4):
+
+- Ohne eigene Wahl des Symbolthemas nimmt das Panel die Vorgabe der Sitzung
+  (in der Querencia-Sitzung „Querencia“ aus dem Sitzungspaket) statt immer
+  GNOME Human. Wer ein Thema gewählt hat, sieht keinen Unterschied.
+
 ## 0.4.0 – 2026-10-27
 
 Infobereich (QD-164, `docs/panel-040-infobereich.md`):
